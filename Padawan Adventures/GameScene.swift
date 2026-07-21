@@ -21,7 +21,9 @@ final class GameScene: SKScene {
     private var pendingInput = PendingInput()
     private let renderer = IsometricRenderer()
     private let isoConfig = IsometricConfig()
-    private var viewAnchor = GridCoord(x: 0, y: 0, story: 0)
+    private var viewportFocus = CGPoint.zero
+    private var followPlayer = true
+    private var gestureTracker = ViewportGestureTracker()
     private var lastUpdateTime: TimeInterval?
     private let saveService: GameSaveService?
 
@@ -46,21 +48,43 @@ final class GameScene: SKScene {
         }
     }
 
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        gestureTracker.begin(at: touch.location(in: self))
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first,
+              let delta = gestureTracker.move(to: touch.location(in: self)) else { return }
+
+        followPlayer = false
+        viewportFocus = IsometricMath.focusAfterPan(currentFocus: viewportFocus, dragDelta: delta)
+        renderer.updateViewportFocus(viewportFocus)
+    }
+
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let wasTap = gestureTracker.end()
+        guard wasTap else { return }
+
         guard let touch = touches.first,
               let playerPosition = world.playerPosition else { return }
 
         let location = touch.location(in: self)
         let target = IsometricMath.gridFromView(
             location,
-            anchor: viewAnchor,
+            focus: viewportFocus,
             viewCenter: renderer.sceneViewCenter,
             story: playerPosition.story,
             config: isoConfig
         )
 
         guard world.isInBounds(target), world.isEnterable(at: target) else { return }
+        followPlayer = true
         pendingInput.enqueue(target)
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        gestureTracker.cancel()
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -106,20 +130,26 @@ final class GameScene: SKScene {
         simulationClock = SimulationClock()
         movement = MovementSystem()
         pendingInput = PendingInput()
+        followPlayer = true
 
-        viewAnchor = world.playerPosition ?? world.spawn
-        renderer.render(world: world, anchor: viewAnchor)
+        let anchor = world.playerPosition ?? world.spawn
+        viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
+        renderer.render(world: world, focus: viewportFocus)
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
-        if let displayCoord = result.playerDisplayCoord {
-            viewAnchor = displayCoord
-        } else {
-            viewAnchor = world.playerPosition ?? world.spawn
+        let displayCoord = result.playerDisplayCoord ?? world.playerPosition ?? world.spawn
+
+        if followPlayer {
+            viewportFocus = IsometricMath.entityScreenPosition(displayCoord, config: isoConfig)
+            renderer.updateViewportFocus(viewportFocus)
         }
 
-        renderer.updateWorldAnchor(viewAnchor)
-        renderer.syncEntities(world.entities, anchor: viewAnchor)
+        if let player = world.entities.first(where: \.isPlayer) {
+            renderer.syncEntities(world.entities)
+            renderer.updateEntityDisplayPosition(player, at: displayCoord)
+        }
+
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
     }
 
