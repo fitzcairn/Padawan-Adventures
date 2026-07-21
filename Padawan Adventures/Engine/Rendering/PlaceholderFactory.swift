@@ -2,6 +2,12 @@ import SpriteKit
 import UIKit
 
 enum PlaceholderFactory {
+    static let floorColor = UIColor.white
+    static let wallColor = UIColor.gray
+    static let ladderColor = UIColor.purple
+    static let rampColor = UIColor.red
+    static let slideColor = UIColor.blue
+
     static func tileNode(
         for tile: Tile,
         at coord: GridCoord,
@@ -14,51 +20,37 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .floor(let isPit):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            let floor = horizontalFloorNode(isPit: isPit, config: config)
-            container.addChild(floor)
-            if isPit {
-                addOverlay("O", to: container, yOffset: -config.tileHeight * 0.35)
+            // Pits are transparent — no floor rendered (black void shows through).
+            if !isPit {
+                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
             }
 
-        case .wall(let destructible, let hasDoor, let hasLadder):
+        case .wall(_, let hasDoor, let hasLadder):
             container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-            let faces: WallFaceSet
-            if let world {
-                faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-            } else {
-                faces = .all
-            }
-            let wall = perspectiveWallNode(
-                destructible: destructible,
-                faces: faces,
-                config: config
-            )
-            container.addChild(wall)
-            if hasDoor {
-                addOverlay("D", to: container, yOffset: config.wallHeight * 0.35 - config.tileHeight * 0.5)
-            } else if hasLadder {
-                addOverlay("L", to: container, yOffset: config.wallHeight * 0.35 - config.tileHeight * 0.5)
+            // Doors are transparent — no wall rendered.
+            // Interior solid walls (not bordering walkable space) stay unrendered → black.
+            if !hasDoor, shouldRenderWall(at: coord, in: world) {
+                let faces: WallFaceSet
+                if let world {
+                    faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
+                } else {
+                    faces = .all
+                }
+                let wall = perspectiveWallNode(
+                    color: hasLadder ? ladderColor : wallColor,
+                    faces: faces,
+                    config: config
+                )
+                container.addChild(wall)
             }
 
         case .ramp:
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            let floor = horizontalFloorNode(
-                isPit: false,
-                config: config,
-                fillColor: UIColor(red: 0.85, green: 0.9, blue: 1.0, alpha: 1)
-            )
-            container.addChild(floor)
-            addOverlay("R", to: container, yOffset: -config.tileHeight * 0.35)
+            container.addChild(horizontalFloorNode(config: config, fillColor: rampColor))
 
         case .slide:
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            let floor = horizontalFloorNode(
-                isPit: false,
-                config: config,
-                fillColor: UIColor(red: 1.0, green: 0.85, blue: 0.85, alpha: 1)
-            )
-            container.addChild(floor)
-            addOverlay("S", to: container, yOffset: -config.tileHeight * 0.35)
+            container.addChild(horizontalFloorNode(config: config, fillColor: slideColor))
         }
 
         return container
@@ -66,39 +58,53 @@ enum PlaceholderFactory {
 
     /// Flat-top isometric floor diamond (horizontal tile).
     static func horizontalFloorNode(
-        isPit: Bool,
+        isPit: Bool = false,
         config: IsometricConfig,
         fillColor: UIColor? = nil
     ) -> SKShapeNode {
         let node = SKShapeNode(path: IsometricTileGeometry.floorPath(config: config))
-        node.lineWidth = 2
-        node.strokeColor = .black
+        node.lineWidth = 1
         if let fillColor {
             node.fillColor = fillColor
+            node.strokeColor = UIColor(white: 0.2, alpha: 1)
+        } else if isPit {
+            // Pits are transparent when rendered via this helper.
+            node.fillColor = .clear
+            node.strokeColor = .clear
         } else {
-            node.fillColor = isPit ? UIColor(white: 0.75, alpha: 1) : .white
+            node.fillColor = floorColor
+            node.strokeColor = UIColor(white: 0.2, alpha: 1)
         }
         return node
     }
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.
     static func perspectiveWallNode(
-        destructible: Bool,
+        destructible: Bool = false,
+        color: UIColor? = nil,
         faces: WallFaceSet = .all,
         config: IsometricConfig
     ) -> SKNode {
         let container = SKNode()
         container.name = "wall-block"
+        _ = destructible
 
-        let baseLeft = destructible ? UIColor(white: 0.62, alpha: 1) : UIColor(white: 0.42, alpha: 1)
-        let baseRight = destructible ? UIColor(white: 0.48, alpha: 1) : UIColor(white: 0.28, alpha: 1)
-        let baseTop = destructible ? UIColor(white: 0.7, alpha: 1) : UIColor(white: 0.5, alpha: 1)
+        let base = color ?? wallColor
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        base.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+
+        let baseLeft = UIColor(hue: hue, saturation: saturation, brightness: min(1, brightness * 1.05), alpha: alpha)
+        let baseRight = UIColor(hue: hue, saturation: saturation, brightness: max(0, brightness * 0.75), alpha: alpha)
+        let baseTop = UIColor(hue: hue, saturation: saturation, brightness: min(1, brightness * 1.2), alpha: alpha)
 
         if faces.contains(.left) {
             let left = SKShapeNode(path: IsometricTileGeometry.leftWallFacePath(config: config))
             left.name = "wall-face-left"
-            left.lineWidth = 2
-            left.strokeColor = .black
+            left.lineWidth = 1
+            left.strokeColor = UIColor(white: 0.15, alpha: 1)
             left.fillColor = baseLeft
             left.zPosition = 0
             container.addChild(left)
@@ -107,8 +113,8 @@ enum PlaceholderFactory {
         if faces.contains(.right) {
             let right = SKShapeNode(path: IsometricTileGeometry.rightWallFacePath(config: config))
             right.name = "wall-face-right"
-            right.lineWidth = 2
-            right.strokeColor = .black
+            right.lineWidth = 1
+            right.strokeColor = UIColor(white: 0.15, alpha: 1)
             right.fillColor = baseRight
             right.zPosition = 1
             container.addChild(right)
@@ -117,8 +123,8 @@ enum PlaceholderFactory {
         if faces.contains(.top) {
             let top = SKShapeNode(path: IsometricTileGeometry.topWallFacePath(config: config))
             top.name = "wall-face-top"
-            top.lineWidth = 2
-            top.strokeColor = .black
+            top.lineWidth = 1
+            top.strokeColor = UIColor(white: 0.15, alpha: 1)
             top.fillColor = baseTop
             top.zPosition = 2
             container.addChild(top)
@@ -176,15 +182,29 @@ enum PlaceholderFactory {
         node.zPosition = IsometricMath.entitySortValue(for: entity.position, config: config)
     }
 
-    private static func addOverlay(_ text: String, to container: SKNode, yOffset: CGFloat = 0) {
-        let label = SKLabelNode(text: text)
-        label.fontSize = 14
-        label.fontName = "Menlo-Bold"
-        label.fontColor = .black
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.position = CGPoint(x: 0, y: yOffset)
-        label.zPosition = 3
-        container.addChild(label)
+    /// Walls that don't border walkable space stay black (unrendered over the scene background).
+    private static func shouldRenderWall(at coord: GridCoord, in world: GameWorld?) -> Bool {
+        guard let world else { return true }
+        for (dx, dy) in GridCoord.cardinals {
+            let neighbor = coord.neighbor(dx: dx, dy: dy)
+            guard world.isInBounds(neighbor), let tile = world.tile(at: neighbor) else { continue }
+            if isWalkableSurface(tile) { return true }
+        }
+        // Ladder walls should still show even if only useful vertically.
+        if case .wall(_, _, true) = world.tile(at: coord)?.kind {
+            return true
+        }
+        return false
+    }
+
+    private static func isWalkableSurface(_ tile: Tile) -> Bool {
+        switch tile.kind {
+        case .floor(let isPit):
+            return !isPit
+        case .ramp, .slide:
+            return true
+        case .wall(_, let hasDoor, let hasLadder):
+            return hasDoor || hasLadder
+        }
     }
 }

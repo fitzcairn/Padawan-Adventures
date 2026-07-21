@@ -10,9 +10,11 @@ world:
   stories: 2
 
 generation:
-  algorithm: rooms_bsp
+  algorithm: rooms_doors
   room_count: 6
   corridor_width: 1
+  min_room_size: 5
+  max_room_size: 10
   pit_chance: 0.05
   wall_destructible_chance: 0.2
   ramp_count: 2
@@ -22,6 +24,5 @@ generation:
 
 player:
   letter: P
-  spawn: { x: 3, y: 3, story: 0 }
 
 extensions: {}

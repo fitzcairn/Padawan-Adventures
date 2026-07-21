@@ -38,7 +38,8 @@ final class GameScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(red: 0.12, green: 0.14, blue: 0.18, alpha: 1)
+        // Non-reachable void reads as black; pits and doors stay transparent over it.
+        backgroundColor = .black
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
 
         renderer.attach(to: self)
@@ -138,16 +139,28 @@ final class GameScene: SKScene {
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
-        let displayCoord = result.playerDisplayCoord ?? world.playerPosition ?? world.spawn
+        let occupancy = result.playerDisplayCoord ?? world.playerPosition ?? world.spawn
+        let displayPoint = result.playerDisplayPoint
+            ?? IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
 
         if followPlayer {
-            viewportFocus = IsometricMath.entityScreenPosition(displayCoord, config: isoConfig)
+            viewportFocus = displayPoint
+        }
+
+        // Show only the story the player currently occupies.
+        let rebuiltForStory = renderer.updateVisibleStory(for: world, focus: viewportFocus)
+        if !rebuiltForStory, followPlayer {
             renderer.updateViewportFocus(viewportFocus)
         }
 
-        if let player = world.entities.first(where: \.isPlayer) {
+        if let player = world.entities.first(where: \.isPlayer),
+           player.position.story == renderer.visibleStory {
             renderer.syncEntities(world.entities)
-            renderer.updateEntityDisplayPosition(player, at: displayCoord)
+            renderer.updateEntityDisplayPosition(
+                player,
+                screenPosition: displayPoint,
+                sortCoord: occupancy
+            )
         }
 
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
@@ -167,9 +180,11 @@ final class GameScene: SKScene {
             seed: 42,
             world: .init(width: 24, height: 24, stories: 2),
             generation: .init(
-                algorithm: "rooms_bsp",
+                algorithm: "rooms_doors",
                 roomCount: 6,
                 corridorWidth: 1,
+                minRoomSize: 5,
+                maxRoomSize: 10,
                 pitChance: 0.05,
                 wallDestructibleChance: 0.2,
                 rampCount: 2,
@@ -177,7 +192,7 @@ final class GameScene: SKScene {
                 slideCount: 1,
                 doorCount: 4
             ),
-            player: .init(letter: "P", spawn: .init(x: 3, y: 3, story: 0)),
+            player: .init(letter: "P", spawn: nil),
             extensions: nil
         )
     }

@@ -1,18 +1,22 @@
+import CoreGraphics
 import Foundation
 
 struct SimulationTickResult: Sendable {
     var shouldPersist: Bool = false
     var cameraCoord: GridCoord?
     var playerDisplayCoord: GridCoord?
+    var playerDisplayPoint: CGPoint?
     var animationFrame: Int = 0
     var movementEvents: [MovementEvent] = []
 }
 
 struct SimulationLoop: Sendable {
     let pathfinder: Pathfinder
+    let isoConfig: IsometricConfig
 
-    init(pathfinder: Pathfinder = Pathfinder()) {
+    init(pathfinder: Pathfinder = Pathfinder(), isoConfig: IsometricConfig = IsometricConfig()) {
         self.pathfinder = pathfinder
+        self.isoConfig = isoConfig
     }
 
     mutating func tick(
@@ -40,7 +44,8 @@ struct SimulationLoop: Sendable {
               let playerPosition = world.playerPosition,
               world.isInBounds(tap),
               world.isEnterable(at: tap),
-              let path = pathfinder.findPath(from: playerPosition, to: tap, in: world) else {
+              let path = pathfinder.findPath(from: playerPosition, to: tap, in: world),
+              path.count >= 2 else {
             return
         }
 
@@ -70,13 +75,11 @@ struct SimulationLoop: Sendable {
             }
         }
 
-        if movement.isMoving {
-            result.playerDisplayCoord = movement.interpolatedPosition(in: world)
-        } else {
-            result.playerDisplayCoord = world.playerPosition
-        }
+        let occupancy = world.playerPosition ?? world.spawn
+        result.playerDisplayCoord = occupancy
+        result.playerDisplayPoint = movement.interpolatedScreenPosition(in: world, config: isoConfig)
 
-        result.cameraCoord = result.cameraCoord ?? world.playerPosition ?? world.spawn
+        result.cameraCoord = result.cameraCoord ?? occupancy
         result.shouldPersist = wasMoving && !movement.isMoving
 
         return result

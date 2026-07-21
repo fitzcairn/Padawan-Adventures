@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 struct MovementSystem: Sendable {
@@ -9,6 +10,8 @@ struct MovementSystem: Sendable {
     private(set) var segmentEnd: GridCoord?
     private(set) var segmentProgress: Double = 0
     private(set) var isMoving: Bool = false
+    /// Whether occupancy has been committed to `segmentEnd` for the current segment (at border cross).
+    private var occupancyCommitted: Bool = false
 
     mutating func begin(path: [GridCoord]) {
         guard path.count >= 2 else {
@@ -20,6 +23,7 @@ struct MovementSystem: Sendable {
         segmentStart = path[0]
         segmentEnd = path[1]
         segmentProgress = 0
+        occupancyCommitted = false
         isMoving = true
     }
 
@@ -29,6 +33,7 @@ struct MovementSystem: Sendable {
         segmentStart = nil
         segmentEnd = nil
         segmentProgress = 0
+        occupancyCommitted = false
         isMoving = false
     }
 
@@ -42,30 +47,48 @@ struct MovementSystem: Sendable {
 
         var events: [MovementEvent] = []
         var remaining = deltaTime
+        var currentStart = start
+        var currentEnd = end
 
         while remaining > 0, isMoving {
-            let segmentLength = segmentDistance(from: start, to: end)
+            let segmentLength = segmentDistance(from: currentStart, to: currentEnd)
             let segmentDuration = segmentLength / Self.tilesPerSecond
-            let timeLeftInSegment = segmentDuration * (1 - segmentProgress)
+            guard segmentDuration > 0 else {
+                commitOccupancyIfNeeded(end: currentEnd, world: &world, events: &events)
+                if !isMoving { return events }
+                advanceSegment()
+                if let nextStart = segmentStart, let nextEnd = segmentEnd {
+                    currentStart = nextStart
+                    currentEnd = nextEnd
+                }
+                continue
+            }
 
+            // Commit occupancy when crossing the shared tile border (progress 0.5).
+            if !occupancyCommitted {
+                let timeToBorder = segmentDuration * (0.5 - segmentProgress)
+                if remaining >= timeToBorder {
+                    remaining -= timeToBorder
+                    segmentProgress = 0.5
+                    commitOccupancyIfNeeded(end: currentEnd, world: &world, events: &events)
+                    if !isMoving { return events }
+                    continue
+                } else {
+                    segmentProgress += remaining / segmentDuration
+                    remaining = 0
+                    break
+                }
+            }
+
+            let timeLeftInSegment = segmentDuration * (1 - segmentProgress)
             if remaining >= timeLeftInSegment {
                 remaining -= timeLeftInSegment
-                world.setPlayerPosition(end)
-                events.append(.reached(end))
-
-                if world.tile(at: end)?.isPit == true {
-                    let resolution = world.resolvePit(at: end)
-                    events.append(.pit(resolution))
-                    if case .hazard = resolution {
-                        reset()
-                        return events
-                    }
-                    if case .fell(let lower) = resolution {
-                        events.append(.reached(lower))
-                    }
-                }
-
+                segmentProgress = 1
                 advanceSegment()
+                if let nextStart = segmentStart, let nextEnd = segmentEnd {
+                    currentStart = nextStart
+                    currentEnd = nextEnd
+                }
             } else {
                 segmentProgress += remaining / segmentDuration
                 remaining = 0
@@ -75,18 +98,24 @@ struct MovementSystem: Sendable {
         return events
     }
 
-    func interpolatedPosition(in world: GameWorld) -> GridCoord {
+    /// Continuous screen-space feet position between segment endpoints.
+    func interpolatedScreenPosition(
+        in world: GameWorld,
+        config: IsometricConfig = IsometricConfig()
+    ) -> CGPoint {
         guard isMoving,
               let start = segmentStart,
               let end = segmentEnd else {
-            return world.playerPosition ?? world.spawn
+            let coord = world.playerPosition ?? world.spawn
+            return IsometricMath.entityScreenPosition(coord, config: config)
         }
 
+        let from = IsometricMath.entityScreenPosition(start, config: config)
+        let to = IsometricMath.entityScreenPosition(end, config: config)
         let t = segmentProgress
-        return GridCoord(
-            x: lerp(start.x, end.x, t),
-            y: lerp(start.y, end.y, t),
-            story: t < 0.5 ? start.story : end.story
+        return CGPoint(
+            x: from.x + (to.x - from.x) * CGFloat(t),
+            y: from.y + (to.y - from.y) * CGFloat(t)
         )
     }
 
@@ -99,9 +128,33 @@ struct MovementSystem: Sendable {
         return total
     }
 
+    private mutating func commitOccupancyIfNeeded(
+        end: GridCoord,
+        world: inout GameWorld,
+        events: inout [MovementEvent]
+    ) {
+        guard !occupancyCommitted else { return }
+        occupancyCommitted = true
+        world.setPlayerPosition(end)
+        events.append(.reached(end))
+
+        if world.tile(at: end)?.isPit == true {
+            let resolution = world.resolvePit(at: end)
+            events.append(.pit(resolution))
+            if case .hazard = resolution {
+                reset()
+                return
+            }
+            if case .fell(let lower) = resolution {
+                events.append(.reached(lower))
+            }
+        }
+    }
+
     private mutating func advanceSegment() {
         pathIndex += 1
         segmentProgress = 0
+        occupancyCommitted = false
 
         if pathIndex >= path.count - 1 {
             reset()
@@ -117,10 +170,6 @@ struct MovementSystem: Sendable {
             return Double(abs(start.x - end.x) + abs(start.y - end.y))
         }
         return 1.0
-    }
-
-    private func lerp(_ a: Int, _ b: Int, _ t: Double) -> Int {
-        Int((Double(a) + (Double(b - a) * t)).rounded())
     }
 }
 

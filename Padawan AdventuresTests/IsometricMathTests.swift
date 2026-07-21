@@ -248,4 +248,65 @@ struct PlaceholderFactoryTests {
         #expect(faces.contains(.left))
         #expect(faces.contains(.right))
     }
+
+    @Test func floorIsWhiteAndPitIsTransparent() {
+        let config = IsometricConfig()
+        let floor = PlaceholderFactory.tileNode(
+            for: Tile(kind: .floor(isPit: false)),
+            at: GridCoord(x: 0, y: 0, story: 0),
+            config: config
+        )
+        let pit = PlaceholderFactory.tileNode(
+            for: Tile(kind: .floor(isPit: true)),
+            at: GridCoord(x: 0, y: 0, story: 0),
+            config: config
+        )
+
+        let floorShape = floor.children.first as? SKShapeNode
+        #expect(floorShape?.fillColor == PlaceholderFactory.floorColor)
+        #expect(pit.children.isEmpty)
+    }
+
+    @Test func doorIsTransparentAndLadderWallIsPurple() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let doorCoord = GridCoord(x: 1, y: 1, story: 0)
+        let ladderCoord = GridCoord(x: 2, y: 1, story: 0)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)), at: doorCoord)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: ladderCoord)
+
+        let door = PlaceholderFactory.tileNode(
+            for: world.tile(at: doorCoord)!,
+            at: doorCoord,
+            in: world,
+            config: config
+        )
+        let ladder = PlaceholderFactory.tileNode(
+            for: world.tile(at: ladderCoord)!,
+            at: ladderCoord,
+            in: world,
+            config: config
+        )
+
+        #expect(door.children.isEmpty)
+        #expect(!ladder.children.isEmpty)
+    }
+
+    @Test func rampIsRedAndSlideIsBlue() {
+        let config = IsometricConfig()
+        let partner = GridCoord(x: 1, y: 0, story: 0)
+        let ramp = PlaceholderFactory.tileNode(
+            for: Tile(kind: .ramp(partner: partner, otherStory: 1)),
+            at: GridCoord(x: 0, y: 0, story: 0),
+            config: config
+        )
+        let slide = PlaceholderFactory.tileNode(
+            for: Tile(kind: .slide(partner: partner, lowerStory: 0)),
+            at: GridCoord(x: 0, y: 0, story: 1),
+            config: config
+        )
+
+        #expect((ramp.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.rampColor)
+        #expect((slide.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.slideColor)
+    }
 }
