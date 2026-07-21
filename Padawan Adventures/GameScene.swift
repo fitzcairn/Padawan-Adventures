@@ -18,6 +18,9 @@ final class GameScene: SKScene {
     private var lastUpdateTime: TimeInterval?
     private let saveService: GameSaveService?
 
+    /// Snapshot of the live world for persistence (e.g. Menu exit).
+    var currentWorld: GameWorld { world }
+
     /// Player must stay within this many tiles of screen center.
     private static let cameraDeadzoneTiles: Double = 2
 

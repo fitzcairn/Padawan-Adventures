@@ -9,7 +9,7 @@ struct FractionalGridPose: Equatable, Sendable {
 
 struct MovementSystem: Sendable {
     /// Default walking speed in tiles per second.
-    static let defaultTilesPerSecond: Double = 1.0
+    static let defaultTilesPerSecond: Double = 2.0
     /// Multiplier applied while descending a slide.
     static let slideDescentSpeedMultiplier: Double = 2.0
 

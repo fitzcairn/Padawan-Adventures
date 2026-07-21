@@ -49,7 +49,7 @@ final class PreparingViewController: UIViewController {
         let game = GameViewController(
             world: world,
             isoConfig: isoConfig,
-            saveService: session.saveService
+            session: session
         )
 
         // Replace root so the player cannot navigate back into preparing/menu.
