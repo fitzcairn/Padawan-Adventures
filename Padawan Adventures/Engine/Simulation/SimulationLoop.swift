@@ -42,9 +42,8 @@ struct SimulationLoop: Sendable {
     ) {
         guard let tap = pendingInput.consume(),
               let playerPosition = world.playerPosition,
-              world.isInBounds(tap),
-              world.isEnterable(at: tap),
-              let path = pathfinder.findPath(from: playerPosition, to: tap, in: world),
+              let goal = world.nearestValidMovementGoal(from: tap),
+              let path = pathfinder.findPath(from: playerPosition, to: goal, in: world),
               path.count >= 2 else {
             return
         }

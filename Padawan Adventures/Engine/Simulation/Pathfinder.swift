@@ -2,9 +2,9 @@ import Foundation
 
 struct Pathfinder: Sendable {
     /// Finds a path to `goal`, or to the closest reachable cell if `goal` is unreachable.
-    /// Returns `nil` only when `goal` is not enterable.
+    /// Returns `nil` only when `goal` is not a valid movement goal.
     func findPath(from start: GridCoord, to goal: GridCoord, in world: GameWorld) -> [GridCoord]? {
-        guard world.isEnterable(at: goal) else { return nil }
+        guard world.isValidMovementGoal(at: goal) else { return nil }
         guard start != goal else { return [start] }
 
         var open: [GridCoord] = [start]
@@ -42,39 +42,46 @@ struct Pathfinder: Sendable {
     func neighbors(of coord: GridCoord, in world: GameWorld) -> [GridCoord] {
         var result: [GridCoord] = []
 
-        for (dx, dy) in GridCoord.cardinals {
+        for (dx, dy) in GridCoord.directions8 {
             let next = coord.neighbor(dx: dx, dy: dy)
-            if world.isInBounds(next), world.isEnterable(at: next) {
-                result.append(next)
+            guard world.isInBounds(next), world.isWalkable(at: next) else { continue }
+
+            // No corner-cutting: both adjacent cardinals must be enterable.
+            if dx != 0, dy != 0 {
+                let sideA = coord.neighbor(dx: dx, dy: 0)
+                let sideB = coord.neighbor(dx: 0, dy: dy)
+                guard world.isEnterable(at: sideA), world.isEnterable(at: sideB) else { continue }
             }
+
+            result.append(next)
         }
 
         if let tile = world.tile(at: coord) {
             switch tile.kind {
             case .ramp(let partner, let otherStory):
-                if world.isInBounds(partner), world.isEnterable(at: partner), partner != coord {
+                if world.isInBounds(partner), world.isWalkable(at: partner), partner != coord {
                     if !result.contains(partner) {
                         result.append(partner)
                     }
                 }
                 let vertical = coord.onStory(otherStory)
-                if world.isInBounds(vertical), world.isEnterable(at: vertical) {
+                if world.isInBounds(vertical), world.isWalkable(at: vertical) {
                     result.append(vertical)
                 }
 
             case .slide(let partner, let lowerStory):
-                if world.isInBounds(partner), world.isEnterable(at: partner), partner != coord {
+                if world.isInBounds(partner), world.isWalkable(at: partner), partner != coord {
                     if !result.contains(partner) {
                         result.append(partner)
                     }
                 }
                 if coord.story > lowerStory {
                     let lower = coord.onStory(lowerStory)
-                    if world.isInBounds(lower), world.isEnterable(at: lower) {
+                    if world.isInBounds(lower), world.isWalkable(at: lower) {
                         result.append(lower)
                     }
                     let partnerLower = partner.onStory(lowerStory)
-                    if world.isInBounds(partnerLower), world.isEnterable(at: partnerLower) {
+                    if world.isInBounds(partnerLower), world.isWalkable(at: partnerLower) {
                         result.append(partnerLower)
                     }
                 }
@@ -82,7 +89,7 @@ struct Pathfinder: Sendable {
             case .wall(_, _, let hasLadder) where hasLadder:
                 for delta in [-1, 1] {
                     let vertical = coord.onStory(coord.story + delta)
-                    if world.isInBounds(vertical), world.isEnterable(at: vertical) {
+                    if world.isInBounds(vertical), world.isWalkable(at: vertical) {
                         result.append(vertical)
                     }
                 }
@@ -96,7 +103,7 @@ struct Pathfinder: Sendable {
     }
 
     private func heuristic(_ a: GridCoord, _ b: GridCoord) -> Int {
-        abs(a.x - b.x) + abs(a.y - b.y) + abs(a.story - b.story)
+        max(abs(a.x - b.x), abs(a.y - b.y)) + abs(a.story - b.story)
     }
 
     private func closestReachable(to goal: GridCoord, gScore: [GridCoord: Int]) -> GridCoord {

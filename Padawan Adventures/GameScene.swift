@@ -22,7 +22,8 @@ final class GameScene: SKScene {
     private let renderer = IsometricRenderer()
     private let isoConfig = IsometricConfig()
     private var viewportFocus = CGPoint.zero
-    private var followPlayer = true
+    /// Overview mode: keep the full story fitted; do not chase the player.
+    private var followPlayer = false
     private var gestureTracker = ViewportGestureTracker()
     private var lastUpdateTime: TimeInterval?
     private let saveService: GameSaveService?
@@ -59,7 +60,11 @@ final class GameScene: SKScene {
               let delta = gestureTracker.move(to: touch.location(in: self)) else { return }
 
         followPlayer = false
-        viewportFocus = IsometricMath.focusAfterPan(currentFocus: viewportFocus, dragDelta: delta)
+        viewportFocus = IsometricMath.focusAfterPan(
+            currentFocus: viewportFocus,
+            dragDelta: delta,
+            scale: renderer.worldScale
+        )
         renderer.updateViewportFocus(viewportFocus)
     }
 
@@ -67,20 +72,21 @@ final class GameScene: SKScene {
         let wasTap = gestureTracker.end()
         guard wasTap else { return }
 
-        guard let touch = touches.first,
-              let playerPosition = world.playerPosition else { return }
+        guard let touch = touches.first else { return }
 
         let location = touch.location(in: self)
-        let target = IsometricMath.gridFromView(
-            location,
+        guard let target = IsometricMath.pickTile(
+            at: location,
             focus: viewportFocus,
             viewCenter: renderer.sceneViewCenter,
-            story: playerPosition.story,
+            story: renderer.visibleStory,
+            in: world,
+            scale: renderer.worldScale,
             config: isoConfig
-        )
+        ) else {
+            return
+        }
 
-        guard world.isInBounds(target), world.isEnterable(at: target) else { return }
-        followPlayer = true
         pendingInput.enqueue(target)
     }
 
@@ -131,11 +137,15 @@ final class GameScene: SKScene {
         simulationClock = SimulationClock()
         movement = MovementSystem()
         pendingInput = PendingInput()
-        followPlayer = true
+        followPlayer = false
 
-        let anchor = world.playerPosition ?? world.spawn
-        viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
+        showFullMapOverview()
+    }
+
+    private func showFullMapOverview() {
+        let story = world.playerPosition?.story ?? world.spawn.story
         renderer.render(world: world, focus: viewportFocus)
+        viewportFocus = renderer.fitMapInView(world: world, story: story)
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
@@ -147,9 +157,12 @@ final class GameScene: SKScene {
             viewportFocus = displayPoint
         }
 
-        // Show only the story the player currently occupies.
+        // Show only the story the player currently occupies; refit when story changes.
         let rebuiltForStory = renderer.updateVisibleStory(for: world, focus: viewportFocus)
-        if !rebuiltForStory, followPlayer {
+        if rebuiltForStory {
+            followPlayer = false
+            viewportFocus = renderer.fitMapInView(world: world, story: renderer.visibleStory)
+        } else if followPlayer {
             renderer.updateViewportFocus(viewportFocus)
         }
 
@@ -178,13 +191,13 @@ final class GameScene: SKScene {
         WorldSeedConfig(
             version: 1,
             seed: 42,
-            world: .init(width: 24, height: 24, stories: 2),
+            world: .init(width: 100, height: 100, stories: 2),
             generation: .init(
                 algorithm: "rooms_doors",
-                roomCount: 6,
+                roomCount: 100,
                 corridorWidth: 1,
-                minRoomSize: 5,
-                maxRoomSize: 10,
+                minRoomSize: 4,
+                maxRoomSize: 6,
                 pitChance: 0.05,
                 wallDestructibleChance: 0.2,
                 rampCount: 2,

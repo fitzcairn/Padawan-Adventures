@@ -9,6 +9,12 @@ struct GridCoord: Hashable, Equatable, Sendable, WorldPersistable {
         (0, -1), (1, 0), (0, 1), (-1, 0),
     ]
 
+    static let diagonals: [(dx: Int, dy: Int)] = [
+        (-1, -1), (1, -1), (1, 1), (-1, 1),
+    ]
+
+    static let directions8: [(dx: Int, dy: Int)] = cardinals + diagonals
+
     init(x: Int, y: Int, story: Int) {
         self.x = x
         self.y = y

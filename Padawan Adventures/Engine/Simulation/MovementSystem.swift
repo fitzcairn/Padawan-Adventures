@@ -2,7 +2,13 @@ import CoreGraphics
 import Foundation
 
 struct MovementSystem: Sendable {
-    static let tilesPerSecond: Double = 0.2
+    /// Default walking speed in tiles per second.
+    static let defaultTilesPerSecond: Double = 1.0
+
+    /// Current player movement speed in tiles per second. Mutable so gameplay events can change it.
+    var tilesPerSecond: Double {
+        didSet { tilesPerSecond = max(tilesPerSecond, 0.000_001) }
+    }
 
     private(set) var path: [GridCoord] = []
     private(set) var pathIndex: Int = 0
@@ -12,6 +18,10 @@ struct MovementSystem: Sendable {
     private(set) var isMoving: Bool = false
     /// Whether occupancy has been committed to `segmentEnd` for the current segment (at border cross).
     private var occupancyCommitted: Bool = false
+
+    init(tilesPerSecond: Double = MovementSystem.defaultTilesPerSecond) {
+        self.tilesPerSecond = max(tilesPerSecond, 0.000_001)
+    }
 
     mutating func begin(path: [GridCoord]) {
         guard path.count >= 2 else {
@@ -52,7 +62,7 @@ struct MovementSystem: Sendable {
 
         while remaining > 0, isMoving {
             let segmentLength = segmentDistance(from: currentStart, to: currentEnd)
-            let segmentDuration = segmentLength / Self.tilesPerSecond
+            let segmentDuration = segmentLength / tilesPerSecond
             guard segmentDuration > 0 else {
                 commitOccupancyIfNeeded(end: currentEnd, world: &world, events: &events)
                 if !isMoving { return events }
@@ -123,7 +133,7 @@ struct MovementSystem: Sendable {
         guard path.count >= 2 else { return 0 }
         var total: Double = 0
         for index in 0..<(path.count - 1) {
-            total += segmentDistance(from: path[index], to: path[index + 1]) / Self.tilesPerSecond
+            total += segmentDistance(from: path[index], to: path[index + 1]) / tilesPerSecond
         }
         return total
     }
@@ -166,8 +176,10 @@ struct MovementSystem: Sendable {
     }
 
     private func segmentDistance(from start: GridCoord, to end: GridCoord) -> Double {
-        if start.x != end.x || start.y != end.y {
-            return Double(abs(start.x - end.x) + abs(start.y - end.y))
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        if dx != 0 || dy != 0 {
+            return hypot(Double(dx), Double(dy))
         }
         return 1.0
     }

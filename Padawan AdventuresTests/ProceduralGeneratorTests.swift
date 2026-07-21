@@ -156,8 +156,8 @@ struct ProceduralGeneratorTests {
           algorithm: rooms_doors
           room_count: 6
           corridor_width: 1
-          min_room_size: 5
-          max_room_size: 10
+          min_room_size: 4
+          max_room_size: 6
           pit_chance: 0.05
           wall_destructible_chance: 0.2
           ramp_count: 2
@@ -171,7 +171,7 @@ struct ProceduralGeneratorTests {
 
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.generation.algorithm == "rooms_doors")
-        #expect(config.generation.minRoomSize == 5)
-        #expect(config.generation.maxRoomSize == 10)
+        #expect(config.generation.minRoomSize == 4)
+        #expect(config.generation.maxRoomSize == 6)
     }
 }

@@ -131,6 +131,223 @@ struct IsometricMathTests {
         #expect(recovered == target)
     }
 
+    @Test func containsFloorPointAtDiamondCenter() {
+        let config = IsometricConfig()
+        let coord = GridCoord(x: 3, y: 2, story: 0)
+        let center = IsometricMath.entityScreenPosition(coord, config: config)
+        #expect(IsometricTileGeometry.containsFloorPoint(center, at: coord, config: config))
+    }
+
+    @Test func containsFloorPointRejectsOutsideDiamond() {
+        let config = IsometricConfig()
+        let coord = GridCoord(x: 3, y: 2, story: 0)
+        let origin = IsometricMath.gridToScreen(coord, config: config)
+        let outside = CGPoint(x: origin.x + config.tileWidth, y: origin.y)
+        #expect(!IsometricTileGeometry.containsFloorPoint(outside, at: coord, config: config))
+    }
+
+    @Test func pickVisibleFloorAtDiamondCenter() {
+        let config = IsometricConfig()
+        let world = TestWorldFactory.emptyFloor(width: 6, height: 6)
+        let target = GridCoord(x: 3, y: 2, story: 0)
+        let focus = IsometricMath.gridToScreen(GridCoord(x: 2, y: 2, story: 0), config: config)
+        let viewCenter = CGPoint(x: 300, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(target, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let picked = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == target)
+    }
+
+    @Test func pickVisibleFloorNearSharedEdgeChoosesFrontmost() {
+        let config = IsometricConfig()
+        let world = TestWorldFactory.emptyFloor(width: 4, height: 4)
+        let back = GridCoord(x: 0, y: 0, story: 0)
+        let front = GridCoord(x: 1, y: 0, story: 0)
+        // Midpoint of shared edge between (0,0) east–south and (1,0) west–north.
+        let edgePoint = CGPoint(x: 16, y: -24)
+        #expect(IsometricTileGeometry.containsFloorPoint(edgePoint, at: back, config: config))
+        #expect(IsometricTileGeometry.containsFloorPoint(edgePoint, at: front, config: config))
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: edgePoint,
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let picked = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == front)
+        #expect(
+            IsometricMath.floorSortValue(for: front, config: config)
+                > IsometricMath.floorSortValue(for: back, config: config)
+        )
+    }
+
+    @Test func pickVisibleFloorIgnoresWalls() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
+        let floor = GridCoord(x: 1, y: 1, story: 0)
+        let wall = GridCoord(x: 2, y: 2, story: 0)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(floor, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let picked = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == floor)
+    }
+
+    @Test func pickTileReturnsWallCell() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let wall = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(wall, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let picked = IsometricMath.pickTile(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == wall)
+    }
+
+    @Test func pickVisibleFloorReturnsNilForPit() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let pit = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
+        // Surround with walls so only the pit diamond is under the tap.
+        for y in 0..<3 {
+            for x in 0..<3 where !(x == 1 && y == 1) {
+                world.setTile(
+                    Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)),
+                    at: GridCoord(x: x, y: y, story: 0)
+                )
+            }
+        }
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(pit, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let pickedFloor = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(pickedFloor == nil)
+
+        let pickedTile = IsometricMath.pickTile(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(pickedTile == pit)
+    }
+
+    @Test func fitScaleShrinksLargeMapToView() {
+        let config = IsometricConfig()
+        let bounds = IsometricMath.mapScreenBounds(width: 40, height: 40, story: 0, config: config)
+        let scale = IsometricMath.fitScale(mapBounds: bounds, viewSize: CGSize(width: 400, height: 300))
+        #expect(scale <= 1)
+        #expect(scale > 0)
+        #expect(bounds.width * scale <= 400)
+        #expect(bounds.height * scale <= 300)
+
+        let center = IsometricMath.mapCenter(for: bounds)
+        #expect(abs(center.x - bounds.midX) < 0.001)
+        #expect(abs(center.y - bounds.midY) < 0.001)
+    }
+
+    @Test func worldPointFromViewAccountsForScale() {
+        let focus = CGPoint(x: 10, y: 20)
+        let viewCenter = CGPoint(x: 100, y: 100)
+        let scale: CGFloat = 0.5
+        let viewPoint = CGPoint(x: 130, y: 80)
+        let world = IsometricMath.worldPointFromView(
+            viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            scale: scale
+        )
+        #expect(abs(world.x - 70) < 0.001)
+        #expect(abs(world.y - (-20)) < 0.001)
+    }
+
+    @Test func pickVisibleFloorReturnsNilWhenMiss() {
+        let config = IsometricConfig()
+        let world = TestWorldFactory.emptyFloor(width: 2, height: 2)
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: CGPoint(x: 500, y: 500),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let picked = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == nil)
+    }
+
     @Test func panMovesFocusOppositeDrag() {
         let focus = CGPoint(x: 100, y: 50)
         let drag = CGPoint(x: 20, y: -10)

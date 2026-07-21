@@ -94,7 +94,7 @@ struct SimulationLoopTests {
         ])
 
         // Advance past the border so occupancy is tile (1,0).
-        _ = movement.update(deltaTime: 2.6, world: &world)
+        _ = movement.update(deltaTime: 0.51, world: &world)
         #expect(world.playerPosition == GridCoord(x: 1, y: 0, story: 0))
 
         pendingInput.enqueue(GridCoord(x: 1, y: 2, story: 0))
@@ -129,7 +129,7 @@ struct SimulationLoopTests {
         )
 
         #expect(movement.isMoving)
-        #expect(movement.path.last == GridCoord(x: 1, y: 1, story: 0))
+        #expect(movement.path.last == GridCoord(x: 1, y: 0, story: 0))
     }
 
     @Test func persistOnlyWhenSettled() {

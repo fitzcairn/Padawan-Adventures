@@ -2,7 +2,8 @@ import SpriteKit
 import UIKit
 
 enum PlaceholderFactory {
-    static let floorColor = UIColor.white
+    // Explicit sRGB so SKShapeNode fillColor round-trips equal (UIColor.white is gray-space).
+    static let floorColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
     static let wallColor = UIColor.gray
     static let ladderColor = UIColor.purple
     static let rampColor = UIColor.red

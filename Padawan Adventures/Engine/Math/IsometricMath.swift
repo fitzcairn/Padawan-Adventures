@@ -113,31 +113,200 @@ enum IsometricMath {
         focus: CGPoint,
         viewCenter: CGPoint,
         story: Int,
+        scale: CGFloat = 1,
         config: IsometricConfig = IsometricConfig()
     ) -> GridCoord {
-        let worldLocal = CGPoint(
-            x: point.x - viewCenter.x + focus.x,
-            y: point.y - viewCenter.y + focus.y
+        return screenToGrid(
+            worldPointFromView(point, focus: focus, viewCenter: viewCenter, scale: scale),
+            story: story,
+            config: config
         )
-        return screenToGrid(worldLocal, story: story, config: config)
     }
 
-    /// Offset for a world root node that places `focus` at `viewCenter`.
+    /// Converts a scene touch point to world space using viewport focus and world scale.
+    static func worldPointFromView(
+        _ point: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        scale: CGFloat = 1
+    ) -> CGPoint {
+        let safeScale = max(scale, 0.0001)
+        return CGPoint(
+            x: focus.x + (point.x - viewCenter.x) / safeScale,
+            y: focus.y + (point.y - viewCenter.y) / safeScale
+        )
+    }
+
+    /// Picks the frontmost drawn floor-surface tile under a tap on `story`.
+    /// Walls, pits, doors, and entities are ignored; only non-pit floors, ramps, and slides count.
+    static func pickVisibleFloor(
+        at viewPoint: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        story: Int,
+        in world: GameWorld,
+        scale: CGFloat = 1,
+        config: IsometricConfig = IsometricConfig()
+    ) -> GridCoord? {
+        pickTile(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: story,
+            in: world,
+            scale: scale,
+            config: config
+        ) { isDrawnFloorSurface($0) }
+    }
+
+    /// Picks the frontmost in-bounds tile under a tap on `story` (any kind).
+    static func pickTile(
+        at viewPoint: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        story: Int,
+        in world: GameWorld,
+        scale: CGFloat = 1,
+        config: IsometricConfig = IsometricConfig()
+    ) -> GridCoord? {
+        pickTile(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: story,
+            in: world,
+            scale: scale,
+            config: config
+        ) { _ in true }
+    }
+
+    private static func pickTile(
+        at viewPoint: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        story: Int,
+        in world: GameWorld,
+        scale: CGFloat,
+        config: IsometricConfig,
+        predicate: (Tile?) -> Bool
+    ) -> GridCoord? {
+        guard story >= 0, story < world.storyCount else { return nil }
+
+        let worldPoint = worldPointFromView(viewPoint, focus: focus, viewCenter: viewCenter, scale: scale)
+        var best: GridCoord?
+        var bestSort: CGFloat = -.infinity
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                guard predicate(world.tile(at: coord)) else { continue }
+                guard IsometricTileGeometry.containsFloorPoint(worldPoint, at: coord, config: config) else {
+                    continue
+                }
+
+                let sort = floorSortValue(for: coord, config: config)
+                if sort > bestSort {
+                    bestSort = sort
+                    best = coord
+                }
+            }
+        }
+
+        return best
+    }
+
+    /// Matches tiles that `PlaceholderFactory` actually draws as floor diamonds.
+    private static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
+        guard let tile else { return false }
+        switch tile.kind {
+        case .floor(let isPit):
+            return !isPit
+        case .ramp, .slide:
+            return true
+        case .wall:
+            return false
+        }
+    }
+
+    /// Axis-aligned bounds of the floor diamonds for a rectangular grid on `story`.
+    static func mapScreenBounds(
+        width: Int,
+        height: Int,
+        story: Int,
+        config: IsometricConfig = IsometricConfig()
+    ) -> CGRect {
+        guard width > 0, height > 0 else { return .zero }
+
+        let corners = [
+            GridCoord(x: 0, y: 0, story: story),
+            GridCoord(x: width - 1, y: 0, story: story),
+            GridCoord(x: 0, y: height - 1, story: story),
+            GridCoord(x: width - 1, y: height - 1, story: story),
+        ]
+
+        var minX = CGFloat.infinity
+        var maxX = -CGFloat.infinity
+        var minY = CGFloat.infinity
+        var maxY = -CGFloat.infinity
+
+        for corner in corners {
+            let origin = gridToScreen(corner, config: config)
+            // Floor diamond extends ±tileWidth/2 in X and 0…-tileHeight in Y from origin.
+            minX = min(minX, origin.x - config.tileWidth / 2)
+            maxX = max(maxX, origin.x + config.tileWidth / 2)
+            minY = min(minY, origin.y - config.tileHeight)
+            maxY = max(maxY, origin.y)
+        }
+
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// Uniform scale that fits `mapBounds` inside `viewSize` with `margin` (0…1 of the short side).
+    static func fitScale(
+        mapBounds: CGRect,
+        viewSize: CGSize,
+        margin: CGFloat = 0.06
+    ) -> CGFloat {
+        guard mapBounds.width > 0, mapBounds.height > 0,
+              viewSize.width > 0, viewSize.height > 0 else {
+            return 1
+        }
+        let inset = max(0, min(margin, 0.4))
+        let available = CGSize(
+            width: viewSize.width * (1 - inset * 2),
+            height: viewSize.height * (1 - inset * 2)
+        )
+        let scale = min(available.width / mapBounds.width, available.height / mapBounds.height)
+        return min(scale, 1)
+    }
+
+    /// World-space center of a map bounds rect (for viewport focus).
+    static func mapCenter(for mapBounds: CGRect) -> CGPoint {
+        CGPoint(x: mapBounds.midX, y: mapBounds.midY)
+    }
+
+    /// Offset for a world root node that places `focus` at `viewCenter` under `scale`.
     static func worldRootOffset(
         focus: CGPoint,
-        viewCenter: CGPoint
+        viewCenter: CGPoint,
+        scale: CGFloat = 1
     ) -> CGPoint {
         CGPoint(
-            x: viewCenter.x - focus.x,
-            y: viewCenter.y - focus.y
+            x: viewCenter.x - focus.x * scale,
+            y: viewCenter.y - focus.y * scale
         )
     }
 
     /// Panning: drag finger by `delta` (scene space) → new focus so the world tracks the finger.
-    static func focusAfterPan(currentFocus: CGPoint, dragDelta: CGPoint) -> CGPoint {
-        CGPoint(
-            x: currentFocus.x - dragDelta.x,
-            y: currentFocus.y - dragDelta.y
+    static func focusAfterPan(
+        currentFocus: CGPoint,
+        dragDelta: CGPoint,
+        scale: CGFloat = 1
+    ) -> CGPoint {
+        let safeScale = max(scale, 0.0001)
+        return CGPoint(
+            x: currentFocus.x - dragDelta.x / safeScale,
+            y: currentFocus.y - dragDelta.y / safeScale
         )
     }
 }

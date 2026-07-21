@@ -82,6 +82,48 @@ struct GameWorld: Sendable, WorldPersistable {
         }
     }
 
+    /// Walkable for path edges: enterable and not a pit. Doors/ladders remain walkable.
+    func isWalkable(at coord: GridCoord) -> Bool {
+        guard isEnterable(at: coord) else { return false }
+        return tile(at: coord)?.isPit != true
+    }
+
+    /// Valid tap / movement destination: non-pit floor, ramp, or slide — never wall, door, or pit.
+    func isValidMovementGoal(at coord: GridCoord) -> Bool {
+        guard let tile = tile(at: coord) else { return false }
+        switch tile.kind {
+        case .floor(let isPit):
+            return !isPit
+        case .ramp, .slide:
+            return true
+        case .wall:
+            return false
+        }
+    }
+
+    /// Resolves a tap to a valid movement goal on the same story (BFS to nearest if needed).
+    func nearestValidMovementGoal(from coord: GridCoord) -> GridCoord? {
+        guard isInBounds(coord) else { return nil }
+        if isValidMovementGoal(at: coord) { return coord }
+
+        var queue = [coord]
+        var visited: Set<GridCoord> = [coord]
+        var head = 0
+
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard next.story == coord.story, isInBounds(next), !visited.contains(next) else { continue }
+                if isValidMovementGoal(at: next) { return next }
+                visited.insert(next)
+                queue.append(next)
+            }
+        }
+        return nil
+    }
+
     func lowerStoryEnterable(at coord: GridCoord) -> Bool {
         guard coord.story > 0 else { return false }
         let lower = coord.onStory(coord.story - 1)

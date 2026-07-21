@@ -84,8 +84,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             algorithm: String,
             roomCount: Int,
             corridorWidth: Int,
-            minRoomSize: Int = 5,
-            maxRoomSize: Int = 10,
+            minRoomSize: Int = 4,
+            maxRoomSize: Int = 6,
             pitChance: Double,
             wallDestructibleChance: Double,
             rampCount: Int,
@@ -111,8 +111,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             algorithm = try container.decode(String.self, forKey: .algorithm)
             roomCount = try container.decode(Int.self, forKey: .roomCount)
             corridorWidth = try container.decode(Int.self, forKey: .corridorWidth)
-            minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 5
-            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 10
+            minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
+            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 6
             pitChance = try container.decode(Double.self, forKey: .pitChance)
             wallDestructibleChance = try container.decode(Double.self, forKey: .wallDestructibleChance)
             rampCount = try container.decode(Int.self, forKey: .rampCount)

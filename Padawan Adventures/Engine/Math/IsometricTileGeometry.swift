@@ -44,6 +44,22 @@ enum IsometricTileGeometry {
         return path
     }
 
+    /// True when `worldPoint` lies inside the floor diamond for `coord`.
+    /// Tile origin is the north corner (`gridToScreen`); diamond center is half a tile down.
+    static func containsFloorPoint(
+        _ worldPoint: CGPoint,
+        at coord: GridCoord,
+        config: IsometricConfig = IsometricConfig()
+    ) -> Bool {
+        let origin = IsometricMath.gridToScreen(coord, config: config)
+        let localX = worldPoint.x - origin.x
+        let localY = worldPoint.y - origin.y + config.tileHeight / 2
+        let halfW = config.tileWidth / 2
+        let halfH = config.tileHeight / 2
+        guard halfW > 0, halfH > 0 else { return false }
+        return abs(localX) / halfW + abs(localY) / halfH <= 1
+    }
+
     /// Left wall face: parallelogram along the west–south edge, extruded upward.
     static func leftWallFacePath(config: IsometricConfig) -> CGPath {
         let c = floorCorners(config: config)

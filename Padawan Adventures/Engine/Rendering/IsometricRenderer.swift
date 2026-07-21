@@ -10,8 +10,11 @@ final class IsometricRenderer {
     private var entityNodes: [UUID: SKNode] = [:]
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
+    private var viewSize: CGSize = .zero
     /// Only this story's tiles/entities are drawn.
     private(set) var visibleStory: Int = 0
+    /// Uniform scale applied to `worldRoot` (fit-to-view).
+    private(set) var worldScale: CGFloat = 1
 
     init(config: IsometricConfig = IsometricConfig()) {
         self.config = config
@@ -23,7 +26,9 @@ final class IsometricRenderer {
         occlusionLayer.removeAllChildren()
         entityNodes.removeAll()
         visibleStory = 0
+        worldScale = 1
 
+        viewSize = scene.size
         viewCenter = CGPoint(
             x: scene.size.width * (0.5 - scene.anchorPoint.x),
             y: scene.size.height * (0.5 - scene.anchorPoint.y)
@@ -78,6 +83,21 @@ final class IsometricRenderer {
         updateViewportFocus(focus)
     }
 
+    /// Scales and centers the viewport so the full grid on `story` fits in the scene.
+    @discardableResult
+    func fitMapInView(world: GameWorld, story: Int) -> CGPoint {
+        let bounds = IsometricMath.mapScreenBounds(
+            width: world.width,
+            height: world.height,
+            story: story,
+            config: config
+        )
+        worldScale = IsometricMath.fitScale(mapBounds: bounds, viewSize: viewSize)
+        let focus = IsometricMath.mapCenter(for: bounds)
+        updateViewportFocus(focus)
+        return focus
+    }
+
     /// Rebuilds tiles if the player moved to a different story.
     @discardableResult
     func updateVisibleStory(for world: GameWorld, focus: CGPoint) -> Bool {
@@ -117,9 +137,11 @@ final class IsometricRenderer {
 
     func updateViewportFocus(_ focus: CGPoint) {
         viewportFocus = focus
+        worldRoot.setScale(worldScale)
         worldRoot.position = IsometricMath.worldRootOffset(
             focus: focus,
-            viewCenter: viewCenter
+            viewCenter: viewCenter,
+            scale: worldScale
         )
     }
 

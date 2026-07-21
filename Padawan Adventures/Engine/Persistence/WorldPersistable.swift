@@ -5,12 +5,12 @@ import Foundation
 protocol WorldPersistable: Codable, Sendable {}
 
 struct GameSaveFile: WorldPersistable {
-    static let currentVersion = 1
+    nonisolated static let currentVersion = 1
 
     var version: Int
     var world: GameWorld
 
-    init(version: Int = GameSaveFile.currentVersion, world: GameWorld) {
+    nonisolated init(version: Int = GameSaveFile.currentVersion, world: GameWorld) {
         self.version = version
         self.world = world
     }
