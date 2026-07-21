@@ -2,10 +2,11 @@ import CoreGraphics
 import Foundation
 
 struct IsometricConfig: Equatable, Sendable {
-    var tileWidth: CGFloat = 64
-    var tileHeight: CGFloat = 32
-    var wallHeight: CGFloat = 48
-    var storyHeight: CGFloat = 48
+    /// Locked on-screen tile footprint (floor diamond width × height).
+    var tileWidth: CGFloat = 40
+    var tileHeight: CGFloat = 40
+    var wallHeight: CGFloat = 40
+    var storyHeight: CGFloat = 40
     /// Max stories used to interleave story into depth without burying lower stories
     /// under an entire upper-story layer.
     var maxStories: Int = 2
@@ -23,9 +24,74 @@ enum IsometricMath {
 
     /// Standing point for an entity on a tile (center of the floor diamond).
     static func entityScreenPosition(_ coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGPoint {
-        let origin = gridToScreen(coord, config: config)
-        return CGPoint(x: origin.x, y: origin.y - config.tileHeight * 0.5)
+        entityScreenPosition(x: Double(coord.x), y: Double(coord.y), story: coord.story, config: config)
     }
+
+    /// Standing point for a continuous (fractional) grid pose.
+    static func entityScreenPosition(
+        x: Double,
+        y: Double,
+        story: Int,
+        config: IsometricConfig = IsometricConfig()
+    ) -> CGPoint {
+        let screenX = CGFloat(x - y) * config.tileWidth / 2
+        let screenY = -CGFloat(x + y) * config.tileHeight / 2
+            + CGFloat(story) * config.storyHeight
+        return CGPoint(x: screenX, y: screenY - config.tileHeight * 0.5)
+    }
+
+    /// Inverse of `entityScreenPosition(x:y:story:)` — fractional grid without rounding.
+    static func fractionalGridFromEntityScreen(
+        _ point: CGPoint,
+        story: Int,
+        config: IsometricConfig = IsometricConfig()
+    ) -> (x: Double, y: Double) {
+        let halfW = config.tileWidth / 2
+        let halfH = config.tileHeight / 2
+        guard halfW > 0, halfH > 0 else { return (0, 0) }
+
+        let adjustedY = point.y + config.tileHeight * 0.5 - CGFloat(story) * config.storyHeight
+        let sum = -adjustedY / halfH
+        let diff = point.x / halfW
+        return (
+            x: Double((sum + diff) / 2),
+            y: Double((sum - diff) / 2)
+        )
+    }
+
+    /// Shifts `focus` only when `player` leaves a ±`maxTiles` grid window around screen center.
+    static func focusKeepingPlayerInDeadzone(
+        focus: CGPoint,
+        player: CGPoint,
+        story: Int,
+        maxTiles: Double = 2,
+        config: IsometricConfig = IsometricConfig()
+    ) -> CGPoint {
+        let focusGrid = fractionalGridFromEntityScreen(focus, story: story, config: config)
+        let playerGrid = fractionalGridFromEntityScreen(player, story: story, config: config)
+
+        var focusX = focusGrid.x
+        var focusY = focusGrid.y
+
+        if playerGrid.x > focusX + maxTiles {
+            focusX = playerGrid.x - maxTiles
+        } else if playerGrid.x < focusX - maxTiles {
+            focusX = playerGrid.x + maxTiles
+        }
+
+        if playerGrid.y > focusY + maxTiles {
+            focusY = playerGrid.y - maxTiles
+        } else if playerGrid.y < focusY - maxTiles {
+            focusY = playerGrid.y + maxTiles
+        }
+
+        return entityScreenPosition(x: focusX, y: focusY, story: story, config: config)
+    }
+
+    /// Parent `zPosition` for the floor layer. Floors never share a band with sprites.
+    static let floorBandBase: CGFloat = 0
+    /// Parent `zPosition` for walls + entities. Must exceed any floor depth sort value.
+    static let occlusionBandBase: CGFloat = 1_000_000
 
     /// Base isometric depth (far → near as `x + y` increases).
     /// Story is a minor key so the same cell's upper story draws above the lower,
@@ -34,7 +100,7 @@ enum IsometricMath {
         CGFloat(coord.x + coord.y) * CGFloat(config.maxStories) + CGFloat(coord.story)
     }
 
-    /// Floors sort among themselves only; they never compete with sprites/walls.
+    /// Floors sort among themselves only inside the floor band.
     static func floorSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config)
     }
@@ -48,6 +114,16 @@ enum IsometricMath {
     /// but behind walls with greater isometric depth.
     static func entitySortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config) + 0.5
+    }
+
+    /// Effective scene z for a floor tile (parent band + local sort).
+    static func effectiveFloorZ(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
+        floorBandBase + floorSortValue(for: coord, config: config)
+    }
+
+    /// Effective scene z for an entity (parent band + local sort).
+    static func effectiveEntityZ(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
+        occlusionBandBase + entitySortValue(for: coord, config: config)
     }
 
     /// True when a wall at `wallCoord` should draw on top of a sprite at `entityCoord`.

@@ -99,6 +99,16 @@ struct Pathfinder: Sendable {
             }
         }
 
+        // Descend onto a ramp that lands on this cell from the story below.
+        let below = coord.onStory(coord.story - 1)
+        if world.isInBounds(below),
+           case .ramp(_, let otherStory)? = world.tile(at: below)?.kind,
+           otherStory == coord.story,
+           world.isWalkable(at: below),
+           !result.contains(below) {
+            result.append(below)
+        }
+
         return result
     }
 

@@ -21,6 +21,7 @@ final class IsometricRenderer {
     }
 
     func attach(to scene: SKScene) {
+        worldRoot.removeFromParent()
         worldRoot.removeAllChildren()
         floorLayer.removeAllChildren()
         occlusionLayer.removeAllChildren()
@@ -34,8 +35,10 @@ final class IsometricRenderer {
             y: scene.size.height * (0.5 - scene.anchorPoint.y)
         )
 
-        floorLayer.zPosition = 0
-        occlusionLayer.zPosition = 1
+        // SpriteKit adds parent+child zPositions: keep floors in a band that can never
+        // overtake sprites even when a front floor has a large local sort value.
+        floorLayer.zPosition = IsometricMath.floorBandBase
+        occlusionLayer.zPosition = IsometricMath.occlusionBandBase
 
         worldRoot.addChild(floorLayer)
         worldRoot.addChild(occlusionLayer)
@@ -69,6 +72,10 @@ final class IsometricRenderer {
                 let node = PlaceholderFactory.tileNode(for: tile, at: coord, in: world, config: config)
 
                 switch tile.kind {
+                case .wall(_, let hasDoor, _) where hasDoor:
+                    // Door cells render as floor diamonds — keep them in the floor band.
+                    node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+                    floorLayer.addChild(node)
                 case .wall:
                     node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
                     occlusionLayer.addChild(node)
@@ -81,6 +88,12 @@ final class IsometricRenderer {
 
         syncEntities(world.entities)
         updateViewportFocus(focus)
+    }
+
+    /// Locks uniform world scale (1 = native `IsometricConfig` tile size).
+    func lockWorldScale(_ scale: CGFloat) {
+        worldScale = scale
+        updateViewportFocus(viewportFocus)
     }
 
     /// Scales and centers the viewport so the full grid on `story` fits in the scene.

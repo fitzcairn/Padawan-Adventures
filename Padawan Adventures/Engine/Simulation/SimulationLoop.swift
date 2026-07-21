@@ -42,8 +42,13 @@ struct SimulationLoop: Sendable {
     ) {
         guard let tap = pendingInput.consume(),
               let playerPosition = world.playerPosition,
-              let goal = world.nearestValidMovementGoal(from: tap),
-              let path = pathfinder.findPath(from: playerPosition, to: goal, in: world),
+              let snapped = world.nearestValidMovementGoal(from: tap) else {
+            return
+        }
+
+        // Tapping a ramp/ladder on this story paths through it to the other story.
+        let goal = world.movementGoalResolvingConnectors(from: playerPosition, goal: snapped)
+        guard let path = pathfinder.findPath(from: playerPosition, to: goal, in: world),
               path.count >= 2 else {
             return
         }

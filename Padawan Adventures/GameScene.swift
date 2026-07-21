@@ -6,48 +6,45 @@
 import SpriteKit
 
 final class GameScene: SKScene {
-    private var world = GameWorld(
-        width: 1,
-        height: 1,
-        tiles: [[[
-            Tile(kind: .floor(isPit: false)),
-        ]]],
-        entities: [GameEntity(letter: "P", position: GridCoord(x: 0, y: 0, story: 0), isPlayer: true)],
-        spawn: GridCoord(x: 0, y: 0, story: 0)
-    )
+    private var world: GameWorld
     private var movement = MovementSystem()
     private var simulationClock = SimulationClock()
-    private var simulationLoop = SimulationLoop()
+    private var isoConfig: IsometricConfig
+    private var simulationLoop: SimulationLoop
     private var pendingInput = PendingInput()
-    private let renderer = IsometricRenderer()
-    private let isoConfig = IsometricConfig()
+    private var renderer: IsometricRenderer
     private var viewportFocus = CGPoint.zero
-    /// Overview mode: keep the full story fitted; do not chase the player.
-    private var followPlayer = false
     private var gestureTracker = ViewportGestureTracker()
     private var lastUpdateTime: TimeInterval?
     private let saveService: GameSaveService?
 
-    override init(size: CGSize) {
-        saveService = try? GameSaveService()
+    /// Player must stay within this many tiles of screen center.
+    private static let cameraDeadzoneTiles: Double = 2
+
+    init(
+        size: CGSize,
+        world: GameWorld,
+        isoConfig: IsometricConfig,
+        saveService: GameSaveService?
+    ) {
+        self.world = world
+        self.isoConfig = isoConfig
+        self.saveService = saveService
+        self.simulationLoop = SimulationLoop(isoConfig: isoConfig)
+        self.renderer = IsometricRenderer(config: isoConfig)
         super.init(size: size)
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
-        saveService = try? GameSaveService()
-        super.init(coder: aDecoder)
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func didMove(to view: SKView) {
-        // Non-reachable void reads as black; pits and doors stay transparent over it.
         backgroundColor = .black
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
-
         renderer.attach(to: self)
-
-        Task { @MainActor in
-            await bootstrapWorld()
-        }
+        showFixedZoomView()
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -59,7 +56,6 @@ final class GameScene: SKScene {
         guard let touch = touches.first,
               let delta = gestureTracker.move(to: touch.location(in: self)) else { return }
 
-        followPlayer = false
         viewportFocus = IsometricMath.focusAfterPan(
             currentFocus: viewportFocus,
             dragDelta: delta,
@@ -121,31 +117,12 @@ final class GameScene: SKScene {
         }
     }
 
-    @MainActor
-    private func bootstrapWorld() async {
-        do {
-            if let saveService, let restored = try await saveService.load() {
-                world = restored
-            } else {
-                world = try WorldLoader.loadFromBundle()
-            }
-        } catch {
-            world = (try? ProceduralGenerator().generate(from: Self.fallbackConfig()))
-                ?? world
-        }
-
-        simulationClock = SimulationClock()
-        movement = MovementSystem()
-        pendingInput = PendingInput()
-        followPlayer = false
-
-        showFullMapOverview()
-    }
-
-    private func showFullMapOverview() {
-        let story = world.playerPosition?.story ?? world.spawn.story
+    /// Renders at YAML tile size with worldScale = 1, centered on the player.
+    private func showFixedZoomView() {
+        let anchor = world.playerPosition ?? world.spawn
+        viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
+        renderer.lockWorldScale(1)
         renderer.render(world: world, focus: viewportFocus)
-        viewportFocus = renderer.fitMapInView(world: world, story: story)
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
@@ -153,16 +130,19 @@ final class GameScene: SKScene {
         let displayPoint = result.playerDisplayPoint
             ?? IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
 
-        if followPlayer {
-            viewportFocus = displayPoint
-        }
-
-        // Show only the story the player currently occupies; refit when story changes.
         let rebuiltForStory = renderer.updateVisibleStory(for: world, focus: viewportFocus)
         if rebuiltForStory {
-            followPlayer = false
-            viewportFocus = renderer.fitMapInView(world: world, story: renderer.visibleStory)
-        } else if followPlayer {
+            viewportFocus = IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
+            renderer.lockWorldScale(1)
+            renderer.updateViewportFocus(viewportFocus)
+        } else if !gestureTracker.isPanning {
+            viewportFocus = IsometricMath.focusKeepingPlayerInDeadzone(
+                focus: viewportFocus,
+                player: displayPoint,
+                story: occupancy.story,
+                maxTiles: Self.cameraDeadzoneTiles,
+                config: isoConfig
+            )
             renderer.updateViewportFocus(viewportFocus)
         }
 
@@ -185,28 +165,5 @@ final class GameScene: SKScene {
         Task {
             try? await saveService.save(snapshot)
         }
-    }
-
-    private static func fallbackConfig() -> WorldSeedConfig {
-        WorldSeedConfig(
-            version: 1,
-            seed: 42,
-            world: .init(width: 100, height: 100, stories: 2),
-            generation: .init(
-                algorithm: "rooms_doors",
-                roomCount: 100,
-                corridorWidth: 1,
-                minRoomSize: 4,
-                maxRoomSize: 6,
-                pitChance: 0.05,
-                wallDestructibleChance: 0.2,
-                rampCount: 2,
-                ladderCount: 2,
-                slideCount: 1,
-                doorCount: 4
-            ),
-            player: .init(letter: "P", spawn: nil),
-            extensions: nil
-        )
     }
 }

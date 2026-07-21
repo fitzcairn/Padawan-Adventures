@@ -5,6 +5,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
     var seed: UInt64
     var world: WorldSize
     var generation: GenerationParams
+    var display: DisplayParams
     var player: PlayerConfig
     var extensions: [String: String]?
 
@@ -13,6 +14,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         case seed
         case world
         case generation
+        case display
         case player
         case extensions
     }
@@ -22,6 +24,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         seed: UInt64,
         world: WorldSize,
         generation: GenerationParams,
+        display: DisplayParams = .default,
         player: PlayerConfig,
         extensions: [String: String]?
     ) {
@@ -29,6 +32,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.seed = seed
         self.world = world
         self.generation = generation
+        self.display = display
         self.player = player
         self.extensions = extensions
     }
@@ -43,6 +47,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         }
         world = try container.decode(WorldSize.self, forKey: .world)
         generation = try container.decode(GenerationParams.self, forKey: .generation)
+        display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
         player = try container.decode(PlayerConfig.self, forKey: .player)
         extensions = try container.decodeIfPresent([String: String].self, forKey: .extensions)
     }
@@ -51,6 +56,56 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         var width: Int
         var height: Int
         var stories: Int
+    }
+
+    /// On-screen isometric tile footprint (zoom).
+    struct DisplayParams: Codable, Equatable, Sendable {
+        var tileWidth: Int
+        var tileHeight: Int
+        var wallHeight: Int?
+        var storyHeight: Int?
+
+        static let `default` = DisplayParams(tileWidth: 40, tileHeight: 40)
+
+        enum CodingKeys: String, CodingKey {
+            case tileWidth = "tile_width"
+            case tileHeight = "tile_height"
+            case wallHeight = "wall_height"
+            case storyHeight = "story_height"
+        }
+
+        init(
+            tileWidth: Int = 40,
+            tileHeight: Int = 40,
+            wallHeight: Int? = nil,
+            storyHeight: Int? = nil
+        ) {
+            self.tileWidth = tileWidth
+            self.tileHeight = tileHeight
+            self.wallHeight = wallHeight
+            self.storyHeight = storyHeight
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            tileWidth = try container.decodeIfPresent(Int.self, forKey: .tileWidth) ?? 40
+            tileHeight = try container.decodeIfPresent(Int.self, forKey: .tileHeight) ?? 40
+            wallHeight = try container.decodeIfPresent(Int.self, forKey: .wallHeight)
+            storyHeight = try container.decodeIfPresent(Int.self, forKey: .storyHeight)
+        }
+
+        func makeIsometricConfig() -> IsometricConfig {
+            let width = CGFloat(max(tileWidth, 1))
+            let height = CGFloat(max(tileHeight, 1))
+            let wall = CGFloat(wallHeight ?? max(tileWidth, tileHeight))
+            let story = CGFloat(storyHeight ?? max(tileWidth, tileHeight))
+            return IsometricConfig(
+                tileWidth: width,
+                tileHeight: height,
+                wallHeight: max(wall, 1),
+                storyHeight: max(story, 1)
+            )
+        }
     }
 
     struct GenerationParams: Codable, Equatable, Sendable {
@@ -85,7 +140,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             roomCount: Int,
             corridorWidth: Int,
             minRoomSize: Int = 4,
-            maxRoomSize: Int = 6,
+            maxRoomSize: Int = 12,
             pitChance: Double,
             wallDestructibleChance: Double,
             rampCount: Int,
@@ -112,7 +167,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             roomCount = try container.decode(Int.self, forKey: .roomCount)
             corridorWidth = try container.decode(Int.self, forKey: .corridorWidth)
             minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
-            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 6
+            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
             pitChance = try container.decode(Double.self, forKey: .pitChance)
             wallDestructibleChance = try container.decode(Double.self, forKey: .wallDestructibleChance)
             rampCount = try container.decode(Int.self, forKey: .rampCount)
@@ -143,6 +198,18 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard world.width > 4, world.height > 4 else {
             throw WorldSeedError.worldTooSmall
         }
+        guard display.tileWidth > 0, display.tileHeight > 0 else {
+            throw WorldSeedError.invalidTileSize
+        }
+        guard generation.corridorWidth >= 2 else {
+            throw WorldSeedError.corridorTooNarrow(generation.corridorWidth)
+        }
+        guard generation.minRoomSize >= 2 else {
+            throw WorldSeedError.roomTooNarrow(generation.minRoomSize)
+        }
+        guard generation.maxRoomSize >= generation.minRoomSize else {
+            throw WorldSeedError.invalidRoomSizeRange
+        }
     }
 }
 
@@ -150,6 +217,10 @@ enum WorldSeedError: Error, Equatable {
     case unsupportedVersion(Int)
     case invalidStoryCount(Int)
     case worldTooSmall
+    case invalidTileSize
+    case corridorTooNarrow(Int)
+    case roomTooNarrow(Int)
+    case invalidRoomSizeRange
     case missingResource
     case decodeFailed
 }

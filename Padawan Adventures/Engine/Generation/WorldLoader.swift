@@ -2,17 +2,33 @@ import Foundation
 import Yams
 
 enum WorldLoader {
+    /// True when a saved world matches the configured map dimensions.
+    static func isCompatibleSave(_ world: GameWorld, with config: WorldSeedConfig) -> Bool {
+        world.width == config.world.width
+            && world.height == config.world.height
+            && world.storyCount == config.world.stories
+    }
+
     static func load(from url: URL) throws -> GameWorld {
         let data = try Data(contentsOf: url)
         let config = try decodeConfig(from: data)
         return try ProceduralGenerator().generate(from: config)
     }
 
-    static func loadFromBundle(named name: String = "world_seed", withExtension ext: String = "yaml") throws -> GameWorld {
+    static func loadConfigFromBundle(
+        named name: String = "world_seed",
+        withExtension ext: String = "yaml"
+    ) throws -> WorldSeedConfig {
         guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
             throw WorldSeedError.missingResource
         }
-        return try load(from: url)
+        let data = try Data(contentsOf: url)
+        return try decodeConfig(from: data)
+    }
+
+    static func loadFromBundle(named name: String = "world_seed", withExtension ext: String = "yaml") throws -> GameWorld {
+        let config = try loadConfigFromBundle(named: name, withExtension: ext)
+        return try ProceduralGenerator().generate(from: config)
     }
 
     static func decodeConfig(from data: Data) throws -> WorldSeedConfig {

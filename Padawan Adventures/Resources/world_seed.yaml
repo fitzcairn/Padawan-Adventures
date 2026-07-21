@@ -9,12 +9,16 @@ world:
   height: 100
   stories: 2
 
+display:
+  tile_width: 80
+  tile_height: 40
+
 generation:
   algorithm: rooms_doors
   room_count: 100
-  corridor_width: 1
+  corridor_width: 2
   min_room_size: 4
-  max_room_size: 6
+  max_room_size: 12
   pit_chance: 0.05
   wall_destructible_chance: 0.2
   ramp_count: 2

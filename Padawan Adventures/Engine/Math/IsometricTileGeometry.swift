@@ -127,4 +127,54 @@ enum IsometricTileGeometry {
         }
         return false
     }
+
+    /// True for the lexicographically smaller cell of a ramp/slide pair (draws the slope once).
+    static func isCanonicalPairCell(_ coord: GridCoord, partner: GridCoord) -> Bool {
+        if coord.x != partner.x { return coord.x < partner.x }
+        return coord.y < partner.y
+    }
+
+    /// Sloped surface spanning a 2-cell ramp/slide pair along the partner axis.
+    /// - Parameter rise: height added along the partner direction (`storyHeight` for ramps).
+    /// - Parameter baseElevation: vertical offset of the low edge (`0` ramp, `-storyHeight` slide).
+    static func connectorSlopePath(
+        from coord: GridCoord,
+        partner: GridCoord,
+        config: IsometricConfig,
+        rise: CGFloat,
+        baseElevation: CGFloat = 0
+    ) -> CGPath? {
+        let dx = partner.x - coord.x
+        let dy = partner.y - coord.y
+        guard (dx == 1 && dy == 0) || (dx == 0 && dy == 1) else { return nil }
+
+        let c = floorCorners(config: config)
+        let halfW = config.tileWidth / 2
+        let halfH = config.tileHeight / 2
+        let ox = CGFloat(dx - dy) * halfW
+        let oy = -CGFloat(dx + dy) * halfH
+        let low = baseElevation
+        let high = baseElevation + rise
+
+        let path = CGMutablePath()
+        if dx == 1 {
+            // Rise toward +x partner.
+            path.move(to: CGPoint(x: c.west.x, y: c.west.y + low))
+            path.addLine(to: CGPoint(x: c.north.x, y: c.north.y + low))
+            path.addLine(to: CGPoint(x: ox + c.north.x, y: oy + c.north.y + high))
+            path.addLine(to: CGPoint(x: ox + c.east.x, y: oy + c.east.y + high))
+            path.addLine(to: CGPoint(x: ox + c.south.x, y: oy + c.south.y + high))
+            path.addLine(to: CGPoint(x: c.south.x, y: c.south.y + low))
+        } else {
+            // Rise toward +y partner.
+            path.move(to: CGPoint(x: c.east.x, y: c.east.y + low))
+            path.addLine(to: CGPoint(x: c.north.x, y: c.north.y + low))
+            path.addLine(to: CGPoint(x: ox + c.north.x, y: oy + c.north.y + high))
+            path.addLine(to: CGPoint(x: ox + c.west.x, y: oy + c.west.y + high))
+            path.addLine(to: CGPoint(x: ox + c.south.x, y: oy + c.south.y + high))
+            path.addLine(to: CGPoint(x: c.south.x, y: c.south.y + low))
+        }
+        path.closeSubpath()
+        return path
+    }
 }

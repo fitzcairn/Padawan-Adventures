@@ -26,9 +26,20 @@ struct IsometricMathTests {
     @Test func entitySortsAboveFloorAtSameCell() {
         let config = IsometricConfig()
         let coord = GridCoord(x: 3, y: 2, story: 0)
-        let floorZ = IsometricMath.floorSortValue(for: coord, config: config)
-        let entityZ = IsometricMath.entitySortValue(for: coord, config: config)
+        let floorZ = IsometricMath.effectiveFloorZ(for: coord, config: config)
+        let entityZ = IsometricMath.effectiveEntityZ(for: coord, config: config)
         #expect(entityZ > floorZ)
+    }
+
+    @Test func entityAlwaysAboveAnyFloorTile() {
+        let config = IsometricConfig()
+        // Far sprite vs near floor — floor local depth is much higher, but bands separate them.
+        let entity = GridCoord(x: 0, y: 0, story: 0)
+        let frontFloor = GridCoord(x: 99, y: 99, story: 1)
+        #expect(
+            IsometricMath.effectiveEntityZ(for: entity, config: config)
+                > IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
+        )
     }
 
     @Test func wallInFrontOccludesEntity() {
@@ -131,6 +142,66 @@ struct IsometricMathTests {
         #expect(recovered == target)
     }
 
+    @Test func fractionalGridFromEntityScreenRoundTrip() {
+        let config = IsometricConfig()
+        let screen = IsometricMath.entityScreenPosition(x: 3.25, y: 1.5, story: 0, config: config)
+        let recovered = IsometricMath.fractionalGridFromEntityScreen(screen, story: 0, config: config)
+        #expect(abs(recovered.x - 3.25) < 0.000_1)
+        #expect(abs(recovered.y - 1.5) < 0.000_1)
+    }
+
+    @Test func deadzoneLeavesFocusWhenPlayerInside() {
+        let config = IsometricConfig()
+        let focus = IsometricMath.entityScreenPosition(x: 5, y: 5, story: 0, config: config)
+        let player = IsometricMath.entityScreenPosition(x: 6.5, y: 4.5, story: 0, config: config)
+
+        let next = IsometricMath.focusKeepingPlayerInDeadzone(
+            focus: focus,
+            player: player,
+            story: 0,
+            maxTiles: 2,
+            config: config
+        )
+        #expect(abs(next.x - focus.x) < 0.000_1)
+        #expect(abs(next.y - focus.y) < 0.000_1)
+    }
+
+    @Test func deadzoneShiftsFocusWhenPlayerExceedsPlusX() {
+        let config = IsometricConfig()
+        let focus = IsometricMath.entityScreenPosition(x: 5, y: 5, story: 0, config: config)
+        let player = IsometricMath.entityScreenPosition(x: 8, y: 5, story: 0, config: config)
+
+        let next = IsometricMath.focusKeepingPlayerInDeadzone(
+            focus: focus,
+            player: player,
+            story: 0,
+            maxTiles: 2,
+            config: config
+        )
+        let nextGrid = IsometricMath.fractionalGridFromEntityScreen(next, story: 0, config: config)
+        let playerGrid = IsometricMath.fractionalGridFromEntityScreen(player, story: 0, config: config)
+        #expect(abs((playerGrid.x - nextGrid.x) - 2) < 0.000_1)
+        #expect(abs(nextGrid.y - 5) < 0.000_1)
+    }
+
+    @Test func deadzoneClampsBothAxesIndependently() {
+        let config = IsometricConfig()
+        let focus = IsometricMath.entityScreenPosition(x: 5, y: 5, story: 0, config: config)
+        let player = IsometricMath.entityScreenPosition(x: 8, y: 1, story: 0, config: config)
+
+        let next = IsometricMath.focusKeepingPlayerInDeadzone(
+            focus: focus,
+            player: player,
+            story: 0,
+            maxTiles: 2,
+            config: config
+        )
+        let nextGrid = IsometricMath.fractionalGridFromEntityScreen(next, story: 0, config: config)
+        let playerGrid = IsometricMath.fractionalGridFromEntityScreen(player, story: 0, config: config)
+        #expect(abs((playerGrid.x - nextGrid.x) - 2) < 0.000_1)
+        #expect(abs((nextGrid.y - playerGrid.y) - 2) < 0.000_1)
+    }
+
     @Test func containsFloorPointAtDiamondCenter() {
         let config = IsometricConfig()
         let coord = GridCoord(x: 3, y: 2, story: 0)
@@ -170,7 +241,7 @@ struct IsometricMathTests {
     }
 
     @Test func pickVisibleFloorNearSharedEdgeChoosesFrontmost() {
-        let config = IsometricConfig()
+        let config = IsometricConfig(tileWidth: 64, tileHeight: 32, wallHeight: 48)
         let world = TestWorldFactory.emptyFloor(width: 4, height: 4)
         let back = GridCoord(x: 0, y: 0, story: 0)
         let front = GridCoord(x: 1, y: 0, story: 0)
@@ -484,7 +555,7 @@ struct PlaceholderFactoryTests {
         #expect(pit.children.isEmpty)
     }
 
-    @Test func doorIsTransparentAndLadderWallIsPurple() {
+    @Test func doorRendersFloorAndLadderWallIsPurple() {
         let config = IsometricConfig()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let doorCoord = GridCoord(x: 1, y: 1, story: 0)
@@ -505,7 +576,8 @@ struct PlaceholderFactoryTests {
             config: config
         )
 
-        #expect(door.children.isEmpty)
+        let doorFloor = door.children.first as? SKShapeNode
+        #expect(doorFloor?.fillColor == PlaceholderFactory.floorColor)
         #expect(!ladder.children.isEmpty)
     }
 
@@ -517,13 +589,62 @@ struct PlaceholderFactoryTests {
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
+        let slidePartner = GridCoord(x: 1, y: 0, story: 1)
         let slide = PlaceholderFactory.tileNode(
-            for: Tile(kind: .slide(partner: partner, lowerStory: 0)),
+            for: Tile(kind: .slide(partner: slidePartner, lowerStory: 0)),
             at: GridCoord(x: 0, y: 0, story: 1),
             config: config
         )
 
-        #expect((ramp.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.rampColor)
-        #expect((slide.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.slideColor)
+        let rampSlope = ramp.children.first as? SKShapeNode
+        let slideSlope = slide.children.first as? SKShapeNode
+        #expect(rampSlope?.name == "connector-slope")
+        #expect(slideSlope?.name == "connector-slope")
+        #expect(rampSlope?.fillColor == PlaceholderFactory.rampColor)
+        #expect(slideSlope?.fillColor == PlaceholderFactory.slideColor)
+    }
+
+    @Test func connectorSlopePathIsNonFlat() {
+        let config = IsometricConfig(tileWidth: 40, tileHeight: 40, storyHeight: 40)
+        let coord = GridCoord(x: 0, y: 0, story: 0)
+        let partner = GridCoord(x: 1, y: 0, story: 0)
+        let path = IsometricTileGeometry.connectorSlopePath(
+            from: coord,
+            partner: partner,
+            config: config,
+            rise: config.storyHeight
+        )
+        #expect(path != nil)
+        let bounds = path!.boundingBox
+        #expect(bounds.height > config.tileHeight)
+    }
+
+    @Test func rampPartnerCellDrawsNoSlope() {
+        let config = IsometricConfig()
+        let a = GridCoord(x: 0, y: 0, story: 0)
+        let b = GridCoord(x: 1, y: 0, story: 0)
+        let partnerNode = PlaceholderFactory.tileNode(
+            for: Tile(kind: .ramp(partner: a, otherStory: 1)),
+            at: b,
+            config: config
+        )
+        #expect(partnerNode.children.isEmpty)
+    }
+
+    @Test func rampLandingFloorIsTinted() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let a = GridCoord(x: 1, y: 1, story: 0)
+        let b = GridCoord(x: 2, y: 1, story: 0)
+        world.setTile(Tile(kind: .ramp(partner: b, otherStory: 1)), at: a)
+        world.setTile(Tile(kind: .ramp(partner: a, otherStory: 1)), at: b)
+
+        let landing = PlaceholderFactory.tileNode(
+            for: Tile(kind: .floor(isPit: false)),
+            at: a.onStory(1),
+            in: world,
+            config: config
+        )
+        #expect((landing.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.rampColor)
     }
 }

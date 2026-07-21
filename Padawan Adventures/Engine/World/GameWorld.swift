@@ -88,7 +88,7 @@ struct GameWorld: Sendable, WorldPersistable {
         return tile(at: coord)?.isPit != true
     }
 
-    /// Valid tap / movement destination: non-pit floor, ramp, or slide — never wall, door, or pit.
+    /// Valid tap / movement destination: non-pit floor, ramp, slide, or ladder — never plain wall, door, or pit.
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
@@ -96,8 +96,8 @@ struct GameWorld: Sendable, WorldPersistable {
             return !isPit
         case .ramp, .slide:
             return true
-        case .wall:
-            return false
+        case .wall(_, _, let hasLadder):
+            return hasLadder
         }
     }
 
@@ -122,6 +122,27 @@ struct GameWorld: Sendable, WorldPersistable {
             }
         }
         return nil
+    }
+
+    /// When the player targets a ramp/ladder on their story, path to the landing on the other story.
+    func movementGoalResolvingConnectors(from start: GridCoord, goal: GridCoord) -> GridCoord {
+        guard let tile = tile(at: goal) else { return goal }
+
+        switch tile.kind {
+        case .ramp(_, let otherStory) where start.story == goal.story && start.story != otherStory:
+            let landing = goal.onStory(otherStory)
+            return isWalkable(at: landing) ? landing : goal
+
+        case .wall(_, _, true) where start.story == goal.story:
+            let up = goal.onStory(goal.story + 1)
+            if isWalkable(at: up) { return up }
+            let down = goal.onStory(goal.story - 1)
+            if isWalkable(at: down) { return down }
+            return goal
+
+        default:
+            return goal
+        }
     }
 
     func lowerStoryEnterable(at coord: GridCoord) -> Bool {

@@ -6,13 +6,13 @@ struct ProceduralGeneratorTests {
         WorldSeedConfig(
             version: 1,
             seed: seed,
-            world: .init(width: 24, height: 24, stories: 2),
+            world: .init(width: 30, height: 30, stories: 2),
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: roomCount,
-                corridorWidth: 1,
-                minRoomSize: 5,
-                maxRoomSize: 8,
+                corridorWidth: 2,
+                minRoomSize: 4,
+                maxRoomSize: 10,
                 pitChance: 0.1,
                 wallDestructibleChance: 0.3,
                 rampCount: 1,
@@ -62,25 +62,35 @@ struct ProceduralGeneratorTests {
         _ roomB: GeneratedRoom,
         world: GameWorld
     ) -> Bool {
-        for cell in roomA.cells {
-            for (dx, dy) in GridCoord.cardinals {
-                let neighbor = cell.neighbor(dx: dx, dy: dy)
-                guard !roomA.cells.contains(neighbor) else { continue }
-                if case .wall(_, true, _) = world.tile(at: neighbor)?.kind {
-                    return true
+        func boundaryDoor(of room: GeneratedRoom) -> Bool {
+            for cell in room.cells {
+                for (dx, dy) in GridCoord.cardinals {
+                    let neighbor = cell.neighbor(dx: dx, dy: dy)
+                    guard !room.cells.contains(neighbor) else { continue }
+                    if case .wall(_, true, _) = world.tile(at: neighbor)?.kind {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+        // Adjacent joins share a wall door; tunnel joins put a door on each room ring.
+        return boundaryDoor(of: roomA) && boundaryDoor(of: roomB)
+    }
+
+    private func floorCellsOutsideRooms(world: GameWorld, rooms: [GeneratedRoom]) -> Int {
+        let roomCells = rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+        var count = 0
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: 0)
+                guard case .floor = world.tile(at: coord)?.kind else { continue }
+                if !roomCells.contains(coord) {
+                    count += 1
                 }
             }
         }
-        for cell in roomB.cells {
-            for (dx, dy) in GridCoord.cardinals {
-                let neighbor = cell.neighbor(dx: dx, dy: dy)
-                guard !roomB.cells.contains(neighbor) else { continue }
-                if case .wall(_, true, _) = world.tile(at: neighbor)?.kind {
-                    return true
-                }
-            }
-        }
-        return false
+        return count
     }
 
     @Test func sameSeedProducesIdenticalWorld() throws {
@@ -123,7 +133,86 @@ struct ProceduralGeneratorTests {
             let roomA = result.rooms[aIndex]
             let roomB = result.rooms[bIndex]
             #expect(joinHasDoor(roomA, roomB, world: result.world))
+
+            // No open floor-to-floor breach between distinct rooms.
+            for cell in roomA.cells {
+                for (dx, dy) in GridCoord.cardinals {
+                    let neighbor = cell.neighbor(dx: dx, dy: dy)
+                    if roomB.cells.contains(neighbor) {
+                        Issue.record("Rooms \(aIndex) and \(bIndex) share an open floor edge")
+                    }
+                }
+            }
         }
+    }
+
+    @Test func roomsHaveVariedShapes() throws {
+        let config = roomsDoorsConfig(seed: 11, roomCount: 12)
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        #expect(result.rooms.count >= 3)
+
+        let footprints = result.rooms.map { room -> (w: Int, h: Int, count: Int) in
+            let xs = room.cells.map(\.x)
+            let ys = room.cells.map(\.y)
+            return (
+                w: (xs.max() ?? 0) - (xs.min() ?? 0) + 1,
+                h: (ys.max() ?? 0) - (ys.min() ?? 0) + 1,
+                count: room.cells.count
+            )
+        }
+
+        // At least one non-rectangular footprint (L or irregular) or elongated room.
+        let hasOrganic = footprints.contains { footprint in
+            footprint.count < footprint.w * footprint.h || footprint.w >= footprint.h * 2 || footprint.h >= footprint.w * 2
+        }
+        #expect(hasOrganic)
+
+        // Unused map tiles are expected — rooms must not fill the whole grid.
+        let roomCells = result.rooms.reduce(0) { $0 + $1.cells.count }
+        #expect(roomCells < result.world.width * result.world.height / 2)
+    }
+
+    @Test func hallwayFloorsAreSparse() throws {
+        let config = roomsDoorsConfig(seed: 22, roomCount: 9)
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        let outside = floorCellsOutsideRooms(world: result.world, rooms: result.rooms)
+        let roomFloor = result.rooms.reduce(0) { $0 + $1.cells.count }
+        // Short tunnels are OK; they should stay much smaller than room floors.
+        #expect(outside < max(roomFloor / 2, 1))
+    }
+
+    @Test func traversablePassagesAreAtLeastTwoWide() throws {
+        let config = roomsDoorsConfig(seed: 33, roomCount: 8)
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+
+        for y in 0..<result.world.height {
+            for x in 0..<result.world.width {
+                let coord = GridCoord(x: x, y: y, story: 0)
+                guard result.world.isEnterable(at: coord) else { continue }
+                // Room interiors can be irregular; enforce width on hallways/doors only.
+                guard !roomCells.contains(coord) else { continue }
+                #expect(
+                    !isSingleFilePassage(coord, in: result.world),
+                    "1-tile-wide passage at \(coord.x),\(coord.y)"
+                )
+            }
+        }
+    }
+
+    /// True when a cell is only open along one axis with both sides blocked (1-tile corridor).
+    private func isSingleFilePassage(_ coord: GridCoord, in world: GameWorld) -> Bool {
+        func walkable(_ dx: Int, _ dy: Int) -> Bool {
+            let next = coord.neighbor(dx: dx, dy: dy)
+            return world.isInBounds(next) && world.isEnterable(at: next)
+        }
+        let n = walkable(0, -1)
+        let s = walkable(0, 1)
+        let e = walkable(1, 0)
+        let w = walkable(-1, 0)
+        let northSouthFile = (n || s) && !e && !w
+        let eastWestFile = (e || w) && !n && !s
+        return northSouthFile || eastWestFile
     }
 
     @Test func spawnAreaHasNoPits() throws {
@@ -155,7 +244,7 @@ struct ProceduralGeneratorTests {
         generation:
           algorithm: rooms_doors
           room_count: 6
-          corridor_width: 1
+          corridor_width: 2
           min_room_size: 4
           max_room_size: 6
           pit_chance: 0.05
@@ -173,5 +262,15 @@ struct ProceduralGeneratorTests {
         #expect(config.generation.algorithm == "rooms_doors")
         #expect(config.generation.minRoomSize == 4)
         #expect(config.generation.maxRoomSize == 6)
+    }
+
+    @Test func incompatibleSaveIsRejectedBySize() {
+        let config = roomsDoorsConfig()
+        let small = TestWorldFactory.emptyFloor(width: 8, height: 8)
+        #expect(!WorldLoader.isCompatibleSave(small, with: config))
+        #expect(WorldLoader.isCompatibleSave(
+            TestWorldFactory.emptyFloor(width: 30, height: 30),
+            with: config
+        ))
     }
 }

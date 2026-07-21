@@ -4,7 +4,8 @@ import UIKit
 enum PlaceholderFactory {
     // Explicit sRGB so SKShapeNode fillColor round-trips equal (UIColor.white is gray-space).
     static let floorColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
-    static let wallColor = UIColor.gray
+    /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
+    static let wallColor = UIColor(white: 0.72, alpha: 1)
     static let ladderColor = UIColor.purple
     static let rampColor = UIColor.red
     static let slideColor = UIColor.blue
@@ -23,35 +24,58 @@ enum PlaceholderFactory {
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
             // Pits are transparent — no floor rendered (black void shows through).
             if !isPit {
-                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
+                let fill = landingTint(for: coord, in: world) ?? floorColor
+                container.addChild(horizontalFloorNode(config: config, fillColor: fill))
             }
 
         case .wall(_, let hasDoor, let hasLadder):
-            container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-            // Doors are transparent — no wall rendered.
-            // Interior solid walls (not bordering walkable space) stay unrendered → black.
-            if !hasDoor, shouldRenderWall(at: coord, in: world) {
-                let faces: WallFaceSet
-                if let world {
-                    faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-                } else {
-                    faces = .all
+            if hasDoor {
+                // Doorways show as floor so the passage reads as walkable ground.
+                container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
+            } else {
+                container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                // Interior solid walls (not bordering walkable space) stay unrendered → black.
+                if shouldRenderWall(at: coord, in: world) {
+                    let faces: WallFaceSet
+                    if let world {
+                        faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
+                    } else {
+                        faces = .all
+                    }
+                    let wall = perspectiveWallNode(
+                        color: hasLadder ? ladderColor : wallColor,
+                        faces: faces,
+                        config: config
+                    )
+                    container.addChild(wall)
                 }
-                let wall = perspectiveWallNode(
-                    color: hasLadder ? ladderColor : wallColor,
-                    faces: faces,
-                    config: config
-                )
-                container.addChild(wall)
             }
 
-        case .ramp:
+        case .ramp(let partner, _):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            container.addChild(horizontalFloorNode(config: config, fillColor: rampColor))
+            if let slope = connectorSlopeNode(
+                from: coord,
+                partner: partner,
+                config: config,
+                fillColor: rampColor,
+                baseElevation: 0
+            ) {
+                container.addChild(slope)
+            }
 
-        case .slide:
+        case .slide(let partner, _):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            container.addChild(horizontalFloorNode(config: config, fillColor: slideColor))
+            // Same mesh as a ramp, hung down from the upper story by storyHeight.
+            if let slope = connectorSlopeNode(
+                from: coord,
+                partner: partner,
+                config: config,
+                fillColor: slideColor,
+                baseElevation: -config.storyHeight
+            ) {
+                container.addChild(slope)
+            }
         }
 
         return container
@@ -101,11 +125,14 @@ enum PlaceholderFactory {
         let baseRight = UIColor(hue: hue, saturation: saturation, brightness: max(0, brightness * 0.75), alpha: alpha)
         let baseTop = UIColor(hue: hue, saturation: saturation, brightness: min(1, brightness * 1.2), alpha: alpha)
 
+        let stroke = UIColor(white: 0.05, alpha: 1)
+        let lineWidth: CGFloat = 2.5
+
         if faces.contains(.left) {
             let left = SKShapeNode(path: IsometricTileGeometry.leftWallFacePath(config: config))
             left.name = "wall-face-left"
-            left.lineWidth = 1
-            left.strokeColor = UIColor(white: 0.15, alpha: 1)
+            left.lineWidth = lineWidth
+            left.strokeColor = stroke
             left.fillColor = baseLeft
             left.zPosition = 0
             container.addChild(left)
@@ -114,8 +141,8 @@ enum PlaceholderFactory {
         if faces.contains(.right) {
             let right = SKShapeNode(path: IsometricTileGeometry.rightWallFacePath(config: config))
             right.name = "wall-face-right"
-            right.lineWidth = 1
-            right.strokeColor = UIColor(white: 0.15, alpha: 1)
+            right.lineWidth = lineWidth
+            right.strokeColor = stroke
             right.fillColor = baseRight
             right.zPosition = 1
             container.addChild(right)
@@ -124,8 +151,8 @@ enum PlaceholderFactory {
         if faces.contains(.top) {
             let top = SKShapeNode(path: IsometricTileGeometry.topWallFacePath(config: config))
             top.name = "wall-face-top"
-            top.lineWidth = 1
-            top.strokeColor = UIColor(white: 0.15, alpha: 1)
+            top.lineWidth = lineWidth
+            top.strokeColor = stroke
             top.fillColor = baseTop
             top.zPosition = 2
             container.addChild(top)
@@ -181,6 +208,41 @@ enum PlaceholderFactory {
     ) {
         node.position = IsometricMath.entityScreenPosition(entity.position, config: config)
         node.zPosition = IsometricMath.entitySortValue(for: entity.position, config: config)
+    }
+
+    /// Sloped ramp/slide surface for the canonical cell of a pair; partner draws nothing.
+    private static func connectorSlopeNode(
+        from coord: GridCoord,
+        partner: GridCoord,
+        config: IsometricConfig,
+        fillColor: UIColor,
+        baseElevation: CGFloat
+    ) -> SKShapeNode? {
+        guard IsometricTileGeometry.isCanonicalPairCell(coord, partner: partner) else { return nil }
+        guard let path = IsometricTileGeometry.connectorSlopePath(
+            from: coord,
+            partner: partner,
+            config: config,
+            rise: config.storyHeight,
+            baseElevation: baseElevation
+        ) else { return nil }
+
+        let node = SKShapeNode(path: path)
+        node.name = "connector-slope"
+        node.lineWidth = 1
+        node.fillColor = fillColor
+        node.strokeColor = UIColor(white: 0.2, alpha: 1)
+        return node
+    }
+
+    /// Tint upper floors that sit directly above a ramp (or share a cell with a slide cue).
+    private static func landingTint(for coord: GridCoord, in world: GameWorld?) -> UIColor? {
+        guard let world, coord.story > 0 else { return nil }
+        let below = coord.onStory(coord.story - 1)
+        if case .ramp = world.tile(at: below)?.kind {
+            return rampColor
+        }
+        return nil
     }
 
     /// Walls that don't border walkable space stay black (unrendered over the scene background).

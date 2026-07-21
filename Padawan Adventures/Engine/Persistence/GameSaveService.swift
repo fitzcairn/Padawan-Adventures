@@ -54,6 +54,12 @@ actor GameSaveService {
         return try Self.decode(data).world
     }
 
+    func delete() async throws {
+        saveGeneration += 1
+        guard fileManager.fileExists(atPath: saveURL.path) else { return }
+        try fileManager.removeItem(at: saveURL)
+    }
+
     var saveFileURL: URL {
         saveURL
     }
