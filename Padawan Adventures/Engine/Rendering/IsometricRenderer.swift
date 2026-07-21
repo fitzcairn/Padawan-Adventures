@@ -88,6 +88,18 @@ final class IsometricRenderer {
             }
         }
 
+        // CEILING: gray wall-top diamonds over gaps / unrendered wall mass.
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                guard IsometricTileGeometry.needsCeiling(at: coord, in: world) else { continue }
+                let ceiling = PlaceholderFactory.ceilingNode(config: config)
+                ceiling.position = IsometricMath.gridToScreen(coord, config: config)
+                ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                occlusionLayer.addChild(ceiling)
+            }
+        }
+
         syncEntities(world.entities)
         updateViewportFocus(focus)
     }

@@ -230,6 +230,53 @@ struct ProceduralGeneratorTests {
         }
     }
 
+    @Test func roomsAreFullyEnclosedByWallsOrDoors() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            let result = try ProceduralGenerator().generateDetailed(from: roomsDoorsConfig(seed: seed))
+            for room in result.rooms {
+                for cell in room.cells {
+                    for (dx, dy) in GridCoord.cardinals {
+                        let neighbor = cell.neighbor(dx: dx, dy: dy)
+                        guard !room.cells.contains(neighbor) else { continue }
+                        guard let tile = result.world.tile(at: neighbor) else {
+                            Issue.record("Room \(room.id) borders out-of-bounds at \(neighbor.x),\(neighbor.y)")
+                            continue
+                        }
+                        #expect(
+                            tile.isWall,
+                            "Room \(room.id) open edge at \(neighbor.x),\(neighbor.y) (seed \(seed))"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test func pitsAlwaysTouchAWallAndNeverReplaceWalls() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 8)
+            config.generation.pitChance = 0.9
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    guard let tile = result.world.tile(at: coord), tile.isPit else { continue }
+                    #expect(
+                        !tile.isWall,
+                        "Pit replaced a wall at \(x),\(y) (seed \(seed))"
+                    )
+
+                    let touchesWall = GridCoord.cardinals.contains { dx, dy in
+                        let neighbor = coord.neighbor(dx: dx, dy: dy)
+                        return result.world.tile(at: neighbor)?.isWall == true
+                    }
+                    #expect(touchesWall, "Pit at \(x),\(y) has no wall neighbor (seed \(seed))")
+                }
+            }
+        }
+    }
+
     @Test func yamlSeedUsesRoomsDoorsAlgorithm() throws {
         let yaml = """
         version: 1

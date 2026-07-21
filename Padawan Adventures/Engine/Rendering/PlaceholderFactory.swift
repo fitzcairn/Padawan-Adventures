@@ -4,8 +4,12 @@ import UIKit
 enum PlaceholderFactory {
     // Explicit sRGB so SKShapeNode fillColor round-trips equal (UIColor.white is gray-space).
     static let floorColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
+    /// Dark brown pit fill so hazards read clearly against white floors.
+    static let pitColor = UIColor(red: 0.28, green: 0.14, blue: 0.06, alpha: 1)
     /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
     static let wallColor = UIColor(white: 0.72, alpha: 1)
+    /// Raised roof fill between wall tops.
+    static let ceilingColor = UIColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
 
     static func tileNode(
         for tile: Tile,
@@ -19,10 +23,9 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .floor(let isPit):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            // Pits are transparent — no floor rendered (black void shows through).
-            if !isPit {
-                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
-            }
+            container.addChild(
+                horizontalFloorNode(config: config, fillColor: isPit ? pitColor : floorColor)
+            )
 
         case .wall(_, let hasDoor):
             if hasDoor {
@@ -32,16 +35,18 @@ enum PlaceholderFactory {
             } else {
                 container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
                 // Interior solid walls (not bordering walkable space) stay unrendered → black.
-                if shouldRenderWall(at: coord, in: world) {
-                    let faces: WallFaceSet
-                    if let world {
-                        faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-                    } else {
-                        faces = .all
-                    }
+                if let world, IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
+                    let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
                     let wall = perspectiveWallNode(
                         color: wallColor,
                         faces: faces,
+                        config: config
+                    )
+                    container.addChild(wall)
+                } else if world == nil {
+                    let wall = perspectiveWallNode(
+                        color: wallColor,
+                        faces: .all,
                         config: config
                     )
                     container.addChild(wall)
@@ -50,6 +55,16 @@ enum PlaceholderFactory {
         }
 
         return container
+    }
+
+    /// Raised gray diamond at wall-top height (CEILING overlay).
+    static func ceilingNode(config: IsometricConfig) -> SKShapeNode {
+        let node = SKShapeNode(path: IsometricTileGeometry.topWallFacePath(config: config))
+        node.name = "ceiling"
+        node.lineWidth = 1
+        node.fillColor = ceilingColor
+        node.strokeColor = UIColor(white: 0.2, alpha: 1)
+        return node
     }
 
     /// Flat-top isometric floor diamond (horizontal tile).
@@ -64,9 +79,8 @@ enum PlaceholderFactory {
             node.fillColor = fillColor
             node.strokeColor = UIColor(white: 0.2, alpha: 1)
         } else if isPit {
-            // Pits are transparent when rendered via this helper.
-            node.fillColor = .clear
-            node.strokeColor = .clear
+            node.fillColor = pitColor
+            node.strokeColor = UIColor(white: 0.1, alpha: 1)
         } else {
             node.fillColor = floorColor
             node.strokeColor = UIColor(white: 0.2, alpha: 1)
@@ -272,23 +286,4 @@ enum PlaceholderFactory {
         node.zPosition = IsometricMath.entitySortValue(for: entity.position, config: config)
     }
 
-    /// Walls that don't border walkable space stay black (unrendered over the scene background).
-    private static func shouldRenderWall(at coord: GridCoord, in world: GameWorld?) -> Bool {
-        guard let world else { return true }
-        for (dx, dy) in GridCoord.cardinals {
-            let neighbor = coord.neighbor(dx: dx, dy: dy)
-            guard world.isInBounds(neighbor), let tile = world.tile(at: neighbor) else { continue }
-            if isWalkableSurface(tile) { return true }
-        }
-        return false
-    }
-
-    private static func isWalkableSurface(_ tile: Tile) -> Bool {
-        switch tile.kind {
-        case .floor(let isPit):
-            return !isPit
-        case .wall(_, let hasDoor):
-            return hasDoor
-        }
-    }
 }

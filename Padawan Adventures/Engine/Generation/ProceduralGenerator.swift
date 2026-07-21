@@ -58,16 +58,18 @@ struct ProceduralGenerator: Sendable {
         let spawn = spawnCell(for: topRight)
         ensureReachability(rooms: rooms, spawn: spawn, tiles: &tiles, story: 0, corridorWidth: corridorWidth)
 
-        sprinklePits(into: &tiles[0], chance: params.pitChance, excluding: spawn, rng: &rng)
-        clearPits(around: spawn, tiles: &tiles, story: 0)
-        markDestructibleWalls(in: &tiles[0], chance: params.wallDestructibleChance, rng: &rng)
-
-        // Final pass after props so hallways/doors stay at least 2 tiles wide.
+        // Widen hallways before sealing so room rings stay closed afterward.
         enforceMinTraversableWidth(
             tiles: &tiles,
             story: 0,
             roomCells: rooms.reduce(into: Set()) { $0.formUnion($1.cells) }
         )
+        sealAllRoomPerimeters(rooms: rooms, tiles: &tiles, story: 0)
+        markDestructibleWalls(in: &tiles[0], chance: params.wallDestructibleChance, rng: &rng)
+
+        // Pits only on floors that already touch a wall — never replace walls/doors.
+        sprinklePits(into: &tiles[0], chance: params.pitChance, excluding: spawn, rng: &rng)
+        clearPits(around: spawn, tiles: &tiles, story: 0)
 
         let letter = config.player.letter.first ?? "P"
         let player = GameEntity(letter: letter, position: spawn, isPlayer: true)
@@ -570,6 +572,18 @@ struct ProceduralGenerator: Sendable {
         }
     }
 
+    /// Re-seal every room so corridors/widening never leave an open floor gap in a room ring.
+    private func sealAllRoomPerimeters(
+        rooms: [GeneratedRoom],
+        tiles: inout [[[Tile]]],
+        story: Int
+    ) {
+        let ordered = rooms.sorted { $0.id < $1.id }
+        for room in ordered {
+            sealRoomExitsWithDoors(room: room, tiles: &tiles, story: story)
+        }
+    }
+
     /// Any open floor orthogonally adjacent to a room becomes a door so rooms stay gated.
     private func sealRoomExitsWithDoors(
         room: GeneratedRoom,
@@ -849,11 +863,26 @@ struct ProceduralGenerator: Sendable {
             for x in 0..<story[y].count {
                 let coord = GridCoord(x: x, y: y, story: 0)
                 if coord == spawn { continue }
-                if case .floor = story[y][x].kind, rng.nextBool(probability: chance) {
+                // Only convert existing floors; walls/doors are never replaced by pits.
+                guard case .floor = story[y][x].kind else { continue }
+                guard hasWallNeighbor(x: x, y: y, in: story) else { continue }
+                if rng.nextBool(probability: chance) {
                     story[y][x] = Tile(kind: .floor(isPit: true))
                 }
             }
         }
+    }
+
+    /// Pits must sit against a wall (or door) tile so they never float in open floor.
+    private func hasWallNeighbor(x: Int, y: Int, in story: [[Tile]]) -> Bool {
+        for (dx, dy) in GridCoord.cardinals {
+            let nx = x + dx
+            let ny = y + dy
+            guard ny >= 0, ny < story.count else { continue }
+            guard nx >= 0, nx < story[ny].count else { continue }
+            if case .wall = story[ny][nx].kind { return true }
+        }
+        return false
     }
 
     private func clearPits(around spawn: GridCoord, tiles: inout [[[Tile]]], story: Int) {

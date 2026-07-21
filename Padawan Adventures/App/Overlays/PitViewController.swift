@@ -1,6 +1,6 @@
 import UIKit
 
-final class PitViewController: UIViewController {
+final class PitViewController: LandscapeHostingController {
     var onPitTapped: (() -> Void)?
 
     private let pitButton: UIButton = {
@@ -25,9 +25,6 @@ final class PitViewController: UIViewController {
             pitButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @objc private func pitTapped() {
         onPitTapped?()

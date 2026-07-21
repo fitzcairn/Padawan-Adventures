@@ -19,12 +19,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        let navigation = UINavigationController(rootViewController: LoadingViewController())
+        let navigation = LandscapeNavigationController(rootViewController: LoadingViewController())
         navigation.setNavigationBarHidden(true, animated: false)
         navigation.view.backgroundColor = .black
         window.rootViewController = navigation
         window.makeKeyAndVisible()
         self.window = window
+
+        windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: AppOrientation.mask))
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}

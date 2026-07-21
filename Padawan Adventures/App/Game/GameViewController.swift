@@ -6,7 +6,7 @@
 import UIKit
 import SpriteKit
 
-final class GameViewController: UIViewController {
+final class GameViewController: LandscapeHostingController {
     private let world: GameWorld
     private let isoConfig: IsometricConfig
     private let session: AppSession
@@ -65,14 +65,6 @@ final class GameViewController: UIViewController {
         skView.showsNodeCount = true
 
         installHUD()
-    }
-
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        .landscape
-    }
-
-    override var prefersStatusBarHidden: Bool {
-        true
     }
 
     private func installHUD() {
@@ -180,7 +172,7 @@ final class GameViewController: UIViewController {
             await session.refreshContinueEligibility()
 
             let menu = MenuViewController(session: session)
-            let nav = UINavigationController(rootViewController: menu)
+            let nav = LandscapeNavigationController(rootViewController: menu)
             nav.setNavigationBarHidden(true, animated: false)
 
             let window = view.window

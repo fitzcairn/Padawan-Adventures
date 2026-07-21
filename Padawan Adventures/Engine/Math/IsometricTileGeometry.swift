@@ -127,4 +127,45 @@ enum IsometricTileGeometry {
         }
         return false
     }
+
+    /// True when the tile draws as a walkable floor diamond (non-pit floor or door).
+    static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
+        guard let tile else { return false }
+        switch tile.kind {
+        case .floor(let isPit):
+            return !isPit
+        case .wall(_, let hasDoor):
+            return hasDoor
+        }
+    }
+
+    /// Opaque walls that border walkable space get a full wall block (including top).
+    static func shouldRenderWall(at coord: GridCoord, in world: GameWorld) -> Bool {
+        guard isOpaqueWall(at: coord, in: world) else { return false }
+        for (dx, dy) in GridCoord.cardinals {
+            let neighbor = coord.neighbor(dx: dx, dy: dy)
+            guard world.isInBounds(neighbor) else { continue }
+            if isDrawnFloorSurface(world.tile(at: neighbor)) { return true }
+        }
+        return false
+    }
+
+    /// Gray CEILING diamond at wall-top height for gaps between walls / unrendered wall mass.
+    static func needsCeiling(at coord: GridCoord, in world: GameWorld) -> Bool {
+        guard world.isInBounds(coord) else { return false }
+        guard !isDrawnFloorSurface(world.tile(at: coord)) else { return false }
+
+        // Visible wall blocks already draw their own top face.
+        if shouldRenderWall(at: coord, in: world) { return false }
+
+        // Unrendered interior opaque wall mass — fill continuous roof.
+        if isOpaqueWall(at: coord, in: world) { return true }
+
+        // Gap between opposite opaque walls (e.g. pit corridor through wall mass).
+        let north = isOpaqueWall(at: coord.neighbor(dx: 0, dy: -1), in: world)
+        let south = isOpaqueWall(at: coord.neighbor(dx: 0, dy: 1), in: world)
+        let east = isOpaqueWall(at: coord.neighbor(dx: 1, dy: 0), in: world)
+        let west = isOpaqueWall(at: coord.neighbor(dx: -1, dy: 0), in: world)
+        return (north && south) || (east && west)
+    }
 }

@@ -1,6 +1,6 @@
 import UIKit
 
-final class MenuViewController: UIViewController {
+final class MenuViewController: LandscapeHostingController {
     private let session: AppSession
 
     private lazy var continueButton = AppChrome.makeLargeButton(
@@ -74,9 +74,6 @@ final class MenuViewController: UIViewController {
             refreshContinueVisibility()
         }
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     private func refreshContinueVisibility() {
         continueButton.isHidden = !session.hasCompatibleSave

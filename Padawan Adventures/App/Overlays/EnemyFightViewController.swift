@@ -1,6 +1,6 @@
 import UIKit
 
-final class EnemyFightViewController: UIViewController {
+final class EnemyFightViewController: LandscapeHostingController {
     var onFightTapped: (() -> Void)?
 
     private let fightButton: UIButton = {
@@ -25,9 +25,6 @@ final class EnemyFightViewController: UIViewController {
             fightButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @objc private func fightTapped() {
         onFightTapped?()

@@ -1,6 +1,6 @@
 import UIKit
 
-final class LoadingViewController: UIViewController {
+final class LoadingViewController: LandscapeHostingController {
     private let statusLabel = AppChrome.makeCenteredLabel("Loading...", size: 32, weight: .semibold)
 
     override func viewDidLoad() {
@@ -19,9 +19,6 @@ final class LoadingViewController: UIViewController {
         super.viewDidAppear(animated)
         Task { await loadAndPresentMenu() }
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @MainActor
     private func loadAndPresentMenu() async {

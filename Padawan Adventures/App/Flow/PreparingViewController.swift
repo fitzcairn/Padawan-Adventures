@@ -1,6 +1,6 @@
 import UIKit
 
-final class PreparingViewController: UIViewController {
+final class PreparingViewController: LandscapeHostingController {
     private let session: AppSession
     private let mode: GameLaunchMode
     private let statusLabel = AppChrome.makeCenteredLabel(
@@ -38,9 +38,6 @@ final class PreparingViewController: UIViewController {
         didStartLoad = true
         Task { await prepareAndPresentGame() }
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @MainActor
     private func prepareAndPresentGame() async {

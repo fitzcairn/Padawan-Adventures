@@ -1,6 +1,6 @@
 import UIKit
 
-final class NewGameStartViewController: UIViewController {
+final class NewGameStartViewController: LandscapeHostingController {
     private let session: AppSession
 
     private lazy var startButton = AppChrome.makeLargeButton(
@@ -29,9 +29,6 @@ final class NewGameStartViewController: UIViewController {
             startButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
         ])
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @objc private func startTapped() {
         let preparing = PreparingViewController(session: session, mode: .newGame)

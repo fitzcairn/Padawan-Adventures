@@ -1,6 +1,6 @@
 import UIKit
 
-final class YouWinViewController: UIViewController {
+final class YouWinViewController: LandscapeHostingController {
     var onScreenTapped: (() -> Void)?
 
     private let titleLabel: UILabel = {
@@ -25,9 +25,6 @@ final class YouWinViewController: UIViewController {
         let tap = UITapGestureRecognizer(target: self, action: #selector(screenTapped))
         view.addGestureRecognizer(tap)
     }
-
-    override var prefersStatusBarHidden: Bool { true }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .landscape }
 
     @objc private func screenTapped() {
         onScreenTapped?()
