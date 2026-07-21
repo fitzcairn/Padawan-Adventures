@@ -2,9 +2,7 @@ import Foundation
 
 enum TileKind: Equatable, Sendable, WorldPersistable {
     case floor(isPit: Bool)
-    case wall(destructible: Bool, hasDoor: Bool, hasLadder: Bool)
-    case ramp(partner: GridCoord, otherStory: Int)
-    case slide(partner: GridCoord, lowerStory: Int)
+    case wall(destructible: Bool, hasDoor: Bool)
 
     private enum KindType: String, Codable {
         case floor
@@ -32,21 +30,15 @@ enum TileKind: Equatable, Sendable, WorldPersistable {
         case .floor:
             self = .floor(isPit: try container.decode(Bool.self, forKey: .isPit))
         case .wall:
+            // Legacy `hasLadder` is ignored if present.
+            _ = try container.decodeIfPresent(Bool.self, forKey: .hasLadder)
             self = .wall(
                 destructible: try container.decode(Bool.self, forKey: .destructible),
-                hasDoor: try container.decode(Bool.self, forKey: .hasDoor),
-                hasLadder: try container.decode(Bool.self, forKey: .hasLadder)
+                hasDoor: try container.decode(Bool.self, forKey: .hasDoor)
             )
-        case .ramp:
-            self = .ramp(
-                partner: try container.decode(GridCoord.self, forKey: .partner),
-                otherStory: try container.decode(Int.self, forKey: .otherStory)
-            )
-        case .slide:
-            self = .slide(
-                partner: try container.decode(GridCoord.self, forKey: .partner),
-                lowerStory: try container.decode(Int.self, forKey: .lowerStory)
-            )
+        case .ramp, .slide:
+            // Legacy connector tiles become ordinary floors.
+            self = .floor(isPit: false)
         }
     }
 
@@ -57,19 +49,10 @@ enum TileKind: Equatable, Sendable, WorldPersistable {
         case .floor(let isPit):
             try container.encode(KindType.floor, forKey: .type)
             try container.encode(isPit, forKey: .isPit)
-        case .wall(let destructible, let hasDoor, let hasLadder):
+        case .wall(let destructible, let hasDoor):
             try container.encode(KindType.wall, forKey: .type)
             try container.encode(destructible, forKey: .destructible)
             try container.encode(hasDoor, forKey: .hasDoor)
-            try container.encode(hasLadder, forKey: .hasLadder)
-        case .ramp(let partner, let otherStory):
-            try container.encode(KindType.ramp, forKey: .type)
-            try container.encode(partner, forKey: .partner)
-            try container.encode(otherStory, forKey: .otherStory)
-        case .slide(let partner, let lowerStory):
-            try container.encode(KindType.slide, forKey: .type)
-            try container.encode(partner, forKey: .partner)
-            try container.encode(lowerStory, forKey: .lowerStory)
         }
     }
 }

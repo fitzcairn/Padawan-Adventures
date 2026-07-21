@@ -24,7 +24,7 @@ final class AppSession {
         WorldSeedConfig(
             version: 1,
             seed: 42,
-            world: .init(width: 100, height: 100, stories: 2),
+            world: .init(width: 100, height: 100, stories: 1),
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: 100,
@@ -33,9 +33,6 @@ final class AppSession {
                 maxRoomSize: 12,
                 pitChance: 0.05,
                 wallDestructibleChance: 0.2,
-                rampCount: 8,
-                ladderCount: 8,
-                slideCount: 4,
                 doorCount: 4
             ),
             display: .init(tileWidth: 40, tileHeight: 40),

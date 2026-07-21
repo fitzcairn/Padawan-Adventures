@@ -113,7 +113,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
                 tileWidth: width,
                 tileHeight: height,
                 wallHeight: max(wall, 1),
-                storyHeight: max(story, 1)
+                storyHeight: max(story, 1),
+                maxStories: 1
             )
         }
     }
@@ -126,9 +127,6 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         var maxRoomSize: Int
         var pitChance: Double
         var wallDestructibleChance: Double
-        var rampCount: Int
-        var ladderCount: Int
-        var slideCount: Int
         var doorCount: Int
 
         enum CodingKeys: String, CodingKey {
@@ -139,9 +137,6 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             case maxRoomSize = "max_room_size"
             case pitChance = "pit_chance"
             case wallDestructibleChance = "wall_destructible_chance"
-            case rampCount = "ramp_count"
-            case ladderCount = "ladder_count"
-            case slideCount = "slide_count"
             case doorCount = "door_count"
         }
 
@@ -153,9 +148,6 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             maxRoomSize: Int = 12,
             pitChance: Double,
             wallDestructibleChance: Double,
-            rampCount: Int,
-            ladderCount: Int,
-            slideCount: Int,
             doorCount: Int
         ) {
             self.algorithm = algorithm
@@ -165,9 +157,6 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             self.maxRoomSize = maxRoomSize
             self.pitChance = pitChance
             self.wallDestructibleChance = wallDestructibleChance
-            self.rampCount = rampCount
-            self.ladderCount = ladderCount
-            self.slideCount = slideCount
             self.doorCount = doorCount
         }
 
@@ -180,9 +169,6 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
             maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
             pitChance = try container.decode(Double.self, forKey: .pitChance)
             wallDestructibleChance = try container.decode(Double.self, forKey: .wallDestructibleChance)
-            rampCount = try container.decode(Int.self, forKey: .rampCount)
-            ladderCount = try container.decode(Int.self, forKey: .ladderCount)
-            slideCount = try container.decode(Int.self, forKey: .slideCount)
             doorCount = try container.decode(Int.self, forKey: .doorCount)
         }
     }
@@ -245,7 +231,7 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard version == 1 else {
             throw WorldSeedError.unsupportedVersion(version)
         }
-        guard world.stories == 2 else {
+        guard world.stories == 1 else {
             throw WorldSeedError.invalidStoryCount(world.stories)
         }
         guard world.width > 4, world.height > 4 else {

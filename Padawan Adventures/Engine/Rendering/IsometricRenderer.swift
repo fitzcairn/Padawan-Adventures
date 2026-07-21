@@ -4,7 +4,7 @@ final class IsometricRenderer {
     private let config: IsometricConfig
     private let enemyConfig: EnemyConfig
     private let worldRoot = SKNode()
-    /// Floor / ramp / slide tiles — always beneath sprites.
+    /// Floor tiles — always beneath sprites.
     private let floorLayer = SKNode()
     /// Walls and entities share this layer so walls can occlude sprites by depth.
     private let occlusionLayer = SKNode()
@@ -74,14 +74,14 @@ final class IsometricRenderer {
                 let node = PlaceholderFactory.tileNode(for: tile, at: coord, in: world, config: config)
 
                 switch tile.kind {
-                case .wall(_, let hasDoor, _) where hasDoor:
+                case .wall(_, let hasDoor) where hasDoor:
                     // Door cells render as floor diamonds — keep them in the floor band.
                     node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
                     floorLayer.addChild(node)
                 case .wall:
                     node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
                     occlusionLayer.addChild(node)
-                case .floor, .ramp, .slide:
+                case .floor:
                     node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
                     floorLayer.addChild(node)
                 }
@@ -193,8 +193,23 @@ final class IsometricRenderer {
     }
 
     func fadeWorld(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+        fadeWorldOut(duration: duration, completion: completion)
+    }
+
+    func fadeWorldOut(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+        worldRoot.removeAction(forKey: "worldFade")
         worldRoot.run(.sequence([
             .fadeOut(withDuration: duration),
+            .run(completion),
+        ]), withKey: "worldFade")
+    }
+
+    func fadeWorldIn(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+        worldRoot.removeAction(forKey: "worldFade")
+        worldRoot.alpha = 0
+        worldRoot.isHidden = false
+        worldRoot.run(.sequence([
+            .fadeIn(withDuration: duration),
             .run(completion),
         ]), withKey: "worldFade")
     }

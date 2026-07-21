@@ -3,11 +3,9 @@ import Testing
 @testable import Padawan_Adventures
 
 struct AppSessionTests {
-    @Test func fallbackConfigUsesDenseConnectorCounts() {
+    @Test func fallbackConfigIsSingleStory() {
         let config = AppSession.fallbackConfig()
-        #expect(config.generation.rampCount == 8)
-        #expect(config.generation.ladderCount == 8)
-        #expect(config.generation.slideCount == 4)
+        #expect(config.world.stories == 1)
         #expect(config.enemies?.type == "grunt")
         #expect(config.enemies?.spawnChancePerRoom == 0.8)
     }
@@ -29,7 +27,7 @@ struct AppSessionTests {
 
     @Test func continueIneligibleWhenDimensionsDiffer() {
         let config = AppSession.fallbackConfig()
-        let world = TestWorldFactory.emptyFloor(width: 4, height: 4, stories: 2)
+        let world = TestWorldFactory.emptyFloor(width: 4, height: 4, stories: 1)
         #expect(AppSession.isContinueEligible(savedWorld: world, config: config) == false)
     }
 

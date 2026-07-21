@@ -278,7 +278,7 @@ struct IsometricMathTests {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
         let floor = GridCoord(x: 1, y: 1, story: 0)
         let wall = GridCoord(x: 2, y: 2, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
 
         let focus = CGPoint.zero
         let viewCenter = CGPoint(x: 200, y: 200)
@@ -303,7 +303,7 @@ struct IsometricMathTests {
         let config = IsometricConfig()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
 
         let focus = CGPoint.zero
         let viewCenter = CGPoint(x: 200, y: 200)
@@ -333,7 +333,7 @@ struct IsometricMathTests {
         for y in 0..<3 {
             for x in 0..<3 where !(x == 1 && y == 1) {
                 world.setTile(
-                    Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)),
+                    Tile(kind: .wall(destructible: false, hasDoor: false)),
                     at: GridCoord(x: x, y: y, story: 0)
                 )
             }
@@ -517,9 +517,9 @@ struct PlaceholderFactoryTests {
         let east = GridCoord(x: 2, y: 1, story: 0)
         let south = GridCoord(x: 1, y: 2, story: 0)
 
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: a)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: east)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: south)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: east)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: south)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(!faces.contains(.right))
@@ -530,7 +530,7 @@ struct PlaceholderFactoryTests {
     @Test func openNeighborKeepsPerspectiveFace() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: a)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(faces.contains(.left))
@@ -555,13 +555,11 @@ struct PlaceholderFactoryTests {
         #expect(pit.children.isEmpty)
     }
 
-    @Test func doorRendersFloorAndLadderWallIsPurple() {
+    @Test func doorRendersAsFloor() {
         let config = IsometricConfig()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let doorCoord = GridCoord(x: 1, y: 1, story: 0)
-        let ladderCoord = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)), at: doorCoord)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: ladderCoord)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true)), at: doorCoord)
 
         let door = PlaceholderFactory.tileNode(
             for: world.tile(at: doorCoord)!,
@@ -569,82 +567,8 @@ struct PlaceholderFactoryTests {
             in: world,
             config: config
         )
-        let ladder = PlaceholderFactory.tileNode(
-            for: world.tile(at: ladderCoord)!,
-            at: ladderCoord,
-            in: world,
-            config: config
-        )
 
         let doorFloor = door.children.first as? SKShapeNode
         #expect(doorFloor?.fillColor == PlaceholderFactory.floorColor)
-        #expect(!ladder.children.isEmpty)
-    }
-
-    @Test func rampIsRedAndSlideIsBlue() {
-        let config = IsometricConfig()
-        let partner = GridCoord(x: 1, y: 0, story: 0)
-        let ramp = PlaceholderFactory.tileNode(
-            for: Tile(kind: .ramp(partner: partner, otherStory: 1)),
-            at: GridCoord(x: 0, y: 0, story: 0),
-            config: config
-        )
-        let slidePartner = GridCoord(x: 1, y: 0, story: 1)
-        let slide = PlaceholderFactory.tileNode(
-            for: Tile(kind: .slide(partner: slidePartner, lowerStory: 0)),
-            at: GridCoord(x: 0, y: 0, story: 1),
-            config: config
-        )
-
-        let rampSlope = ramp.children.first as? SKShapeNode
-        let slideSlope = slide.children.first as? SKShapeNode
-        #expect(rampSlope?.name == "connector-slope")
-        #expect(slideSlope?.name == "connector-slope")
-        #expect(rampSlope?.fillColor == PlaceholderFactory.rampColor)
-        #expect(slideSlope?.fillColor == PlaceholderFactory.slideColor)
-    }
-
-    @Test func connectorSlopePathIsNonFlat() {
-        let config = IsometricConfig(tileWidth: 40, tileHeight: 40, storyHeight: 40)
-        let coord = GridCoord(x: 0, y: 0, story: 0)
-        let partner = GridCoord(x: 1, y: 0, story: 0)
-        let path = IsometricTileGeometry.connectorSlopePath(
-            from: coord,
-            partner: partner,
-            config: config,
-            rise: config.storyHeight
-        )
-        #expect(path != nil)
-        let bounds = path!.boundingBox
-        #expect(bounds.height > config.tileHeight)
-    }
-
-    @Test func rampPartnerCellDrawsNoSlope() {
-        let config = IsometricConfig()
-        let a = GridCoord(x: 0, y: 0, story: 0)
-        let b = GridCoord(x: 1, y: 0, story: 0)
-        let partnerNode = PlaceholderFactory.tileNode(
-            for: Tile(kind: .ramp(partner: a, otherStory: 1)),
-            at: b,
-            config: config
-        )
-        #expect(partnerNode.children.isEmpty)
-    }
-
-    @Test func rampLandingFloorIsTinted() {
-        let config = IsometricConfig()
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let a = GridCoord(x: 1, y: 1, story: 0)
-        let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .ramp(partner: b, otherStory: 1)), at: a)
-        world.setTile(Tile(kind: .ramp(partner: a, otherStory: 1)), at: b)
-
-        let landing = PlaceholderFactory.tileNode(
-            for: Tile(kind: .floor(isPit: false)),
-            at: a.onStory(1),
-            in: world,
-            config: config
-        )
-        #expect((landing.children.first as? SKShapeNode)?.fillColor == PlaceholderFactory.rampColor)
     }
 }

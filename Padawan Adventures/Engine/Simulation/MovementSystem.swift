@@ -10,8 +10,6 @@ struct FractionalGridPose: Equatable, Sendable {
 struct MovementSystem: Sendable {
     /// Default walking speed in tiles per second.
     static let defaultTilesPerSecond: Double = 2.0
-    /// Multiplier applied while descending a slide.
-    static let slideDescentSpeedMultiplier: Double = 2.0
 
     /// Current player movement speed in tiles per second. Mutable so gameplay events can change it.
     var tilesPerSecond: Double {
@@ -131,8 +129,7 @@ struct MovementSystem: Sendable {
 
         while remaining > 0, isMoving {
             let segmentLength = activeSegmentLength(to: currentEnd, logicalStart: currentStart)
-            let speed = tilesPerSecond * speedMultiplier(from: currentStart, to: currentEnd, in: world)
-            let segmentDuration = segmentLength / speed
+            let segmentDuration = segmentLength / tilesPerSecond
             guard segmentDuration > 0 else {
                 commitOccupancyIfNeeded(end: currentEnd, world: &world, entityID: entityID, events: &events)
                 if !isMoving { return events }
@@ -202,19 +199,9 @@ struct MovementSystem: Sendable {
         fallback: GridCoord,
         config: IsometricConfig
     ) -> CGPoint {
-        guard isMoving, let start = segmentStart, let end = segmentEnd else {
+        guard isMoving, segmentStart != nil, segmentEnd != nil else {
             let coord = entityID.flatMap { world.entity(id: $0)?.position } ?? fallback
             return IsometricMath.entityScreenPosition(coord, config: config)
-        }
-
-        if isVerticalLadderSegment(from: start, to: end) {
-            let from = IsometricMath.entityScreenPosition(start, config: config)
-            let to = IsometricMath.entityScreenPosition(end, config: config)
-            let t = segmentProgress
-            return CGPoint(
-                x: from.x + (to.x - from.x) * t,
-                y: from.y + (to.y - from.y) * t
-            )
         }
 
         let pose = fractionalPosition()
@@ -242,34 +229,13 @@ struct MovementSystem: Sendable {
         )
     }
 
-    func totalDuration(for path: [GridCoord], in world: GameWorld? = nil) -> TimeInterval {
+    func totalDuration(for path: [GridCoord]) -> TimeInterval {
         guard path.count >= 2 else { return 0 }
         var total: Double = 0
         for index in 0..<(path.count - 1) {
-            let start = path[index]
-            let end = path[index + 1]
-            let multiplier = world.map { speedMultiplier(from: start, to: end, in: $0) } ?? 1.0
-            total += segmentDistance(from: start, to: end) / (tilesPerSecond * multiplier)
+            total += segmentDistance(from: path[index], to: path[index + 1]) / tilesPerSecond
         }
         return total
-    }
-
-    /// Same tile xy, different story — ladder transit.
-    static func isVerticalLadderSegment(from start: GridCoord, to end: GridCoord) -> Bool {
-        start.x == end.x && start.y == end.y && start.story != end.story
-    }
-
-    private func isVerticalLadderSegment(from start: GridCoord, to end: GridCoord) -> Bool {
-        Self.isVerticalLadderSegment(from: start, to: end)
-    }
-
-    /// Slide tiles only speed up when moving to a lower story.
-    private func speedMultiplier(from start: GridCoord, to end: GridCoord, in world: GameWorld) -> Double {
-        guard end.story < start.story,
-              case .slide = world.tile(at: start)?.kind else {
-            return 1.0
-        }
-        return Self.slideDescentSpeedMultiplier
     }
 
     private mutating func commitOccupancyIfNeeded(
@@ -288,10 +254,7 @@ struct MovementSystem: Sendable {
 
         let resolution = world.resolvePit(at: end)
         events.append(.pit(resolution))
-        if case .fell(let lower) = resolution {
-            events.append(.reached(lower))
-        }
-        // Always stop — leftover path waypoints are invalid after fall/respawn.
+        // Stop so leftover path waypoints are not followed after the pit encounter.
         reset()
     }
 

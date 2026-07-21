@@ -9,7 +9,7 @@ struct IsometricConfig: Equatable, Sendable {
     var storyHeight: CGFloat = 40
     /// Max stories used to interleave story into depth without burying lower stories
     /// under an entire upper-story layer.
-    var maxStories: Int = 2
+    var maxStories: Int = 1
 }
 
 enum IsometricMath {
@@ -297,8 +297,6 @@ enum IsometricMath {
         switch tile.kind {
         case .floor(let isPit):
             return !isPit
-        case .ramp, .slide:
-            return true
         case .wall:
             return false
         }

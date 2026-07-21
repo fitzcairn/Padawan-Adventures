@@ -10,16 +10,13 @@ struct WorldSeedConfigTests {
         world:
           width: 24
           height: 24
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_bsp
           room_count: 6
           corridor_width: 2
           pit_chance: 0.05
           wall_destructible_chance: 0.2
-          ramp_count: 8
-          ladder_count: 8
-          slide_count: 4
           door_count: 4
         player:
           letter: P
@@ -30,13 +27,10 @@ struct WorldSeedConfigTests {
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.version == 1)
         #expect(config.seed == 42)
-        #expect(config.world.stories == 2)
+        #expect(config.world.stories == 1)
         #expect(config.player.letter == "P")
         #expect(config.display.tileWidth == 40)
         #expect(config.display.tileHeight == 40)
-        #expect(config.generation.rampCount == 8)
-        #expect(config.generation.ladderCount == 8)
-        #expect(config.generation.slideCount == 4)
         try config.validate()
     }
 
@@ -47,7 +41,7 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         display:
           tile_width: 48
           tile_height: 24
@@ -58,9 +52,6 @@ struct WorldSeedConfigTests {
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
@@ -83,23 +74,20 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 3
+          stories: 2
         generation:
           algorithm: rooms_bsp
           room_count: 2
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
         """
 
         let config = try WorldLoader.decodeConfig(from: yaml)
-        #expect(throws: WorldSeedError.invalidStoryCount(3)) {
+        #expect(throws: WorldSeedError.invalidStoryCount(2)) {
             try config.validate()
         }
     }
@@ -111,16 +99,13 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
@@ -142,16 +127,13 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
@@ -173,16 +155,13 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
@@ -209,16 +188,13 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P
@@ -240,16 +216,13 @@ struct WorldSeedConfigTests {
         world:
           width: 10
           height: 10
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 1
           pit_chance: 0.0
           wall_destructible_chance: 0.0
-          ramp_count: 0
-          ladder_count: 0
-          slide_count: 0
           door_count: 0
         player:
           letter: P

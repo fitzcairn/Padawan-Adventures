@@ -97,6 +97,7 @@ final class PreparingViewController: UIViewController {
         GameWorld(
             width: 1,
             height: 1,
+            storyCount: 1,
             tiles: [[[Tile(kind: .floor(isPit: false))]]],
             entities: [GameEntity(letter: "P", position: GridCoord(x: 0, y: 0, story: 0), isPlayer: true)],
             spawn: GridCoord(x: 0, y: 0, story: 0)

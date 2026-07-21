@@ -12,7 +12,7 @@ struct LineOfSightTests {
     @Test func solidWallBlocksSight() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)),
+            Tile(kind: .wall(destructible: false, hasDoor: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         let from = GridCoord(x: 0, y: 1, story: 0)
@@ -23,7 +23,7 @@ struct LineOfSightTests {
     @Test func doorDoesNotBlockSight() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)),
+            Tile(kind: .wall(destructible: false, hasDoor: true)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         let from = GridCoord(x: 0, y: 1, story: 0)

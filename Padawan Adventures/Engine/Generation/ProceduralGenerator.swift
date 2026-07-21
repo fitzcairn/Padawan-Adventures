@@ -62,11 +62,6 @@ struct ProceduralGenerator: Sendable {
         clearPits(around: spawn, tiles: &tiles, story: 0)
         markDestructibleWalls(in: &tiles[0], chance: params.wallDestructibleChance, rng: &rng)
 
-        var connectorAnchors: [(x: Int, y: Int)] = []
-        placeLadders(in: &tiles, count: params.ladderCount, rng: &rng, anchors: &connectorAnchors)
-        placeRamps(in: &tiles, count: params.rampCount, rng: &rng, anchors: &connectorAnchors)
-        placeSlides(in: &tiles, count: params.slideCount, rng: &rng, anchors: &connectorAnchors)
-
         // Final pass after props so hallways/doors stay at least 2 tiles wide.
         enforceMinTraversableWidth(
             tiles: &tiles,
@@ -229,7 +224,7 @@ struct ProceduralGenerator: Sendable {
         Array(
             repeating: Array(
                 repeating: Array(
-                    repeating: Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)),
+                    repeating: Tile(kind: .wall(destructible: false, hasDoor: false)),
                     count: width
                 ),
                 count: height
@@ -596,7 +591,7 @@ struct ProceduralGenerator: Sendable {
     }
 
     private func isDoor(_ tile: Tile) -> Bool {
-        if case .wall(_, true, _) = tile.kind { return true }
+        if case .wall(_, true) = tile.kind { return true }
         return false
     }
 
@@ -653,12 +648,10 @@ struct ProceduralGenerator: Sendable {
         guard coord.x >= 0, coord.x < tiles[story][coord.y].count else { return }
 
         switch tiles[story][coord.y][coord.x].kind {
-        case .wall(let destructible, _, let hasLadder):
-            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: destructible, hasDoor: true, hasLadder: hasLadder))
+        case .wall(let destructible, _):
+            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: destructible, hasDoor: true))
         case .floor:
-            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false))
-        default:
-            break
+            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: false, hasDoor: true))
         }
     }
 
@@ -750,7 +743,7 @@ struct ProceduralGenerator: Sendable {
     ) -> Bool {
         guard coord.y >= 0, coord.y < tiles[story].count else { return false }
         guard coord.x >= 0, coord.x < tiles[story][coord.y].count else { return false }
-        if case .wall(_, let hasDoor, _) = tiles[story][coord.y][coord.x].kind, !hasDoor {
+        if case .wall(_, let hasDoor) = tiles[story][coord.y][coord.x].kind, !hasDoor {
             tiles[story][coord.y][coord.x] = Tile(kind: .floor(isPit: false))
             return true
         }
@@ -884,141 +877,15 @@ struct ProceduralGenerator: Sendable {
     ) {
         for y in 0..<story.count {
             for x in 0..<story[y].count {
-                if case .wall(false, false, false) = story[y][x].kind,
+                if case .wall(false, false) = story[y][x].kind,
                    rng.nextBool(probability: chance) {
-                    story[y][x] = Tile(kind: .wall(destructible: true, hasDoor: false, hasLadder: false))
+                    story[y][x] = Tile(kind: .wall(destructible: true, hasDoor: false))
                 }
             }
         }
     }
 
-    private let minConnectorSeparation = 6
-
-    private func placeLadders(
-        in tiles: inout [[[Tile]]],
-        count: Int,
-        rng: inout SeededGenerator,
-        anchors: inout [(x: Int, y: Int)]
-    ) {
-        var placed = 0
-        var attempts = 0
-        while placed < count, attempts < count * 100 {
-            attempts += 1
-            let x = rng.nextInt(upperBound: tiles[0][0].count)
-            let y = rng.nextInt(upperBound: tiles[0].count)
-            guard isFarEnoughFromConnectors(x: x, y: y, anchors: anchors) else { continue }
-
-            for story in 0..<(tiles.count - 1) {
-                guard case .wall(let destructible, let door, false) = tiles[story][y][x].kind else { continue }
-                guard case .wall(_, _, false) = tiles[story + 1][y][x].kind else { continue }
-                guard adjacentFloorCount(at: GridCoord(x: x, y: y, story: story), tiles: tiles) >= 1 else { continue }
-
-                tiles[story][y][x] = Tile(kind: .wall(destructible: destructible, hasDoor: door, hasLadder: true))
-                tiles[story + 1][y][x] = Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true))
-                anchors.append((x, y))
-                placed += 1
-                break
-            }
-        }
-    }
-
-    private func placeRamps(
-        in tiles: inout [[[Tile]]],
-        count: Int,
-        rng: inout SeededGenerator,
-        anchors: inout [(x: Int, y: Int)]
-    ) {
-        var placed = 0
-        var attempts = 0
-        while placed < count, attempts < count * 100 {
-            attempts += 1
-            let lowerStory = 0
-            let upperStory = 1
-            let horizontal = rng.nextBool(probability: 0.5)
-            let x = rng.nextInt(upperBound: tiles[lowerStory][0].count - (horizontal ? 2 : 1))
-            let y = rng.nextInt(upperBound: tiles[lowerStory].count - (horizontal ? 1 : 2))
-
-            let a = GridCoord(x: x, y: y, story: lowerStory)
-            let b = horizontal
-                ? GridCoord(x: x + 1, y: y, story: lowerStory)
-                : GridCoord(x: x, y: y + 1, story: lowerStory)
-
-            guard isFloor(tiles[lowerStory][a.y][a.x]), isFloor(tiles[lowerStory][b.y][b.x]) else { continue }
-            guard isFarEnoughFromConnectors(x: a.x, y: a.y, anchors: anchors),
-                  isFarEnoughFromConnectors(x: b.x, y: b.y, anchors: anchors) else { continue }
-            guard !hasLadder(tiles[upperStory][a.y][a.x]),
-                  !hasLadder(tiles[upperStory][b.y][b.x]) else { continue }
-
-            // Carve walkable upper landings so pathfinding can ascend.
-            tiles[upperStory][a.y][a.x] = Tile(kind: .floor(isPit: false))
-            tiles[upperStory][b.y][b.x] = Tile(kind: .floor(isPit: false))
-
-            tiles[lowerStory][a.y][a.x] = Tile(kind: .ramp(partner: b, otherStory: upperStory))
-            tiles[lowerStory][b.y][b.x] = Tile(kind: .ramp(partner: a, otherStory: upperStory))
-            anchors.append((a.x, a.y))
-            anchors.append((b.x, b.y))
-            placed += 1
-        }
-    }
-
-    private func placeSlides(
-        in tiles: inout [[[Tile]]],
-        count: Int,
-        rng: inout SeededGenerator,
-        anchors: inout [(x: Int, y: Int)]
-    ) {
-        var placed = 0
-        var attempts = 0
-        let upperStory = 1
-        let lowerStory = 0
-
-        while placed < count, attempts < count * 100 {
-            attempts += 1
-            let horizontal = rng.nextBool(probability: 0.5)
-            let x = rng.nextInt(upperBound: tiles[lowerStory][0].count - (horizontal ? 2 : 1))
-            let y = rng.nextInt(upperBound: tiles[lowerStory].count - (horizontal ? 1 : 2))
-
-            let lowerA = GridCoord(x: x, y: y, story: lowerStory)
-            let lowerB = horizontal
-                ? GridCoord(x: x + 1, y: y, story: lowerStory)
-                : GridCoord(x: x, y: y + 1, story: lowerStory)
-            let upperA = lowerA.onStory(upperStory)
-            let upperB = lowerB.onStory(upperStory)
-
-            // Lower must remain floors (landing); skips ramp cells and other connectors.
-            guard isFloor(tiles[lowerStory][lowerA.y][lowerA.x]),
-                  isFloor(tiles[lowerStory][lowerB.y][lowerB.x]) else { continue }
-            guard isFarEnoughFromConnectors(x: lowerA.x, y: lowerA.y, anchors: anchors),
-                  isFarEnoughFromConnectors(x: lowerB.x, y: lowerB.y, anchors: anchors) else { continue }
-            guard !hasLadder(tiles[upperStory][upperA.y][upperA.x]),
-                  !hasLadder(tiles[upperStory][upperB.y][upperB.x]) else { continue }
-            if case .slide = tiles[upperStory][upperA.y][upperA.x].kind { continue }
-            if case .slide = tiles[upperStory][upperB.y][upperB.x].kind { continue }
-
-            // Carve upper landings, then convert them into a down-only slide pair.
-            tiles[upperStory][upperA.y][upperA.x] = Tile(kind: .slide(partner: upperB, lowerStory: lowerStory))
-            tiles[upperStory][upperB.y][upperB.x] = Tile(kind: .slide(partner: upperA, lowerStory: lowerStory))
-            anchors.append((lowerA.x, lowerA.y))
-            anchors.append((lowerB.x, lowerB.y))
-            placed += 1
-        }
-    }
-
     // MARK: - Helpers
-
-    private func isFarEnoughFromConnectors(x: Int, y: Int, anchors: [(x: Int, y: Int)]) -> Bool {
-        for anchor in anchors {
-            if abs(anchor.x - x) + abs(anchor.y - y) < minConnectorSeparation {
-                return false
-            }
-        }
-        return true
-    }
-
-    private func hasLadder(_ tile: Tile) -> Bool {
-        if case .wall(_, _, true) = tile.kind { return true }
-        return false
-    }
 
     private func manhattan(_ a: GridCoord, _ b: GridCoord) -> Int {
         abs(a.x - b.x) + abs(a.y - b.y)
@@ -1031,10 +898,10 @@ struct ProceduralGenerator: Sendable {
 
     private func isEnterable(_ tile: Tile) -> Bool {
         switch tile.kind {
-        case .floor, .ramp, .slide:
+        case .floor:
             return true
-        case .wall(_, let hasDoor, let hasLadder):
-            return hasDoor || hasLadder
+        case .wall(_, let hasDoor):
+            return hasDoor
         }
     }
 

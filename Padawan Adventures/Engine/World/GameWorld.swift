@@ -13,7 +13,7 @@ struct GameWorld: Sendable, WorldPersistable {
     init(
         width: Int,
         height: Int,
-        storyCount: Int = 2,
+        storyCount: Int = 1,
         tiles: [[[Tile]]],
         entities: [GameEntity],
         spawn: GridCoord,
@@ -104,43 +104,34 @@ struct GameWorld: Sendable, WorldPersistable {
     @discardableResult
     mutating func destroyWall(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord),
-              case .wall(let destructible, _, let hasLadder) = tile.kind,
+              case .wall(let destructible, _) = tile.kind,
               destructible else {
             return false
         }
         setTile(Tile(kind: .floor(isPit: false)), at: coord)
-        if hasLadder {
-            // Ladder was on destroyed wall; floor remains without ladder.
-        }
         return true
     }
 
     func isEnterable(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
-        case .floor, .ramp, .slide:
+        case .floor:
             return true
-        case .wall(_, let hasDoor, let hasLadder):
-            return hasDoor || hasLadder
+        case .wall(_, let hasDoor):
+            return hasDoor
         }
     }
 
-    /// Walkable for path edges: enterable tiles (including pits). Doors/ladders remain walkable.
+    /// Walkable for path edges: enterable tiles (including pits). Doors remain walkable.
     func isWalkable(at coord: GridCoord) -> Bool {
         isEnterable(at: coord)
     }
 
-    /// Valid tap / movement destination: floor (including pits), ramp, slide, or ladder — never plain wall or door.
+    /// Valid tap / movement destination: floor (including pits) — never plain wall or door.
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
-        switch tile.kind {
-        case .floor:
-            return true
-        case .ramp, .slide:
-            return true
-        case .wall(_, _, let hasLadder):
-            return hasLadder
-        }
+        if case .floor = tile.kind { return true }
+        return false
     }
 
     /// Resolves a tap to a valid movement goal on the same story (BFS to nearest if needed).
@@ -166,41 +157,9 @@ struct GameWorld: Sendable, WorldPersistable {
         return nil
     }
 
-    /// When the player targets a ramp/ladder on their story, path to the landing on the other story.
-    func movementGoalResolvingConnectors(from start: GridCoord, goal: GridCoord) -> GridCoord {
-        guard let tile = tile(at: goal) else { return goal }
-
-        switch tile.kind {
-        case .ramp(_, let otherStory) where start.story == goal.story && start.story != otherStory:
-            let landing = goal.onStory(otherStory)
-            return isWalkable(at: landing) ? landing : goal
-
-        case .wall(_, _, true) where start.story == goal.story:
-            let up = goal.onStory(goal.story + 1)
-            if isWalkable(at: up) { return up }
-            let down = goal.onStory(goal.story - 1)
-            if isWalkable(at: down) { return down }
-            return goal
-
-        default:
-            return goal
-        }
-    }
-
-    func lowerStoryEnterable(at coord: GridCoord) -> Bool {
-        guard coord.story > 0 else { return false }
-        let lower = coord.onStory(coord.story - 1)
-        return isEnterable(at: lower)
-    }
-
     mutating func resolvePit(at coord: GridCoord) -> PitResolution {
         guard tile(at: coord)?.isPit == true else { return .none }
-        if lowerStoryEnterable(at: coord) {
-            let lower = coord.onStory(coord.story - 1)
-            setPlayerPosition(lower)
-            return .fell(to: lower)
-        }
-        respawnPlayer()
+        // Stay on the pit tile; UI handles the encounter (no auto-respawn).
         return .hazard
     }
 
@@ -258,18 +217,13 @@ struct GameWorld: Sendable, WorldPersistable {
         switch tile.kind {
         case .floor(let isPit):
             return isPit ? "F*" : "F"
-        case .wall(let d, let door, let ladder):
-            return "W\(d ? "d" : "")\(door ? "D" : "")\(ladder ? "L" : "")"
-        case .ramp(let partner, let other):
-            return "R\(partner.x),\(partner.y),\(other)"
-        case .slide(let partner, let lower):
-            return "S\(partner.x),\(partner.y),\(lower)"
+        case .wall(let d, let door):
+            return "W\(d ? "d" : "")\(door ? "D" : "")"
         }
     }
 }
 
 enum PitResolution: Equatable, Sendable {
     case none
-    case fell(to: GridCoord)
     case hazard
 }

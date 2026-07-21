@@ -13,7 +13,7 @@ struct GameSaveTests {
 
     @Test func roundTripPreservesWorld() async throws {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
         _ = world.destroyWall(at: GridCoord(x: 2, y: 2, story: 0))
         world.setPlayerPosition(GridCoord(x: 3, y: 1, story: 0))
 
@@ -72,10 +72,8 @@ struct GameSaveTests {
         let kinds: [TileKind] = [
             .floor(isPit: false),
             .floor(isPit: true),
-            .wall(destructible: true, hasDoor: true, hasLadder: false),
-            .wall(destructible: false, hasDoor: false, hasLadder: true),
-            .ramp(partner: GridCoord(x: 1, y: 2, story: 0), otherStory: 1),
-            .slide(partner: GridCoord(x: 2, y: 3, story: 1), lowerStory: 0),
+            .wall(destructible: true, hasDoor: true),
+            .wall(destructible: false, hasDoor: false),
         ]
 
         for kind in kinds {

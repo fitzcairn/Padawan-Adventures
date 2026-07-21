@@ -3,7 +3,7 @@ import Testing
 @testable import Padawan_Adventures
 
 enum TestWorldFactory {
-    static func emptyFloor(width: Int, height: Int, stories: Int = 2) -> GameWorld {
+    static func emptyFloor(width: Int, height: Int, stories: Int = 1) -> GameWorld {
         let floor = Tile(kind: .floor(isPit: false))
         let tiles = Array(
             repeating: Array(repeating: Array(repeating: floor, count: width), count: height),
@@ -27,9 +27,9 @@ struct PathfinderTests {
     @Test func findsPathAroundWall() {
         let pathfinder = Pathfinder()
         var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 2, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 3, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 3, story: 0))
 
         let start = GridCoord(x: 1, y: 2, story: 0)
         let goal = GridCoord(x: 3, y: 2, story: 0)
@@ -46,9 +46,9 @@ struct PathfinderTests {
     @Test func cannotPathThroughSolidWallPathsToClosest() {
         let pathfinder = Pathfinder()
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 0, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 0, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
 
         let start = GridCoord(x: 0, y: 1, story: 0)
         let goal = GridCoord(x: 4, y: 1, story: 0)
@@ -65,7 +65,7 @@ struct PathfinderTests {
     @Test func doorCellIsPassable() {
         let pathfinder = Pathfinder()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)), at: GridCoord(x: 1, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true)), at: GridCoord(x: 1, y: 1, story: 0))
 
         let start = GridCoord(x: 0, y: 1, story: 0)
         let goal = GridCoord(x: 2, y: 1, story: 0)
@@ -74,127 +74,6 @@ struct PathfinderTests {
         let doorCell = GridCoord(x: 1, y: 1, story: 0)
         #expect(path != nil)
         #expect(path?.contains(doorCell) == true)
-    }
-
-    @Test func rampConnectsStories() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        let a = GridCoord(x: 1, y: 1, story: 0)
-        let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .ramp(partner: b, otherStory: 1)), at: a)
-        world.setTile(Tile(kind: .ramp(partner: a, otherStory: 1)), at: b)
-
-        let start = GridCoord(x: 1, y: 1, story: 0)
-        let goal = GridCoord(x: 1, y: 1, story: 1)
-
-        let path = pathfinder.findPath(from: start, to: goal, in: world)
-        #expect(path != nil)
-        #expect(path?.last == goal)
-    }
-
-    @Test func generatedRampsCarveWalkableUpperLandings() throws {
-        let config = WorldSeedConfig(
-            version: 1,
-            seed: 42,
-            world: .init(width: 40, height: 40, stories: 2),
-            generation: .init(
-                algorithm: "rooms_doors",
-                roomCount: 20,
-                corridorWidth: 2,
-                minRoomSize: 4,
-                maxRoomSize: 10,
-                pitChance: 0,
-                wallDestructibleChance: 0,
-                rampCount: 8,
-                ladderCount: 0,
-                slideCount: 0,
-                doorCount: 4
-            ),
-            player: .init(letter: "P", spawn: .init(x: 1, y: 1, story: 0)),
-            extensions: nil
-        )
-        let world = try ProceduralGenerator().generate(from: config)
-        var rampTiles = 0
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                let coord = GridCoord(x: x, y: y, story: 0)
-                guard case .ramp(let partner, let otherStory) = world.tile(at: coord)?.kind else {
-                    continue
-                }
-                rampTiles += 1
-                #expect(otherStory == 1)
-                #expect(world.isWalkable(at: coord.onStory(1)))
-                #expect(world.isWalkable(at: partner.onStory(1)))
-            }
-        }
-        #expect(rampTiles >= 12) // 8 pairs × 2 tiles, allow soft undershoot
-    }
-
-    @Test func ladderConnectsStories() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: GridCoord(x: 1, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: GridCoord(x: 1, y: 1, story: 1))
-
-        let start = GridCoord(x: 0, y: 1, story: 0)
-        let goal = GridCoord(x: 0, y: 1, story: 1)
-
-        let path = pathfinder.findPath(from: start, to: goal, in: world)
-        #expect(path != nil)
-        #expect(path?.last == goal)
-        #expect(path?.contains(GridCoord(x: 1, y: 1, story: 0)) == true)
-        #expect(path?.contains(GridCoord(x: 1, y: 1, story: 1)) == true)
-    }
-
-    @Test func tappingLadderPathsToOtherStory() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let ladder0 = GridCoord(x: 1, y: 1, story: 0)
-        let ladder1 = GridCoord(x: 1, y: 1, story: 1)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: ladder0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: ladder1)
-
-        let start = GridCoord(x: 0, y: 1, story: 0)
-        #expect(world.isValidMovementGoal(at: ladder0))
-        let resolved = world.movementGoalResolvingConnectors(from: start, goal: ladder0)
-        #expect(resolved == ladder1)
-
-        let path = pathfinder.findPath(from: start, to: resolved, in: world)
-        #expect(path?.last == ladder1)
-        #expect(path?.contains(ladder0) == true)
-    }
-
-    @Test func tappingRampPathsToUpperStory() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        let a = GridCoord(x: 1, y: 1, story: 0)
-        let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .ramp(partner: b, otherStory: 1)), at: a)
-        world.setTile(Tile(kind: .ramp(partner: a, otherStory: 1)), at: b)
-
-        let start = GridCoord(x: 0, y: 1, story: 0)
-        let resolved = world.movementGoalResolvingConnectors(from: start, goal: a)
-        #expect(resolved == a.onStory(1))
-
-        let path = pathfinder.findPath(from: start, to: resolved, in: world)
-        #expect(path?.last == a.onStory(1))
-        #expect(path?.contains(a) == true)
-    }
-
-    @Test func rampAllowsDescentFromUpperStory() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        let a = GridCoord(x: 1, y: 1, story: 0)
-        let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .ramp(partner: b, otherStory: 1)), at: a)
-        world.setTile(Tile(kind: .ramp(partner: a, otherStory: 1)), at: b)
-
-        let start = GridCoord(x: 1, y: 1, story: 1)
-        let goal = GridCoord(x: 0, y: 1, story: 0)
-        let path = pathfinder.findPath(from: start, to: goal, in: world)
-        #expect(path != nil)
-        #expect(path?.contains(a) == true)
-        #expect(path?.last == goal)
     }
 
     @Test func findsDiagonalShortcutOnOpenFloor() {
@@ -214,7 +93,7 @@ struct PathfinderTests {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         // Block one cardinal adjacent to the diagonal from (0,0) → (1,1).
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)),
+            Tile(kind: .wall(destructible: false, hasDoor: false)),
             at: GridCoord(x: 1, y: 0, story: 0)
         )
 
@@ -229,7 +108,7 @@ struct PathfinderTests {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let door = GridCoord(x: 1, y: 1, story: 0)
         let pit = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)), at: door)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true)), at: door)
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
 
         let start = GridCoord(x: 0, y: 1, story: 0)
@@ -240,31 +119,12 @@ struct PathfinderTests {
         #expect(pitPath?.last == pit)
     }
 
-    @Test func slideAllowsDownOnly() {
-        let pathfinder = Pathfinder()
-        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        let upperA = GridCoord(x: 1, y: 1, story: 1)
-        let upperB = GridCoord(x: 2, y: 1, story: 1)
-        world.setTile(Tile(kind: .slide(partner: upperB, lowerStory: 0)), at: upperA)
-        world.setTile(Tile(kind: .slide(partner: upperA, lowerStory: 0)), at: upperB)
-
-        let downPath = pathfinder.findPath(from: upperA, to: GridCoord(x: 1, y: 1, story: 0), in: world)
-        #expect(downPath != nil)
-        #expect(downPath?.last == GridCoord(x: 1, y: 1, story: 0))
-
-        let lowerStart = GridCoord(x: 1, y: 1, story: 0)
-        let upPath = pathfinder.findPath(from: lowerStart, to: upperA, in: world)
-        #expect(upPath != nil)
-        #expect(upPath?.last != upperA)
-        #expect(upPath?.last?.story == 0)
-    }
-
     @Test func destroyWallOpensRoute() {
         let pathfinder = Pathfinder()
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 0, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false)), at: GridCoord(x: 2, y: 0, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
 
         let start = GridCoord(x: 0, y: 1, story: 0)
         let goal = GridCoord(x: 4, y: 1, story: 0)
@@ -282,29 +142,19 @@ struct PathfinderTests {
 }
 
 struct MovementGoalTests {
-    @Test func validGoalsIncludeFloorsPitsRampsSlidesAndLadders() {
+    @Test func validGoalsIncludeFloorsAndPitsOnly() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let floor = GridCoord(x: 0, y: 0, story: 0)
         let pit = GridCoord(x: 1, y: 0, story: 0)
         let wall = GridCoord(x: 2, y: 0, story: 0)
         let door = GridCoord(x: 0, y: 1, story: 0)
-        let ramp = GridCoord(x: 1, y: 1, story: 0)
-        let slide = GridCoord(x: 2, y: 1, story: 0)
-        let ladder = GridCoord(x: 0, y: 2, story: 0)
-        let partner = GridCoord(x: 1, y: 2, story: 0)
 
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true, hasLadder: false)), at: door)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true)), at: ladder)
-        world.setTile(Tile(kind: .ramp(partner: partner, otherStory: 1)), at: ramp)
-        world.setTile(Tile(kind: .slide(partner: partner, lowerStory: 0)), at: slide)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true)), at: door)
 
         #expect(world.isValidMovementGoal(at: floor))
         #expect(world.isValidMovementGoal(at: pit))
-        #expect(world.isValidMovementGoal(at: ramp))
-        #expect(world.isValidMovementGoal(at: slide))
-        #expect(world.isValidMovementGoal(at: ladder))
         #expect(!world.isValidMovementGoal(at: wall))
         #expect(!world.isValidMovementGoal(at: door))
     }
@@ -312,7 +162,7 @@ struct MovementGoalTests {
     @Test func nearestValidMovementGoalSnapsFromWall() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
 
         let goal = world.nearestValidMovementGoal(from: wall)
         #expect(goal != nil)
@@ -331,49 +181,21 @@ struct MovementGoalTests {
 }
 
 struct PitResolutionTests {
-    @Test func pitFallsToLowerStory() {
+    @Test func pitIsAlwaysHazard() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .floor(isPit: true)), at: GridCoord(x: 1, y: 1, story: 1))
-        world.setPlayerPosition(GridCoord(x: 1, y: 1, story: 1))
-
-        let resolution = world.resolvePit(at: GridCoord(x: 1, y: 1, story: 1))
-        #expect(resolution == .fell(to: GridCoord(x: 1, y: 1, story: 0)))
-        #expect(world.playerPosition == GridCoord(x: 1, y: 1, story: 0))
-    }
-
-    @Test func pitWithoutLowerTileIsHazard() {
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 1, y: 1, story: 0))
-        world.setTile(Tile(kind: .floor(isPit: true)), at: GridCoord(x: 1, y: 1, story: 1))
-        world.setPlayerPosition(GridCoord(x: 2, y: 2, story: 1))
-
-        let resolution = world.resolvePit(at: GridCoord(x: 1, y: 1, story: 1))
-        #expect(resolution == .hazard)
-        #expect(world.playerPosition == world.spawn)
-    }
-
-    @Test func enteringPitFallsAndStopsMovement() {
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let start = GridCoord(x: 0, y: 1, story: 1)
-        let pit = GridCoord(x: 1, y: 1, story: 1)
-        let beyond = GridCoord(x: 2, y: 1, story: 1)
+        let pit = GridCoord(x: 1, y: 1, story: 0)
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
-        world.setPlayerPosition(start)
+        world.setPlayerPosition(pit)
 
-        var movement = MovementSystem(tilesPerSecond: 1.0)
-        movement.begin(path: [start, pit, beyond])
-
-        let events = movement.update(deltaTime: 10, world: &world)
-        #expect(events.contains(.pit(.fell(to: GridCoord(x: 1, y: 1, story: 0)))))
-        #expect(world.playerPosition == GridCoord(x: 1, y: 1, story: 0))
-        #expect(movement.isMoving == false)
+        let resolution = world.resolvePit(at: pit)
+        #expect(resolution == .hazard)
+        #expect(world.playerPosition == pit)
     }
 
-    @Test func enteringHazardPitStopsMovementAndRespawns() {
+    @Test func enteringHazardPitStopsMovementAndStaysOnPit() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let start = GridCoord(x: 0, y: 1, story: 1)
-        let pit = GridCoord(x: 1, y: 1, story: 1)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 1, y: 1, story: 0))
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let pit = GridCoord(x: 1, y: 1, story: 0)
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
         world.setPlayerPosition(start)
 
@@ -382,7 +204,7 @@ struct PitResolutionTests {
 
         let events = movement.update(deltaTime: 10, world: &world)
         #expect(events.contains(.pit(.hazard)))
-        #expect(world.playerPosition == world.spawn)
+        #expect(world.playerPosition == pit)
         #expect(movement.isMoving == false)
     }
 }
@@ -582,58 +404,6 @@ struct MovementSystemTests {
         #expect(movement.isMoving)
         #expect(movement.path.count == 2)
         #expect(movement.interpolatedScreenPosition(in: world) == before)
-    }
-
-    @Test func ladderSegmentInterpolatesScreenYContinuously() {
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let start = GridCoord(x: 1, y: 1, story: 0)
-        let end = GridCoord(x: 1, y: 1, story: 1)
-        world.setPlayerPosition(start)
-
-        var movement = MovementSystem()
-        movement.begin(path: [start, end])
-
-        let config = IsometricConfig()
-        let from = IsometricMath.entityScreenPosition(start, config: config)
-        let to = IsometricMath.entityScreenPosition(end, config: config)
-
-        _ = movement.update(deltaTime: 0.25, world: &world)
-        let mid = movement.interpolatedScreenPosition(in: world, config: config)
-        #expect(abs(mid.x - from.x) < 0.000_001)
-        #expect(mid.y > from.y)
-        #expect(mid.y < to.y)
-
-        _ = movement.update(deltaTime: 0.25, world: &world)
-        let later = movement.interpolatedScreenPosition(in: world, config: config)
-        #expect(later.y > mid.y)
-        #expect(later.y <= to.y)
-    }
-
-    @Test func slideDescentIsTwiceAsFast() {
-        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        let upper = GridCoord(x: 1, y: 1, story: 1)
-        let lower = GridCoord(x: 1, y: 1, story: 0)
-        let partner = GridCoord(x: 2, y: 1, story: 1)
-        world.setTile(Tile(kind: .slide(partner: partner, lowerStory: 0)), at: upper)
-        world.setTile(Tile(kind: .slide(partner: upper, lowerStory: 0)), at: partner)
-        world.setPlayerPosition(upper)
-
-        let slidePath = [upper, lower]
-        let walkPath = [
-            GridCoord(x: 0, y: 0, story: 0),
-            GridCoord(x: 1, y: 0, story: 0),
-        ]
-
-        var movement = MovementSystem(tilesPerSecond: 1.0)
-        #expect(movement.totalDuration(for: walkPath, in: world) == 1.0)
-        #expect(movement.totalDuration(for: slidePath, in: world) == 0.5)
-
-        movement.begin(path: slidePath)
-        _ = movement.update(deltaTime: 0.49, world: &world)
-        #expect(movement.isMoving == true)
-        _ = movement.update(deltaTime: 0.02, world: &world)
-        #expect(world.playerPosition == lower)
-        #expect(movement.isMoving == false)
     }
 
     private func screenDistance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {

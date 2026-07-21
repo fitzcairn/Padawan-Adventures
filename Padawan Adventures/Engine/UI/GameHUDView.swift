@@ -7,6 +7,10 @@ final class GameHUDView: UIView {
     private let menuButton: UIButton
     private let heartsStack: UIStackView
     private let boltsStack: UIStackView
+    private let heartImage: UIImage?
+    private let boltImage: UIImage?
+
+    private static let hudIconFadeDuration: TimeInterval = 0.2
 
     init(config: HudConfig, healthCount: Int = 0, energyCount: Int = 0) {
         self.config = config
@@ -15,6 +19,16 @@ final class GameHUDView: UIView {
         self.boltsStack = Self.makeIconStack(spacing: config.iconSpacing)
         // Trailing-aligned row that grows left as icons are inserted.
         self.boltsStack.semanticContentAttribute = .forceRightToLeft
+        self.heartImage = Self.makeSymbolImage(
+            systemName: "heart.fill",
+            tint: .systemRed,
+            pointSize: config.iconSize
+        )
+        self.boltImage = Self.makeSymbolImage(
+            systemName: "bolt.fill",
+            tint: .systemYellow,
+            pointSize: config.iconSize
+        )
         super.init(frame: .zero)
         setup(healthCount: healthCount, energyCount: energyCount)
     }
@@ -33,17 +47,11 @@ final class GameHUDView: UIView {
     }
 
     func addHeart() {
-        heartsStack.addArrangedSubview(makeIcon(
-            systemName: "heart.fill",
-            tint: PlaceholderFactory.healthPickupColor
-        ))
+        addIcon(image: heartImage, to: heartsStack, animated: true)
     }
 
     func addBolt() {
-        boltsStack.addArrangedSubview(makeIcon(
-            systemName: "bolt.fill",
-            tint: PlaceholderFactory.energyPickupColor
-        ))
+        addIcon(image: boltImage, to: boltsStack, animated: true)
     }
 
     private func setup(healthCount: Int, energyCount: Int) {
@@ -52,10 +60,10 @@ final class GameHUDView: UIView {
         translatesAutoresizingMaskIntoConstraints = false
 
         for _ in 0..<max(healthCount, 0) {
-            addHeart()
+            addIcon(image: heartImage, to: heartsStack, animated: false)
         }
         for _ in 0..<max(energyCount, 0) {
-            addBolt()
+            addIcon(image: boltImage, to: boltsStack, animated: false)
         }
 
         let score = makeScoreRow()
@@ -83,9 +91,8 @@ final class GameHUDView: UIView {
         ])
     }
 
-    private func makeIcon(systemName: String, tint: UIColor) -> UIImageView {
-        let imageView = UIImageView(image: UIImage(systemName: systemName))
-        imageView.tintColor = tint
+    private func addIcon(image: UIImage?, to stack: UIStackView, animated: Bool) {
+        let imageView = UIImageView(image: image)
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.isUserInteractionEnabled = false
@@ -94,7 +101,32 @@ final class GameHUDView: UIView {
             imageView.widthAnchor.constraint(equalToConstant: size),
             imageView.heightAnchor.constraint(equalToConstant: size),
         ])
-        return imageView
+
+        imageView.alpha = animated ? 0 : 1
+        // Avoid UIStackView's implicit layout animation fighting SpriteKit's frame.
+        UIView.performWithoutAnimation {
+            stack.addArrangedSubview(imageView)
+            stack.layoutIfNeeded()
+        }
+
+        guard animated else { return }
+        UIView.animate(
+            withDuration: Self.hudIconFadeDuration,
+            delay: 0,
+            options: [.curveEaseOut, .allowUserInteraction]
+        ) {
+            imageView.alpha = 1
+        }
+    }
+
+    private static func makeSymbolImage(
+        systemName: String,
+        tint: UIColor,
+        pointSize: Int
+    ) -> UIImage? {
+        let configuration = UIImage.SymbolConfiguration(pointSize: CGFloat(pointSize), weight: .regular)
+        return UIImage(systemName: systemName, withConfiguration: configuration)?
+            .withTintColor(tint, renderingMode: .alwaysOriginal)
     }
 
     private static func makeIconStack(spacing: Int) -> UIStackView {

@@ -119,16 +119,20 @@ final class GameViewController: UIViewController {
         guard !isPresentingFight else { return }
         isPresentingFight = true
 
-        let fight = EnemyFightViewController()
-        fight.modalPresentationStyle = .fullScreen
-        fight.onFightTapped = { [weak self, weak fight] in
+        gameScene?.fadeSimulationOut { [weak self] in
             guard let self else { return }
-            fight?.dismiss(animated: false) {
-                self.gameScene?.resolveEnemyEncounter(enemyID: enemyID)
-                self.isPresentingFight = false
+            let fight = EnemyFightViewController()
+            fight.modalPresentationStyle = .fullScreen
+            fight.onFightTapped = { [weak self, weak fight] in
+                guard let self else { return }
+                fight?.dismiss(animated: false) {
+                    self.gameScene?.resolveEnemyEncounter(enemyID: enemyID) {
+                        self.isPresentingFight = false
+                    }
+                }
             }
+            self.present(fight, animated: false)
         }
-        present(fight, animated: false)
     }
 
     @MainActor

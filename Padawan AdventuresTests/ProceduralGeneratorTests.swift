@@ -6,7 +6,7 @@ struct ProceduralGeneratorTests {
         WorldSeedConfig(
             version: 1,
             seed: seed,
-            world: .init(width: 30, height: 30, stories: 2),
+            world: .init(width: 30, height: 30, stories: 1),
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: roomCount,
@@ -15,9 +15,6 @@ struct ProceduralGeneratorTests {
                 maxRoomSize: 10,
                 pitChance: 0.1,
                 wallDestructibleChance: 0.3,
-                rampCount: 1,
-                ladderCount: 1,
-                slideCount: 1,
                 doorCount: 2
             ),
             player: .init(letter: "P", spawn: .init(x: 1, y: 1, story: 0)),
@@ -67,7 +64,7 @@ struct ProceduralGeneratorTests {
                 for (dx, dy) in GridCoord.cardinals {
                     let neighbor = cell.neighbor(dx: dx, dy: dy)
                     guard !room.cells.contains(neighbor) else { continue }
-                    if case .wall(_, true, _) = world.tile(at: neighbor)?.kind {
+                    if case .wall(_, true) = world.tile(at: neighbor)?.kind {
                         return true
                     }
                 }
@@ -240,7 +237,7 @@ struct ProceduralGeneratorTests {
         world:
           width: 24
           height: 24
-          stories: 2
+          stories: 1
         generation:
           algorithm: rooms_doors
           room_count: 6
@@ -249,9 +246,6 @@ struct ProceduralGeneratorTests {
           max_room_size: 6
           pit_chance: 0.05
           wall_destructible_chance: 0.2
-          ramp_count: 8
-          ladder_count: 8
-          slide_count: 4
           door_count: 4
         player:
           letter: P
@@ -262,61 +256,7 @@ struct ProceduralGeneratorTests {
         #expect(config.generation.algorithm == "rooms_doors")
         #expect(config.generation.minRoomSize == 4)
         #expect(config.generation.maxRoomSize == 6)
-        #expect(config.generation.rampCount == 8)
-        #expect(config.generation.ladderCount == 8)
-        #expect(config.generation.slideCount == 4)
-    }
-
-    @Test func generatesDenseInterStoryConnectors() throws {
-        let rampCount = 8
-        let ladderCount = 8
-        let slideCount = 4
-        let config = WorldSeedConfig(
-            version: 1,
-            seed: 42,
-            world: .init(width: 80, height: 80, stories: 2),
-            generation: .init(
-                algorithm: "rooms_doors",
-                roomCount: 60,
-                corridorWidth: 2,
-                minRoomSize: 4,
-                maxRoomSize: 12,
-                pitChance: 0,
-                wallDestructibleChance: 0,
-                rampCount: rampCount,
-                ladderCount: ladderCount,
-                slideCount: slideCount,
-                doorCount: 4
-            ),
-            player: .init(letter: "P", spawn: nil),
-            extensions: nil
-        )
-        let world = try ProceduralGenerator().generate(from: config)
-
-        var rampTiles = 0
-        var slideTiles = 0
-        var ladderTiles = 0
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                if case .ramp = world.tile(at: GridCoord(x: x, y: y, story: 0))?.kind {
-                    rampTiles += 1
-                }
-                if case .slide = world.tile(at: GridCoord(x: x, y: y, story: 1))?.kind {
-                    slideTiles += 1
-                    #expect(world.isWalkable(at: GridCoord(x: x, y: y, story: 0)))
-                }
-                if case .wall(_, _, true) = world.tile(at: GridCoord(x: x, y: y, story: 0))?.kind {
-                    ladderTiles += 1
-                }
-            }
-        }
-
-        let rampPairs = rampTiles / 2
-        let slidePairs = slideTiles / 2
-        #expect(rampPairs >= Int((Double(rampCount) * 0.8).rounded(.up)))
-        #expect(ladderTiles >= Int((Double(ladderCount) * 0.8).rounded(.up)))
-        #expect(slidePairs > 0)
-        #expect(slidePairs >= Int((Double(slideCount) * 0.8).rounded(.up)))
+        #expect(config.world.stories == 1)
     }
 
     @Test func incompatibleSaveIsRejectedBySize() {

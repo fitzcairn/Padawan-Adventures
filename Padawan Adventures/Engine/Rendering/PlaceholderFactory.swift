@@ -6,9 +6,6 @@ enum PlaceholderFactory {
     static let floorColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
     /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
     static let wallColor = UIColor(white: 0.72, alpha: 1)
-    static let ladderColor = UIColor.purple
-    static let rampColor = UIColor.red
-    static let slideColor = UIColor.blue
 
     static func tileNode(
         for tile: Tile,
@@ -24,11 +21,10 @@ enum PlaceholderFactory {
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
             // Pits are transparent — no floor rendered (black void shows through).
             if !isPit {
-                let fill = landingTint(for: coord, in: world) ?? floorColor
-                container.addChild(horizontalFloorNode(config: config, fillColor: fill))
+                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
             }
 
-        case .wall(_, let hasDoor, let hasLadder):
+        case .wall(_, let hasDoor):
             if hasDoor {
                 // Doorways show as floor so the passage reads as walkable ground.
                 container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
@@ -44,37 +40,12 @@ enum PlaceholderFactory {
                         faces = .all
                     }
                     let wall = perspectiveWallNode(
-                        color: hasLadder ? ladderColor : wallColor,
+                        color: wallColor,
                         faces: faces,
                         config: config
                     )
                     container.addChild(wall)
                 }
-            }
-
-        case .ramp(let partner, _):
-            container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            if let slope = connectorSlopeNode(
-                from: coord,
-                partner: partner,
-                config: config,
-                fillColor: rampColor,
-                baseElevation: 0
-            ) {
-                container.addChild(slope)
-            }
-
-        case .slide(let partner, _):
-            container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            // Same mesh as a ramp, hung down from the upper story by storyHeight.
-            if let slope = connectorSlopeNode(
-                from: coord,
-                partner: partner,
-                config: config,
-                fillColor: slideColor,
-                baseElevation: -config.storyHeight
-            ) {
-                container.addChild(slope)
             }
         }
 
@@ -208,8 +179,8 @@ enum PlaceholderFactory {
 
     static let pickupIconSize: CGFloat = 30
     static let pickupBounceAmplitude: CGFloat = 5
-    static let healthPickupColor = UIColor(red: 0.62, green: 0.28, blue: 0.85, alpha: 1)
-    static let energyPickupColor = UIColor(red: 1.0, green: 0.55, blue: 0.1, alpha: 1)
+    static let healthPickupColor = UIColor.systemRed
+    static let energyPickupColor = UIColor.systemYellow
     static let treasurePickupColor = UIColor(red: 0.2, green: 0.75, blue: 0.35, alpha: 1)
 
     static func pickupNode(
@@ -246,10 +217,18 @@ enum PlaceholderFactory {
             tint = treasurePickupColor
         }
 
+        // Bake the tint into a bitmap — SKTexture ignores UIImage dynamic tints and
+        // otherwise draws SF Symbols as black template images.
         let config = UIImage.SymbolConfiguration(pointSize: pickupIconSize, weight: .bold)
-        let image = UIImage(systemName: systemName, withConfiguration: config)?
-            .withTintColor(tint, renderingMode: .alwaysOriginal)
-            ?? UIImage()
+        guard let symbol = UIImage(systemName: systemName, withConfiguration: config) else {
+            return SKTexture()
+        }
+        let size = CGSize(width: pickupIconSize, height: pickupIconSize)
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            symbol
+                .withTintColor(tint, renderingMode: .alwaysOriginal)
+                .draw(in: CGRect(origin: .zero, size: size))
+        }
         return SKTexture(image: image)
     }
 
@@ -293,41 +272,6 @@ enum PlaceholderFactory {
         node.zPosition = IsometricMath.entitySortValue(for: entity.position, config: config)
     }
 
-    /// Sloped ramp/slide surface for the canonical cell of a pair; partner draws nothing.
-    private static func connectorSlopeNode(
-        from coord: GridCoord,
-        partner: GridCoord,
-        config: IsometricConfig,
-        fillColor: UIColor,
-        baseElevation: CGFloat
-    ) -> SKShapeNode? {
-        guard IsometricTileGeometry.isCanonicalPairCell(coord, partner: partner) else { return nil }
-        guard let path = IsometricTileGeometry.connectorSlopePath(
-            from: coord,
-            partner: partner,
-            config: config,
-            rise: config.storyHeight,
-            baseElevation: baseElevation
-        ) else { return nil }
-
-        let node = SKShapeNode(path: path)
-        node.name = "connector-slope"
-        node.lineWidth = 1
-        node.fillColor = fillColor
-        node.strokeColor = UIColor(white: 0.2, alpha: 1)
-        return node
-    }
-
-    /// Tint upper floors that sit directly above a ramp (or share a cell with a slide cue).
-    private static func landingTint(for coord: GridCoord, in world: GameWorld?) -> UIColor? {
-        guard let world, coord.story > 0 else { return nil }
-        let below = coord.onStory(coord.story - 1)
-        if case .ramp = world.tile(at: below)?.kind {
-            return rampColor
-        }
-        return nil
-    }
-
     /// Walls that don't border walkable space stay black (unrendered over the scene background).
     private static func shouldRenderWall(at coord: GridCoord, in world: GameWorld?) -> Bool {
         guard let world else { return true }
@@ -336,10 +280,6 @@ enum PlaceholderFactory {
             guard world.isInBounds(neighbor), let tile = world.tile(at: neighbor) else { continue }
             if isWalkableSurface(tile) { return true }
         }
-        // Ladder walls should still show even if only useful vertically.
-        if case .wall(_, _, true) = world.tile(at: coord)?.kind {
-            return true
-        }
         return false
     }
 
@@ -347,10 +287,8 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .floor(let isPit):
             return !isPit
-        case .ramp, .slide:
-            return true
-        case .wall(_, let hasDoor, let hasLadder):
-            return hasDoor || hasLadder
+        case .wall(_, let hasDoor):
+            return hasDoor
         }
     }
 }

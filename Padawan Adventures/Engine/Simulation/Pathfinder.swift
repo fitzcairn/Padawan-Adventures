@@ -56,59 +56,6 @@ struct Pathfinder: Sendable {
             result.append(next)
         }
 
-        if let tile = world.tile(at: coord) {
-            switch tile.kind {
-            case .ramp(let partner, let otherStory):
-                if world.isInBounds(partner), world.isWalkable(at: partner), partner != coord {
-                    if !result.contains(partner) {
-                        result.append(partner)
-                    }
-                }
-                let vertical = coord.onStory(otherStory)
-                if world.isInBounds(vertical), world.isWalkable(at: vertical) {
-                    result.append(vertical)
-                }
-
-            case .slide(let partner, let lowerStory):
-                if world.isInBounds(partner), world.isWalkable(at: partner), partner != coord {
-                    if !result.contains(partner) {
-                        result.append(partner)
-                    }
-                }
-                if coord.story > lowerStory {
-                    let lower = coord.onStory(lowerStory)
-                    if world.isInBounds(lower), world.isWalkable(at: lower) {
-                        result.append(lower)
-                    }
-                    let partnerLower = partner.onStory(lowerStory)
-                    if world.isInBounds(partnerLower), world.isWalkable(at: partnerLower) {
-                        result.append(partnerLower)
-                    }
-                }
-
-            case .wall(_, _, let hasLadder) where hasLadder:
-                for delta in [-1, 1] {
-                    let vertical = coord.onStory(coord.story + delta)
-                    if world.isInBounds(vertical), world.isWalkable(at: vertical) {
-                        result.append(vertical)
-                    }
-                }
-
-            default:
-                break
-            }
-        }
-
-        // Descend onto a ramp that lands on this cell from the story below.
-        let below = coord.onStory(coord.story - 1)
-        if world.isInBounds(below),
-           case .ramp(_, let otherStory)? = world.tile(at: below)?.kind,
-           otherStory == coord.story,
-           world.isWalkable(at: below),
-           !result.contains(below) {
-            result.append(below)
-        }
-
         return result
     }
 

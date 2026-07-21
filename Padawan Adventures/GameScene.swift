@@ -150,19 +150,27 @@ final class GameScene: SKScene {
             }
 
             if let pickupID = result.pickupContactID {
-                beginPickupResolution(pickupID: pickupID)
-                break
+                let shouldPause = beginPickupResolution(pickupID: pickupID)
+                if shouldPause { break }
             }
         }
     }
 
-    /// Removes the enemy after a fight and resumes simulation.
-    func resolveEnemyEncounter(enemyID: UUID) {
+    /// Fades the simulation world out (e.g. before an encounter overlay).
+    func fadeSimulationOut(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+        renderer.fadeWorldOut(duration: duration, completion: completion)
+    }
+
+    /// Removes the enemy after a fight, fades the simulation back in, then resumes.
+    func resolveEnemyEncounter(enemyID: UUID, completion: (() -> Void)? = nil) {
         simulationLoop.removeEnemy(id: enemyID, from: &world)
-        isPausedForEncounter = false
         pendingInput = PendingInput()
         renderer.syncEntities(world.entities)
         scheduleSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
     }
 
     /// Resumes simulation after the PIT! screen is dismissed.
@@ -181,37 +189,41 @@ final class GameScene: SKScene {
         renderer.render(world: world, focus: viewportFocus)
     }
 
-    private func beginPickupResolution(pickupID: UUID) {
+    /// Returns `true` when simulation should pause (treasure only).
+    @discardableResult
+    private func beginPickupResolution(pickupID: UUID) -> Bool {
         guard let pickup = world.entity(id: pickupID),
-              let kind = pickup.pickupKind else { return }
-
-        isResolvingPickup = true
-        pendingInput = PendingInput()
+              let kind = pickup.pickupKind else { return false }
 
         switch kind {
         case .health, .energy:
             resolveHealthOrEnergyPickup(id: pickupID, kind: kind)
+            return false
         case .treasure:
+            isResolvingPickup = true
+            pendingInput = PendingInput()
             resolveTreasurePickup(id: pickupID)
+            return true
         }
     }
 
     private func resolveHealthOrEnergyPickup(id: UUID, kind: PickupKind) {
+        // Remove immediately so contact can't re-fire and syncEntities won't recreate the sprite.
+        // Collect bounce/fade runs on the detached node while the sim keeps ticking.
+        _ = world.removeEntity(id: id)
+        switch kind {
+        case .health:
+            world.healthCount += 1
+        case .energy:
+            world.energyCount += 1
+        case .treasure:
+            break
+        }
+        onPickupCollected?(kind)
         renderer.playPickupCollectAnimation(id: id) { [weak self] in
-            guard let self else { return }
-            _ = self.world.removeEntity(id: id)
-            switch kind {
-            case .health:
-                self.world.healthCount += 1
-            case .energy:
-                self.world.energyCount += 1
-            case .treasure:
-                break
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleSave()
             }
-            self.renderer.syncEntities(self.world.entities)
-            self.onPickupCollected?(kind)
-            self.scheduleSave()
-            self.isResolvingPickup = false
         }
     }
 
