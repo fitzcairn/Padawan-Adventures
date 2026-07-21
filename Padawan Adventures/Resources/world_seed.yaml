@@ -1,0 +1,27 @@
+# Padawan Adventures — world seed (v1)
+# All procedural generation is deterministic for a given seed + params.
+
+version: 1
+seed: 42
+
+world:
+  width: 24
+  height: 24
+  stories: 2
+
+generation:
+  algorithm: rooms_bsp
+  room_count: 6
+  corridor_width: 1
+  pit_chance: 0.05
+  wall_destructible_chance: 0.2
+  ramp_count: 2
+  ladder_count: 2
+  slide_count: 1
+  door_count: 4
+
+player:
+  letter: P
+  spawn: { x: 3, y: 3, story: 0 }
+
+extensions: {}

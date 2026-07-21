@@ -2,87 +2,153 @@
 //  GameScene.swift
 //  Padawan Adventures
 //
-//  Created by Steve Martin on 7/21/26.
-//
 
 import SpriteKit
-import GameplayKit
 
-class GameScene: SKScene {
-    
-    private var label : SKLabelNode?
-    private var spinnyNode : SKShapeNode?
-    
+final class GameScene: SKScene {
+    private var world = GameWorld(
+        width: 1,
+        height: 1,
+        tiles: [[[
+            Tile(kind: .floor(isPit: false)),
+        ]]],
+        entities: [GameEntity(letter: "P", position: GridCoord(x: 0, y: 0, story: 0), isPlayer: true)],
+        spawn: GridCoord(x: 0, y: 0, story: 0)
+    )
+    private var movement = MovementSystem()
+    private var simulationClock = SimulationClock()
+    private var simulationLoop = SimulationLoop()
+    private var pendingInput = PendingInput()
+    private let renderer = IsometricRenderer()
+    private let isoConfig = IsometricConfig()
+    private var viewAnchor = GridCoord(x: 0, y: 0, story: 0)
+    private var lastUpdateTime: TimeInterval?
+    private let saveService: GameSaveService?
+
+    override init(size: CGSize) {
+        saveService = try? GameSaveService()
+        super.init(size: size)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        saveService = try? GameSaveService()
+        super.init(coder: aDecoder)
+    }
+
     override func didMove(to view: SKView) {
-        
-        // Get label node from scene and store it for use later
-        self.label = self.childNode(withName: "//helloLabel") as? SKLabelNode
-        if let label = self.label {
-            label.alpha = 0.0
-            label.run(SKAction.fadeIn(withDuration: 2.0))
-        }
-        
-        // Create shape node to use during mouse interaction
-        let w = (self.size.width + self.size.height) * 0.05
-        self.spinnyNode = SKShapeNode.init(rectOf: CGSize.init(width: w, height: w), cornerRadius: w * 0.3)
-        
-        if let spinnyNode = self.spinnyNode {
-            spinnyNode.lineWidth = 2.5
-            
-            spinnyNode.run(SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(Double.pi), duration: 1)))
-            spinnyNode.run(SKAction.sequence([SKAction.wait(forDuration: 0.5),
-                                              SKAction.fadeOut(withDuration: 0.5),
-                                              SKAction.removeFromParent()]))
+        backgroundColor = SKColor(red: 0.12, green: 0.14, blue: 0.18, alpha: 1)
+        anchorPoint = CGPoint(x: 0.5, y: 0.5)
+
+        renderer.attach(to: self)
+
+        Task { @MainActor in
+            await bootstrapWorld()
         }
     }
-    
-    
-    func touchDown(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.green
-            self.addChild(n)
-        }
-    }
-    
-    func touchMoved(toPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.blue
-            self.addChild(n)
-        }
-    }
-    
-    func touchUp(atPoint pos : CGPoint) {
-        if let n = self.spinnyNode?.copy() as! SKShapeNode? {
-            n.position = pos
-            n.strokeColor = SKColor.red
-            self.addChild(n)
-        }
-    }
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let label = self.label {
-            label.run(SKAction.init(named: "Pulse")!, withKey: "fadeInOut")
-        }
-        
-        for t in touches { self.touchDown(atPoint: t.location(in: self)) }
-    }
-    
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchMoved(toPoint: t.location(in: self)) }
-    }
-    
+
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
+        guard let touch = touches.first,
+              let playerPosition = world.playerPosition else { return }
+
+        let location = touch.location(in: self)
+        let target = IsometricMath.gridFromView(
+            location,
+            anchor: viewAnchor,
+            viewCenter: renderer.sceneViewCenter,
+            story: playerPosition.story,
+            config: isoConfig
+        )
+
+        guard world.isInBounds(target), world.isEnterable(at: target) else { return }
+        pendingInput.enqueue(target)
     }
-    
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        for t in touches { self.touchUp(atPoint: t.location(in: self)) }
-    }
-    
-    
+
     override func update(_ currentTime: TimeInterval) {
-        // Called before each frame is rendered
+        let delta: TimeInterval
+        if let lastUpdateTime {
+            delta = currentTime - lastUpdateTime
+        } else {
+            delta = 0
+        }
+        lastUpdateTime = currentTime
+
+        let ticksToRun = simulationClock.advance(deltaTime: delta)
+
+        for _ in 0..<ticksToRun {
+            simulationClock.registerTick()
+            let result = simulationLoop.tick(
+                world: &world,
+                movement: &movement,
+                pendingInput: &pendingInput,
+                tickCount: simulationClock.tickCount
+            )
+            applyTickResult(result)
+
+            if result.shouldPersist {
+                scheduleSave()
+            }
+        }
+    }
+
+    @MainActor
+    private func bootstrapWorld() async {
+        do {
+            if let saveService, let restored = try await saveService.load() {
+                world = restored
+            } else {
+                world = try WorldLoader.loadFromBundle()
+            }
+        } catch {
+            world = (try? ProceduralGenerator().generate(from: Self.fallbackConfig()))
+                ?? world
+        }
+
+        simulationClock = SimulationClock()
+        movement = MovementSystem()
+        pendingInput = PendingInput()
+
+        viewAnchor = world.playerPosition ?? world.spawn
+        renderer.render(world: world, anchor: viewAnchor)
+    }
+
+    private func applyTickResult(_ result: SimulationTickResult) {
+        if let displayCoord = result.playerDisplayCoord {
+            viewAnchor = displayCoord
+        } else {
+            viewAnchor = world.playerPosition ?? world.spawn
+        }
+
+        renderer.updateWorldAnchor(viewAnchor)
+        renderer.syncEntities(world.entities, anchor: viewAnchor)
+        renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
+    }
+
+    private func scheduleSave() {
+        guard let saveService else { return }
+        let snapshot = world
+        Task {
+            try? await saveService.save(snapshot)
+        }
+    }
+
+    private static func fallbackConfig() -> WorldSeedConfig {
+        WorldSeedConfig(
+            version: 1,
+            seed: 42,
+            world: .init(width: 24, height: 24, stories: 2),
+            generation: .init(
+                algorithm: "rooms_bsp",
+                roomCount: 6,
+                corridorWidth: 1,
+                pitChance: 0.05,
+                wallDestructibleChance: 0.2,
+                rampCount: 2,
+                ladderCount: 2,
+                slideCount: 1,
+                doorCount: 4
+            ),
+            player: .init(letter: "P", spawn: .init(x: 3, y: 3, story: 0)),
+            extensions: nil
+        )
     }
 }
