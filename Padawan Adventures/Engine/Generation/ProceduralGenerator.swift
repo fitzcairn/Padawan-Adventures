@@ -17,11 +17,17 @@ struct GenerationResult: Sendable {
 }
 
 struct ProceduralGenerator: Sendable {
-    func generate(from config: WorldSeedConfig) throws -> GameWorld {
-        try generateDetailed(from: config).world
+    func generate(
+        from config: WorldSeedConfig,
+        enemyConfig: EnemyConfig = .fallback
+    ) throws -> GameWorld {
+        try generateDetailed(from: config, enemyConfig: enemyConfig).world
     }
 
-    func generateDetailed(from config: WorldSeedConfig) throws -> GenerationResult {
+    func generateDetailed(
+        from config: WorldSeedConfig,
+        enemyConfig: EnemyConfig = .fallback
+    ) throws -> GenerationResult {
         try config.validate()
 
         var rng = SeededGenerator(seed: config.seed)
@@ -56,9 +62,10 @@ struct ProceduralGenerator: Sendable {
         clearPits(around: spawn, tiles: &tiles, story: 0)
         markDestructibleWalls(in: &tiles[0], chance: params.wallDestructibleChance, rng: &rng)
 
-        placeLadders(in: &tiles, count: params.ladderCount, rng: &rng)
-        placeRamps(in: &tiles, count: params.rampCount, rng: &rng)
-        placeSlides(in: &tiles, count: params.slideCount, rng: &rng)
+        var connectorAnchors: [(x: Int, y: Int)] = []
+        placeLadders(in: &tiles, count: params.ladderCount, rng: &rng, anchors: &connectorAnchors)
+        placeRamps(in: &tiles, count: params.rampCount, rng: &rng, anchors: &connectorAnchors)
+        placeSlides(in: &tiles, count: params.slideCount, rng: &rng, anchors: &connectorAnchors)
 
         // Final pass after props so hallways/doors stay at least 2 tiles wide.
         enforceMinTraversableWidth(
@@ -69,13 +76,42 @@ struct ProceduralGenerator: Sendable {
 
         let letter = config.player.letter.first ?? "P"
         let player = GameEntity(letter: letter, position: spawn, isPlayer: true)
+        var entities = [player]
+        var occupied: Set<GridCoord> = [spawn]
+
+        if let spawnConfig = config.enemies,
+           let typeConfig = enemyConfig.type(named: spawnConfig.type) {
+            let enemies = spawnEnemies(
+                in: rooms,
+                excludingRoomID: topRight.id,
+                tiles: tiles,
+                typeID: spawnConfig.type,
+                typeConfig: typeConfig,
+                chance: spawnConfig.spawnChancePerRoom,
+                occupied: &occupied,
+                rng: &rng
+            )
+            entities.append(contentsOf: enemies)
+        }
+
+        if let pickups = config.pickups {
+            let spawned = spawnPickups(
+                pickups,
+                in: rooms,
+                excludingRoomID: topRight.id,
+                tiles: tiles,
+                occupied: &occupied,
+                rng: &rng
+            )
+            entities.append(contentsOf: spawned)
+        }
 
         let world = GameWorld(
             width: width,
             height: height,
             storyCount: stories,
             tiles: tiles,
-            entities: [player],
+            entities: entities,
             spawn: spawn
         )
 
@@ -85,6 +121,106 @@ struct ProceduralGenerator: Sendable {
             topRightRoomID: topRight.id,
             joinPairs: mstEdges
         )
+    }
+
+    /// One roll per room (except the spawn room); place on a walkable non-pit floor cell.
+    private func spawnEnemies(
+        in rooms: [GeneratedRoom],
+        excludingRoomID: Int,
+        tiles: [[[Tile]]],
+        typeID: String,
+        typeConfig: EnemyTypeConfig,
+        chance: Double,
+        occupied: inout Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> [GameEntity] {
+        var enemies: [GameEntity] = []
+
+        for room in rooms where room.id != excludingRoomID {
+            guard rng.nextBool(probability: chance) else { continue }
+            guard let position = pickSpawnCell(
+                in: room,
+                tiles: tiles,
+                occupied: occupied,
+                rng: &rng
+            ) else { continue }
+
+            occupied.insert(position)
+            enemies.append(
+                GameEntity(
+                    letter: typeConfig.letterCharacter,
+                    position: position,
+                    isPlayer: false,
+                    enemyTypeID: typeID
+                )
+            )
+        }
+
+        return enemies
+    }
+
+    /// One roll per room per kind (except the spawn room); place on a walkable non-pit floor cell.
+    private func spawnPickups(
+        _ config: WorldSeedConfig.PickupsSpawnConfig,
+        in rooms: [GeneratedRoom],
+        excludingRoomID: Int,
+        tiles: [[[Tile]]],
+        occupied: inout Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> [GameEntity] {
+        var pickups: [GameEntity] = []
+        let kinds: [(PickupKind, Double?)] = [
+            (.health, config.health?.spawnChancePerRoom),
+            (.energy, config.energy?.spawnChancePerRoom),
+            (.treasure, config.treasure?.spawnChancePerRoom),
+        ]
+
+        for (kind, chance) in kinds {
+            guard let chance else { continue }
+            for room in rooms where room.id != excludingRoomID {
+                guard rng.nextBool(probability: chance) else { continue }
+                guard let position = pickSpawnCell(
+                    in: room,
+                    tiles: tiles,
+                    occupied: occupied,
+                    rng: &rng
+                ) else { continue }
+
+                occupied.insert(position)
+                pickups.append(
+                    GameEntity(
+                        letter: " ",
+                        position: position,
+                        isPlayer: false,
+                        pickupKind: kind
+                    )
+                )
+            }
+        }
+
+        return pickups
+    }
+
+    private func pickSpawnCell(
+        in room: GeneratedRoom,
+        tiles: [[[Tile]]],
+        occupied: Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> GridCoord? {
+        let candidates = room.cells
+            .filter { cell in
+                guard !occupied.contains(cell) else { return false }
+                let tile = tiles[0][cell.y][cell.x]
+                if case .floor(let isPit) = tile.kind {
+                    return !isPit
+                }
+                return false
+            }
+            .sorted { lhs, rhs in
+                if lhs.x != rhs.x { return lhs.x < rhs.x }
+                return lhs.y < rhs.y
+            }
+        return rng.pick(candidates)
     }
 
     // MARK: - Room placement
@@ -756,31 +892,45 @@ struct ProceduralGenerator: Sendable {
         }
     }
 
-    private func placeLadders(in tiles: inout [[[Tile]]], count: Int, rng: inout SeededGenerator) {
+    private let minConnectorSeparation = 6
+
+    private func placeLadders(
+        in tiles: inout [[[Tile]]],
+        count: Int,
+        rng: inout SeededGenerator,
+        anchors: inout [(x: Int, y: Int)]
+    ) {
         var placed = 0
         var attempts = 0
-        while placed < count, attempts < count * 50 {
+        while placed < count, attempts < count * 100 {
             attempts += 1
             let x = rng.nextInt(upperBound: tiles[0][0].count)
             let y = rng.nextInt(upperBound: tiles[0].count)
+            guard isFarEnoughFromConnectors(x: x, y: y, anchors: anchors) else { continue }
 
             for story in 0..<(tiles.count - 1) {
                 guard case .wall(let destructible, let door, false) = tiles[story][y][x].kind else { continue }
-                guard case .wall = tiles[story + 1][y][x].kind else { continue }
+                guard case .wall(_, _, false) = tiles[story + 1][y][x].kind else { continue }
                 guard adjacentFloorCount(at: GridCoord(x: x, y: y, story: story), tiles: tiles) >= 1 else { continue }
 
                 tiles[story][y][x] = Tile(kind: .wall(destructible: destructible, hasDoor: door, hasLadder: true))
                 tiles[story + 1][y][x] = Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: true))
+                anchors.append((x, y))
                 placed += 1
                 break
             }
         }
     }
 
-    private func placeRamps(in tiles: inout [[[Tile]]], count: Int, rng: inout SeededGenerator) {
+    private func placeRamps(
+        in tiles: inout [[[Tile]]],
+        count: Int,
+        rng: inout SeededGenerator,
+        anchors: inout [(x: Int, y: Int)]
+    ) {
         var placed = 0
         var attempts = 0
-        while placed < count, attempts < count * 50 {
+        while placed < count, attempts < count * 100 {
             attempts += 1
             let lowerStory = 0
             let upperStory = 1
@@ -794,6 +944,10 @@ struct ProceduralGenerator: Sendable {
                 : GridCoord(x: x, y: y + 1, story: lowerStory)
 
             guard isFloor(tiles[lowerStory][a.y][a.x]), isFloor(tiles[lowerStory][b.y][b.x]) else { continue }
+            guard isFarEnoughFromConnectors(x: a.x, y: a.y, anchors: anchors),
+                  isFarEnoughFromConnectors(x: b.x, y: b.y, anchors: anchors) else { continue }
+            guard !hasLadder(tiles[upperStory][a.y][a.x]),
+                  !hasLadder(tiles[upperStory][b.y][b.x]) else { continue }
 
             // Carve walkable upper landings so pathfinding can ascend.
             tiles[upperStory][a.y][a.x] = Tile(kind: .floor(isPit: false))
@@ -801,37 +955,70 @@ struct ProceduralGenerator: Sendable {
 
             tiles[lowerStory][a.y][a.x] = Tile(kind: .ramp(partner: b, otherStory: upperStory))
             tiles[lowerStory][b.y][b.x] = Tile(kind: .ramp(partner: a, otherStory: upperStory))
+            anchors.append((a.x, a.y))
+            anchors.append((b.x, b.y))
             placed += 1
         }
     }
 
-    private func placeSlides(in tiles: inout [[[Tile]]], count: Int, rng: inout SeededGenerator) {
+    private func placeSlides(
+        in tiles: inout [[[Tile]]],
+        count: Int,
+        rng: inout SeededGenerator,
+        anchors: inout [(x: Int, y: Int)]
+    ) {
         var placed = 0
         var attempts = 0
         let upperStory = 1
         let lowerStory = 0
 
-        while placed < count, attempts < count * 50 {
+        while placed < count, attempts < count * 100 {
             attempts += 1
             let horizontal = rng.nextBool(probability: 0.5)
-            let x = rng.nextInt(upperBound: tiles[upperStory][0].count - (horizontal ? 2 : 1))
-            let y = rng.nextInt(upperBound: tiles[upperStory].count - (horizontal ? 1 : 2))
+            let x = rng.nextInt(upperBound: tiles[lowerStory][0].count - (horizontal ? 2 : 1))
+            let y = rng.nextInt(upperBound: tiles[lowerStory].count - (horizontal ? 1 : 2))
 
-            let a = GridCoord(x: x, y: y, story: upperStory)
-            let b = horizontal
-                ? GridCoord(x: x + 1, y: y, story: upperStory)
-                : GridCoord(x: x, y: y + 1, story: upperStory)
+            let lowerA = GridCoord(x: x, y: y, story: lowerStory)
+            let lowerB = horizontal
+                ? GridCoord(x: x + 1, y: y, story: lowerStory)
+                : GridCoord(x: x, y: y + 1, story: lowerStory)
+            let upperA = lowerA.onStory(upperStory)
+            let upperB = lowerB.onStory(upperStory)
 
-            guard isFloor(tiles[upperStory][a.y][a.x]), isFloor(tiles[upperStory][b.y][b.x]) else { continue }
-            guard isFloor(tiles[lowerStory][a.y][a.x]), isFloor(tiles[lowerStory][b.y][b.x]) else { continue }
+            // Lower must remain floors (landing); skips ramp cells and other connectors.
+            guard isFloor(tiles[lowerStory][lowerA.y][lowerA.x]),
+                  isFloor(tiles[lowerStory][lowerB.y][lowerB.x]) else { continue }
+            guard isFarEnoughFromConnectors(x: lowerA.x, y: lowerA.y, anchors: anchors),
+                  isFarEnoughFromConnectors(x: lowerB.x, y: lowerB.y, anchors: anchors) else { continue }
+            guard !hasLadder(tiles[upperStory][upperA.y][upperA.x]),
+                  !hasLadder(tiles[upperStory][upperB.y][upperB.x]) else { continue }
+            if case .slide = tiles[upperStory][upperA.y][upperA.x].kind { continue }
+            if case .slide = tiles[upperStory][upperB.y][upperB.x].kind { continue }
 
-            tiles[upperStory][a.y][a.x] = Tile(kind: .slide(partner: b, lowerStory: lowerStory))
-            tiles[upperStory][b.y][b.x] = Tile(kind: .slide(partner: a, lowerStory: lowerStory))
+            // Carve upper landings, then convert them into a down-only slide pair.
+            tiles[upperStory][upperA.y][upperA.x] = Tile(kind: .slide(partner: upperB, lowerStory: lowerStory))
+            tiles[upperStory][upperB.y][upperB.x] = Tile(kind: .slide(partner: upperA, lowerStory: lowerStory))
+            anchors.append((lowerA.x, lowerA.y))
+            anchors.append((lowerB.x, lowerB.y))
             placed += 1
         }
     }
 
     // MARK: - Helpers
+
+    private func isFarEnoughFromConnectors(x: Int, y: Int, anchors: [(x: Int, y: Int)]) -> Bool {
+        for anchor in anchors {
+            if abs(anchor.x - x) + abs(anchor.y - y) < minConnectorSeparation {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func hasLadder(_ tile: Tile) -> Bool {
+        if case .wall(_, _, true) = tile.kind { return true }
+        return false
+    }
 
     private func manhattan(_ a: GridCoord, _ b: GridCoord) -> Int {
         abs(a.x - b.x) + abs(a.y - b.y)

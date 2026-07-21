@@ -80,14 +80,15 @@ final class PreparingViewController: UIViewController {
 
     private func generateWorld() async -> GameWorld {
         let config = session.seedConfig
+        let enemyConfig = session.enemyConfig
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try ProceduralGenerator().generate(from: config)
+                try ProceduralGenerator().generate(from: config, enemyConfig: enemyConfig)
             }.value
         } catch {
             let fallback = AppSession.fallbackConfig()
             return (try? await Task.detached(priority: .userInitiated) {
-                try ProceduralGenerator().generate(from: fallback)
+                try ProceduralGenerator().generate(from: fallback, enemyConfig: .fallback)
             }.value) ?? Self.minimalWorld()
         }
     }

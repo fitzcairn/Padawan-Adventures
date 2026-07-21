@@ -249,9 +249,9 @@ struct ProceduralGeneratorTests {
           max_room_size: 6
           pit_chance: 0.05
           wall_destructible_chance: 0.2
-          ramp_count: 2
-          ladder_count: 2
-          slide_count: 1
+          ramp_count: 8
+          ladder_count: 8
+          slide_count: 4
           door_count: 4
         player:
           letter: P
@@ -262,6 +262,61 @@ struct ProceduralGeneratorTests {
         #expect(config.generation.algorithm == "rooms_doors")
         #expect(config.generation.minRoomSize == 4)
         #expect(config.generation.maxRoomSize == 6)
+        #expect(config.generation.rampCount == 8)
+        #expect(config.generation.ladderCount == 8)
+        #expect(config.generation.slideCount == 4)
+    }
+
+    @Test func generatesDenseInterStoryConnectors() throws {
+        let rampCount = 8
+        let ladderCount = 8
+        let slideCount = 4
+        let config = WorldSeedConfig(
+            version: 1,
+            seed: 42,
+            world: .init(width: 80, height: 80, stories: 2),
+            generation: .init(
+                algorithm: "rooms_doors",
+                roomCount: 60,
+                corridorWidth: 2,
+                minRoomSize: 4,
+                maxRoomSize: 12,
+                pitChance: 0,
+                wallDestructibleChance: 0,
+                rampCount: rampCount,
+                ladderCount: ladderCount,
+                slideCount: slideCount,
+                doorCount: 4
+            ),
+            player: .init(letter: "P", spawn: nil),
+            extensions: nil
+        )
+        let world = try ProceduralGenerator().generate(from: config)
+
+        var rampTiles = 0
+        var slideTiles = 0
+        var ladderTiles = 0
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                if case .ramp = world.tile(at: GridCoord(x: x, y: y, story: 0))?.kind {
+                    rampTiles += 1
+                }
+                if case .slide = world.tile(at: GridCoord(x: x, y: y, story: 1))?.kind {
+                    slideTiles += 1
+                    #expect(world.isWalkable(at: GridCoord(x: x, y: y, story: 0)))
+                }
+                if case .wall(_, _, true) = world.tile(at: GridCoord(x: x, y: y, story: 0))?.kind {
+                    ladderTiles += 1
+                }
+            }
+        }
+
+        let rampPairs = rampTiles / 2
+        let slidePairs = slideTiles / 2
+        #expect(rampPairs >= Int((Double(rampCount) * 0.8).rounded(.up)))
+        #expect(ladderTiles >= Int((Double(ladderCount) * 0.8).rounded(.up)))
+        #expect(slidePairs > 0)
+        #expect(slidePairs >= Int((Double(slideCount) * 0.8).rounded(.up)))
     }
 
     @Test func incompatibleSaveIsRejectedBySize() {
@@ -272,5 +327,74 @@ struct ProceduralGeneratorTests {
             TestWorldFactory.emptyFloor(width: 30, height: 30),
             with: config
         ))
+    }
+
+    @Test func enemySpawnsAreDeterministicAndSkipSpawnRoom() throws {
+        var config = roomsDoorsConfig(seed: 123, roomCount: 12)
+        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0.8)
+        let enemyConfig = EnemyConfig.fallback
+
+        let first = try ProceduralGenerator().generateDetailed(from: config, enemyConfig: enemyConfig)
+        let second = try ProceduralGenerator().generateDetailed(from: config, enemyConfig: enemyConfig)
+
+        let firstEnemies = first.world.entities.filter(\.isEnemy)
+        let secondEnemies = second.world.entities.filter(\.isEnemy)
+        #expect(firstEnemies.count == secondEnemies.count)
+        #expect(firstEnemies.map(\.position) == secondEnemies.map(\.position))
+        #expect(firstEnemies.allSatisfy { $0.letter == "E" && $0.enemyTypeID == "grunt" })
+
+        let spawnRoom = first.rooms.first { $0.id == first.topRightRoomID }!
+        for enemy in firstEnemies {
+            #expect(!spawnRoom.cells.contains(enemy.position))
+            #expect(enemy.position != first.world.spawn)
+        }
+
+        // With 0.8 chance across many rooms, expect at least one enemy.
+        #expect(firstEnemies.count > 0)
+    }
+
+    @Test func zeroSpawnChanceProducesNoEnemies() throws {
+        var config = roomsDoorsConfig(seed: 7, roomCount: 10)
+        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0)
+        let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
+        #expect(world.entities.filter(\.isEnemy).isEmpty)
+    }
+
+    @Test func pickupSpawnsSkipSpawnRoomAndAvoidOverlap() throws {
+        var config = roomsDoorsConfig(seed: 55, roomCount: 12)
+        config.pickups = .init(
+            health: .init(spawnChancePerRoom: 1.0),
+            energy: .init(spawnChancePerRoom: 1.0),
+            treasure: .init(spawnChancePerRoom: 1.0)
+        )
+
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        let pickups = result.world.entities.filter(\.isPickup)
+        #expect(pickups.count > 0)
+
+        let spawnRoom = result.rooms.first { $0.id == result.topRightRoomID }!
+        let nonPlayer = result.world.entities.filter { !$0.isPlayer }
+        #expect(Set(nonPlayer.map(\.position)).count == nonPlayer.count)
+
+        for pickup in pickups {
+            #expect(!spawnRoom.cells.contains(pickup.position))
+            #expect(pickup.position != result.world.spawn)
+            #expect(pickup.pickupKind != nil)
+        }
+
+        #expect(pickups.contains { $0.pickupKind == .health })
+        #expect(pickups.contains { $0.pickupKind == .energy })
+        #expect(pickups.contains { $0.pickupKind == .treasure })
+    }
+
+    @Test func zeroPickupChanceProducesNoPickups() throws {
+        var config = roomsDoorsConfig(seed: 8, roomCount: 10)
+        config.pickups = .init(
+            health: .init(spawnChancePerRoom: 0),
+            energy: .init(spawnChancePerRoom: 0),
+            treasure: .init(spawnChancePerRoom: 0)
+        )
+        let world = try ProceduralGenerator().generate(from: config)
+        #expect(world.entities.filter(\.isPickup).isEmpty)
     }
 }

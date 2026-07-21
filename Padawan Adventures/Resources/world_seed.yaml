@@ -21,12 +21,24 @@ generation:
   max_room_size: 12
   pit_chance: 0.05
   wall_destructible_chance: 0.2
-  ramp_count: 2
-  ladder_count: 2
-  slide_count: 1
+  ramp_count: 8
+  ladder_count: 8
+  slide_count: 4
   door_count: 4
 
 player:
   letter: P
+
+enemies:
+  type: grunt
+  spawn_chance_per_room: 0.8
+
+pickups:
+  health:
+    spawn_chance_per_room: 0.8
+  energy:
+    spawn_chance_per_room: 0.8
+  treasure:
+    spawn_chance_per_room: 0.8
 
 extensions: {}

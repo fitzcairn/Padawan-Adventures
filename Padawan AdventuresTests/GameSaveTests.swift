@@ -29,6 +29,41 @@ struct GameSaveTests {
         #expect(restored?.playerPosition == playerPosition)
     }
 
+    @Test func roundTripPreservesPickupsAndHudCounts() async throws {
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
+        let health = GameEntity(
+            letter: " ",
+            position: GridCoord(x: 1, y: 1, story: 0),
+            pickupKind: .health
+        )
+        let treasure = GameEntity(
+            letter: " ",
+            position: GridCoord(x: 2, y: 2, story: 0),
+            pickupKind: .treasure
+        )
+        world = GameWorld(
+            width: world.width,
+            height: world.height,
+            storyCount: world.storyCount,
+            tiles: world.tiles,
+            entities: world.entities + [health, treasure],
+            spawn: world.spawn,
+            healthCount: 2,
+            energyCount: 1
+        )
+
+        let (service, _) = try makeSaveService()
+        try await service.save(world)
+        let restored = try await service.load()
+
+        #expect(restored?.healthCount == 2)
+        #expect(restored?.energyCount == 1)
+        let pickups = restored?.entities.filter(\.isPickup) ?? []
+        #expect(pickups.count == 2)
+        #expect(pickups.contains { $0.pickupKind == .health })
+        #expect(pickups.contains { $0.pickupKind == .treasure })
+    }
+
     @Test func tileKindRoundTripAllCases() throws {
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary

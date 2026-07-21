@@ -7,6 +7,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
     var generation: GenerationParams
     var display: DisplayParams
     var player: PlayerConfig
+    var enemies: EnemiesSpawnConfig?
+    var pickups: PickupsSpawnConfig?
     var extensions: [String: String]?
 
     enum CodingKeys: String, CodingKey {
@@ -16,6 +18,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         case generation
         case display
         case player
+        case enemies
+        case pickups
         case extensions
     }
 
@@ -26,6 +30,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         generation: GenerationParams,
         display: DisplayParams = .default,
         player: PlayerConfig,
+        enemies: EnemiesSpawnConfig? = nil,
+        pickups: PickupsSpawnConfig? = nil,
         extensions: [String: String]?
     ) {
         self.version = version
@@ -34,6 +40,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.generation = generation
         self.display = display
         self.player = player
+        self.enemies = enemies
+        self.pickups = pickups
         self.extensions = extensions
     }
 
@@ -49,6 +57,8 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         generation = try container.decode(GenerationParams.self, forKey: .generation)
         display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
         player = try container.decode(PlayerConfig.self, forKey: .player)
+        enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
+        pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         extensions = try container.decodeIfPresent([String: String].self, forKey: .extensions)
     }
 
@@ -188,6 +198,49 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         }
     }
 
+    struct EnemiesSpawnConfig: Codable, Equatable, Sendable {
+        var type: String
+        var spawnChancePerRoom: Double
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case spawnChancePerRoom = "spawn_chance_per_room"
+        }
+
+        init(type: String, spawnChancePerRoom: Double) {
+            self.type = type
+            self.spawnChancePerRoom = spawnChancePerRoom
+        }
+    }
+
+    struct PickupChanceConfig: Codable, Equatable, Sendable {
+        var spawnChancePerRoom: Double
+
+        enum CodingKeys: String, CodingKey {
+            case spawnChancePerRoom = "spawn_chance_per_room"
+        }
+
+        init(spawnChancePerRoom: Double) {
+            self.spawnChancePerRoom = spawnChancePerRoom
+        }
+    }
+
+    struct PickupsSpawnConfig: Codable, Equatable, Sendable {
+        var health: PickupChanceConfig?
+        var energy: PickupChanceConfig?
+        var treasure: PickupChanceConfig?
+
+        init(
+            health: PickupChanceConfig? = nil,
+            energy: PickupChanceConfig? = nil,
+            treasure: PickupChanceConfig? = nil
+        ) {
+            self.health = health
+            self.energy = energy
+            self.treasure = treasure
+        }
+    }
+
     func validate() throws {
         guard version == 1 else {
             throw WorldSeedError.unsupportedVersion(version)
@@ -210,6 +263,26 @@ struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard generation.maxRoomSize >= generation.minRoomSize else {
             throw WorldSeedError.invalidRoomSizeRange
         }
+        if let enemies {
+            guard !enemies.type.isEmpty else {
+                throw WorldSeedError.invalidEnemyType
+            }
+            guard enemies.spawnChancePerRoom >= 0, enemies.spawnChancePerRoom <= 1 else {
+                throw WorldSeedError.invalidEnemySpawnChance(enemies.spawnChancePerRoom)
+            }
+        }
+        if let pickups {
+            try Self.validatePickupChance(pickups.health?.spawnChancePerRoom, kind: .health)
+            try Self.validatePickupChance(pickups.energy?.spawnChancePerRoom, kind: .energy)
+            try Self.validatePickupChance(pickups.treasure?.spawnChancePerRoom, kind: .treasure)
+        }
+    }
+
+    private static func validatePickupChance(_ chance: Double?, kind: PickupKind) throws {
+        guard let chance else { return }
+        guard chance >= 0, chance <= 1 else {
+            throw WorldSeedError.invalidPickupSpawnChance(kind: kind, chance: chance)
+        }
     }
 }
 
@@ -221,6 +294,9 @@ enum WorldSeedError: Error, Equatable {
     case corridorTooNarrow(Int)
     case roomTooNarrow(Int)
     case invalidRoomSizeRange
+    case invalidEnemyType
+    case invalidEnemySpawnChance(Double)
+    case invalidPickupSpawnChance(kind: PickupKind, chance: Double)
     case missingResource
     case decodeFailed
 }

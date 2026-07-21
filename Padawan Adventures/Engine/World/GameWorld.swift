@@ -7,6 +7,8 @@ struct GameWorld: Sendable, WorldPersistable {
     private(set) var tiles: [[[Tile]]]
     private(set) var entities: [GameEntity]
     let spawn: GridCoord
+    var healthCount: Int
+    var energyCount: Int
 
     init(
         width: Int,
@@ -14,7 +16,9 @@ struct GameWorld: Sendable, WorldPersistable {
         storyCount: Int = 2,
         tiles: [[[Tile]]],
         entities: [GameEntity],
-        spawn: GridCoord
+        spawn: GridCoord,
+        healthCount: Int = 0,
+        energyCount: Int = 0
     ) {
         self.width = width
         self.height = height
@@ -22,6 +26,8 @@ struct GameWorld: Sendable, WorldPersistable {
         self.tiles = tiles
         self.entities = entities
         self.spawn = spawn
+        self.healthCount = healthCount
+        self.energyCount = energyCount
     }
 
     func isInBounds(_ coord: GridCoord) -> Bool {
@@ -54,6 +60,43 @@ struct GameWorld: Sendable, WorldPersistable {
         entities[index].position = coord
     }
 
+    func entityIndex(id: UUID) -> Int? {
+        entities.firstIndex { $0.id == id }
+    }
+
+    func entity(id: UUID) -> GameEntity? {
+        guard let index = entityIndex(id: id) else { return nil }
+        return entities[index]
+    }
+
+    mutating func setEntityPosition(_ coord: GridCoord, id: UUID) {
+        guard let index = entityIndex(id: id) else { return }
+        entities[index].position = coord
+    }
+
+    @discardableResult
+    mutating func removeEntity(id: UUID) -> Bool {
+        guard let index = entityIndex(id: id) else { return false }
+        entities.remove(at: index)
+        return true
+    }
+
+    /// First enemy occupying the same tile as the player, if any.
+    func enemyInContactWithPlayer() -> GameEntity? {
+        guard let playerPosition else { return nil }
+        return entities.first { entity in
+            entity.isEnemy && entity.position == playerPosition
+        }
+    }
+
+    /// First pickup occupying the same tile as the player, if any.
+    func pickupInContactWithPlayer() -> GameEntity? {
+        guard let playerPosition else { return nil }
+        return entities.first { entity in
+            entity.isPickup && entity.position == playerPosition
+        }
+    }
+
     mutating func respawnPlayer() {
         setPlayerPosition(spawn)
     }
@@ -82,18 +125,17 @@ struct GameWorld: Sendable, WorldPersistable {
         }
     }
 
-    /// Walkable for path edges: enterable and not a pit. Doors/ladders remain walkable.
+    /// Walkable for path edges: enterable tiles (including pits). Doors/ladders remain walkable.
     func isWalkable(at coord: GridCoord) -> Bool {
-        guard isEnterable(at: coord) else { return false }
-        return tile(at: coord)?.isPit != true
+        isEnterable(at: coord)
     }
 
-    /// Valid tap / movement destination: non-pit floor, ramp, slide, or ladder — never plain wall, door, or pit.
+    /// Valid tap / movement destination: floor (including pits), ramp, slide, or ladder — never plain wall or door.
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
-        case .floor(let isPit):
-            return !isPit
+        case .floor:
+            return true
         case .ramp, .slide:
             return true
         case .wall(_, _, let hasLadder):
@@ -184,6 +226,8 @@ struct GameWorld: Sendable, WorldPersistable {
         case tiles
         case entities
         case spawn
+        case healthCount
+        case energyCount
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -194,6 +238,8 @@ struct GameWorld: Sendable, WorldPersistable {
         tiles = try container.decode([[[Tile]]].self, forKey: .tiles)
         entities = try container.decode([GameEntity].self, forKey: .entities)
         spawn = try container.decode(GridCoord.self, forKey: .spawn)
+        healthCount = try container.decodeIfPresent(Int.self, forKey: .healthCount) ?? 0
+        energyCount = try container.decodeIfPresent(Int.self, forKey: .energyCount) ?? 0
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -204,6 +250,8 @@ struct GameWorld: Sendable, WorldPersistable {
         try container.encode(tiles, forKey: .tiles)
         try container.encode(entities, forKey: .entities)
         try container.encode(spawn, forKey: .spawn)
+        try container.encode(healthCount, forKey: .healthCount)
+        try container.encode(energyCount, forKey: .energyCount)
     }
 
     private func tileDescription(_ tile: Tile) -> String {

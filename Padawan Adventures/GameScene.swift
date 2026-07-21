@@ -10,6 +10,7 @@ final class GameScene: SKScene {
     private var movement = MovementSystem()
     private var simulationClock = SimulationClock()
     private var isoConfig: IsometricConfig
+    private let enemyConfig: EnemyConfig
     private var simulationLoop: SimulationLoop
     private var pendingInput = PendingInput()
     private var renderer: IsometricRenderer
@@ -17,6 +18,17 @@ final class GameScene: SKScene {
     private var gestureTracker = ViewportGestureTracker()
     private var lastUpdateTime: TimeInterval?
     private let saveService: GameSaveService?
+    private var isPausedForEncounter = false
+    private var isResolvingPickup = false
+
+    /// Called when the player contacts an enemy (same occupancy tile).
+    var onEnemyContact: ((UUID) -> Void)?
+    /// Called when the player enters a pit tile.
+    var onPitEntered: (() -> Void)?
+    /// Called after a health/energy pickup finishes its collect animation.
+    var onPickupCollected: ((PickupKind) -> Void)?
+    /// Called after treasure shake + fade completes.
+    var onTreasureCollected: (() -> Void)?
 
     /// Snapshot of the live world for persistence (e.g. Menu exit).
     var currentWorld: GameWorld { world }
@@ -28,13 +40,15 @@ final class GameScene: SKScene {
         size: CGSize,
         world: GameWorld,
         isoConfig: IsometricConfig,
+        enemyConfig: EnemyConfig = .fallback,
         saveService: GameSaveService?
     ) {
         self.world = world
         self.isoConfig = isoConfig
+        self.enemyConfig = enemyConfig
         self.saveService = saveService
-        self.simulationLoop = SimulationLoop(isoConfig: isoConfig)
-        self.renderer = IsometricRenderer(config: isoConfig)
+        self.simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
+        self.renderer = IsometricRenderer(config: isoConfig, enemyConfig: enemyConfig)
         super.init(size: size)
     }
 
@@ -51,11 +65,13 @@ final class GameScene: SKScene {
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !isPausedForEncounter, !isResolvingPickup else { return }
         guard let touch = touches.first else { return }
         gestureTracker.begin(at: touch.location(in: self))
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !isPausedForEncounter, !isResolvingPickup else { return }
         guard let touch = touches.first,
               let delta = gestureTracker.move(to: touch.location(in: self)) else { return }
 
@@ -68,6 +84,7 @@ final class GameScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard !isPausedForEncounter, !isResolvingPickup else { return }
         let wasTap = gestureTracker.end()
         guard wasTap else { return }
 
@@ -102,6 +119,8 @@ final class GameScene: SKScene {
         }
         lastUpdateTime = currentTime
 
+        guard !isPausedForEncounter, !isResolvingPickup else { return }
+
         let ticksToRun = simulationClock.advance(deltaTime: delta)
 
         for _ in 0..<ticksToRun {
@@ -117,7 +136,41 @@ final class GameScene: SKScene {
             if result.shouldPersist {
                 scheduleSave()
             }
+
+            if result.didEnterPit {
+                isPausedForEncounter = true
+                onPitEntered?()
+                break
+            }
+
+            if let enemyID = result.enemyContactID {
+                isPausedForEncounter = true
+                onEnemyContact?(enemyID)
+                break
+            }
+
+            if let pickupID = result.pickupContactID {
+                beginPickupResolution(pickupID: pickupID)
+                break
+            }
         }
+    }
+
+    /// Removes the enemy after a fight and resumes simulation.
+    func resolveEnemyEncounter(enemyID: UUID) {
+        simulationLoop.removeEnemy(id: enemyID, from: &world)
+        isPausedForEncounter = false
+        pendingInput = PendingInput()
+        renderer.syncEntities(world.entities)
+        scheduleSave()
+    }
+
+    /// Resumes simulation after the PIT! screen is dismissed.
+    func resolvePitEncounter() {
+        isPausedForEncounter = false
+        pendingInput = PendingInput()
+        renderer.syncEntities(world.entities)
+        scheduleSave()
     }
 
     /// Renders at YAML tile size with worldScale = 1, centered on the player.
@@ -126,6 +179,53 @@ final class GameScene: SKScene {
         viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
         renderer.lockWorldScale(1)
         renderer.render(world: world, focus: viewportFocus)
+    }
+
+    private func beginPickupResolution(pickupID: UUID) {
+        guard let pickup = world.entity(id: pickupID),
+              let kind = pickup.pickupKind else { return }
+
+        isResolvingPickup = true
+        pendingInput = PendingInput()
+
+        switch kind {
+        case .health, .energy:
+            resolveHealthOrEnergyPickup(id: pickupID, kind: kind)
+        case .treasure:
+            resolveTreasurePickup(id: pickupID)
+        }
+    }
+
+    private func resolveHealthOrEnergyPickup(id: UUID, kind: PickupKind) {
+        renderer.playPickupCollectAnimation(id: id) { [weak self] in
+            guard let self else { return }
+            _ = self.world.removeEntity(id: id)
+            switch kind {
+            case .health:
+                self.world.healthCount += 1
+            case .energy:
+                self.world.energyCount += 1
+            case .treasure:
+                break
+            }
+            self.renderer.syncEntities(self.world.entities)
+            self.onPickupCollected?(kind)
+            self.scheduleSave()
+            self.isResolvingPickup = false
+        }
+    }
+
+    private func resolveTreasurePickup(id: UUID) {
+        _ = world.removeEntity(id: id)
+        renderer.syncEntities(world.entities)
+        renderer.shakeWorld { [weak self] in
+            guard let self else { return }
+            self.renderer.fadeWorld { [weak self] in
+                guard let self else { return }
+                self.onTreasureCollected?()
+                self.scheduleSave()
+            }
+        }
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
@@ -149,13 +249,24 @@ final class GameScene: SKScene {
             renderer.updateViewportFocus(viewportFocus)
         }
 
+        renderer.syncEntities(world.entities)
+
         if let player = world.entities.first(where: \.isPlayer),
            player.position.story == renderer.visibleStory {
-            renderer.syncEntities(world.entities)
             renderer.updateEntityDisplayPosition(
                 player,
                 screenPosition: displayPoint,
                 sortCoord: occupancy
+            )
+        }
+
+        for pose in result.enemyDisplayPoses {
+            guard let entity = world.entity(id: pose.entityID),
+                  entity.position.story == renderer.visibleStory else { continue }
+            renderer.updateEntityDisplayPosition(
+                entity,
+                screenPosition: pose.screenPosition,
+                sortCoord: pose.occupancy
             )
         }
 

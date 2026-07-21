@@ -11,7 +11,11 @@ final class GameViewController: UIViewController {
     private let isoConfig: IsometricConfig
     private let session: AppSession
     private weak var gameScene: GameScene?
+    private weak var hud: GameHUDView?
     private var isExitingToMenu = false
+    private var isPresentingFight = false
+    private var isPresentingPit = false
+    private var isPresentingWin = false
 
     init(world: GameWorld, isoConfig: IsometricConfig, session: AppSession) {
         self.world = world
@@ -37,9 +41,22 @@ final class GameViewController: UIViewController {
             size: CGSize(width: 1024, height: 768),
             world: world,
             isoConfig: isoConfig,
+            enemyConfig: session.enemyConfig,
             saveService: session.saveService
         )
         scene.scaleMode = .aspectFill
+        scene.onEnemyContact = { [weak self] enemyID in
+            self?.presentEnemyFight(enemyID: enemyID)
+        }
+        scene.onPitEntered = { [weak self] in
+            self?.presentPit()
+        }
+        scene.onPickupCollected = { [weak self] kind in
+            self?.handlePickupCollected(kind)
+        }
+        scene.onTreasureCollected = { [weak self] in
+            self?.presentYouWin()
+        }
         skView.presentScene(scene)
         gameScene = scene
 
@@ -68,7 +85,11 @@ final class GameViewController: UIViewController {
             hudConfig = .fallback
         }
 
-        let hud = GameHUDView(config: hudConfig)
+        let hud = GameHUDView(
+            config: hudConfig,
+            healthCount: world.healthCount,
+            energyCount: world.energyCount
+        )
         hud.onMenuTapped = { [weak self] in
             self?.exitToMenu()
         }
@@ -79,6 +100,68 @@ final class GameViewController: UIViewController {
             hud.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             hud.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+        self.hud = hud
+    }
+
+    private func handlePickupCollected(_ kind: PickupKind) {
+        switch kind {
+        case .health:
+            hud?.addHeart()
+        case .energy:
+            hud?.addBolt()
+        case .treasure:
+            break
+        }
+    }
+
+    @MainActor
+    private func presentEnemyFight(enemyID: UUID) {
+        guard !isPresentingFight else { return }
+        isPresentingFight = true
+
+        let fight = EnemyFightViewController()
+        fight.modalPresentationStyle = .fullScreen
+        fight.onFightTapped = { [weak self, weak fight] in
+            guard let self else { return }
+            fight?.dismiss(animated: false) {
+                self.gameScene?.resolveEnemyEncounter(enemyID: enemyID)
+                self.isPresentingFight = false
+            }
+        }
+        present(fight, animated: false)
+    }
+
+    @MainActor
+    private func presentPit() {
+        guard !isPresentingPit else { return }
+        isPresentingPit = true
+
+        let pit = PitViewController()
+        pit.modalPresentationStyle = .fullScreen
+        pit.onPitTapped = { [weak self, weak pit] in
+            guard let self else { return }
+            pit?.dismiss(animated: false) {
+                self.gameScene?.resolvePitEncounter()
+                self.isPresentingPit = false
+            }
+        }
+        present(pit, animated: false)
+    }
+
+    @MainActor
+    private func presentYouWin() {
+        guard !isPresentingWin else { return }
+        isPresentingWin = true
+
+        let win = YouWinViewController()
+        win.modalPresentationStyle = .fullScreen
+        win.onScreenTapped = { [weak self, weak win] in
+            guard let self else { return }
+            win?.dismiss(animated: false) {
+                self.exitToMenu()
+            }
+        }
+        present(win, animated: false)
     }
 
     @MainActor

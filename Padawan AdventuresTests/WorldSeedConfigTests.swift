@@ -17,9 +17,9 @@ struct WorldSeedConfigTests {
           corridor_width: 2
           pit_chance: 0.05
           wall_destructible_chance: 0.2
-          ramp_count: 2
-          ladder_count: 2
-          slide_count: 1
+          ramp_count: 8
+          ladder_count: 8
+          slide_count: 4
           door_count: 4
         player:
           letter: P
@@ -34,6 +34,9 @@ struct WorldSeedConfigTests {
         #expect(config.player.letter == "P")
         #expect(config.display.tileWidth == 40)
         #expect(config.display.tileHeight == 40)
+        #expect(config.generation.rampCount == 8)
+        #expect(config.generation.ladderCount == 8)
+        #expect(config.generation.slideCount == 4)
         try config.validate()
     }
 
@@ -97,6 +100,135 @@ struct WorldSeedConfigTests {
 
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(throws: WorldSeedError.invalidStoryCount(3)) {
+            try config.validate()
+        }
+    }
+
+    @Test func decodesEnemiesSpawnBlock() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 2
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          ramp_count: 0
+          ladder_count: 0
+          slide_count: 0
+          door_count: 0
+        player:
+          letter: P
+        enemies:
+          type: grunt
+          spawn_chance_per_room: 0.8
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.spawnChancePerRoom == 0.8)
+        try config.validate()
+    }
+
+    @Test func rejectsInvalidEnemySpawnChance() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 2
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          ramp_count: 0
+          ladder_count: 0
+          slide_count: 0
+          door_count: 0
+        player:
+          letter: P
+        enemies:
+          type: grunt
+          spawn_chance_per_room: 1.5
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(throws: WorldSeedError.invalidEnemySpawnChance(1.5)) {
+            try config.validate()
+        }
+    }
+
+    @Test func decodesPickupsSpawnBlock() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 2
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          ramp_count: 0
+          ladder_count: 0
+          slide_count: 0
+          door_count: 0
+        player:
+          letter: P
+        pickups:
+          health:
+            spawn_chance_per_room: 0.8
+          energy:
+            spawn_chance_per_room: 0.5
+          treasure:
+            spawn_chance_per_room: 1.0
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.pickups?.health?.spawnChancePerRoom == 0.8)
+        #expect(config.pickups?.energy?.spawnChancePerRoom == 0.5)
+        #expect(config.pickups?.treasure?.spawnChancePerRoom == 1.0)
+        try config.validate()
+    }
+
+    @Test func rejectsInvalidPickupSpawnChance() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 2
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          ramp_count: 0
+          ladder_count: 0
+          slide_count: 0
+          door_count: 0
+        player:
+          letter: P
+        pickups:
+          health:
+            spawn_chance_per_room: -0.1
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(throws: WorldSeedError.invalidPickupSpawnChance(kind: .health, chance: -0.1)) {
             try config.validate()
         }
     }

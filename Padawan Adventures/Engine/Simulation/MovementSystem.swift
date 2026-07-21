@@ -59,6 +59,40 @@ struct MovementSystem: Sendable {
         }
     }
 
+    /// Follow `newPath` without snapping. If already mid-segment toward a waypoint that
+    /// still appears on the new path, keep that segment's progress and only replace the suffix.
+    /// Otherwise bridges from the current fractional pose via `begin`.
+    mutating func retarget(path newPath: [GridCoord]) {
+        guard newPath.count >= 2 else { return }
+
+        if isMoving,
+           let start = segmentStart,
+           let end = segmentEnd,
+           let endIndex = newPath.firstIndex(of: end) {
+            var rebuilt = [start, end]
+            let next = newPath.index(after: endIndex)
+            if next < newPath.endIndex {
+                rebuilt.append(contentsOf: newPath[next...])
+            }
+            path = rebuilt
+            pathIndex = 0
+            // Intentionally keep segmentProgress / occupancyCommitted / segmentOrigin.
+            return
+        }
+
+        begin(path: newPath)
+    }
+
+    /// Complete the current tile step then stop — no mid-tile snap to occupancy center.
+    mutating func finishCurrentSegmentAndStop() {
+        guard isMoving, let start = segmentStart, let end = segmentEnd else {
+            reset()
+            return
+        }
+        path = [start, end]
+        pathIndex = 0
+    }
+
     mutating func reset() {
         path = []
         pathIndex = 0
@@ -72,6 +106,18 @@ struct MovementSystem: Sendable {
 
     /// Advances movement by `deltaTime` seconds. Returns events triggered this frame.
     mutating func update(deltaTime: TimeInterval, world: inout GameWorld) -> [MovementEvent] {
+        guard let playerID = world.entities.first(where: \.isPlayer)?.id else {
+            return []
+        }
+        return update(deltaTime: deltaTime, world: &world, entityID: playerID)
+    }
+
+    /// Advances movement for a specific entity by `deltaTime` seconds.
+    mutating func update(
+        deltaTime: TimeInterval,
+        world: inout GameWorld,
+        entityID: UUID
+    ) -> [MovementEvent] {
         guard isMoving,
               let start = segmentStart,
               let end = segmentEnd else {
@@ -88,7 +134,7 @@ struct MovementSystem: Sendable {
             let speed = tilesPerSecond * speedMultiplier(from: currentStart, to: currentEnd, in: world)
             let segmentDuration = segmentLength / speed
             guard segmentDuration > 0 else {
-                commitOccupancyIfNeeded(end: currentEnd, world: &world, events: &events)
+                commitOccupancyIfNeeded(end: currentEnd, world: &world, entityID: entityID, events: &events)
                 if !isMoving { return events }
                 advanceSegment()
                 if let nextStart = segmentStart, let nextEnd = segmentEnd {
@@ -104,7 +150,7 @@ struct MovementSystem: Sendable {
                 if remaining >= timeToBorder {
                     remaining -= timeToBorder
                     segmentProgress = 0.5
-                    commitOccupancyIfNeeded(end: currentEnd, world: &world, events: &events)
+                    commitOccupancyIfNeeded(end: currentEnd, world: &world, entityID: entityID, events: &events)
                     if !isMoving { return events }
                     continue
                 } else {
@@ -137,8 +183,27 @@ struct MovementSystem: Sendable {
         in world: GameWorld,
         config: IsometricConfig = IsometricConfig()
     ) -> CGPoint {
+        let fallback = world.playerPosition ?? world.spawn
+        return interpolatedScreenPosition(in: world, entityID: nil, fallback: fallback, config: config)
+    }
+
+    func interpolatedScreenPosition(
+        in world: GameWorld,
+        entityID: UUID,
+        config: IsometricConfig = IsometricConfig()
+    ) -> CGPoint {
+        let fallback = world.entity(id: entityID)?.position ?? world.spawn
+        return interpolatedScreenPosition(in: world, entityID: entityID, fallback: fallback, config: config)
+    }
+
+    private func interpolatedScreenPosition(
+        in world: GameWorld,
+        entityID: UUID?,
+        fallback: GridCoord,
+        config: IsometricConfig
+    ) -> CGPoint {
         guard isMoving, let start = segmentStart, let end = segmentEnd else {
-            let coord = world.playerPosition ?? world.spawn
+            let coord = entityID.flatMap { world.entity(id: $0)?.position } ?? fallback
             return IsometricMath.entityScreenPosition(coord, config: config)
         }
 
@@ -210,24 +275,24 @@ struct MovementSystem: Sendable {
     private mutating func commitOccupancyIfNeeded(
         end: GridCoord,
         world: inout GameWorld,
+        entityID: UUID,
         events: inout [MovementEvent]
     ) {
         guard !occupancyCommitted else { return }
         occupancyCommitted = true
-        world.setPlayerPosition(end)
+        world.setEntityPosition(end, id: entityID)
         events.append(.reached(end))
 
-        if world.tile(at: end)?.isPit == true {
-            let resolution = world.resolvePit(at: end)
-            events.append(.pit(resolution))
-            if case .hazard = resolution {
-                reset()
-                return
-            }
-            if case .fell(let lower) = resolution {
-                events.append(.reached(lower))
-            }
+        let isPlayer = world.entity(id: entityID)?.isPlayer == true
+        guard isPlayer, world.tile(at: end)?.isPit == true else { return }
+
+        let resolution = world.resolvePit(at: end)
+        events.append(.pit(resolution))
+        if case .fell(let lower) = resolution {
+            events.append(.reached(lower))
         }
+        // Always stop — leftover path waypoints are invalid after fall/respawn.
+        reset()
     }
 
     private mutating func advanceSegment() {

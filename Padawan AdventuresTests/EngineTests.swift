@@ -127,7 +127,7 @@ struct PathfinderTests {
                 #expect(world.isWalkable(at: partner.onStory(1)))
             }
         }
-        #expect(rampTiles >= 2)
+        #expect(rampTiles >= 12) // 8 pairs × 2 tiles, allow soft undershoot
     }
 
     @Test func ladderConnectsStories() {
@@ -224,7 +224,7 @@ struct PathfinderTests {
         #expect(neighbors.contains(GridCoord(x: 0, y: 1, story: 0)))
     }
 
-    @Test func doorAndPitAreInvalidGoals() {
+    @Test func doorIsInvalidGoalButPitIsReachable() {
         let pathfinder = Pathfinder()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let door = GridCoord(x: 1, y: 1, story: 0)
@@ -234,7 +234,10 @@ struct PathfinderTests {
 
         let start = GridCoord(x: 0, y: 1, story: 0)
         #expect(pathfinder.findPath(from: start, to: door, in: world) == nil)
-        #expect(pathfinder.findPath(from: start, to: pit, in: world) == nil)
+
+        let pitPath = pathfinder.findPath(from: start, to: pit, in: world)
+        #expect(pitPath != nil)
+        #expect(pitPath?.last == pit)
     }
 
     @Test func slideAllowsDownOnly() {
@@ -279,7 +282,7 @@ struct PathfinderTests {
 }
 
 struct MovementGoalTests {
-    @Test func validGoalsAreNonPitFloorsRampsAndSlides() {
+    @Test func validGoalsIncludeFloorsPitsRampsSlidesAndLadders() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let floor = GridCoord(x: 0, y: 0, story: 0)
         let pit = GridCoord(x: 1, y: 0, story: 0)
@@ -298,10 +301,10 @@ struct MovementGoalTests {
         world.setTile(Tile(kind: .slide(partner: partner, lowerStory: 0)), at: slide)
 
         #expect(world.isValidMovementGoal(at: floor))
+        #expect(world.isValidMovementGoal(at: pit))
         #expect(world.isValidMovementGoal(at: ramp))
         #expect(world.isValidMovementGoal(at: slide))
         #expect(world.isValidMovementGoal(at: ladder))
-        #expect(!world.isValidMovementGoal(at: pit))
         #expect(!world.isValidMovementGoal(at: wall))
         #expect(!world.isValidMovementGoal(at: door))
     }
@@ -348,11 +351,45 @@ struct PitResolutionTests {
         #expect(resolution == .hazard)
         #expect(world.playerPosition == world.spawn)
     }
+
+    @Test func enteringPitFallsAndStopsMovement() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 1)
+        let pit = GridCoord(x: 1, y: 1, story: 1)
+        let beyond = GridCoord(x: 2, y: 1, story: 1)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, pit, beyond])
+
+        let events = movement.update(deltaTime: 10, world: &world)
+        #expect(events.contains(.pit(.fell(to: GridCoord(x: 1, y: 1, story: 0)))))
+        #expect(world.playerPosition == GridCoord(x: 1, y: 1, story: 0))
+        #expect(movement.isMoving == false)
+    }
+
+    @Test func enteringHazardPitStopsMovementAndRespawns() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 1)
+        let pit = GridCoord(x: 1, y: 1, story: 1)
+        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false, hasLadder: false)), at: GridCoord(x: 1, y: 1, story: 0))
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, pit])
+
+        let events = movement.update(deltaTime: 10, world: &world)
+        #expect(events.contains(.pit(.hazard)))
+        #expect(world.playerPosition == world.spawn)
+        #expect(movement.isMoving == false)
+    }
 }
 
 struct MovementSystemTests {
     @Test func pathDurationMatchesSpeed() {
-        var movement = MovementSystem()
+        var movement = MovementSystem(tilesPerSecond: 1.0)
         let path = [
             GridCoord(x: 0, y: 0, story: 0),
             GridCoord(x: 1, y: 0, story: 0),
@@ -405,7 +442,7 @@ struct MovementSystemTests {
         let end = GridCoord(x: 1, y: 0, story: 0)
         world.setPlayerPosition(start)
 
-        var movement = MovementSystem()
+        var movement = MovementSystem(tilesPerSecond: 1.0)
         movement.begin(path: [start, end])
 
         // Just under half a tile at 1 tile/s → 0.5s per half segment.
@@ -498,6 +535,55 @@ struct MovementSystemTests {
         #expect(screenDistance(afterTick, startCenter) > 0.1)
     }
 
+    @Test func retargetKeepsProgressWhenNextWaypointUnchanged() {
+        var world = TestWorldFactory.emptyFloor(width: 8, height: 4)
+        let start = GridCoord(x: 0, y: 0, story: 0)
+        let next = GridCoord(x: 1, y: 0, story: 0)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, next, GridCoord(x: 2, y: 0, story: 0)])
+        _ = movement.update(deltaTime: 0.3, world: &world)
+
+        let progressBefore = movement.segmentProgress
+        let poseBefore = movement.fractionalPosition()
+        let screenBefore = movement.interpolatedScreenPosition(in: world)
+
+        // Same next waypoint, longer / redirected suffix.
+        movement.retarget(path: [
+            start,
+            next,
+            GridCoord(x: 1, y: 1, story: 0),
+            GridCoord(x: 1, y: 2, story: 0),
+        ])
+
+        #expect(movement.segmentEnd == next)
+        #expect(abs(movement.segmentProgress - progressBefore) < 0.000_001)
+        #expect(abs(movement.fractionalPosition().x - poseBefore.x) < 0.000_001)
+        #expect(abs(movement.fractionalPosition().y - poseBefore.y) < 0.000_001)
+        #expect(movement.interpolatedScreenPosition(in: world) == screenBefore)
+    }
+
+    @Test func finishCurrentSegmentAndStopDoesNotSnapPose() {
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
+        let start = GridCoord(x: 0, y: 0, story: 0)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [
+            start,
+            GridCoord(x: 1, y: 0, story: 0),
+            GridCoord(x: 2, y: 0, story: 0),
+        ])
+        _ = movement.update(deltaTime: 0.3, world: &world)
+        let before = movement.interpolatedScreenPosition(in: world)
+
+        movement.finishCurrentSegmentAndStop()
+        #expect(movement.isMoving)
+        #expect(movement.path.count == 2)
+        #expect(movement.interpolatedScreenPosition(in: world) == before)
+    }
+
     @Test func ladderSegmentInterpolatesScreenYContinuously() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let start = GridCoord(x: 1, y: 1, story: 0)
@@ -554,5 +640,49 @@ struct MovementSystemTests {
         let dx = a.x - b.x
         let dy = a.y - b.y
         return (dx * dx + dy * dy).squareRoot()
+    }
+}
+
+struct PickupContactTests {
+    @Test func pickupInContactWithPlayer() {
+        let spawn = GridCoord(x: 0, y: 0, story: 0)
+        let pickupPos = GridCoord(x: 1, y: 0, story: 0)
+        let player = GameEntity(letter: "P", position: pickupPos, isPlayer: true)
+        let health = GameEntity(letter: " ", position: pickupPos, pickupKind: .health)
+        let world = GameWorld(
+            width: 3,
+            height: 3,
+            tiles: TestWorldFactory.emptyFloor(width: 3, height: 3).tiles,
+            entities: [player, health],
+            spawn: spawn
+        )
+
+        #expect(world.pickupInContactWithPlayer()?.pickupKind == .health)
+        #expect(world.enemyInContactWithPlayer() == nil)
+    }
+
+    @Test func simulationReportsPickupContactWhenNoEnemy() {
+        let spawn = GridCoord(x: 0, y: 0, story: 0)
+        let player = GameEntity(letter: "P", position: spawn, isPlayer: true)
+        let energy = GameEntity(letter: " ", position: spawn, pickupKind: .energy)
+        var world = GameWorld(
+            width: 3,
+            height: 3,
+            tiles: TestWorldFactory.emptyFloor(width: 3, height: 3).tiles,
+            entities: [player, energy],
+            spawn: spawn
+        )
+        var movement = MovementSystem()
+        var pending = PendingInput()
+        var loop = SimulationLoop()
+
+        let result = loop.tick(
+            world: &world,
+            movement: &movement,
+            pendingInput: &pending,
+            tickCount: 1
+        )
+        #expect(result.pickupContactID == energy.id)
+        #expect(result.enemyContactID == nil)
     }
 }

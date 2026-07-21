@@ -9,10 +9,10 @@ enum WorldLoader {
             && world.storyCount == config.world.stories
     }
 
-    static func load(from url: URL) throws -> GameWorld {
+    static func load(from url: URL, enemyConfig: EnemyConfig = .fallback) throws -> GameWorld {
         let data = try Data(contentsOf: url)
         let config = try decodeConfig(from: data)
-        return try ProceduralGenerator().generate(from: config)
+        return try ProceduralGenerator().generate(from: config, enemyConfig: enemyConfig)
     }
 
     static func loadConfigFromBundle(
@@ -26,9 +26,13 @@ enum WorldLoader {
         return try decodeConfig(from: data)
     }
 
-    static func loadFromBundle(named name: String = "world_seed", withExtension ext: String = "yaml") throws -> GameWorld {
+    static func loadFromBundle(
+        named name: String = "world_seed",
+        withExtension ext: String = "yaml",
+        enemyConfig: EnemyConfig = .fallback
+    ) throws -> GameWorld {
         let config = try loadConfigFromBundle(named: name, withExtension: ext)
-        return try ProceduralGenerator().generate(from: config)
+        return try ProceduralGenerator().generate(from: config, enemyConfig: enemyConfig)
     }
 
     static func decodeConfig(from data: Data) throws -> WorldSeedConfig {

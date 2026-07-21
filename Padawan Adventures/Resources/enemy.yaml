@@ -1,0 +1,9 @@
+# Padawan Adventures — enemy type definitions
+# Each key under `types` is a named enemy kind referenced by world_seed.yaml.
+
+types:
+  grunt:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 1.0
+    forget_seconds: 3.0

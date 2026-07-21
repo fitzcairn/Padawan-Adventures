@@ -5,12 +5,18 @@ final class GameHUDView: UIView {
 
     private let config: HudConfig
     private let menuButton: UIButton
+    private let heartsStack: UIStackView
+    private let boltsStack: UIStackView
 
-    init(config: HudConfig) {
+    init(config: HudConfig, healthCount: Int = 0, energyCount: Int = 0) {
         self.config = config
         self.menuButton = Self.makeMenuButton()
+        self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
+        self.boltsStack = Self.makeIconStack(spacing: config.iconSpacing)
+        // Trailing-aligned row that grows left as icons are inserted.
+        self.boltsStack.semanticContentAttribute = .forceRightToLeft
         super.init(frame: .zero)
-        setup()
+        setup(healthCount: healthCount, energyCount: energyCount)
     }
 
     @available(*, unavailable)
@@ -26,38 +32,48 @@ final class GameHUDView: UIView {
         return nil
     }
 
-    private func setup() {
+    func addHeart() {
+        heartsStack.addArrangedSubview(makeIcon(
+            systemName: "heart.fill",
+            tint: PlaceholderFactory.healthPickupColor
+        ))
+    }
+
+    func addBolt() {
+        boltsStack.addArrangedSubview(makeIcon(
+            systemName: "bolt.fill",
+            tint: PlaceholderFactory.energyPickupColor
+        ))
+    }
+
+    private func setup(healthCount: Int, energyCount: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = true
         translatesAutoresizingMaskIntoConstraints = false
 
-        let hearts = makeIconRow(
-            systemName: "heart.fill",
-            tint: .systemRed,
-            count: 3
-        )
-        let bolts = makeIconRow(
-            systemName: "bolt.fill",
-            tint: .systemYellow,
-            count: 3
-        )
-        let score = makeScoreRow()
+        for _ in 0..<max(healthCount, 0) {
+            addHeart()
+        }
+        for _ in 0..<max(energyCount, 0) {
+            addBolt()
+        }
 
+        let score = makeScoreRow()
         menuButton.addTarget(self, action: #selector(menuTapped), for: .touchUpInside)
 
-        addSubview(hearts)
-        addSubview(bolts)
+        addSubview(heartsStack)
+        addSubview(boltsStack)
         addSubview(score)
         addSubview(menuButton)
 
         let margin = CGFloat(config.edgeMargin)
 
         NSLayoutConstraint.activate([
-            hearts.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            hearts.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
+            heartsStack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
+            heartsStack.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
 
-            bolts.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            bolts.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            boltsStack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
+            boltsStack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
 
             score.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
             score.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
@@ -67,27 +83,27 @@ final class GameHUDView: UIView {
         ])
     }
 
-    private func makeIconRow(systemName: String, tint: UIColor, count: Int) -> UIStackView {
+    private func makeIcon(systemName: String, tint: UIColor) -> UIImageView {
+        let imageView = UIImageView(image: UIImage(systemName: systemName))
+        imageView.tintColor = tint
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isUserInteractionEnabled = false
+        let size = CGFloat(config.iconSize)
+        NSLayoutConstraint.activate([
+            imageView.widthAnchor.constraint(equalToConstant: size),
+            imageView.heightAnchor.constraint(equalToConstant: size),
+        ])
+        return imageView
+    }
+
+    private static func makeIconStack(spacing: Int) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .horizontal
-        stack.spacing = CGFloat(config.iconSpacing)
+        stack.spacing = CGFloat(spacing)
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.isUserInteractionEnabled = false
-
-        let size = CGFloat(config.iconSize)
-        for _ in 0..<count {
-            let imageView = UIImageView(image: UIImage(systemName: systemName))
-            imageView.tintColor = tint
-            imageView.contentMode = .scaleAspectFit
-            imageView.translatesAutoresizingMaskIntoConstraints = false
-            imageView.isUserInteractionEnabled = false
-            NSLayoutConstraint.activate([
-                imageView.widthAnchor.constraint(equalToConstant: size),
-                imageView.heightAnchor.constraint(equalToConstant: size),
-            ])
-            stack.addArrangedSubview(imageView)
-        }
         return stack
     }
 

@@ -4,11 +4,18 @@ import Foundation
 @MainActor
 final class AppSession {
     let seedConfig: WorldSeedConfig
+    let enemyConfig: EnemyConfig
     let saveService: GameSaveService
     private(set) var hasCompatibleSave: Bool
 
-    init(seedConfig: WorldSeedConfig, saveService: GameSaveService, hasCompatibleSave: Bool) {
+    init(
+        seedConfig: WorldSeedConfig,
+        enemyConfig: EnemyConfig = .fallback,
+        saveService: GameSaveService,
+        hasCompatibleSave: Bool
+    ) {
         self.seedConfig = seedConfig
+        self.enemyConfig = enemyConfig
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
     }
@@ -26,13 +33,14 @@ final class AppSession {
                 maxRoomSize: 12,
                 pitChance: 0.05,
                 wallDestructibleChance: 0.2,
-                rampCount: 2,
-                ladderCount: 2,
-                slideCount: 1,
+                rampCount: 8,
+                ladderCount: 8,
+                slideCount: 4,
                 doorCount: 4
             ),
             display: .init(tileWidth: 40, tileHeight: 40),
             player: .init(letter: "P", spawn: nil),
+            enemies: .init(type: "grunt", spawnChancePerRoom: 0.8),
             extensions: nil
         )
     }
@@ -46,6 +54,15 @@ final class AppSession {
             seedConfig = loaded
         } catch {
             seedConfig = fallbackConfig()
+        }
+
+        let enemyConfig: EnemyConfig
+        do {
+            let loaded = try EnemyConfig.loadFromBundle()
+            try loaded.validate()
+            enemyConfig = loaded
+        } catch {
+            enemyConfig = .fallback
         }
 
         let saveService: GameSaveService
@@ -65,6 +82,7 @@ final class AppSession {
 
         return AppSession(
             seedConfig: seedConfig,
+            enemyConfig: enemyConfig,
             saveService: saveService,
             hasCompatibleSave: hasCompatibleSave
         )

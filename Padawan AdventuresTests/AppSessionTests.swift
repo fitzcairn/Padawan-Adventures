@@ -3,6 +3,15 @@ import Testing
 @testable import Padawan_Adventures
 
 struct AppSessionTests {
+    @Test func fallbackConfigUsesDenseConnectorCounts() {
+        let config = AppSession.fallbackConfig()
+        #expect(config.generation.rampCount == 8)
+        #expect(config.generation.ladderCount == 8)
+        #expect(config.generation.slideCount == 4)
+        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.spawnChancePerRoom == 0.8)
+    }
+
     @Test func continueIneligibleWhenSaveMissing() {
         let config = AppSession.fallbackConfig()
         #expect(AppSession.isContinueEligible(savedWorld: nil, config: config) == false)
