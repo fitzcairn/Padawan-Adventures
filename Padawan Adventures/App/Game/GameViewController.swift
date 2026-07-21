@@ -13,11 +13,16 @@ final class GameViewController: LandscapeHostingController {
     private weak var gameScene: GameScene?
     private weak var hud: GameHUDView?
     private var isExitingToMenu = false
-    private var isPresentingFight = false
-    private var isPresentingPit = false
-    private var isPresentingBoom = false
-    private var isPresentingGate = false
-    private var isPresentingWin = false
+    private lazy var overlayPresenter = FullscreenOverlayPresenter(
+        host: self,
+        fadeWorldOut: { [weak self] completion in
+            if let scene = self?.gameScene {
+                scene.fadeSimulationOut(completion: completion)
+            } else {
+                completion()
+            }
+        }
+    )
 
     init(world: GameWorld, isoConfig: IsometricConfig, session: AppSession) {
         self.world = world
@@ -31,7 +36,14 @@ final class GameViewController: LandscapeHostingController {
     }
 
     override func loadView() {
-        view = SKView(frame: UIScreen.main.bounds)
+        // Avoid `self.view` here (re-enters loadView). Prefer an active window scene's screen.
+        let windowScene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+            ?? UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first
+        view = SKView(frame: windowScene?.screen.bounds ?? CGRect(x: 0, y: 0, width: 1024, height: 768))
     }
 
     override func viewDidLoad() {
@@ -54,7 +66,7 @@ final class GameViewController: LandscapeHostingController {
             self?.presentPit()
         }
         scene.onBoomEntered = { [weak self] coord in
-            self?.presentBoom(at: coord)
+            self?.presentDestructibleWall(at: coord)
         }
         scene.onGateEntered = { [weak self] coord in
             self?.presentGate(at: coord)
@@ -116,102 +128,74 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentEnemyFight(enemyID: UUID) {
-        guard !isPresentingFight else { return }
-        isPresentingFight = true
-
-        gameScene?.fadeSimulationOut { [weak self] in
-            guard let self else { return }
-            let fight = EnemyFightViewController()
-            fight.modalPresentationStyle = .fullScreen
-            fight.onFightTapped = { [weak self, weak fight] in
-                guard let self else { return }
-                fight?.dismiss(animated: false) {
-                    self.gameScene?.resolveEnemyEncounter(enemyID: enemyID) {
-                        self.isPresentingFight = false
-                    }
+        overlayPresenter.present(
+            fadeWorldOut: true,
+            makeViewController: { EnemyMinigameViewController() },
+            onResolved: { [weak self] done in
+                guard let scene = self?.gameScene else {
+                    done()
+                    return
                 }
+                scene.resolveEnemyEncounter(enemyID: enemyID, completion: done)
             }
-            self.present(fight, animated: false)
-        }
+        )
     }
 
     @MainActor
     private func presentPit() {
-        guard !isPresentingPit else { return }
-        isPresentingPit = true
-
-        gameScene?.fadeSimulationOut { [weak self] in
-            guard let self else { return }
-            let pit = PitViewController()
-            pit.modalPresentationStyle = .fullScreen
-            pit.onPitTapped = { [weak self, weak pit] in
-                guard let self else { return }
-                pit?.dismiss(animated: false) {
-                    self.gameScene?.resolvePitEncounter {
-                        self.isPresentingPit = false
-                    }
+        overlayPresenter.present(
+            fadeWorldOut: true,
+            makeViewController: { PitMinigameViewController() },
+            onResolved: { [weak self] done in
+                guard let scene = self?.gameScene else {
+                    done()
+                    return
                 }
+                scene.resolvePitEncounter(completion: done)
             }
-            self.present(pit, animated: false)
-        }
+        )
     }
 
     @MainActor
-    private func presentBoom(at coord: GridCoord) {
-        guard !isPresentingBoom else { return }
-        isPresentingBoom = true
-
-        gameScene?.fadeSimulationOut { [weak self] in
-            guard let self else { return }
-            let boom = BoomViewController()
-            boom.modalPresentationStyle = .fullScreen
-            boom.onBoomTapped = { [weak self, weak boom] in
-                guard let self else { return }
-                boom?.dismiss(animated: false) {
-                    self.gameScene?.resolveBoomEncounter(at: coord) {
-                        self.isPresentingBoom = false
-                    }
+    private func presentDestructibleWall(at coord: GridCoord) {
+        overlayPresenter.present(
+            fadeWorldOut: true,
+            makeViewController: { DestructibleWallMinigameViewController() },
+            onResolved: { [weak self] done in
+                guard let scene = self?.gameScene else {
+                    done()
+                    return
                 }
+                scene.resolveBoomEncounter(at: coord, completion: done)
             }
-            self.present(boom, animated: false)
-        }
+        )
     }
 
     @MainActor
     private func presentGate(at coord: GridCoord) {
-        guard !isPresentingGate else { return }
-        isPresentingGate = true
-
-        gameScene?.fadeSimulationOut { [weak self] in
-            guard let self else { return }
-            let gate = GateEncounterViewController()
-            gate.modalPresentationStyle = .fullScreen
-            gate.onGateTapped = { [weak self, weak gate] in
-                guard let self else { return }
-                gate?.dismiss(animated: false) {
-                    self.gameScene?.resolveGateEncounter(at: coord) {
-                        self.isPresentingGate = false
-                    }
+        overlayPresenter.present(
+            fadeWorldOut: true,
+            makeViewController: { GateMinigameViewController() },
+            onResolved: { [weak self] done in
+                guard let scene = self?.gameScene else {
+                    done()
+                    return
                 }
+                scene.resolveGateEncounter(at: coord, completion: done)
             }
-            self.present(gate, animated: false)
-        }
+        )
     }
 
     @MainActor
     private func presentYouWin() {
-        guard !isPresentingWin else { return }
-        isPresentingWin = true
-
-        let win = YouWinViewController()
-        win.modalPresentationStyle = .fullScreen
-        win.onScreenTapped = { [weak self, weak win] in
-            guard let self else { return }
-            win?.dismiss(animated: false) {
-                self.exitToMenu()
+        overlayPresenter.present(
+            fadeWorldOut: false,
+            makeViewController: { YouWinViewController() },
+            onResolved: { [weak self] done in
+                self?.exitToMenu()
+                done()
             }
-        }
-        present(win, animated: false)
+        )
     }
 
     @MainActor

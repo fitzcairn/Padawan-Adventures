@@ -11,37 +11,41 @@ final class AppSession {
 
     init(
         seedConfig: WorldSeedConfig,
-        playerConfig: PlayerConfig = .fallback,
-        enemyConfig: EnemyConfig = .fallback,
+        playerConfig: PlayerConfig? = nil,
+        enemyConfig: EnemyConfig? = nil,
         saveService: GameSaveService,
         hasCompatibleSave: Bool
     ) {
         self.seedConfig = seedConfig
-        self.playerConfig = playerConfig
-        self.enemyConfig = enemyConfig
+        // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
+        self.playerConfig = playerConfig ?? .fallback
+        self.enemyConfig = enemyConfig ?? .fallback
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
-        WorldSeedConfig(
+        // Build from nonisolated config types so this can be called from tests / detached work.
+        let room = WorldSeedConfig.RoomParams(
+            minRoomSize: 4,
+            maxRoomSize: 12,
+            pitChance: 0.2,
+            wallDestructibleChance: 0.8,
+            doorCount: 4
+        )
+        let generation = WorldSeedConfig.GenerationParams(
+            algorithm: "rooms_doors",
+            roomCount: 100,
+            corridorWidth: 2,
+            room: room
+        )
+        return WorldSeedConfig(
             version: 1,
             seed: nil,
-            world: .init(width: 100, height: 100, stories: 1),
-            generation: .init(
-                algorithm: "rooms_doors",
-                roomCount: 100,
-                corridorWidth: 2,
-                room: .init(
-                    minRoomSize: 4,
-                    maxRoomSize: 12,
-                    pitChance: 0.2,
-                    wallDestructibleChance: 0.2,
-                    doorCount: 4
-                )
-            ),
-            display: .init(tileWidth: 40, tileHeight: 40),
-            enemies: .init(type: "grunt", spawnChancePerRoom: 0.8),
+            world: WorldSeedConfig.WorldSize(width: 100, height: 100, stories: 1),
+            generation: generation,
+            display: WorldSeedConfig.DisplayParams(tileWidth: 40, tileHeight: 40),
+            enemies: WorldSeedConfig.EnemiesSpawnConfig(type: "grunt", spawnChancePerRoom: 0.8),
             extensions: nil
         )
     }

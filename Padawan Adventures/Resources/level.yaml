@@ -1,0 +1,12 @@
+# Level generation knobs (merged into world.yaml at load).
+
+algorithm: rooms_doors
+room_count: 100
+corridor_width: 2
+room:
+  min_room_size: 4
+  max_room_size: 12
+  # Probability that a room contains a pit (at most one pit per room).
+  pit_chance: 0.2
+  wall_destructible_chance: 0.8
+  door_count: 4
