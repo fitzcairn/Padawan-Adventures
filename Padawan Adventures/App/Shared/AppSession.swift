@@ -25,25 +25,16 @@ final class AppSession {
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
-        // Build from nonisolated config types so this can be called from tests / detached work.
-        let room = WorldSeedConfig.RoomParams(
-            minRoomSize: 4,
-            maxRoomSize: 12,
-            pitChance: 0.2,
-            wallDestructibleChance: 0.8,
-            doorCount: 4
-        )
-        let generation = WorldSeedConfig.GenerationParams(
-            algorithm: "rooms_doors",
-            roomCount: 100,
-            corridorWidth: 2,
-            room: room
-        )
+        let level = LevelConfig.fallback
         return WorldSeedConfig(
             version: 1,
             seed: nil,
-            world: WorldSeedConfig.WorldSize(width: 100, height: 100, stories: 1),
-            generation: generation,
+            world: WorldSeedConfig.WorldSize(
+                width: level.width,
+                height: level.height,
+                stories: 1
+            ),
+            generation: level.generation,
             display: WorldSeedConfig.DisplayParams(tileWidth: 40, tileHeight: 40),
             enemies: WorldSeedConfig.EnemiesSpawnConfig(type: "grunt", spawnChancePerRoom: 0.8),
             extensions: nil

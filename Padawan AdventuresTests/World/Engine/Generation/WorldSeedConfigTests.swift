@@ -21,7 +21,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.05
             wall_destructible_chance: 0.2
-            door_count: 4
+            gate_chance: 0.5
         player:
           letter: P
           spawn: { x: 3, y: 3, story: 0 }
@@ -55,7 +55,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.05
             wall_destructible_chance: 0.2
-            door_count: 4
+            gate_chance: 0.5
         """
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.seed == nil)
@@ -85,7 +85,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         """
@@ -117,7 +117,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         """
@@ -145,7 +145,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         enemies:
@@ -176,7 +176,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         enemies:
@@ -207,7 +207,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         pickups:
@@ -243,7 +243,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         pickups:
@@ -253,6 +253,60 @@ struct WorldSeedConfigTests {
 
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(throws: WorldSeedError.invalidPickupSpawnChance(kind: .health, chance: -0.1)) {
+            try config.validate()
+        }
+    }
+
+    @Test func rejectsInvalidPitSize() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.2
+            pit_mean_size: 6
+            pit_max_size: 5
+            wall_destructible_chance: 0.0
+            gate_chance: 0.0
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(throws: WorldSeedError.invalidRoomPitSize(mean: 6, max: 5)) {
+            try config.validate()
+        }
+    }
+
+    @Test func rejectsInvalidGateChance() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            gate_chance: 1.5
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(throws: WorldSeedError.invalidRoomGateChance(1.5)) {
             try config.validate()
         }
     }
@@ -274,7 +328,7 @@ struct WorldSeedConfigTests {
             max_room_size: 12
             pit_chance: 0.0
             wall_destructible_chance: 0.0
-            door_count: 0
+            gate_chance: 0.0
         player:
           letter: P
         """

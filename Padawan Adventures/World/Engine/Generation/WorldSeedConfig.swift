@@ -22,7 +22,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         case extensions
     }
 
-    init(
+    nonisolated init(
         version: Int,
         seed: UInt64? = nil,
         world: WorldSize,
@@ -49,7 +49,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         world = try container.decode(WorldSize.self, forKey: .world)
         // Prefer level.yaml at load time; embedded `generation:` remains for tests / legacy.
         generation = try container.decodeIfPresent(GenerationParams.self, forKey: .generation)
-            ?? LevelConfig.fallback
+            ?? LevelConfig.fallback.generation
         display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
         // Legacy `player:` block in world.yaml is ignored; see player.yaml.
         enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
@@ -89,10 +89,26 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         var height: Int
         var stories: Int
 
+        enum CodingKeys: String, CodingKey {
+            case width
+            case height
+            case stories
+        }
+
         nonisolated init(width: Int, height: Int, stories: Int) {
             self.width = width
             self.height = height
             self.stories = stories
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            // Width/height prefer level.yaml; world.yaml may omit them.
+            width = try container.decodeIfPresent(Int.self, forKey: .width)
+                ?? LevelConfig.fallback.width
+            height = try container.decodeIfPresent(Int.self, forKey: .height)
+                ?? LevelConfig.fallback.height
+            stories = try container.decode(Int.self, forKey: .stories)
         }
     }
 
@@ -112,7 +128,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             case storyHeight = "story_height"
         }
 
-        init(
+        nonisolated init(
             tileWidth: Int = 40,
             tileHeight: Int = 40,
             wallHeight: Int? = nil,
@@ -147,7 +163,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         }
     }
 
-    struct GenerationParams: Codable, Equatable, Sendable {
+    nonisolated struct GenerationParams: Codable, Equatable, Sendable {
         var algorithm: String
         var roomCount: Int
         var corridorWidth: Int
@@ -160,7 +176,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             case room
         }
 
-        init(
+        nonisolated init(
             algorithm: String,
             roomCount: Int,
             corridorWidth: Int,
@@ -173,15 +189,17 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         }
 
         /// Convenience for tests / fallbacks.
-        init(
+        nonisolated init(
             algorithm: String,
             roomCount: Int,
             corridorWidth: Int,
             minRoomSize: Int = 4,
             maxRoomSize: Int = 12,
             pitChance: Double,
+            pitMeanSize: Double = 2,
+            pitMaxSize: Int = 5,
             wallDestructibleChance: Double,
-            doorCount: Int
+            gateChance: Double = 0.5
         ) {
             self.init(
                 algorithm: algorithm,
@@ -191,42 +209,55 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
                     minRoomSize: minRoomSize,
                     maxRoomSize: maxRoomSize,
                     pitChance: pitChance,
+                    pitMeanSize: pitMeanSize,
+                    pitMaxSize: pitMaxSize,
                     wallDestructibleChance: wallDestructibleChance,
-                    doorCount: doorCount
+                    gateChance: gateChance
                 )
             )
         }
     }
 
     /// Per-room generation knobs (sizes, pit/soft-wall chances, etc.).
-    struct RoomParams: Codable, Equatable, Sendable {
+    nonisolated struct RoomParams: Codable, Equatable, Sendable {
         var minRoomSize: Int
         var maxRoomSize: Int
-        /// Probability that a room contains a pit (at most one pit tile per room).
+        /// Probability that a room contains a pit (at most one pit area per room).
         var pitChance: Double
+        /// Expected pit area size in tiles (clamped to `1...pitMaxSize`).
+        var pitMeanSize: Double
+        /// Maximum pit area size in tiles.
+        var pitMaxSize: Int
         var wallDestructibleChance: Double
-        var doorCount: Int
+        /// Probability that a door opening becomes a gate strip.
+        var gateChance: Double
 
         enum CodingKeys: String, CodingKey {
             case minRoomSize = "min_room_size"
             case maxRoomSize = "max_room_size"
             case pitChance = "pit_chance"
+            case pitMeanSize = "pit_mean_size"
+            case pitMaxSize = "pit_max_size"
             case wallDestructibleChance = "wall_destructible_chance"
-            case doorCount = "door_count"
+            case gateChance = "gate_chance"
         }
 
-        init(
+        nonisolated init(
             minRoomSize: Int = 4,
             maxRoomSize: Int = 12,
             pitChance: Double,
+            pitMeanSize: Double = 2,
+            pitMaxSize: Int = 5,
             wallDestructibleChance: Double,
-            doorCount: Int
+            gateChance: Double = 0.5
         ) {
             self.minRoomSize = minRoomSize
             self.maxRoomSize = maxRoomSize
             self.pitChance = pitChance
+            self.pitMeanSize = pitMeanSize
+            self.pitMaxSize = pitMaxSize
             self.wallDestructibleChance = wallDestructibleChance
-            self.doorCount = doorCount
+            self.gateChance = gateChance
         }
 
         init(from decoder: Decoder) throws {
@@ -234,12 +265,14 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
             maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
             pitChance = try container.decode(Double.self, forKey: .pitChance)
+            pitMeanSize = try container.decodeIfPresent(Double.self, forKey: .pitMeanSize) ?? 2
+            pitMaxSize = try container.decodeIfPresent(Int.self, forKey: .pitMaxSize) ?? 5
             wallDestructibleChance = try container.decode(Double.self, forKey: .wallDestructibleChance)
-            doorCount = try container.decode(Int.self, forKey: .doorCount)
+            gateChance = try container.decodeIfPresent(Double.self, forKey: .gateChance) ?? 0.5
         }
     }
 
-    struct EnemiesSpawnConfig: Codable, Equatable, Sendable {
+    nonisolated struct EnemiesSpawnConfig: Codable, Equatable, Sendable {
         var type: String
         var spawnChancePerRoom: Double
 
@@ -248,7 +281,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             case spawnChancePerRoom = "spawn_chance_per_room"
         }
 
-        init(type: String, spawnChancePerRoom: Double) {
+        nonisolated init(type: String, spawnChancePerRoom: Double) {
             self.type = type
             self.spawnChancePerRoom = spawnChancePerRoom
         }
@@ -307,9 +340,25 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard generation.room.pitChance >= 0, generation.room.pitChance <= 1 else {
             throw WorldSeedError.invalidRoomPitChance(generation.room.pitChance)
         }
+        guard generation.room.pitMaxSize >= 1 else {
+            throw WorldSeedError.invalidRoomPitSize(
+                mean: generation.room.pitMeanSize,
+                max: generation.room.pitMaxSize
+            )
+        }
+        guard generation.room.pitMeanSize >= 1,
+              generation.room.pitMeanSize <= Double(generation.room.pitMaxSize) else {
+            throw WorldSeedError.invalidRoomPitSize(
+                mean: generation.room.pitMeanSize,
+                max: generation.room.pitMaxSize
+            )
+        }
         guard generation.room.wallDestructibleChance >= 0,
               generation.room.wallDestructibleChance <= 1 else {
             throw WorldSeedError.invalidRoomWallDestructibleChance(generation.room.wallDestructibleChance)
+        }
+        guard generation.room.gateChance >= 0, generation.room.gateChance <= 1 else {
+            throw WorldSeedError.invalidRoomGateChance(generation.room.gateChance)
         }
         if let enemies {
             guard !enemies.type.isEmpty else {
@@ -343,7 +392,9 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case roomTooNarrow(Int)
     case invalidRoomSizeRange
     case invalidRoomPitChance(Double)
+    case invalidRoomPitSize(mean: Double, max: Int)
     case invalidRoomWallDestructibleChance(Double)
+    case invalidRoomGateChance(Double)
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)

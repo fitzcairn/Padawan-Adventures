@@ -117,6 +117,21 @@ struct PathfinderTests {
         #expect(!destroyedAgain)
     }
 
+    @Test func destroyWallClearsContiguousSoftWallGroup() {
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
+        let a = GridCoord(x: 1, y: 1, story: 0)
+        let b = GridCoord(x: 2, y: 1, story: 0)
+        world.setTile(Tile(kind: .wall(destructible: true)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: true)), at: b)
+
+        let destroyed = world.destroyWall(at: a)
+        #expect(destroyed)
+        #expect(world.tile(at: a)?.isDestructibleWall == false)
+        #expect(world.tile(at: b)?.isDestructibleWall == false)
+        #expect(world.isEnterable(at: a))
+        #expect(world.isEnterable(at: b))
+    }
+
     @Test func openGateClearsContiguousStrip() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)

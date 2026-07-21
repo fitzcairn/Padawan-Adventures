@@ -33,7 +33,10 @@ nonisolated enum WorldLoader {
         }
         let data = try Data(contentsOf: url)
         var config = try decodeConfig(from: data)
-        config.generation = try LevelConfig.loadFromBundle(named: levelName, withExtension: ext)
+        let level = try LevelConfig.loadFromBundle(named: levelName, withExtension: ext)
+        config.world.width = level.width
+        config.world.height = level.height
+        config.generation = level.generation
         return config
     }
 

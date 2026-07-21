@@ -37,7 +37,7 @@ struct PlayerConfigTests {
                     maxRoomSize: 8,
                     pitChance: 0,
                     wallDestructibleChance: 0,
-                    doorCount: 0
+                    gateChance: 0.0
                 )
             ),
             extensions: nil

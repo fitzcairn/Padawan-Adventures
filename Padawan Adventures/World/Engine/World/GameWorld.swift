@@ -101,10 +101,25 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         setPlayerPosition(spawn)
     }
 
+    /// Opens a destructible wall cell and every orthogonally contiguous soft wall in its group.
     @discardableResult
     mutating func destroyWall(at coord: GridCoord) -> Bool {
         guard tile(at: coord)?.isDestructibleWall == true else { return false }
-        setTile(Tile(kind: .floor(isPit: false)), at: coord)
+        var queue = [coord]
+        var visited: Set<GridCoord> = [coord]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            setTile(Tile(kind: .floor(isPit: false)), at: current)
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard isInBounds(next), !visited.contains(next) else { continue }
+                guard tile(at: next)?.isDestructibleWall == true else { continue }
+                visited.insert(next)
+                queue.append(next)
+            }
+        }
         return true
     }
 

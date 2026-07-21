@@ -1,14 +1,12 @@
 # Padawan Adventures — world (v1)
 # All procedural generation is deterministic for a given seed + params.
 # Use `seed: time` for a fresh seed from the clock on each new game, or a number to fix it.
-# Generation knobs live in level.yaml.
+# Map size and generation knobs live in level.yaml.
 
 version: 1
 seed: time
 
 world:
-  width: 100
-  height: 100
   stories: 1
 
 display:

@@ -16,7 +16,7 @@ struct ProceduralGeneratorTests {
                     maxRoomSize: 10,
                     pitChance: 0.2,
                     wallDestructibleChance: 0.3,
-                    doorCount: 2
+                    gateChance: 0.5
                 )
             ),
             extensions: nil
@@ -275,24 +275,53 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func atMostOnePitPerRoom() throws {
+    @Test func atMostOnePitAreaPerRoomWithinSizeBounds() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 16)
         config.generation.room.pitChance = 1.0
+        config.generation.room.pitMeanSize = 2
+        config.generation.room.pitMaxSize = 5
         let result = try ProceduralGenerator().generateDetailed(from: config)
         let spawnRoomID = result.topRightRoomID
+        var totalPitTiles = 0
+        var roomsWithPits = 0
 
         for room in result.rooms {
-            let pitCount = room.cells.filter { result.world.tile(at: $0)?.isPit == true }.count
+            let pitCells = Set(room.cells.filter { result.world.tile(at: $0)?.isPit == true })
+            let pitCount = pitCells.count
             if room.id == spawnRoomID {
                 #expect(pitCount == 0, "spawn room should have no pits")
-            } else {
-                #expect(pitCount <= 1, "room \(room.id) has \(pitCount) pits")
-                #expect(pitCount == 1, "pit_chance 1.0 should place one pit in room \(room.id)")
+                continue
             }
+            #expect(pitCount >= 1, "pit_chance 1.0 should place a pit area in room \(room.id)")
+            #expect(pitCount <= 5, "room \(room.id) pit area \(pitCount) exceeds max 5")
+            #expect(pitCellsAreContiguous(pitCells), "pit area in room \(room.id) is not contiguous")
+            totalPitTiles += pitCount
+            roomsWithPits += 1
         }
+        #expect(roomsWithPits > 0)
+        let mean = Double(totalPitTiles) / Double(roomsWithPits)
+        #expect(mean >= 1.2 && mean <= 3.5, "expected mean near 2, got \(mean)")
     }
 
-    @Test func destructibleWallsAreSingleTileBetweenRooms() throws {
+    private func pitCellsAreContiguous(_ cells: Set<GridCoord>) -> Bool {
+        guard let start = cells.first else { return true }
+        let set = cells
+        var queue = [start]
+        var visited: Set<GridCoord> = [start]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard set.contains(next), visited.insert(next).inserted else { continue }
+                queue.append(next)
+            }
+        }
+        return visited.count == cells.count
+    }
+
+    @Test func destructibleWallsAreAtMostTwoTilesBetweenRooms() throws {
         for seed: UInt64 in [11, 42, 99, 123] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 10)
             config.generation.room.wallDestructibleChance = 1.0
@@ -301,10 +330,12 @@ struct ProceduralGeneratorTests {
                 for cell in room.cells { map[cell] = room.id }
             }
 
+            var softCells: [GridCoord] = []
             for y in 0..<result.world.height {
                 for x in 0..<result.world.width {
                     let coord = GridCoord(x: x, y: y, story: 0)
                     guard result.world.tile(at: coord)?.isDestructibleWall == true else { continue }
+                    softCells.append(coord)
                     let roomPair = GridCoord.cardinals.contains { dx, dy in
                         let a = coord.neighbor(dx: dx, dy: dy)
                         let b = coord.neighbor(dx: -dx, dy: -dy)
@@ -314,20 +345,148 @@ struct ProceduralGeneratorTests {
                     #expect(roomPair, "Destructible wall at \(x),\(y) not between rooms (seed \(seed))")
                 }
             }
+
+            // Contiguous soft-wall groups must be at most 2 tiles.
+            var visited = Set<GridCoord>()
+            for start in softCells {
+                guard visited.insert(start).inserted else { continue }
+                var queue = [start]
+                var group = [start]
+                var head = 0
+                while head < queue.count {
+                    let current = queue[head]
+                    head += 1
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        guard result.world.tile(at: next)?.isDestructibleWall == true else { continue }
+                        guard visited.insert(next).inserted else { continue }
+                        queue.append(next)
+                        group.append(next)
+                    }
+                }
+                #expect(group.count <= 2, "soft wall group size \(group.count) > 2 (seed \(seed))")
+            }
         }
     }
 
-    @Test func gatesOnlyOccupyHallwayCells() throws {
+    @Test func gatesSitOutsideRooms() throws {
         for seed: UInt64 in [11, 42, 99, 123] {
-            let result = try ProceduralGenerator().generateDetailed(from: roomsDoorsConfig(seed: seed, roomCount: 10))
+            var config = roomsDoorsConfig(seed: seed, roomCount: 10)
+            config.generation.room.gateChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+            var gateCount = 0
             for y in 0..<result.world.height {
                 for x in 0..<result.world.width {
                     let coord = GridCoord(x: x, y: y, story: 0)
                     guard result.world.tile(at: coord)?.isGate == true else { continue }
+                    gateCount += 1
                     #expect(!roomCells.contains(coord), "Gate inside room at \(x),\(y) (seed \(seed))")
                     #expect(coord != result.world.spawn)
                 }
+            }
+            #expect(gateCount > 0, "expected gates with gate_chance 1.0 (seed \(seed))")
+        }
+    }
+
+    @Test func zeroGateChanceProducesNoGates() throws {
+        var config = roomsDoorsConfig(seed: 42, roomCount: 12)
+        config.generation.room.gateChance = 0
+        let world = try ProceduralGenerator().generate(from: config)
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                #expect(world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate != true)
+            }
+        }
+    }
+
+    @Test func atMostOneSoftBlockerPerSharedWall() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 16)
+            config.generation.room.gateChance = 1.0
+            config.generation.room.wallDestructibleChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let world = result.world
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+
+            func roomPair(at coord: GridCoord) -> (Int, Int)? {
+                for (dx, dy) in GridCoord.cardinals {
+                    let a = coord.neighbor(dx: dx, dy: dy)
+                    let b = coord.neighbor(dx: -dx, dy: -dy)
+                    guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                    return (min(idA, idB), max(idA, idB))
+                }
+                return nil
+            }
+
+            // Count distinct soft-blocker *features* per room pair:
+            // - one gate strip (contiguous gates) counts as 1
+            // - one contiguous soft-wall group counts as 1
+            var gateFeatureCount: [String: Int] = [:]
+            var softFeatureCount: [String: Int] = [:]
+            var visitedGates = Set<GridCoord>()
+            var visitedSoft = Set<GridCoord>()
+
+            func flood(
+                from start: GridCoord,
+                matches: (GridCoord) -> Bool,
+                visited: inout Set<GridCoord>
+            ) -> [GridCoord] {
+                guard visited.insert(start).inserted else { return [] }
+                var queue = [start]
+                var group = [start]
+                var head = 0
+                while head < queue.count {
+                    let current = queue[head]
+                    head += 1
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        guard matches(next), visited.insert(next).inserted else { continue }
+                        queue.append(next)
+                        group.append(next)
+                    }
+                }
+                return group
+            }
+
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    if world.tile(at: coord)?.isGate == true, !visitedGates.contains(coord) {
+                        let group = flood(
+                            from: coord,
+                            matches: { world.tile(at: $0)?.isGate == true },
+                            visited: &visitedGates
+                        )
+                        if let (lo, hi) = group.compactMap(roomPair).first {
+                            gateFeatureCount["\(lo)-\(hi)", default: 0] += 1
+                        }
+                    }
+                    if world.tile(at: coord)?.isDestructibleWall == true, !visitedSoft.contains(coord) {
+                        let group = flood(
+                            from: coord,
+                            matches: { world.tile(at: $0)?.isDestructibleWall == true },
+                            visited: &visitedSoft
+                        )
+                        if let (lo, hi) = group.compactMap(roomPair).first {
+                            softFeatureCount["\(lo)-\(hi)", default: 0] += 1
+                        }
+                    }
+                }
+            }
+
+            let allPairs = Set(gateFeatureCount.keys).union(softFeatureCount.keys)
+            for pair in allPairs {
+                let gates = gateFeatureCount[pair, default: 0]
+                let softs = softFeatureCount[pair, default: 0]
+                #expect(gates <= 1, "pair \(pair) has \(gates) gates (seed \(seed))")
+                #expect(softs <= 1, "pair \(pair) has \(softs) soft walls (seed \(seed))")
+                #expect(
+                    gates + softs <= 1,
+                    "pair \(pair) has \(gates) gates + \(softs) soft walls (seed \(seed))"
+                )
             }
         }
     }
@@ -349,7 +508,7 @@ struct ProceduralGeneratorTests {
             max_room_size: 6
             pit_chance: 0.2
             wall_destructible_chance: 0.2
-            door_count: 4
+            gate_chance: 0.5
         extensions: {}
         """
 
@@ -442,7 +601,8 @@ struct ProceduralGeneratorTests {
 
     @Test func generatesDestructibleWallsAndGates() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 20)
-        config.generation.room.wallDestructibleChance = 0.8
+        config.generation.room.wallDestructibleChance = 1.0
+        config.generation.room.gateChance = 1.0
         let result = try ProceduralGenerator().generateDetailed(from: config)
         var destructible = 0
         var gates = 0

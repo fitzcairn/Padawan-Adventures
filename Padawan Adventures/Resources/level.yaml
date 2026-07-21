@@ -1,12 +1,20 @@
 # Level generation knobs (merged into world.yaml at load).
 
+width: 100
+height: 100
+
 algorithm: rooms_doors
+# How many rooms to place on the map.
 room_count: 100
 corridor_width: 2
 room:
   min_room_size: 4
   max_room_size: 12
-  # Probability that a room contains a pit (at most one pit per room).
+  # Probability that a room contains a pit (at most one pit area per room).
   pit_chance: 0.2
+  # Pit area size: mean tile count, capped at max.
+  pit_mean_size: 2
+  pit_max_size: 5
   wall_destructible_chance: 0.8
-  door_count: 4
+  # Probability that a door opening becomes a gate strip.
+  gate_chance: 0.5
