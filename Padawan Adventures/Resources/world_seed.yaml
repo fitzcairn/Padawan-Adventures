@@ -1,8 +1,9 @@
 # Padawan Adventures — world seed (v1)
 # All procedural generation is deterministic for a given seed + params.
+# Use `seed: time` for a fresh seed from the clock on each new game, or a number to fix it.
 
 version: 1
-seed: 42
+seed: time
 
 world:
   width: 100
@@ -17,14 +18,13 @@ generation:
   algorithm: rooms_doors
   room_count: 100
   corridor_width: 2
-  min_room_size: 4
-  max_room_size: 12
-  pit_chance: 0.05
-  wall_destructible_chance: 0.2
-  door_count: 4
-
-player:
-  letter: P
+  room:
+    min_room_size: 4
+    max_room_size: 12
+    # Probability that a room contains a pit (at most one pit per room).
+    pit_chance: 0.2
+    wall_destructible_chance: 0.8
+    door_count: 4
 
 enemies:
   type: grunt

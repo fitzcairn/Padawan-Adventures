@@ -77,27 +77,44 @@ final class PreparingViewController: LandscapeHostingController {
 
     private func generateWorld() async -> GameWorld {
         let config = session.seedConfig
+        let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try ProceduralGenerator().generate(from: config, enemyConfig: enemyConfig)
+                try ProceduralGenerator().generate(
+                    from: config,
+                    playerConfig: playerConfig,
+                    enemyConfig: enemyConfig
+                )
             }.value
         } catch {
             let fallback = AppSession.fallbackConfig()
             return (try? await Task.detached(priority: .userInitiated) {
-                try ProceduralGenerator().generate(from: fallback, enemyConfig: .fallback)
-            }.value) ?? Self.minimalWorld()
+                try ProceduralGenerator().generate(
+                    from: fallback,
+                    playerConfig: .fallback,
+                    enemyConfig: .fallback
+                )
+            }.value) ?? Self.minimalWorld(playerConfig: playerConfig)
         }
     }
 
-    private static func minimalWorld() -> GameWorld {
+    private static func minimalWorld(playerConfig: PlayerConfig) -> GameWorld {
         GameWorld(
             width: 1,
             height: 1,
             storyCount: 1,
             tiles: [[[Tile(kind: .floor(isPit: false))]]],
-            entities: [GameEntity(letter: "P", position: GridCoord(x: 0, y: 0, story: 0), isPlayer: true)],
-            spawn: GridCoord(x: 0, y: 0, story: 0)
+            entities: [
+                GameEntity(
+                    letter: playerConfig.letter.first ?? "P",
+                    position: GridCoord(x: 0, y: 0, story: 0),
+                    isPlayer: true
+                ),
+            ],
+            spawn: GridCoord(x: 0, y: 0, story: 0),
+            healthCount: playerConfig.startingHealth,
+            energyCount: playerConfig.startingEnergy
         )
     }
 }

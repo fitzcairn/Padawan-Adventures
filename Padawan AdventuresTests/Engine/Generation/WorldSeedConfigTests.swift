@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 @testable import Padawan_Adventures
 
@@ -15,9 +16,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_bsp
           room_count: 6
           corridor_width: 2
-          pit_chance: 0.05
-          wall_destructible_chance: 0.2
-          door_count: 4
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.05
+            wall_destructible_chance: 0.2
+            door_count: 4
         player:
           letter: P
           spawn: { x: 3, y: 3, story: 0 }
@@ -27,10 +31,36 @@ struct WorldSeedConfigTests {
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.version == 1)
         #expect(config.seed == 42)
+        #expect(config.resolvedSeed() == 42)
         #expect(config.world.stories == 1)
-        #expect(config.player.letter == "P")
         #expect(config.display.tileWidth == 40)
         #expect(config.display.tileHeight == 40)
+        try config.validate()
+    }
+
+    @Test func decodesTimeSeedToken() throws {
+        let yaml = """
+        version: 1
+        seed: time
+        world:
+          width: 24
+          height: 24
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 6
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.05
+            wall_destructible_chance: 0.2
+            door_count: 4
+        """
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.seed == nil)
+        let date = Date(timeIntervalSince1970: 1_700_000_000.5)
+        #expect(config.resolvedSeed(at: date) == 1_700_000_000_500)
         try config.validate()
     }
 
@@ -50,9 +80,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         """
@@ -79,9 +112,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_bsp
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         """
@@ -104,9 +140,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         enemies:
@@ -132,9 +171,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         enemies:
@@ -160,9 +202,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         pickups:
@@ -193,9 +238,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 2
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         pickups:
@@ -221,9 +269,12 @@ struct WorldSeedConfigTests {
           algorithm: rooms_doors
           room_count: 2
           corridor_width: 1
-          pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          door_count: 0
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            door_count: 0
         player:
           letter: P
         """

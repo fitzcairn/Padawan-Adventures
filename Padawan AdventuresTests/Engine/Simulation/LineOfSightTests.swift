@@ -12,7 +12,7 @@ struct LineOfSightTests {
     @Test func solidWallBlocksSight() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         let from = GridCoord(x: 0, y: 1, story: 0)
@@ -20,15 +20,23 @@ struct LineOfSightTests {
         #expect(LineOfSight.canSee(from: from, to: to, in: world) == false)
     }
 
-    @Test func doorDoesNotBlockSight() {
+    @Test func floorOpeningDoesNotBlockSight() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: true)),
+            Tile(kind: .floor(isPit: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         let from = GridCoord(x: 0, y: 1, story: 0)
         let to = GridCoord(x: 4, y: 1, story: 0)
         #expect(LineOfSight.canSee(from: from, to: to, in: world))
+    }
+
+    @Test func gateBlocksSight() {
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
+        world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 1, story: 0))
+        let from = GridCoord(x: 0, y: 1, story: 0)
+        let to = GridCoord(x: 4, y: 1, story: 0)
+        #expect(LineOfSight.canSee(from: from, to: to, in: world) == false)
     }
 
     @Test func differentStoryCannotSee() {

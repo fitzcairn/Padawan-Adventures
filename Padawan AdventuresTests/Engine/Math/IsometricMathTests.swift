@@ -277,7 +277,7 @@ struct IsometricMathTests {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
         let floor = GridCoord(x: 1, y: 1, story: 0)
         let wall = GridCoord(x: 2, y: 2, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
 
         let focus = CGPoint.zero
         let viewCenter = CGPoint(x: 200, y: 200)
@@ -302,7 +302,7 @@ struct IsometricMathTests {
         let config = IsometricConfig()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
 
         let focus = CGPoint.zero
         let viewCenter = CGPoint(x: 200, y: 200)
@@ -323,7 +323,7 @@ struct IsometricMathTests {
         #expect(picked == wall)
     }
 
-    @Test func pickVisibleFloorReturnsNilForPit() {
+    @Test func pickVisibleFloorReturnsDrawnPit() {
         let config = IsometricConfig()
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let pit = GridCoord(x: 1, y: 1, story: 0)
@@ -332,7 +332,7 @@ struct IsometricMathTests {
         for y in 0..<3 {
             for x in 0..<3 where !(x == 1 && y == 1) {
                 world.setTile(
-                    Tile(kind: .wall(destructible: false, hasDoor: false)),
+                    Tile(kind: .wall(destructible: false)),
                     at: GridCoord(x: x, y: y, story: 0)
                 )
             }
@@ -354,7 +354,7 @@ struct IsometricMathTests {
             in: world,
             config: config
         )
-        #expect(pickedFloor == nil)
+        #expect(pickedFloor == pit)
 
         let pickedTile = IsometricMath.pickTile(
             at: viewPoint,

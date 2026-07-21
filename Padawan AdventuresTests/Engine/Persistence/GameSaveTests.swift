@@ -13,7 +13,7 @@ struct GameSaveTests {
 
     @Test func roundTripPreservesWorld() async throws {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        world.setTile(Tile(kind: .wall(destructible: true, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: true)), at: GridCoord(x: 2, y: 2, story: 0))
         _ = world.destroyWall(at: GridCoord(x: 2, y: 2, story: 0))
         world.setPlayerPosition(GridCoord(x: 3, y: 1, story: 0))
 
@@ -72,8 +72,9 @@ struct GameSaveTests {
         let kinds: [TileKind] = [
             .floor(isPit: false),
             .floor(isPit: true),
-            .wall(destructible: true, hasDoor: true),
-            .wall(destructible: false, hasDoor: false),
+            .wall(destructible: true),
+            .wall(destructible: false),
+            .gate,
         ]
 
         for kind in kinds {
@@ -81,6 +82,18 @@ struct GameSaveTests {
             let data = try encoder.encode(tile)
             let decoded = try decoder.decode(Tile.self, from: data)
             #expect(decoded == tile)
+        }
+    }
+
+    @Test func legacyDoorWallDecodesAsFloor() throws {
+        let json = """
+        {"kind":{"type":"wall","destructible":false,"hasDoor":true}}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Tile.self, from: json)
+        if case .floor(let isPit) = decoded.kind {
+            #expect(!isPit)
+        } else {
+            Issue.record("Expected legacy door to decode as floor")
         }
     }
 

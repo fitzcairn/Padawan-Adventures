@@ -250,12 +250,23 @@ struct MovementSystem: Sendable {
         events.append(.reached(end))
 
         let isPlayer = world.entity(id: entityID)?.isPlayer == true
-        guard isPlayer, world.tile(at: end)?.isPit == true else { return }
+        guard isPlayer, let tile = world.tile(at: end) else { return }
 
-        let resolution = world.resolvePit(at: end)
-        events.append(.pit(resolution))
-        // Stop so leftover path waypoints are not followed after the pit encounter.
-        reset()
+        if tile.isPit {
+            let resolution = world.resolvePit(at: end)
+            events.append(.pit(resolution))
+            reset()
+            return
+        }
+        if tile.isDestructibleWall {
+            events.append(.boom(end))
+            reset()
+            return
+        }
+        if tile.isGate {
+            events.append(.gate(end))
+            reset()
+        }
     }
 
     private mutating func advanceSegment() {
@@ -305,4 +316,6 @@ struct MovementSystem: Sendable {
 enum MovementEvent: Equatable, Sendable {
     case reached(GridCoord)
     case pit(PitResolution)
+    case boom(GridCoord)
+    case gate(GridCoord)
 }

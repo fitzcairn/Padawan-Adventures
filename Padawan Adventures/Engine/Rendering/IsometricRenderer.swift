@@ -74,11 +74,7 @@ final class IsometricRenderer {
                 let node = PlaceholderFactory.tileNode(for: tile, at: coord, in: world, config: config)
 
                 switch tile.kind {
-                case .wall(_, let hasDoor) where hasDoor:
-                    // Door cells render as floor diamonds — keep them in the floor band.
-                    node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-                    floorLayer.addChild(node)
-                case .wall:
+                case .wall, .gate:
                     node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
                     occlusionLayer.addChild(node)
                 case .floor:

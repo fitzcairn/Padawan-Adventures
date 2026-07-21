@@ -25,6 +25,10 @@ final class GameScene: SKScene {
     var onEnemyContact: ((UUID) -> Void)?
     /// Called when the player enters a pit tile.
     var onPitEntered: (() -> Void)?
+    /// Called when the player walks onto a destructible wall.
+    var onBoomEntered: ((GridCoord) -> Void)?
+    /// Called when the player walks onto a gate.
+    var onGateEntered: ((GridCoord) -> Void)?
     /// Called after a health/energy pickup finishes its collect animation.
     var onPickupCollected: ((PickupKind) -> Void)?
     /// Called after treasure shake + fade completes.
@@ -143,6 +147,18 @@ final class GameScene: SKScene {
                 break
             }
 
+            if let boomCoord = result.boomCoord {
+                isPausedForEncounter = true
+                onBoomEntered?(boomCoord)
+                break
+            }
+
+            if let gateCoord = result.gateCoord {
+                isPausedForEncounter = true
+                onGateEntered?(gateCoord)
+                break
+            }
+
             if let enemyID = result.enemyContactID {
                 isPausedForEncounter = true
                 onEnemyContact?(enemyID)
@@ -174,11 +190,38 @@ final class GameScene: SKScene {
     }
 
     /// Resumes simulation after the PIT! screen is dismissed.
-    func resolvePitEncounter() {
-        isPausedForEncounter = false
+    func resolvePitEncounter(completion: (() -> Void)? = nil) {
         pendingInput = PendingInput()
         renderer.syncEntities(world.entities)
         scheduleSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
+    }
+
+    /// Opens a destructible wall after BOOM!, then fades the world back in.
+    func resolveBoomEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
+        _ = world.destroyWall(at: coord)
+        pendingInput = PendingInput()
+        renderer.render(world: world, focus: viewportFocus)
+        scheduleSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
+    }
+
+    /// Opens a gate strip after GATE ENCOUNTERED!!, then fades the world back in.
+    func resolveGateEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
+        _ = world.openGate(at: coord)
+        pendingInput = PendingInput()
+        renderer.render(world: world, focus: viewportFocus)
+        scheduleSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
     }
 
     /// Renders at YAML tile size with worldScale = 1, centered on the player.

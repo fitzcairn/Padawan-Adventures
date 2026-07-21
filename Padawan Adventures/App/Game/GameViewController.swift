@@ -15,6 +15,8 @@ final class GameViewController: LandscapeHostingController {
     private var isExitingToMenu = false
     private var isPresentingFight = false
     private var isPresentingPit = false
+    private var isPresentingBoom = false
+    private var isPresentingGate = false
     private var isPresentingWin = false
 
     init(world: GameWorld, isoConfig: IsometricConfig, session: AppSession) {
@@ -50,6 +52,12 @@ final class GameViewController: LandscapeHostingController {
         }
         scene.onPitEntered = { [weak self] in
             self?.presentPit()
+        }
+        scene.onBoomEntered = { [weak self] coord in
+            self?.presentBoom(at: coord)
+        }
+        scene.onGateEntered = { [weak self] coord in
+            self?.presentGate(at: coord)
         }
         scene.onPickupCollected = { [weak self] kind in
             self?.handlePickupCollected(kind)
@@ -132,16 +140,62 @@ final class GameViewController: LandscapeHostingController {
         guard !isPresentingPit else { return }
         isPresentingPit = true
 
-        let pit = PitViewController()
-        pit.modalPresentationStyle = .fullScreen
-        pit.onPitTapped = { [weak self, weak pit] in
+        gameScene?.fadeSimulationOut { [weak self] in
             guard let self else { return }
-            pit?.dismiss(animated: false) {
-                self.gameScene?.resolvePitEncounter()
-                self.isPresentingPit = false
+            let pit = PitViewController()
+            pit.modalPresentationStyle = .fullScreen
+            pit.onPitTapped = { [weak self, weak pit] in
+                guard let self else { return }
+                pit?.dismiss(animated: false) {
+                    self.gameScene?.resolvePitEncounter {
+                        self.isPresentingPit = false
+                    }
+                }
             }
+            self.present(pit, animated: false)
         }
-        present(pit, animated: false)
+    }
+
+    @MainActor
+    private func presentBoom(at coord: GridCoord) {
+        guard !isPresentingBoom else { return }
+        isPresentingBoom = true
+
+        gameScene?.fadeSimulationOut { [weak self] in
+            guard let self else { return }
+            let boom = BoomViewController()
+            boom.modalPresentationStyle = .fullScreen
+            boom.onBoomTapped = { [weak self, weak boom] in
+                guard let self else { return }
+                boom?.dismiss(animated: false) {
+                    self.gameScene?.resolveBoomEncounter(at: coord) {
+                        self.isPresentingBoom = false
+                    }
+                }
+            }
+            self.present(boom, animated: false)
+        }
+    }
+
+    @MainActor
+    private func presentGate(at coord: GridCoord) {
+        guard !isPresentingGate else { return }
+        isPresentingGate = true
+
+        gameScene?.fadeSimulationOut { [weak self] in
+            guard let self else { return }
+            let gate = GateEncounterViewController()
+            gate.modalPresentationStyle = .fullScreen
+            gate.onGateTapped = { [weak self, weak gate] in
+                guard let self else { return }
+                gate?.dismiss(animated: false) {
+                    self.gameScene?.resolveGateEncounter(at: coord) {
+                        self.isPresentingGate = false
+                    }
+                }
+            }
+            self.present(gate, animated: false)
+        }
     }
 
     @MainActor

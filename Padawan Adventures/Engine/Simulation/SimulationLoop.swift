@@ -21,6 +21,10 @@ struct SimulationTickResult: Sendable {
     var pickupContactID: UUID?
     /// True when the player entered a pit this tick (fell or hazard).
     var didEnterPit: Bool = false
+    /// Destructible wall the player walked onto this tick, if any.
+    var boomCoord: GridCoord?
+    /// Gate cell the player walked onto this tick, if any.
+    var gateCoord: GridCoord?
 }
 
 struct SimulationLoop: Sendable {
@@ -125,8 +129,13 @@ struct SimulationLoop: Sendable {
             }
             return false
         }
-
         for event in events {
+            if case .boom(let coord) = event {
+                result.boomCoord = coord
+            }
+            if case .gate(let coord) = event {
+                result.gateCoord = coord
+            }
             if case .reached(let coord) = event {
                 result.cameraCoord = coord
             }

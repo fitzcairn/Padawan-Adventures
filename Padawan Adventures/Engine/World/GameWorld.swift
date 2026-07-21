@@ -103,35 +103,57 @@ struct GameWorld: Sendable, WorldPersistable {
 
     @discardableResult
     mutating func destroyWall(at coord: GridCoord) -> Bool {
-        guard let tile = tile(at: coord),
-              case .wall(let destructible, _) = tile.kind,
-              destructible else {
-            return false
-        }
+        guard tile(at: coord)?.isDestructibleWall == true else { return false }
         setTile(Tile(kind: .floor(isPit: false)), at: coord)
+        return true
+    }
+
+    /// Opens a gate cell and every orthogonally contiguous gate in its barrier strip.
+    @discardableResult
+    mutating func openGate(at coord: GridCoord) -> Bool {
+        guard tile(at: coord)?.isGate == true else { return false }
+        var queue = [coord]
+        var visited: Set<GridCoord> = [coord]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            setTile(Tile(kind: .floor(isPit: false)), at: current)
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard isInBounds(next), !visited.contains(next) else { continue }
+                guard tile(at: next)?.isGate == true else { continue }
+                visited.insert(next)
+                queue.append(next)
+            }
+        }
         return true
     }
 
     func isEnterable(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
-        case .floor:
+        case .floor, .gate:
             return true
-        case .wall(_, let hasDoor):
-            return hasDoor
+        case .wall(let destructible):
+            return destructible
         }
     }
 
-    /// Walkable for path edges: enterable tiles (including pits). Doors remain walkable.
+    /// Walkable for path edges: enterable tiles (including pits, gates, destructible walls).
     func isWalkable(at coord: GridCoord) -> Bool {
         isEnterable(at: coord)
     }
 
-    /// Valid tap / movement destination: floor (including pits) — never plain wall or door.
+    /// Valid tap / movement destination: floors, destructible walls, and gates.
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
-        if case .floor = tile.kind { return true }
-        return false
+        switch tile.kind {
+        case .floor, .gate:
+            return true
+        case .wall(let destructible):
+            return destructible
+        }
     }
 
     /// Resolves a tap to a valid movement goal on the same story (BFS to nearest if needed).
@@ -217,8 +239,10 @@ struct GameWorld: Sendable, WorldPersistable {
         switch tile.kind {
         case .floor(let isPit):
             return isPit ? "F*" : "F"
-        case .wall(let d, let door):
-            return "W\(d ? "d" : "")\(door ? "D" : "")"
+        case .wall(let destructible):
+            return "W\(destructible ? "d" : "")"
+        case .gate:
+            return "G"
         }
     }
 }

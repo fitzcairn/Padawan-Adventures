@@ -37,16 +37,16 @@ struct EnemyAITests {
         )
         // Wall between them.
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 3, y: 1, story: 0)
         )
         // Block the whole column so pathfinding can't sneak around on this narrow map.
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 3, y: 0, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 3, y: 2, story: 0)
         )
 
@@ -177,15 +177,15 @@ struct EnemyAITests {
             enemyAt: GridCoord(x: 4, y: 1, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 0, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 2, story: 0)
         )
         // Open a temporary gap so the enemy can acquire the player, then close it.
@@ -205,7 +205,7 @@ struct EnemyAITests {
         #expect(states[enemyID]?.mode == .chasing)
 
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         #expect(
@@ -246,15 +246,15 @@ struct EnemyAITests {
         )
 
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 0, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 1, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false, hasDoor: false)),
+            Tile(kind: .wall(destructible: false)),
             at: GridCoord(x: 2, y: 2, story: 0)
         )
 

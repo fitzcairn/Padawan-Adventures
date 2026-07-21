@@ -11,13 +11,14 @@ struct ProceduralGeneratorTests {
                 algorithm: "rooms_doors",
                 roomCount: roomCount,
                 corridorWidth: 2,
-                minRoomSize: 4,
-                maxRoomSize: 10,
-                pitChance: 0.1,
-                wallDestructibleChance: 0.3,
-                doorCount: 2
+                room: .init(
+                    minRoomSize: 4,
+                    maxRoomSize: 10,
+                    pitChance: 0.2,
+                    wallDestructibleChance: 0.3,
+                    doorCount: 2
+                )
             ),
-            player: .init(letter: "P", spawn: .init(x: 1, y: 1, story: 0)),
             extensions: nil
         )
     }
@@ -54,25 +55,29 @@ struct ProceduralGeneratorTests {
         return visited
     }
 
-    private func joinHasDoor(
+    private func joinHasOpening(
         _ roomA: GeneratedRoom,
         _ roomB: GeneratedRoom,
         world: GameWorld
     ) -> Bool {
-        func boundaryDoor(of room: GeneratedRoom) -> Bool {
+        func boundaryOpening(of room: GeneratedRoom) -> Bool {
             for cell in room.cells {
                 for (dx, dy) in GridCoord.cardinals {
                     let neighbor = cell.neighbor(dx: dx, dy: dy)
                     guard !room.cells.contains(neighbor) else { continue }
-                    if case .wall(_, true) = world.tile(at: neighbor)?.kind {
+                    guard let tile = world.tile(at: neighbor) else { continue }
+                    switch tile.kind {
+                    case .floor, .gate:
                         return true
+                    case .wall(let destructible):
+                        if destructible { return true }
                     }
                 }
             }
             return false
         }
-        // Adjacent joins share a wall door; tunnel joins put a door on each room ring.
-        return boundaryDoor(of: roomA) && boundaryDoor(of: roomB)
+        // Joins leave a floor / soft-blocker opening on each room ring.
+        return boundaryOpening(of: roomA) && boundaryOpening(of: roomB)
     }
 
     private func floorCellsOutsideRooms(world: GameWorld, rooms: [GeneratedRoom]) -> Int {
@@ -99,7 +104,7 @@ struct ProceduralGeneratorTests {
         #expect(first.fingerprint() == second.fingerprint())
     }
 
-    @Test func allRoomsReachableViaDoors() throws {
+    @Test func allRoomsReachableIncludingSoftBlockers() throws {
         let config = roomsDoorsConfig(seed: 42, roomCount: 6)
         let result = try ProceduralGenerator().generateDetailed(from: config)
         let reachable = reachableCells(from: result.world.spawn, in: result.world)
@@ -120,7 +125,7 @@ struct ProceduralGeneratorTests {
         #expect(result.world.playerPosition == result.world.spawn)
     }
 
-    @Test func roomsJoinedByDoorsNotOpenGaps() throws {
+    @Test func roomsJoinedByOpeningsNotDirectFloorEdges() throws {
         let config = roomsDoorsConfig(seed: 123, roomCount: 6)
         let result = try ProceduralGenerator().generateDetailed(from: config)
 
@@ -129,7 +134,7 @@ struct ProceduralGeneratorTests {
         for (aIndex, bIndex) in result.joinPairs {
             let roomA = result.rooms[aIndex]
             let roomB = result.rooms[bIndex]
-            #expect(joinHasDoor(roomA, roomB, world: result.world))
+            #expect(joinHasOpening(roomA, roomB, world: result.world))
 
             // No open floor-to-floor breach between distinct rooms.
             for cell in roomA.cells {
@@ -186,8 +191,8 @@ struct ProceduralGeneratorTests {
         for y in 0..<result.world.height {
             for x in 0..<result.world.width {
                 let coord = GridCoord(x: x, y: y, story: 0)
-                guard result.world.isEnterable(at: coord) else { continue }
-                // Room interiors can be irregular; enforce width on hallways/doors only.
+                guard case .floor = result.world.tile(at: coord)?.kind else { continue }
+                // Room interiors can be irregular; soft blockers are intentional chokepoints.
                 guard !roomCells.contains(coord) else { continue }
                 #expect(
                     !isSingleFilePassage(coord, in: result.world),
@@ -230,7 +235,7 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func roomsAreFullyEnclosedByWallsOrDoors() throws {
+    @Test func roomsAreBoundedByWallGateOrFloor() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             let result = try ProceduralGenerator().generateDetailed(from: roomsDoorsConfig(seed: seed))
             for room in result.rooms {
@@ -242,36 +247,86 @@ struct ProceduralGeneratorTests {
                             Issue.record("Room \(room.id) borders out-of-bounds at \(neighbor.x),\(neighbor.y)")
                             continue
                         }
-                        #expect(
-                            tile.isWall,
-                            "Room \(room.id) open edge at \(neighbor.x),\(neighbor.y) (seed \(seed))"
-                        )
+                        let ok: Bool
+                        switch tile.kind {
+                        case .floor, .gate, .wall:
+                            ok = true
+                        }
+                        #expect(ok, "Room \(room.id) invalid edge at \(neighbor.x),\(neighbor.y) (seed \(seed))")
                     }
                 }
             }
         }
     }
 
-    @Test func pitsAlwaysTouchAWallAndNeverReplaceWalls() throws {
+    @Test func pitsNeverReplaceWallsOrGates() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 8)
-            config.generation.pitChance = 0.9
+            config.generation.room.pitChance = 0.9
             let result = try ProceduralGenerator().generateDetailed(from: config)
 
             for y in 0..<result.world.height {
                 for x in 0..<result.world.width {
                     let coord = GridCoord(x: x, y: y, story: 0)
                     guard let tile = result.world.tile(at: coord), tile.isPit else { continue }
-                    #expect(
-                        !tile.isWall,
-                        "Pit replaced a wall at \(x),\(y) (seed \(seed))"
-                    )
+                    #expect(!tile.isWall && !tile.isGate, "Pit at \(x),\(y) is not a floor (seed \(seed))")
+                }
+            }
+        }
+    }
 
-                    let touchesWall = GridCoord.cardinals.contains { dx, dy in
-                        let neighbor = coord.neighbor(dx: dx, dy: dy)
-                        return result.world.tile(at: neighbor)?.isWall == true
+    @Test func atMostOnePitPerRoom() throws {
+        var config = roomsDoorsConfig(seed: 42, roomCount: 16)
+        config.generation.room.pitChance = 1.0
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        let spawnRoomID = result.topRightRoomID
+
+        for room in result.rooms {
+            let pitCount = room.cells.filter { result.world.tile(at: $0)?.isPit == true }.count
+            if room.id == spawnRoomID {
+                #expect(pitCount == 0, "spawn room should have no pits")
+            } else {
+                #expect(pitCount <= 1, "room \(room.id) has \(pitCount) pits")
+                #expect(pitCount == 1, "pit_chance 1.0 should place one pit in room \(room.id)")
+            }
+        }
+    }
+
+    @Test func destructibleWallsAreSingleTileBetweenRooms() throws {
+        for seed: UInt64 in [11, 42, 99, 123] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 10)
+            config.generation.room.wallDestructibleChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    guard result.world.tile(at: coord)?.isDestructibleWall == true else { continue }
+                    let roomPair = GridCoord.cardinals.contains { dx, dy in
+                        let a = coord.neighbor(dx: dx, dy: dy)
+                        let b = coord.neighbor(dx: -dx, dy: -dy)
+                        guard let idA = roomByCell[a], let idB = roomByCell[b] else { return false }
+                        return idA != idB
                     }
-                    #expect(touchesWall, "Pit at \(x),\(y) has no wall neighbor (seed \(seed))")
+                    #expect(roomPair, "Destructible wall at \(x),\(y) not between rooms (seed \(seed))")
+                }
+            }
+        }
+    }
+
+    @Test func gatesOnlyOccupyHallwayCells() throws {
+        for seed: UInt64 in [11, 42, 99, 123] {
+            let result = try ProceduralGenerator().generateDetailed(from: roomsDoorsConfig(seed: seed, roomCount: 10))
+            let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    guard result.world.tile(at: coord)?.isGate == true else { continue }
+                    #expect(!roomCells.contains(coord), "Gate inside room at \(x),\(y) (seed \(seed))")
+                    #expect(coord != result.world.spawn)
                 }
             }
         }
@@ -289,20 +344,20 @@ struct ProceduralGeneratorTests {
           algorithm: rooms_doors
           room_count: 6
           corridor_width: 2
-          min_room_size: 4
-          max_room_size: 6
-          pit_chance: 0.05
-          wall_destructible_chance: 0.2
-          door_count: 4
-        player:
-          letter: P
+          room:
+            min_room_size: 4
+            max_room_size: 6
+            pit_chance: 0.2
+            wall_destructible_chance: 0.2
+            door_count: 4
         extensions: {}
         """
 
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.generation.algorithm == "rooms_doors")
-        #expect(config.generation.minRoomSize == 4)
-        #expect(config.generation.maxRoomSize == 6)
+        #expect(config.generation.room.minRoomSize == 4)
+        #expect(config.generation.room.maxRoomSize == 6)
+        #expect(config.generation.room.pitChance == 0.2)
         #expect(config.world.stories == 1)
     }
 
@@ -383,5 +438,22 @@ struct ProceduralGeneratorTests {
         )
         let world = try ProceduralGenerator().generate(from: config)
         #expect(world.entities.filter(\.isPickup).isEmpty)
+    }
+
+    @Test func generatesDestructibleWallsAndGates() throws {
+        var config = roomsDoorsConfig(seed: 42, roomCount: 20)
+        config.generation.room.wallDestructibleChance = 0.8
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        var destructible = 0
+        var gates = 0
+        for y in 0..<result.world.height {
+            for x in 0..<result.world.width {
+                let tile = result.world.tile(at: GridCoord(x: x, y: y, story: 0))
+                if tile?.isDestructibleWall == true { destructible += 1 }
+                if tile?.isGate == true { gates += 1 }
+            }
+        }
+        #expect(destructible > 0, "expected destructible walls, found \(destructible)")
+        #expect(gates > 0, "expected gates, found \(gates)")
     }
 }

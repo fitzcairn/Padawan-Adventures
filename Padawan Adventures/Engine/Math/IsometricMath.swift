@@ -293,13 +293,7 @@ enum IsometricMath {
 
     /// Matches tiles that `PlaceholderFactory` actually draws as floor diamonds.
     private static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
-        guard let tile else { return false }
-        switch tile.kind {
-        case .floor(let isPit):
-            return !isPit
-        case .wall:
-            return false
-        }
+        IsometricTileGeometry.isDrawnFloorSurface(tile)
     }
 
     /// Axis-aligned bounds of the floor diamonds for a rectangular grid on `story`.

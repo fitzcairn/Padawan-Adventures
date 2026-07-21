@@ -8,6 +8,10 @@ enum PlaceholderFactory {
     static let pitColor = UIColor(red: 0.28, green: 0.14, blue: 0.06, alpha: 1)
     /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
     static let wallColor = UIColor(white: 0.72, alpha: 1)
+    /// Light yellow soft walls the player can destroy.
+    static let destructibleWallColor = UIColor(red: 1.0, green: 0.92, blue: 0.45, alpha: 1)
+    /// Light green multi-tile gate barriers.
+    static let gateColor = UIColor(red: 0.55, green: 0.9, blue: 0.55, alpha: 1)
     /// Raised roof fill between wall tops.
     static let ceilingColor = UIColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
 
@@ -27,31 +31,25 @@ enum PlaceholderFactory {
                 horizontalFloorNode(config: config, fillColor: isPit ? pitColor : floorColor)
             )
 
-        case .wall(_, let hasDoor):
-            if hasDoor {
-                // Doorways show as floor so the passage reads as walkable ground.
-                container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-                container.addChild(horizontalFloorNode(config: config, fillColor: floorColor))
-            } else {
-                container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                // Interior solid walls (not bordering walkable space) stay unrendered → black.
-                if let world, IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
-                    let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-                    let wall = perspectiveWallNode(
-                        color: wallColor,
-                        faces: faces,
-                        config: config
-                    )
-                    container.addChild(wall)
-                } else if world == nil {
-                    let wall = perspectiveWallNode(
-                        color: wallColor,
-                        faces: .all,
-                        config: config
-                    )
-                    container.addChild(wall)
-                }
+        case .wall(let destructible):
+            container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+            let color = destructible ? destructibleWallColor : wallColor
+            // Interior solid walls (not bordering walkable space) stay unrendered → black.
+            // Destructible walls always render so soft targets stay visible.
+            if destructible {
+                let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
+                container.addChild(perspectiveWallNode(color: color, faces: faces, config: config))
+            } else if let world, IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
+                let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
+                container.addChild(perspectiveWallNode(color: color, faces: faces, config: config))
+            } else if world == nil {
+                container.addChild(perspectiveWallNode(color: color, faces: .all, config: config))
             }
+
+        case .gate:
+            container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+            let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
+            container.addChild(perspectiveWallNode(color: gateColor, faces: faces, config: config))
         }
 
         return container

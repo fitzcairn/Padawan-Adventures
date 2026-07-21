@@ -2,11 +2,13 @@ import Foundation
 
 enum TileKind: Equatable, Sendable, WorldPersistable {
     case floor(isPit: Bool)
-    case wall(destructible: Bool, hasDoor: Bool)
+    case wall(destructible: Bool)
+    case gate
 
     private enum KindType: String, Codable {
         case floor
         case wall
+        case gate
         case ramp
         case slide
     }
@@ -29,13 +31,17 @@ enum TileKind: Equatable, Sendable, WorldPersistable {
         switch type {
         case .floor:
             self = .floor(isPit: try container.decode(Bool.self, forKey: .isPit))
+        case .gate:
+            self = .gate
         case .wall:
             // Legacy `hasLadder` is ignored if present.
             _ = try container.decodeIfPresent(Bool.self, forKey: .hasLadder)
-            self = .wall(
-                destructible: try container.decode(Bool.self, forKey: .destructible),
-                hasDoor: try container.decode(Bool.self, forKey: .hasDoor)
-            )
+            // Legacy doors become floor openings.
+            if try container.decodeIfPresent(Bool.self, forKey: .hasDoor) == true {
+                self = .floor(isPit: false)
+            } else {
+                self = .wall(destructible: try container.decode(Bool.self, forKey: .destructible))
+            }
         case .ramp, .slide:
             // Legacy connector tiles become ordinary floors.
             self = .floor(isPit: false)
@@ -49,10 +55,11 @@ enum TileKind: Equatable, Sendable, WorldPersistable {
         case .floor(let isPit):
             try container.encode(KindType.floor, forKey: .type)
             try container.encode(isPit, forKey: .isPit)
-        case .wall(let destructible, let hasDoor):
+        case .wall(let destructible):
             try container.encode(KindType.wall, forKey: .type)
             try container.encode(destructible, forKey: .destructible)
-            try container.encode(hasDoor, forKey: .hasDoor)
+        case .gate:
+            try container.encode(KindType.gate, forKey: .type)
         }
     }
 }
@@ -71,6 +78,16 @@ struct Tile: Equatable, Sendable, WorldPersistable {
 
     var isWall: Bool {
         if case .wall = kind { return true }
+        return false
+    }
+
+    var isGate: Bool {
+        if case .gate = kind { return true }
+        return false
+    }
+
+    var isDestructibleWall: Bool {
+        if case .wall(true) = kind { return true }
         return false
     }
 

@@ -4,17 +4,20 @@ import Foundation
 @MainActor
 final class AppSession {
     let seedConfig: WorldSeedConfig
+    let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let saveService: GameSaveService
     private(set) var hasCompatibleSave: Bool
 
     init(
         seedConfig: WorldSeedConfig,
+        playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
         saveService: GameSaveService,
         hasCompatibleSave: Bool
     ) {
         self.seedConfig = seedConfig
+        self.playerConfig = playerConfig
         self.enemyConfig = enemyConfig
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
@@ -23,20 +26,21 @@ final class AppSession {
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
         WorldSeedConfig(
             version: 1,
-            seed: 42,
+            seed: nil,
             world: .init(width: 100, height: 100, stories: 1),
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: 100,
                 corridorWidth: 2,
-                minRoomSize: 4,
-                maxRoomSize: 12,
-                pitChance: 0.05,
-                wallDestructibleChance: 0.2,
-                doorCount: 4
+                room: .init(
+                    minRoomSize: 4,
+                    maxRoomSize: 12,
+                    pitChance: 0.2,
+                    wallDestructibleChance: 0.2,
+                    doorCount: 4
+                )
             ),
             display: .init(tileWidth: 40, tileHeight: 40),
-            player: .init(letter: "P", spawn: nil),
             enemies: .init(type: "grunt", spawnChancePerRoom: 0.8),
             extensions: nil
         )
@@ -51,6 +55,15 @@ final class AppSession {
             seedConfig = loaded
         } catch {
             seedConfig = fallbackConfig()
+        }
+
+        let playerConfig: PlayerConfig
+        do {
+            let loaded = try PlayerConfig.loadFromBundle()
+            try loaded.validate()
+            playerConfig = loaded
+        } catch {
+            playerConfig = .fallback
         }
 
         let enemyConfig: EnemyConfig
@@ -79,6 +92,7 @@ final class AppSession {
 
         return AppSession(
             seedConfig: seedConfig,
+            playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             saveService: saveService,
             hasCompatibleSave: hasCompatibleSave

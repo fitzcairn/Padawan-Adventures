@@ -80,9 +80,9 @@ struct SimulationLoopTests {
 
     @Test func unreachableGoalPathsClosestViaControls() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 0, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 0, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 2, story: 0))
 
         var movement = MovementSystem()
         var pendingInput = PendingInput()

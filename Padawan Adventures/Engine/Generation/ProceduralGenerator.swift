@@ -19,18 +19,21 @@ struct GenerationResult: Sendable {
 struct ProceduralGenerator: Sendable {
     func generate(
         from config: WorldSeedConfig,
+        playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback
     ) throws -> GameWorld {
-        try generateDetailed(from: config, enemyConfig: enemyConfig).world
+        try generateDetailed(from: config, playerConfig: playerConfig, enemyConfig: enemyConfig).world
     }
 
     func generateDetailed(
         from config: WorldSeedConfig,
+        playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback
     ) throws -> GenerationResult {
         try config.validate()
+        try playerConfig.validate()
 
-        var rng = SeededGenerator(seed: config.seed)
+        var rng = SeededGenerator(seed: config.resolvedSeed())
         let width = config.world.width
         let height = config.world.height
         let stories = config.world.stories
@@ -40,8 +43,8 @@ struct ProceduralGenerator: Sendable {
 
         let rooms = placeOrganicRooms(
             count: params.roomCount,
-            minSize: params.minRoomSize,
-            maxSize: params.maxRoomSize,
+            minSize: params.room.minRoomSize,
+            maxSize: params.room.maxRoomSize,
             width: width,
             height: height,
             rng: &rng
@@ -56,22 +59,38 @@ struct ProceduralGenerator: Sendable {
 
         let topRight = topRightRoom(from: rooms)
         let spawn = spawnCell(for: topRight)
-        ensureReachability(rooms: rooms, spawn: spawn, tiles: &tiles, story: 0, corridorWidth: corridorWidth)
+        let roomCells = rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
 
-        // Widen hallways before sealing so room rings stay closed afterward.
-        enforceMinTraversableWidth(
+        // Widen hallways, then place soft blockers, then validate reachability through them.
+        enforceMinTraversableWidth(tiles: &tiles, story: 0, roomCells: roomCells)
+        markDestructibleWalls(
+            rooms: rooms,
+            in: &tiles[0],
+            chance: params.room.wallDestructibleChance,
+            rng: &rng
+        )
+        placeGates(
+            rooms: rooms,
             tiles: &tiles,
             story: 0,
-            roomCells: rooms.reduce(into: Set()) { $0.formUnion($1.cells) }
+            spawn: spawn,
+            corridorWidth: corridorWidth,
+            rng: &rng
         )
-        sealAllRoomPerimeters(rooms: rooms, tiles: &tiles, story: 0)
-        markDestructibleWalls(in: &tiles[0], chance: params.wallDestructibleChance, rng: &rng)
+        ensureReachability(rooms: rooms, spawn: spawn, tiles: &tiles, story: 0, corridorWidth: corridorWidth)
 
-        // Pits only on floors that already touch a wall — never replace walls/doors.
-        sprinklePits(into: &tiles[0], chance: params.pitChance, excluding: spawn, rng: &rng)
+        // At most one pit per room, rolled with room.pit_chance.
+        sprinklePits(
+            rooms: rooms,
+            into: &tiles[0],
+            chance: params.room.pitChance,
+            excludingRoomID: topRight.id,
+            excluding: spawn,
+            rng: &rng
+        )
         clearPits(around: spawn, tiles: &tiles, story: 0)
 
-        let letter = config.player.letter.first ?? "P"
+        let letter = playerConfig.letter.first ?? "P"
         let player = GameEntity(letter: letter, position: spawn, isPlayer: true)
         var entities = [player]
         var occupied: Set<GridCoord> = [spawn]
@@ -109,7 +128,9 @@ struct ProceduralGenerator: Sendable {
             storyCount: stories,
             tiles: tiles,
             entities: entities,
-            spawn: spawn
+            spawn: spawn,
+            healthCount: playerConfig.startingHealth,
+            energyCount: playerConfig.startingEnergy
         )
 
         return GenerationResult(
@@ -226,7 +247,7 @@ struct ProceduralGenerator: Sendable {
         Array(
             repeating: Array(
                 repeating: Array(
-                    repeating: Tile(kind: .wall(destructible: false, hasDoor: false)),
+                    repeating: Tile(kind: .wall(destructible: false)),
                     count: width
                 ),
                 count: height
@@ -271,10 +292,17 @@ struct ProceduralGenerator: Sendable {
 
             guard !cells.isEmpty else { continue }
 
-            let buffered = buffer(cells: cells, width: width, height: height, padding: 1)
-            if !buffered.isDisjoint(with: occupied) { continue }
+            // Allow a single shared wall between rooms (for destructible partitions), but never
+            // floor-to-floor contact.
+            guard cells.isDisjoint(with: occupied) else { continue }
+            let touchesExistingFloor = cells.contains { cell in
+                GridCoord.cardinals.contains { dx, dy in
+                    occupied.contains(cell.neighbor(dx: dx, dy: dy))
+                }
+            }
+            guard !touchesExistingFloor else { continue }
 
-            occupied.formUnion(buffered)
+            occupied.formUnion(cells)
             let center = centroid(of: cells)
             rooms.append(
                 GeneratedRoom(
@@ -375,20 +403,6 @@ struct ProceduralGenerator: Sendable {
         return cells
     }
 
-    private func buffer(cells: Set<GridCoord>, width: Int, height: Int, padding: Int) -> Set<GridCoord> {
-        var expanded = Set<GridCoord>()
-        for cell in cells {
-            for dy in -padding...padding {
-                for dx in -padding...padding {
-                    let c = GridCoord(x: cell.x + dx, y: cell.y + dy, story: 0)
-                    guard c.x >= 0, c.x < width, c.y >= 0, c.y < height else { continue }
-                    expanded.insert(c)
-                }
-            }
-        }
-        return expanded
-    }
-
     private func centroid(of cells: Set<GridCoord>) -> GridCoord {
         let sum = cells.reduce((x: 0, y: 0)) { partial, cell in
             (partial.x + cell.x, partial.y + cell.y)
@@ -461,7 +475,7 @@ struct ProceduralGenerator: Sendable {
         }
     }
 
-    /// Door through a shared wall when rooms touch; otherwise a wide L-tunnel with doors.
+    /// Floor opening through a shared wall when rooms touch; otherwise a wide L-tunnel.
     private func joinRoomsWithDoorOrTunnel(
         _ roomA: GeneratedRoom,
         _ roomB: GeneratedRoom,
@@ -472,7 +486,7 @@ struct ProceduralGenerator: Sendable {
         let width = max(2, corridorWidth)
 
         if let opening = sharedWallOpening(roomA, roomB) {
-            placeDoorStrip(
+            placeFloorOpeningStrip(
                 at: opening.wall,
                 alongDX: opening.alongDX,
                 alongDY: opening.alongDY,
@@ -490,7 +504,7 @@ struct ProceduralGenerator: Sendable {
             let stepX = (end.x - start.x).signum()
             let stepY = (end.y - start.y).signum()
             // Perpendicular to the one-cell gap.
-            placeDoorStrip(
+            placeFloorOpeningStrip(
                 at: mid,
                 alongDX: -stepY,
                 alongDY: stepX,
@@ -510,9 +524,6 @@ struct ProceduralGenerator: Sendable {
             tiles: &tiles,
             story: story
         )
-
-        sealRoomExitsWithDoors(room: roomA, tiles: &tiles, story: story)
-        sealRoomExitsWithDoors(room: roomB, tiles: &tiles, story: story)
     }
 
     /// Carves a corridor of `width` tiles along an L-path using a square brush so bends stay wide.
@@ -546,7 +557,7 @@ struct ProceduralGenerator: Sendable {
         return Array(start..<(start + width))
     }
 
-    private func placeDoorStrip(
+    private func placeFloorOpeningStrip(
         at origin: GridCoord,
         alongDX: Int,
         alongDY: Int,
@@ -559,54 +570,17 @@ struct ProceduralGenerator: Sendable {
         let dy = alongDX == 0 && alongDY == 0 ? 0 : alongDY
         for i in 0..<width {
             let coord = GridCoord(x: origin.x + dx * i, y: origin.y + dy * i, story: story)
-            // Prefer true shared-wall cells, but still open the full strip so doorways stay wide.
+            // Prefer true shared-wall cells, but still open the full strip so passages stay wide.
             if let (roomA, roomB) = rooms, !isSharedWall(coord, between: roomA, and: roomB) {
                 guard coord.y >= 0, coord.y < tiles[story].count else { continue }
                 guard coord.x >= 0, coord.x < tiles[story][coord.y].count else { continue }
                 if case .wall = tiles[story][coord.y][coord.x].kind {
-                    setDoor(at: coord, tiles: &tiles, story: story)
+                    setFloorOpening(at: coord, tiles: &tiles, story: story)
                 }
                 continue
             }
-            setDoor(at: coord, tiles: &tiles, story: story)
+            setFloorOpening(at: coord, tiles: &tiles, story: story)
         }
-    }
-
-    /// Re-seal every room so corridors/widening never leave an open floor gap in a room ring.
-    private func sealAllRoomPerimeters(
-        rooms: [GeneratedRoom],
-        tiles: inout [[[Tile]]],
-        story: Int
-    ) {
-        let ordered = rooms.sorted { $0.id < $1.id }
-        for room in ordered {
-            sealRoomExitsWithDoors(room: room, tiles: &tiles, story: story)
-        }
-    }
-
-    /// Any open floor orthogonally adjacent to a room becomes a door so rooms stay gated.
-    private func sealRoomExitsWithDoors(
-        room: GeneratedRoom,
-        tiles: inout [[[Tile]]],
-        story: Int
-    ) {
-        let cells = room.cells.sorted { ($0.x, $0.y) < ($1.x, $1.y) }
-        for cell in cells {
-            for (dx, dy) in GridCoord.cardinals {
-                let neighbor = cell.neighbor(dx: dx, dy: dy)
-                guard !room.cells.contains(neighbor) else { continue }
-                guard neighbor.y >= 0, neighbor.y < tiles[story].count else { continue }
-                guard neighbor.x >= 0, neighbor.x < tiles[story][neighbor.y].count else { continue }
-                if isFloor(tiles[story][neighbor.y][neighbor.x]) {
-                    setDoor(at: neighbor, tiles: &tiles, story: story)
-                }
-            }
-        }
-    }
-
-    private func isDoor(_ tile: Tile) -> Bool {
-        if case .wall(_, true) = tile.kind { return true }
-        return false
     }
 
     private func lPath(from start: GridCoord, to end: GridCoord) -> [GridCoord] {
@@ -657,16 +631,10 @@ struct ProceduralGenerator: Sendable {
         return false
     }
 
-    private func setDoor(at coord: GridCoord, tiles: inout [[[Tile]]], story: Int) {
+    private func setFloorOpening(at coord: GridCoord, tiles: inout [[[Tile]]], story: Int) {
         guard coord.y >= 0, coord.y < tiles[story].count else { return }
         guard coord.x >= 0, coord.x < tiles[story][coord.y].count else { return }
-
-        switch tiles[story][coord.y][coord.x].kind {
-        case .wall(let destructible, _):
-            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: destructible, hasDoor: true))
-        case .floor:
-            tiles[story][coord.y][coord.x] = Tile(kind: .wall(destructible: false, hasDoor: true))
-        }
+        tiles[story][coord.y][coord.x] = Tile(kind: .floor(isPit: false))
     }
 
     private func closestPair(_ roomA: GeneratedRoom, _ roomB: GeneratedRoom) -> (GridCoord, GridCoord) {
@@ -757,7 +725,7 @@ struct ProceduralGenerator: Sendable {
     ) -> Bool {
         guard coord.y >= 0, coord.y < tiles[story].count else { return false }
         guard coord.x >= 0, coord.x < tiles[story][coord.y].count else { return false }
-        if case .wall(_, let hasDoor) = tiles[story][coord.y][coord.x].kind, !hasDoor {
+        if case .wall(false) = tiles[story][coord.y][coord.x].kind {
             tiles[story][coord.y][coord.x] = Tile(kind: .floor(isPit: false))
             return true
         }
@@ -843,7 +811,7 @@ struct ProceduralGenerator: Sendable {
                 guard next.y >= 0, next.y < tiles[story].count else { continue }
                 guard next.x >= 0, next.x < tiles[story][next.y].count else { continue }
                 guard !visited.contains(next) else { continue }
-                guard isEnterable(tiles[story][next.y][next.x]) else { continue }
+                guard isGenerationPassable(tiles[story][next.y][next.x]) else { continue }
                 visited.insert(next)
                 queue.append(next)
             }
@@ -851,38 +819,35 @@ struct ProceduralGenerator: Sendable {
         return visited
     }
 
-    // MARK: - Pits / walls / vertical features
+    // MARK: - Pits / walls / gates
 
+    /// Rolls `chance` once per room; on success places a single pit floor in that room.
     private func sprinklePits(
+        rooms: [GeneratedRoom],
         into story: inout [[Tile]],
         chance: Double,
+        excludingRoomID: Int,
         excluding spawn: GridCoord,
         rng: inout SeededGenerator
     ) {
-        for y in 0..<story.count {
-            for x in 0..<story[y].count {
-                let coord = GridCoord(x: x, y: y, story: 0)
-                if coord == spawn { continue }
-                // Only convert existing floors; walls/doors are never replaced by pits.
-                guard case .floor = story[y][x].kind else { continue }
-                guard hasWallNeighbor(x: x, y: y, in: story) else { continue }
-                if rng.nextBool(probability: chance) {
-                    story[y][x] = Tile(kind: .floor(isPit: true))
-                }
-            }
-        }
-    }
+        let ordered = rooms.sorted { $0.id < $1.id }
+        for room in ordered {
+            guard room.id != excludingRoomID else { continue }
+            guard rng.nextBool(probability: chance) else { continue }
 
-    /// Pits must sit against a wall (or door) tile so they never float in open floor.
-    private func hasWallNeighbor(x: Int, y: Int, in story: [[Tile]]) -> Bool {
-        for (dx, dy) in GridCoord.cardinals {
-            let nx = x + dx
-            let ny = y + dy
-            guard ny >= 0, ny < story.count else { continue }
-            guard nx >= 0, nx < story[ny].count else { continue }
-            if case .wall = story[ny][nx].kind { return true }
+            let candidates = room.cells
+                .filter { cell in
+                    guard cell != spawn else { return false }
+                    guard case .floor(let isPit) = story[cell.y][cell.x].kind else { return false }
+                    return !isPit
+                }
+                .sorted { lhs, rhs in
+                    if lhs.x != rhs.x { return lhs.x < rhs.x }
+                    return lhs.y < rhs.y
+                }
+            guard let pick = rng.pick(candidates) else { continue }
+            story[pick.y][pick.x] = Tile(kind: .floor(isPit: true))
         }
-        return false
     }
 
     private func clearPits(around spawn: GridCoord, tiles: inout [[[Tile]]], story: Int) {
@@ -899,19 +864,190 @@ struct ProceduralGenerator: Sendable {
         }
     }
 
+    /// One-tile soft walls only where a solid wall sits between two different rooms.
     private func markDestructibleWalls(
+        rooms: [GeneratedRoom],
         in story: inout [[Tile]],
         chance: Double,
         rng: inout SeededGenerator
     ) {
+        let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
+            for cell in room.cells {
+                map[cell] = room.id
+            }
+        }
+
         for y in 0..<story.count {
             for x in 0..<story[y].count {
-                if case .wall(false, false) = story[y][x].kind,
-                   rng.nextBool(probability: chance) {
-                    story[y][x] = Tile(kind: .wall(destructible: true, hasDoor: false))
+                guard case .wall(false) = story[y][x].kind else { continue }
+                let coord = GridCoord(x: x, y: y, story: 0)
+                guard isSingleTileRoomPartition(coord, roomByCell: roomByCell) else { continue }
+                if rng.nextBool(probability: chance) {
+                    story[y][x] = Tile(kind: .wall(destructible: true))
                 }
             }
         }
+    }
+
+    private func isSingleTileRoomPartition(
+        _ coord: GridCoord,
+        roomByCell: [GridCoord: Int]
+    ) -> Bool {
+        for (dx, dy) in GridCoord.cardinals {
+            let a = coord.neighbor(dx: dx, dy: dy)
+            let b = coord.neighbor(dx: -dx, dy: -dy)
+            guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+            return true
+        }
+        return false
+    }
+
+    /// Multi-tile gate strips that span a hallway cross-section.
+    private func placeGates(
+        rooms: [GeneratedRoom],
+        tiles: inout [[[Tile]]],
+        story: Int,
+        spawn: GridCoord,
+        corridorWidth: Int,
+        rng: inout SeededGenerator
+    ) {
+        let roomCells = rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+        let minWidth = max(2, corridorWidth)
+        var candidates: [[GridCoord]] = []
+
+        for y in 1..<(tiles[story].count - 1) {
+            for x in 1..<(tiles[story][y].count - 1) {
+                let coord = GridCoord(x: x, y: y, story: story)
+                guard !roomCells.contains(coord), coord != spawn else { continue }
+                guard case .floor = tiles[story][y][x].kind else { continue }
+
+                // East-west travel: walls north & south of the band; strip runs along Y.
+                if let strip = hallwayGateStrip(
+                    seed: coord,
+                    crossDX: 0,
+                    crossDY: 1,
+                    minWidth: minWidth,
+                    tiles: tiles,
+                    story: story,
+                    roomCells: roomCells,
+                    spawn: spawn
+                ) {
+                    candidates.append(strip)
+                }
+                // North-south travel: walls west & east of the band; strip runs along X.
+                if let strip = hallwayGateStrip(
+                    seed: coord,
+                    crossDX: 1,
+                    crossDY: 0,
+                    minWidth: minWidth,
+                    tiles: tiles,
+                    story: story,
+                    roomCells: roomCells,
+                    spawn: spawn
+                ) {
+                    candidates.append(strip)
+                }
+            }
+        }
+
+        // Deduplicate identical strips.
+        var unique: [[GridCoord]] = []
+        var seen = Set<Set<GridCoord>>()
+        for strip in candidates {
+            let key = Set(strip)
+            guard seen.insert(key).inserted else { continue }
+            unique.append(strip.sorted { ($0.x, $0.y) < ($1.x, $1.y) })
+        }
+        unique.sort { lhs, rhs in
+            let a = lhs[0]
+            let b = rhs[0]
+            if a.x != b.x { return a.x < b.x }
+            return a.y < b.y
+        }
+
+        let target = max(2, rooms.count / 4)
+        var placed = 0
+        var blocked = Set<GridCoord>()
+
+        for strip in unique {
+            guard placed < target else { break }
+            guard strip.allSatisfy({ !blocked.contains($0) }) else { continue }
+            // Prefer placing most candidates so gates reliably appear.
+            guard placed < 2 || rng.nextBool(probability: 0.7) else { continue }
+
+            for cell in strip {
+                tiles[story][cell.y][cell.x] = Tile(kind: .gate)
+                blocked.insert(cell)
+            }
+            // Keep gates from clustering too tightly along a corridor.
+            if let first = strip.first, let last = strip.last {
+                for cell in [first, last] {
+                    for (dx, dy) in GridCoord.cardinals {
+                        blocked.insert(cell.neighbor(dx: dx * 2, dy: dy * 2))
+                    }
+                }
+            }
+            placed += 1
+        }
+    }
+
+    /// Builds a gate strip across a hallway: expand from `seed` along the cross-axis until walls.
+    private func hallwayGateStrip(
+        seed: GridCoord,
+        crossDX: Int,
+        crossDY: Int,
+        minWidth: Int,
+        tiles: [[[Tile]]],
+        story: Int,
+        roomCells: Set<GridCoord>,
+        spawn: GridCoord
+    ) -> [GridCoord]? {
+        // Travel axis is perpendicular to the cross-axis; both travel neighbors should be open-ish.
+        let travelDX = crossDY
+        let travelDY = -crossDX
+
+        func inBounds(_ c: GridCoord) -> Bool {
+            c.y >= 0 && c.y < tiles[story].count && c.x >= 0 && c.x < tiles[story][c.y].count
+        }
+        func isHallFloor(_ c: GridCoord) -> Bool {
+            guard inBounds(c), !roomCells.contains(c), c != spawn else { return false }
+            return isFloor(tiles[story][c.y][c.x])
+        }
+        func isBlockingWall(_ c: GridCoord) -> Bool {
+            guard inBounds(c) else { return true }
+            return isSolidWall(tiles[story][c.y][c.x])
+        }
+
+        // Must be able to travel along the corridor on at least one side.
+        let ahead = seed.neighbor(dx: travelDX, dy: travelDY)
+        let behind = seed.neighbor(dx: -travelDX, dy: -travelDY)
+        guard isHallFloor(ahead) || isHallFloor(behind) else { return nil }
+
+        // Expand along cross-axis to the hallway walls.
+        var strip = [seed]
+        var cursor = seed.neighbor(dx: crossDX, dy: crossDY)
+        while isHallFloor(cursor) {
+            strip.append(cursor)
+            cursor = cursor.neighbor(dx: crossDX, dy: crossDY)
+        }
+        guard isBlockingWall(cursor) else { return nil }
+
+        cursor = seed.neighbor(dx: -crossDX, dy: -crossDY)
+        while isHallFloor(cursor) {
+            strip.insert(cursor, at: 0)
+            cursor = cursor.neighbor(dx: -crossDX, dy: -crossDY)
+        }
+        guard isBlockingWall(cursor) else { return nil }
+
+        guard strip.count >= minWidth else { return nil }
+        // Keep strips modest so we don't gate entire rooms-worth of hallway.
+        guard strip.count <= minWidth + 2 else { return nil }
+        return strip
+    }
+
+    private func isSolidWall(_ tile: Tile) -> Bool {
+        if case .wall = tile.kind { return true }
+        return false
     }
 
     // MARK: - Helpers
@@ -925,26 +1061,19 @@ struct ProceduralGenerator: Sendable {
         return false
     }
 
+    /// Gameplay enterability for hallway widening (floors only — soft blockers placed later).
     private func isEnterable(_ tile: Tile) -> Bool {
-        switch tile.kind {
-        case .floor:
-            return true
-        case .wall(_, let hasDoor):
-            return hasDoor
-        }
+        if case .floor = tile.kind { return true }
+        return false
     }
 
-    private func adjacentFloorCount(at coord: GridCoord, tiles: [[[Tile]]]) -> Int {
-        var count = 0
-        for (dx, dy) in GridCoord.cardinals {
-            let neighbor = coord.neighbor(dx: dx, dy: dy)
-            guard neighbor.story >= 0, neighbor.story < tiles.count else { continue }
-            guard neighbor.y >= 0, neighbor.y < tiles[neighbor.story].count else { continue }
-            guard neighbor.x >= 0, neighbor.x < tiles[neighbor.story][neighbor.y].count else { continue }
-            if isFloor(tiles[neighbor.story][neighbor.y][neighbor.x]) {
-                count += 1
-            }
+    /// Generation reachability treats destructible walls and gates as already passable.
+    private func isGenerationPassable(_ tile: Tile) -> Bool {
+        switch tile.kind {
+        case .floor, .gate:
+            return true
+        case .wall(let destructible):
+            return destructible
         }
-        return count
     }
 }

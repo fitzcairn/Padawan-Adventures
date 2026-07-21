@@ -122,30 +122,30 @@ enum IsometricTileGeometry {
 
     static func isOpaqueWall(at coord: GridCoord, in world: GameWorld) -> Bool {
         guard let tile = world.tile(at: coord) else { return false }
-        if case .wall(_, let hasDoor) = tile.kind {
-            return !hasDoor
+        switch tile.kind {
+        case .wall, .gate:
+            return true
+        case .floor:
+            return false
         }
+    }
+
+    /// True when the tile draws as a floor diamond (including pits).
+    static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
+        guard let tile else { return false }
+        if case .floor = tile.kind { return true }
         return false
     }
 
-    /// True when the tile draws as a walkable floor diamond (non-pit floor or door).
-    static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
-        guard let tile else { return false }
-        switch tile.kind {
-        case .floor(let isPit):
-            return !isPit
-        case .wall(_, let hasDoor):
-            return hasDoor
-        }
-    }
-
-    /// Opaque walls that border walkable space get a full wall block (including top).
+    /// Opaque walls/gates that border walkable space get a full wall block (including top).
     static func shouldRenderWall(at coord: GridCoord, in world: GameWorld) -> Bool {
         guard isOpaqueWall(at: coord, in: world) else { return false }
         for (dx, dy) in GridCoord.cardinals {
             let neighbor = coord.neighbor(dx: dx, dy: dy)
             guard world.isInBounds(neighbor) else { continue }
             if isDrawnFloorSurface(world.tile(at: neighbor)) { return true }
+            // Soft blockers also count as bordering "space" for mutual face culling.
+            if world.isEnterable(at: neighbor) { return true }
         }
         return false
     }

@@ -62,9 +62,9 @@ struct PlaceholderFactoryTests {
         let east = GridCoord(x: 2, y: 1, story: 0)
         let south = GridCoord(x: 1, y: 2, story: 0)
 
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: a)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: east)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: south)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: east)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: south)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(!faces.contains(.right))
@@ -75,7 +75,7 @@ struct PlaceholderFactoryTests {
     @Test func openNeighborKeepsPerspectiveFace() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(faces.contains(.left))
@@ -112,33 +112,54 @@ struct PlaceholderFactoryTests {
             && abs(ab - eb) < 0.001 && abs(aa - ea) < 0.001
     }
 
-    @Test func doorRendersAsFloor() {
+    @Test func destructibleWallUsesLightYellow() {
         let config = IsometricConfig()
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let doorCoord = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: true)), at: doorCoord)
-
-        let door = PlaceholderFactory.tileNode(
-            for: world.tile(at: doorCoord)!,
-            at: doorCoord,
-            in: world,
+        let node = PlaceholderFactory.tileNode(
+            for: Tile(kind: .wall(destructible: true)),
+            at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
-
-        let doorFloor = door.children.first as? SKShapeNode
-        #expect(doorFloor?.fillColor == PlaceholderFactory.floorColor)
+        let faces = node.children.first?.children.compactMap { $0 as? SKShapeNode } ?? []
+        #expect(!faces.isEmpty)
+        var sawYellowFamily = false
+        for face in faces {
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), r > 0.8, g > 0.7, b < 0.7 {
+                sawYellowFamily = true
+            }
+        }
+        #expect(sawYellowFamily)
     }
 
-    @Test func ceilingFillsPitBetweenOppositeWalls() {
+    @Test func gateUsesLightGreen() {
+        let config = IsometricConfig()
+        let node = PlaceholderFactory.tileNode(
+            for: Tile(kind: .gate),
+            at: GridCoord(x: 0, y: 0, story: 0),
+            config: config
+        )
+        let faces = node.children.first?.children.compactMap { $0 as? SKShapeNode } ?? []
+        #expect(!faces.isEmpty)
+        var sawGreenFamily = false
+        for face in faces {
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), g > r, g > 0.5 {
+                sawGreenFamily = true
+            }
+        }
+        #expect(sawGreenFamily)
+    }
+
+    @Test func drawnPitDoesNotNeedCeiling() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let west = GridCoord(x: 0, y: 1, story: 0)
         let pit = GridCoord(x: 1, y: 1, story: 0)
         let east = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: west)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: west)
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: east)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: east)
 
-        #expect(IsometricTileGeometry.needsCeiling(at: pit, in: world))
+        #expect(!IsometricTileGeometry.needsCeiling(at: pit, in: world))
         #expect(!IsometricTileGeometry.needsCeiling(at: GridCoord(x: 1, y: 0, story: 0), in: world))
     }
 
@@ -153,7 +174,7 @@ struct PlaceholderFactoryTests {
         for y in 0..<3 {
             for x in 0..<3 {
                 world.setTile(
-                    Tile(kind: .wall(destructible: false, hasDoor: false)),
+                    Tile(kind: .wall(destructible: false)),
                     at: GridCoord(x: x, y: y, story: 0)
                 )
             }
@@ -166,7 +187,7 @@ struct PlaceholderFactoryTests {
     @Test func renderedWallBorderingFloorDoesNotNeedCeiling() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false, hasDoor: false)), at: wall)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
         #expect(IsometricTileGeometry.shouldRenderWall(at: wall, in: world))
         #expect(!IsometricTileGeometry.needsCeiling(at: wall, in: world))
     }

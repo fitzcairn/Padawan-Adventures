@@ -1,0 +1,5 @@
+# Player defaults for a new game (HUD starts with these heart / lightning counts).
+
+letter: P
+starting_health: 3
+starting_energy: 2
