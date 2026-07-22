@@ -3,7 +3,13 @@ import SwiftUI
 struct SettingsView: View {
     let session: AppSession
     let router: FlowRouter
-    @State private var preferences = AudioPreferences.shared
+    @State private var preferences: AudioPreferences
+
+    init(session: AppSession, router: FlowRouter) {
+        self.session = session
+        self.router = router
+        _preferences = State(initialValue: session.audioPreferences)
+    }
 
     var body: some View {
         @Bindable var preferences = preferences

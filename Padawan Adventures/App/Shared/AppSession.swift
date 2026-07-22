@@ -15,6 +15,7 @@ final class AppSession {
     private(set) var hasCompatibleSave: Bool
     private(set) var currentPlayerName: String?
     private(set) var playerState: PlayerGameState?
+    let audioPreferences: AudioPreferences
 
     init(
         seedConfig: WorldSeedConfig,
@@ -27,7 +28,8 @@ final class AppSession {
         saveService: GameSaveService,
         hasCompatibleSave: Bool = false,
         currentPlayerName: String? = nil,
-        playerState: PlayerGameState? = nil
+        playerState: PlayerGameState? = nil,
+        audioPreferences: AudioPreferences? = nil
     ) {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
@@ -41,6 +43,7 @@ final class AppSession {
         self.hasCompatibleSave = hasCompatibleSave
         self.currentPlayerName = currentPlayerName
         self.playerState = playerState
+        self.audioPreferences = audioPreferences ?? .shared
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
@@ -156,7 +159,7 @@ final class AppSession {
         currentPlayerName = trimmed
         playerState = state
         saveService = playerSaveService
-        AudioPreferences.shared.apply(state.settings)
+        audioPreferences.apply(state.settings)
 
         if let lastLevel = state.lastLevelStarted {
             try? selectLevel(resourceName: lastLevel)
@@ -168,7 +171,7 @@ final class AppSession {
     /// Copies the live Settings values into the bound player's persisted state.
     func persistCurrentSettings() async {
         guard playerState != nil else { return }
-        playerState?.settings = AudioPreferences.shared.snapshot
+        playerState?.settings = audioPreferences.snapshot
         await persistPlayerState()
     }
 

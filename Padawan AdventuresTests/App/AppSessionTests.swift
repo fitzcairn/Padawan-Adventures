@@ -4,7 +4,14 @@ import Testing
 
 @MainActor
 struct AppSessionTests {
-    private func makeSession() throws -> AppSession {
+    private func makeAudioPreferences() -> AudioPreferences {
+        let suiteName = "AppSessionTests.AudioPreferences.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return AudioPreferences(defaults: defaults)
+    }
+
+    private func makeSession(audioPreferences: AudioPreferences? = nil) throws -> AppSession {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -13,7 +20,8 @@ struct AppSessionTests {
         return AppSession(
             seedConfig: AppSession.fallbackConfig(),
             playerStore: store,
-            saveService: saveService
+            saveService: saveService,
+            audioPreferences: audioPreferences ?? makeAudioPreferences()
         )
     }
 
@@ -80,7 +88,8 @@ struct AppSessionTests {
     }
 
     @Test func bindPlayerRestoresSettingsIntoAudioPreferences() async throws {
-        let session = try makeSession()
+        let prefs = makeAudioPreferences()
+        let session = try makeSession(audioPreferences: prefs)
         let settings = PlayerSettings(
             soundEffectsEnabled: false,
             soundEffectsVolume: 0.3,
@@ -91,10 +100,6 @@ struct AppSessionTests {
             name: "Rex",
             initialState: PlayerGameState(health: 5, energy: 4, settings: settings)
         )
-
-        let prefs = AudioPreferences.shared
-        let previous = prefs.snapshot
-        defer { prefs.apply(previous) }
 
         prefs.soundEffectsEnabled = true
         prefs.soundEffectsVolume = 1
@@ -107,12 +112,9 @@ struct AppSessionTests {
     }
 
     @Test func persistCurrentSettingsWritesBoundPlayerState() async throws {
-        let session = try makeSession()
+        let prefs = makeAudioPreferences()
+        let session = try makeSession(audioPreferences: prefs)
         try await session.createAndBindPlayer(name: "Fives")
-
-        let prefs = AudioPreferences.shared
-        let previous = prefs.snapshot
-        defer { prefs.apply(previous) }
 
         prefs.soundEffectsEnabled = false
         prefs.soundEffectsVolume = 0.2
