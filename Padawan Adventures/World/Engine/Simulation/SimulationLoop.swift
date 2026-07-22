@@ -1,13 +1,13 @@
 import CoreGraphics
 import Foundation
 
-struct EntityDisplayPose: Sendable {
+nonisolated struct EntityDisplayPose: Sendable {
     var entityID: UUID
     var occupancy: GridCoord
     var screenPosition: CGPoint
 }
 
-struct SimulationTickResult: Sendable {
+nonisolated struct SimulationTickResult: Sendable {
     var shouldPersist: Bool = false
     var cameraCoord: GridCoord?
     var playerDisplayCoord: GridCoord?

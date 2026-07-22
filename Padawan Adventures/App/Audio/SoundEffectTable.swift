@@ -1,6 +1,6 @@
 import Foundation
 
-/// Event-key → track-basename map (`Resources/Audio/<id>.m4a`, etc.).
+/// Event-key → track-basename map (`Resources/Audio/FX/<id>.m4a`, etc.).
 nonisolated struct SoundEffectTable: Codable, Equatable, Sendable {
     var events: [String: String]
 

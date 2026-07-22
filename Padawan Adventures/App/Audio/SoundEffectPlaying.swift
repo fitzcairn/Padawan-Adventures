@@ -23,7 +23,10 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
-        guard let url = BundleMusicAudioPlayer.audioURL(for: trackID) else {
+        guard let url = BundleMusicAudioPlayer.audioURL(
+            for: trackID,
+            subdirectories: ["Audio/FX", "Audio"]
+        ) else {
             return false
         }
         configureSessionIfNeeded()

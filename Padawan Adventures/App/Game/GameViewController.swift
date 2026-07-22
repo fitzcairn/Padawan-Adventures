@@ -113,14 +113,7 @@ final class GameViewController: LandscapeHostingController {
     }
 
     private func installHUD() {
-        let hudConfig: HudConfig
-        do {
-            let loaded = try HudConfig.loadFromBundle()
-            try loaded.validate()
-            hudConfig = loaded
-        } catch {
-            hudConfig = .fallback
-        }
+        let hudConfig = loadHudConfig()
 
         let levelResource = session.selectedLevelResourceName
         let starsCount = levelResource.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
@@ -181,12 +174,38 @@ final class GameViewController: LandscapeHostingController {
         }
         scene.deductEnergy()
         hud?.removeBolt()
+        // World HUD is a UIKit overlay (not faded with SpriteKit). Hide it for the whole
+        // combat session so it cannot flash between combat dismiss and defeat / world-in.
+        setWorldHUDHidden(true)
+
+        let typeID = scene.currentWorld.entity(id: enemyID)?.enemyTypeID
+        let enemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
+            ?? EnemyConfig.fallback.type(named: "grunt")
+            ?? EnemyTypeConfig(
+                letter: "E",
+                color: "#FF0000",
+                tilesPerSecond: 1,
+                forgetSeconds: 3
+            )
+        let healthCount = scene.currentWorld.healthCount
+        let hudConfig = loadHudConfig()
+        let playerFx = session.playerConfig.fx
+        let outcomeBox = CombatOutcomeBox()
 
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
                 FullscreenOverlayHost { finish in
-                    EnemyMinigameView(onFinished: finish)
+                    EnemyMinigameView(
+                        enemyType: enemyType,
+                        healthCount: healthCount,
+                        playerFx: playerFx,
+                        hudConfig: hudConfig,
+                        onFinished: { outcome in
+                            outcomeBox.outcome = outcome
+                            finish()
+                        }
+                    )
                 }
             },
             onResolved: { [weak self] done in
@@ -194,13 +213,37 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
-                Task {
-                    await self.session.recordStat { $0.enemiesKilled += 1 }
-                    await self.awardLevelStar()
+                switch outcomeBox.outcome {
+                case let .won(starsAwarded):
+                    Task {
+                        await self.session.recordStat { $0.enemiesKilled += 1 }
+                        await self.awardLevelStars(count: starsAwarded)
+                    }
+                    scene.resolveEnemyEncounter(enemyID: enemyID) {
+                        self.setWorldHUDHidden(false)
+                        done()
+                    }
+                case .lost, .none:
+                    // Keep world HUD hidden; presentDefeat reveals it only after restore.
+                    done()
+                    self.presentDefeat()
                 }
-                scene.resolveEnemyEncounter(enemyID: enemyID, completion: done)
             }
         )
+    }
+
+    private func setWorldHUDHidden(_ hidden: Bool) {
+        hud?.isHidden = hidden
+    }
+
+    private func loadHudConfig() -> HudConfig {
+        do {
+            let loaded = try HudConfig.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        } catch {
+            return .fallback
+        }
     }
 
     @MainActor
@@ -237,6 +280,7 @@ final class GameViewController: LandscapeHostingController {
     @MainActor
     private func presentDefeat() {
         BackgroundMusicController.shared.applyScreen(named: "defeat")
+        setWorldHUDHidden(true)
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -253,6 +297,7 @@ final class GameViewController: LandscapeHostingController {
                     BackgroundMusicController.shared.apply(
                         MusicCue.parse(self.session.selectedLevelMusic)
                     )
+                    self.setWorldHUDHidden(false)
                     done()
                 }
             }
@@ -307,8 +352,13 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func awardLevelStar() async {
+        await awardLevelStars(count: 1)
+    }
+
+    @MainActor
+    private func awardLevelStars(count: Int) async {
         guard let resourceName = session.selectedLevelResourceName else { return }
-        await session.addLevelStar(resourceName: resourceName)
+        await session.addLevelStars(resourceName: resourceName, count: count)
         let stars = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
         hud?.setStars(stars)
     }
@@ -375,4 +425,9 @@ final class GameViewController: LandscapeHostingController {
             window?.makeKeyAndVisible()
         }
     }
+}
+
+/// Captures combat result across the overlay finish callback.
+private final class CombatOutcomeBox {
+    var outcome: CombatOutcome?
 }

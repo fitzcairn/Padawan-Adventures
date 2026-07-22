@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 
 enum PlayerAvatarImage {
-    static let thumbnailSize = CGSize(width: 200, height: 200)
+    nonisolated static let thumbnailSize = CGSize(width: 200, height: 200)
 
     /// Crops a centered square, optionally sized as a fraction of the shorter side, then scales to 200×200 JPEG.
     nonisolated static func makeThumbnailJPEG(

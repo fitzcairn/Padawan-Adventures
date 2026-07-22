@@ -8,21 +8,41 @@ nonisolated struct ContinuePointStore: Sendable {
         snapshot = world
     }
 
+    /// Captures only when the world is still progressable after defeat restore.
     mutating func capture(_ world: GameWorld) {
+        guard Self.isProgressable(world) else { return }
         snapshot = world
     }
 
-    /// Captures only when a move settled without opening an encounter this tick.
+    /// Captures only when a move settled without opening an encounter this tick
+    /// and the resulting world is still progressable.
     mutating func captureIfSafe(_ world: GameWorld, tick: SimulationTickResult) {
         guard tick.shouldPersist else { return }
         guard !tick.hasEncounterContact else { return }
-        snapshot = world
+        capture(world)
+    }
+
+    /// False when restoring here would leave the player with no way to progress
+    /// (e.g. zero energy while an enemy can already see/contact them).
+    static func isProgressable(_ world: GameWorld) -> Bool {
+        guard let playerPosition = world.playerPosition else { return true }
+        guard DefeatRules.isDefeatedByEnemy(energy: world.energyCount) else { return true }
+
+        let threatened = world.entities.contains { entity in
+            guard entity.isEnemy else { return false }
+            return LineOfSight.canSee(
+                from: entity.position,
+                to: playerPosition,
+                in: world
+            )
+        }
+        return !threatened
     }
 }
 
 extension SimulationTickResult {
     /// True when this tick raised pit/enemy/boom/gate contact.
-    var hasEncounterContact: Bool {
+    nonisolated var hasEncounterContact: Bool {
         didEnterPit
             || enemyContactID != nil
             || boomCoord != nil

@@ -1,6 +1,6 @@
 import Foundation
 
-enum DefeatRules {
+nonisolated enum DefeatRules {
     /// Enemy contact defeats the player when energy is already zero.
     static func isDefeatedByEnemy(energy: Int) -> Bool {
         energy == 0

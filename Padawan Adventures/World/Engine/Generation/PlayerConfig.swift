@@ -6,7 +6,7 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
     var startingHealth: Int
     var startingEnergy: Int
     var spawn: SpawnCoord?
-    /// Event key → sound track basename (`Resources/Audio/`).
+    /// Event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
 
     struct SpawnCoord: Codable, Equatable, Sendable {

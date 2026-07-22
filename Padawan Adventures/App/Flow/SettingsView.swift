@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    let session: AppSession
     let router: FlowRouter
     @State private var preferences = AudioPreferences.shared
 
@@ -54,6 +55,11 @@ struct SettingsView: View {
         }
         .appScreenBackground()
         .playScreenMusic("settings")
+        .onDisappear {
+            Task {
+                await session.persistCurrentSettings()
+            }
+        }
     }
 
     @ViewBuilder

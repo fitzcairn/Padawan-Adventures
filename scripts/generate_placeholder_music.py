@@ -66,7 +66,7 @@ def convert_to_m4a(wav_path: Path, m4a_path: Path) -> None:
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
-    out_dir = repo_root / "Padawan Adventures" / "Resources" / "Audio"
+    out_dir = repo_root / "Padawan Adventures" / "Resources" / "Audio" / "Music"
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp_dir = Path("/tmp/padawan_placeholder_music")
     tmp_dir.mkdir(parents=True, exist_ok=True)

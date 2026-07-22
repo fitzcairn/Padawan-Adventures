@@ -33,6 +33,28 @@ struct GameWorldPreparerTests {
         #expect(try await session.saveService.load() == nil)
     }
 
+    @Test func newGameRestoresStartingVitalsFromPlayerConfig() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Rex")
+        var depleted = TestWorldFactory.emptyFloor(
+            width: session.seedConfig.world.width,
+            height: session.seedConfig.world.height,
+            stories: session.seedConfig.world.stories
+        )
+        depleted.healthCount = 1
+        depleted.energyCount = 0
+        await session.syncVitals(from: depleted)
+        #expect(session.playerState?.health == 1)
+        #expect(session.playerState?.energy == 0)
+
+        let world = await GameWorldPreparer.loadWorld(session: session, mode: .newGame)
+
+        #expect(world.healthCount == session.playerConfig.startingHealth)
+        #expect(world.energyCount == session.playerConfig.startingEnergy)
+        #expect(session.playerState?.health == session.playerConfig.startingHealth)
+        #expect(session.playerState?.energy == session.playerConfig.startingEnergy)
+    }
+
     @Test func continueSaveUsesCompatibleSave() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Ahsoka")

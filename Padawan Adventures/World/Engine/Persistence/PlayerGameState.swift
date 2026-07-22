@@ -89,6 +89,51 @@ nonisolated struct PlayerStats: Codable, Equatable, Sendable {
     }
 }
 
+/// Per-player settings from the Settings screen. New fields decode with defaults.
+nonisolated struct PlayerSettings: Codable, Equatable, Sendable {
+    var soundEffectsEnabled: Bool
+    var soundEffectsVolume: Float
+    var musicEnabled: Bool
+    var musicVolume: Float
+
+    static let `default` = PlayerSettings()
+
+    init(
+        soundEffectsEnabled: Bool = true,
+        soundEffectsVolume: Float = 1,
+        musicEnabled: Bool = true,
+        musicVolume: Float = 1
+    ) {
+        self.soundEffectsEnabled = soundEffectsEnabled
+        self.soundEffectsVolume = Self.clamp(soundEffectsVolume)
+        self.musicEnabled = musicEnabled
+        self.musicVolume = Self.clamp(musicVolume)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case soundEffectsEnabled
+        case soundEffectsVolume
+        case musicEnabled
+        case musicVolume
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        soundEffectsEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEffectsEnabled) ?? true
+        soundEffectsVolume = Self.clamp(
+            try container.decodeIfPresent(Float.self, forKey: .soundEffectsVolume) ?? 1
+        )
+        musicEnabled = try container.decodeIfPresent(Bool.self, forKey: .musicEnabled) ?? true
+        musicVolume = Self.clamp(
+            try container.decodeIfPresent(Float.self, forKey: .musicVolume) ?? 1
+        )
+    }
+
+    private static func clamp(_ value: Float) -> Float {
+        min(1, max(0, value))
+    }
+}
+
 /// Persistent per-player meta state stored alongside the mid-run world save.
 nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     static let currentVersion = 1
@@ -104,6 +149,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var stats: PlayerStats
     /// Sum of banked per-level bests (`starsEarned`).
     var totalStars: Int
+    /// Settings screen values for this player.
+    var settings: PlayerSettings
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -113,7 +160,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         energy: Int,
         inventory: PlayerInventory = PlayerInventory(),
         stats: PlayerStats = PlayerStats(),
-        totalStars: Int = 0
+        totalStars: Int = 0,
+        settings: PlayerSettings = .default
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -123,6 +171,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.inventory = inventory
         self.stats = stats
         self.totalStars = totalStars
+        self.settings = settings
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -134,6 +183,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case inventory
         case stats
         case totalStars
+        case settings
     }
 
     init(from decoder: Decoder) throws {
@@ -146,6 +196,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         inventory = try container.decodeIfPresent(PlayerInventory.self, forKey: .inventory) ?? PlayerInventory()
         stats = try container.decodeIfPresent(PlayerStats.self, forKey: .stats) ?? PlayerStats()
         totalStars = try container.decodeIfPresent(Int.self, forKey: .totalStars) ?? 0
+        settings = try container.decodeIfPresent(PlayerSettings.self, forKey: .settings) ?? .default
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -169,8 +220,13 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     }
 
     mutating func addLevelStar(_ resourceName: String) {
+        addLevelStars(resourceName, count: 1)
+    }
+
+    mutating func addLevelStars(_ resourceName: String, count: Int) {
+        guard count > 0 else { return }
         var progress = levels[resourceName] ?? LevelProgress()
-        progress.starsCurrent += 1
+        progress.starsCurrent += count
         levels[resourceName] = progress
     }
 
@@ -195,5 +251,10 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     mutating func syncVitals(from world: GameWorld) {
         health = world.healthCount
         energy = world.energyCount
+    }
+
+    mutating func resetVitals(health: Int, energy: Int) {
+        self.health = health
+        self.energy = energy
     }
 }

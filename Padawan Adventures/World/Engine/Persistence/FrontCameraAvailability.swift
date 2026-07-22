@@ -1,16 +1,16 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Foundation
 
-protocol FrontCameraAvailability: Sendable {
+nonisolated protocol FrontCameraAvailability: Sendable {
     var isFrontCameraAvailable: Bool { get }
 }
 
-struct LiveFrontCameraAvailability: FrontCameraAvailability {
+nonisolated struct LiveFrontCameraAvailability: FrontCameraAvailability {
     var isFrontCameraAvailable: Bool {
         AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) != nil
     }
 }
 
-struct FixedFrontCameraAvailability: FrontCameraAvailability {
+nonisolated struct FixedFrontCameraAvailability: FrontCameraAvailability {
     let isFrontCameraAvailable: Bool
 }

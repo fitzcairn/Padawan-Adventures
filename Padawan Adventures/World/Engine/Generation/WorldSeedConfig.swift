@@ -10,7 +10,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     var enemies: EnemiesSpawnConfig?
     var pickups: PickupsSpawnConfig?
     var extensions: [String: String]?
-    /// World-level event key → sound track basename (`Resources/Audio/`).
+    /// World-level event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
 
     enum CodingKeys: String, CodingKey {

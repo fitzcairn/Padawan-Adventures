@@ -33,7 +33,7 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
     }
 
     func load(trackID: String) throws {
-        guard let url = Self.audioURL(for: trackID) else {
+        guard let url = Self.audioURL(for: trackID, subdirectories: ["Audio/Music", "Audio"]) else {
             throw MusicConfigError.missingResource
         }
         configureSessionIfNeeded()
@@ -79,15 +79,20 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
         try? session.setActive(true)
     }
 
-    static func audioURL(for trackID: String) -> URL? {
+    static func audioURL(
+        for trackID: String,
+        subdirectories: [String] = ["Audio/Music", "Audio/FX", "Audio"]
+    ) -> URL? {
         let extensions = ["m4a", "caf", "wav", "mp3"]
         for ext in extensions {
-            if let url = Bundle.main.url(
-                forResource: trackID,
-                withExtension: ext,
-                subdirectory: "Audio"
-            ) {
-                return url
+            for subdirectory in subdirectories {
+                if let url = Bundle.main.url(
+                    forResource: trackID,
+                    withExtension: ext,
+                    subdirectory: subdirectory
+                ) {
+                    return url
+                }
             }
             if let url = Bundle.main.url(forResource: trackID, withExtension: ext) {
                 return url

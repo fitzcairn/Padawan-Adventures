@@ -40,6 +40,29 @@ struct AudioPreferencesTests {
         #expect(reloaded.musicVolume == 0.75)
     }
 
+    @Test func snapshotAndApplyRoundTrip() {
+        let prefs = AudioPreferences(defaults: Self.makeSuite())
+        prefs.soundEffectsEnabled = false
+        prefs.soundEffectsVolume = 0.4
+        prefs.musicEnabled = false
+        prefs.musicVolume = 0.55
+
+        let snapshot = prefs.snapshot
+        #expect(snapshot == PlayerSettings(
+            soundEffectsEnabled: false,
+            soundEffectsVolume: 0.4,
+            musicEnabled: false,
+            musicVolume: 0.55
+        ))
+
+        let other = AudioPreferences(defaults: Self.makeSuite())
+        other.apply(snapshot)
+        #expect(!other.soundEffectsEnabled)
+        #expect(other.soundEffectsVolume == 0.4)
+        #expect(!other.musicEnabled)
+        #expect(other.musicVolume == 0.55)
+    }
+
     private static func makeSuite() -> UserDefaults {
         let suiteName = "AudioPreferencesTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

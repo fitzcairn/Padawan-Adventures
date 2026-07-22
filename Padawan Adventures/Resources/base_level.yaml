@@ -3,7 +3,7 @@
 
 name: Level
 
-# Background music track basename (Resources/Audio/<name>.m4a).
+# Background music track basename (Resources/Audio/Music/<name>.m4a).
 # Use `none` to keep previous music, or `silence` to fade out.
 music: level_theme
 

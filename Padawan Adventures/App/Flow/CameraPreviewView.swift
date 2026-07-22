@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import SwiftUI
 import UIKit
 
@@ -61,8 +61,10 @@ final class FrontCameraController: NSObject {
         applyRotationToConnections()
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            DispatchQueue.global(qos: .userInitiated).async { [session] in
-                session.startRunning()
+            // AVCaptureSession is thread-safe for start/stop; not Sendable in the SDK.
+            nonisolated(unsafe) let captureSession = session
+            DispatchQueue.global(qos: .userInitiated).async {
+                captureSession.startRunning()
                 continuation.resume()
             }
         }
@@ -70,8 +72,9 @@ final class FrontCameraController: NSObject {
 
     func stop() {
         guard session.isRunning else { return }
-        DispatchQueue.global(qos: .userInitiated).async { [session] in
-            session.stopRunning()
+        nonisolated(unsafe) let captureSession = session
+        DispatchQueue.global(qos: .userInitiated).async {
+            captureSession.stopRunning()
         }
     }
 

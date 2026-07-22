@@ -12,8 +12,13 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
+            combat_timer_seconds: 10
+            shot_interval_seconds: 1.2
+            shot_travel_seconds: 1.5
+            stars_to_win: 10
             fx:
               contact: sfx_enemy_contact
+              shoot: sfx_enemy_shoot
           scout:
             letter: S
             color: "#00FF00"
@@ -27,8 +32,15 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt")?.color == "#FF0000")
         #expect(config.type(named: "grunt")?.tilesPerSecond == 1.0)
         #expect(config.type(named: "grunt")?.forgetSeconds == 3.0)
+        #expect(config.type(named: "grunt")?.combatTimerSeconds == 10)
+        #expect(config.type(named: "grunt")?.shotIntervalSeconds == 1.2)
+        #expect(config.type(named: "grunt")?.shotTravelSeconds == 1.5)
+        #expect(config.type(named: "grunt")?.starsToWin == 10)
         #expect(config.type(named: "grunt")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
+        #expect(config.type(named: "grunt")?.fx.trackID(for: "shoot") == "sfx_enemy_shoot")
         #expect(config.type(named: "scout")?.letter == "S")
+        #expect(config.type(named: "scout")?.combatTimerSeconds == 10)
+        #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
         try config.validate()
     }
@@ -40,6 +52,26 @@ struct EnemyConfigTests {
         #expect(grunt?.color == "#FF0000")
         #expect(grunt?.tilesPerSecond == 1.0)
         #expect(grunt?.forgetSeconds == 3.0)
+        #expect(grunt?.combatTimerSeconds == 10)
+        #expect(grunt?.shotIntervalSeconds == 1.2)
+        #expect(grunt?.shotTravelSeconds == 1.5)
+        #expect(grunt?.starsToWin == 10)
+    }
+
+    @Test func validateRejectsNonPositiveCombatTimer() {
+        var config = EnemyConfig.fallback
+        config.types["grunt"]?.combatTimerSeconds = 0
+        #expect(throws: EnemyConfigError.invalid("grunt.combat_timer_seconds must be > 0")) {
+            try config.validate()
+        }
+    }
+
+    @Test func validateRejectsInvalidStarsToWin() {
+        var config = EnemyConfig.fallback
+        config.types["grunt"]?.starsToWin = 0
+        #expect(throws: EnemyConfigError.invalid("grunt.stars_to_win must be >= 1")) {
+            try config.validate()
+        }
     }
 
     @Test func validateRejectsEmptyTypes() {

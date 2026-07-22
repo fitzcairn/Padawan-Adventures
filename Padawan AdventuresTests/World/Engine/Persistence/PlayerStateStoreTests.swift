@@ -135,6 +135,24 @@ struct PlayerStateStoreTests {
         #expect(decoded.stats.gatesOpened == 0)
         #expect(decoded.stats.extras.isEmpty)
         #expect(decoded.inventory == PlayerInventory())
+        #expect(decoded.settings == .default)
+    }
+
+    @Test func playerGameStatePersistsSettings() async throws {
+        let (store, _) = try makeStore()
+        let settings = PlayerSettings(
+            soundEffectsEnabled: false,
+            soundEffectsVolume: 0.25,
+            musicEnabled: false,
+            musicVolume: 0.5
+        )
+        try await store.createPlayer(
+            name: "Rex",
+            initialState: PlayerGameState(health: 3, energy: 2, settings: settings)
+        )
+
+        let restored = try await store.loadState(for: "Rex")
+        #expect(restored.settings == settings)
     }
 
     @Test func makeSaveServiceIsPerPlayer() async throws {

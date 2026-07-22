@@ -91,6 +91,31 @@ final class AudioPreferences {
         isLoading = false
     }
 
+    /// Current values as a per-player settings snapshot.
+    var snapshot: PlayerSettings {
+        PlayerSettings(
+            soundEffectsEnabled: soundEffectsEnabled,
+            soundEffectsVolume: soundEffectsVolume,
+            musicEnabled: musicEnabled,
+            musicVolume: musicVolume
+        )
+    }
+
+    /// Replaces preferences from per-player settings and pushes them to controllers.
+    func apply(_ settings: PlayerSettings) {
+        isLoading = true
+        soundEffectsEnabled = settings.soundEffectsEnabled
+        soundEffectsVolume = settings.soundEffectsVolume
+        musicEnabled = settings.musicEnabled
+        musicVolume = settings.musicVolume
+        defaults.set(soundEffectsEnabled, forKey: Keys.soundEffectsEnabled)
+        defaults.set(Double(soundEffectsVolume), forKey: Keys.soundEffectsVolume)
+        defaults.set(musicEnabled, forKey: Keys.musicEnabled)
+        defaults.set(Double(musicVolume), forKey: Keys.musicVolume)
+        isLoading = false
+        applyToControllers()
+    }
+
     /// Pushes current values into the shared audio controllers without re-writing defaults.
     func applyToControllers() {
         applySoundEffects()

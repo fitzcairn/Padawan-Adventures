@@ -22,7 +22,7 @@ final class SoundEffectsController {
         soundEffectsVolume = min(1, max(0, volume))
     }
 
-    /// Plays a track by basename under `Resources/Audio/`. Missing assets are ignored.
+    /// Plays a track by basename under `Resources/Audio/FX/`. Missing assets are ignored.
     func play(trackID: String) {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -29,6 +29,7 @@ enum GameWorldPreparer {
 
         case .newGame:
             try? await session.saveService.delete()
+            await session.resetVitalsToStarting()
             return await generateWorld(session: session)
         }
     }

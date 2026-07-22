@@ -156,12 +156,20 @@ final class AppSession {
         currentPlayerName = trimmed
         playerState = state
         saveService = playerSaveService
+        AudioPreferences.shared.apply(state.settings)
 
         if let lastLevel = state.lastLevelStarted {
             try? selectLevel(resourceName: lastLevel)
         }
 
         await refreshContinueEligibility()
+    }
+
+    /// Copies the live Settings values into the bound player's persisted state.
+    func persistCurrentSettings() async {
+        guard playerState != nil else { return }
+        playerState?.settings = AudioPreferences.shared.snapshot
+        await persistPlayerState()
     }
 
     func createAndBindPlayer(name: String) async throws {
@@ -195,6 +203,16 @@ final class AppSession {
         await persistPlayerState()
     }
 
+    /// Restores health/energy to `player.yaml` starting values for a new game.
+    func resetVitalsToStarting() async {
+        guard playerState != nil else { return }
+        playerState?.resetVitals(
+            health: playerConfig.startingHealth,
+            energy: playerConfig.startingEnergy
+        )
+        await persistPlayerState()
+    }
+
     func markLevelStarted(resourceName: String) async {
         playerState?.markLevelStarted(resourceName)
         selectedLevelResourceName = resourceName
@@ -213,8 +231,12 @@ final class AppSession {
     }
 
     func addLevelStar(resourceName: String) async {
-        guard playerState != nil else { return }
-        playerState?.addLevelStar(resourceName)
+        await addLevelStars(resourceName: resourceName, count: 1)
+    }
+
+    func addLevelStars(resourceName: String, count: Int) async {
+        guard playerState != nil, count > 0 else { return }
+        playerState?.addLevelStars(resourceName, count: count)
         await persistPlayerState()
     }
 

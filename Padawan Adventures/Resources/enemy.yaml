@@ -7,5 +7,10 @@ types:
     color: "#FF0000"
     tiles_per_second: 1.0
     forget_seconds: 3.0
+    combat_timer_seconds: 10
+    shot_interval_seconds: 1.2
+    shot_travel_seconds: 1.5
+    stars_to_win: 5
     fx:
       contact: sfx_enemy_contact
+      shoot: sfx_enemy_shoot

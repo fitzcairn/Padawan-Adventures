@@ -14,6 +14,15 @@ struct PlayerGameStateStarsTests {
         #expect(state.levels["level_1"]?.starsEarned == 0)
     }
 
+    @Test func addLevelStarsAddsCountInOneStep() {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.addLevelStars("level_1", count: 10)
+        #expect(state.levels["level_1"]?.starsCurrent == 10)
+
+        state.addLevelStars("level_1", count: 0)
+        #expect(state.levels["level_1"]?.starsCurrent == 10)
+    }
+
     @Test func finalizeLevelStarsBanksFirstScoreIntoTotal() {
         var state = PlayerGameState(health: 3, energy: 2)
         state.addLevelStar("level_1")

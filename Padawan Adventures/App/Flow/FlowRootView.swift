@@ -57,7 +57,7 @@ struct FlowRootView: View {
             case .levelSelect:
                 LevelSelectView(session: session, router: router)
             case .settings:
-                SettingsView(router: router)
+                SettingsView(session: session, router: router)
             case .preparing(let mode):
                 PreparingView(session: session, mode: mode)
             }

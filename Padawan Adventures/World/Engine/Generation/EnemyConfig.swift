@@ -7,7 +7,15 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var color: String
     var tilesPerSecond: Double
     var forgetSeconds: Double
-    /// Event key → sound track basename (`Resources/Audio/`).
+    /// Combat countdown duration in seconds.
+    var combatTimerSeconds: Double
+    /// Average delay between enemy shot spawns during combat.
+    var shotIntervalSeconds: Double
+    /// Time for a shot to travel from enemy to player.
+    var shotTravelSeconds: Double
+    /// Combat stars required to win the encounter.
+    var starsToWin: Int
+    /// Event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
 
     enum CodingKeys: String, CodingKey {
@@ -15,6 +23,10 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         case color
         case tilesPerSecond = "tiles_per_second"
         case forgetSeconds = "forget_seconds"
+        case combatTimerSeconds = "combat_timer_seconds"
+        case shotIntervalSeconds = "shot_interval_seconds"
+        case shotTravelSeconds = "shot_travel_seconds"
+        case starsToWin = "stars_to_win"
         case fx
     }
 
@@ -23,12 +35,20 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         color: String,
         tilesPerSecond: Double,
         forgetSeconds: Double,
+        combatTimerSeconds: Double = 10,
+        shotIntervalSeconds: Double = 1.2,
+        shotTravelSeconds: Double = 1.5,
+        starsToWin: Int = 10,
         fx: SoundEffectTable = .empty
     ) {
         self.letter = letter
         self.color = color
         self.tilesPerSecond = tilesPerSecond
         self.forgetSeconds = forgetSeconds
+        self.combatTimerSeconds = combatTimerSeconds
+        self.shotIntervalSeconds = shotIntervalSeconds
+        self.shotTravelSeconds = shotTravelSeconds
+        self.starsToWin = starsToWin
         self.fx = fx
     }
 
@@ -38,6 +58,10 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         color = try container.decode(String.self, forKey: .color)
         tilesPerSecond = try container.decode(Double.self, forKey: .tilesPerSecond)
         forgetSeconds = try container.decode(Double.self, forKey: .forgetSeconds)
+        combatTimerSeconds = try container.decodeIfPresent(Double.self, forKey: .combatTimerSeconds) ?? 10
+        shotIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .shotIntervalSeconds) ?? 1.2
+        shotTravelSeconds = try container.decodeIfPresent(Double.self, forKey: .shotTravelSeconds) ?? 1.5
+        starsToWin = try container.decodeIfPresent(Int.self, forKey: .starsToWin) ?? 10
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
     }
 
@@ -53,6 +77,18 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         }
         guard forgetSeconds >= 0 else {
             throw EnemyConfigError.invalid("\(typeID).forget_seconds must be >= 0")
+        }
+        guard combatTimerSeconds > 0 else {
+            throw EnemyConfigError.invalid("\(typeID).combat_timer_seconds must be > 0")
+        }
+        guard shotIntervalSeconds > 0 else {
+            throw EnemyConfigError.invalid("\(typeID).shot_interval_seconds must be > 0")
+        }
+        guard shotTravelSeconds > 0 else {
+            throw EnemyConfigError.invalid("\(typeID).shot_travel_seconds must be > 0")
+        }
+        guard starsToWin >= 1 else {
+            throw EnemyConfigError.invalid("\(typeID).stars_to_win must be >= 1")
         }
     }
 
@@ -75,6 +111,10 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 color: "#FF0000",
                 tilesPerSecond: 1.0,
                 forgetSeconds: 3.0,
+                combatTimerSeconds: 10,
+                shotIntervalSeconds: 1.2,
+                shotTravelSeconds: 1.5,
+                starsToWin: 10,
                 fx: .empty
             ),
         ]
