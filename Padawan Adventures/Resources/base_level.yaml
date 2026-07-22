@@ -11,12 +11,12 @@ music: level_theme
 # fx:
 #   wall_destroyed: sfx_wall_destroyed_alt
 
-width: 100
-height: 100
+width: 20
+height: 20
 
 algorithm: rooms_doors
 # How many rooms to place on the map.
-room_count: 100
+room_count: 5
 corridor_width: 2
 room:
   min_room_size: 4
