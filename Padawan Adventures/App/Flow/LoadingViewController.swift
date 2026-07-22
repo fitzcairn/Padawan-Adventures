@@ -17,13 +17,13 @@ final class LoadingViewController: LandscapeHostingController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        Task { await loadAndPresentMenu() }
+        Task { await loadAndPresentPlayerSelect() }
     }
 
     @MainActor
-    private func loadAndPresentMenu() async {
+    private func loadAndPresentPlayerSelect() async {
         let session = await AppSession.loadResources()
-        let menu = MenuViewController(session: session)
-        navigationController?.setViewControllers([menu], animated: false)
+        let playerSelect = PlayerSelectViewController(session: session)
+        navigationController?.setViewControllers([playerSelect], animated: false)
     }
 }

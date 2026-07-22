@@ -77,6 +77,11 @@ final class GameViewController: LandscapeHostingController {
         scene.onTreasureCollected = { [weak self] in
             self?.presentYouWin()
         }
+        scene.onWorldSaved = { [weak self] snapshot in
+            Task { @MainActor in
+                await self?.session.syncVitals(from: snapshot)
+            }
+        }
         skView.presentScene(scene)
         gameScene = scene
 
@@ -104,7 +109,7 @@ final class GameViewController: LandscapeHostingController {
             energyCount: world.energyCount
         )
         hud.onFleeTapped = { [weak self] in
-            self?.exitToLevelSelect()
+            self?.exitToLevelSelect(completedLevel: false)
         }
         view.addSubview(hud)
         NSLayoutConstraint.activate([
@@ -133,9 +138,12 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: { EnemyMinigameViewController() },
             onResolved: { [weak self] done in
-                guard let scene = self?.gameScene else {
+                guard let self, let scene = self.gameScene else {
                     done()
                     return
+                }
+                Task {
+                    await self.session.recordStat { $0.enemiesKilled += 1 }
                 }
                 scene.resolveEnemyEncounter(enemyID: enemyID, completion: done)
             }
@@ -148,9 +156,12 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: { PitMinigameViewController() },
             onResolved: { [weak self] done in
-                guard let scene = self?.gameScene else {
+                guard let self, let scene = self.gameScene else {
                     done()
                     return
+                }
+                Task {
+                    await self.session.recordStat { $0.pitsCrossed += 1 }
                 }
                 scene.resolvePitEncounter(completion: done)
             }
@@ -163,9 +174,12 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: { DestructibleWallMinigameViewController() },
             onResolved: { [weak self] done in
-                guard let scene = self?.gameScene else {
+                guard let self, let scene = self.gameScene else {
                     done()
                     return
+                }
+                Task {
+                    await self.session.recordStat { $0.wallsBlownUp += 1 }
                 }
                 scene.resolveBoomEncounter(at: coord, completion: done)
             }
@@ -178,9 +192,12 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: { GateMinigameViewController() },
             onResolved: { [weak self] done in
-                guard let scene = self?.gameScene else {
+                guard let self, let scene = self.gameScene else {
                     done()
                     return
+                }
+                Task {
+                    await self.session.recordStat { $0.gatesOpened += 1 }
                 }
                 scene.resolveGateEncounter(at: coord, completion: done)
             }
@@ -193,20 +210,28 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: false,
             makeViewController: { YouWinViewController() },
             onResolved: { [weak self] done in
-                self?.exitToLevelSelect()
+                self?.exitToLevelSelect(completedLevel: true)
                 done()
             }
         )
     }
 
     @MainActor
-    private func exitToLevelSelect() {
+    private func exitToLevelSelect(completedLevel: Bool) {
         guard !isExitingToLevelSelect else { return }
         isExitingToLevelSelect = true
 
         Task {
             if let snapshot = gameScene?.currentWorld {
-                try? await session.saveService.save(snapshot)
+                await session.syncVitals(from: snapshot)
+                if completedLevel {
+                    if let resourceName = session.selectedLevelResourceName {
+                        await session.markLevelCompleted(resourceName: resourceName)
+                    }
+                    try? await session.saveService.delete()
+                } else {
+                    try? await session.saveService.save(snapshot)
+                }
             }
             await session.refreshContinueEligibility()
 

@@ -41,6 +41,14 @@ final class PreparingViewController: LandscapeHostingController {
 
     @MainActor
     private func prepareAndPresentGame() async {
+        if mode == .continueSave, let lastLevel = session.playerState?.lastLevelStarted {
+            try? session.selectLevel(resourceName: lastLevel)
+        }
+
+        if let resourceName = session.selectedLevelResourceName {
+            await session.markLevelStarted(resourceName: resourceName)
+        }
+
         let world = await loadWorld()
         let isoConfig = session.seedConfig.display.makeIsometricConfig()
         let game = GameViewController(
@@ -79,27 +87,44 @@ final class PreparingViewController: LandscapeHostingController {
         let config = session.seedConfig
         let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
+        let health = session.playerState?.health ?? playerConfig.startingHealth
+        let energy = session.playerState?.energy ?? playerConfig.startingEnergy
+
         do {
-            return try await Task.detached(priority: .userInitiated) {
+            var world = try await Task.detached(priority: .userInitiated) {
                 try ProceduralGenerator().generate(
                     from: config,
                     playerConfig: playerConfig,
                     enemyConfig: enemyConfig
                 )
             }.value
+            world.healthCount = health
+            world.energyCount = energy
+            return world
         } catch {
             let fallback = AppSession.fallbackConfig()
-            return (try? await Task.detached(priority: .userInitiated) {
-                try ProceduralGenerator().generate(
-                    from: fallback,
-                    playerConfig: .fallback,
-                    enemyConfig: .fallback
-                )
-            }.value) ?? Self.minimalWorld(playerConfig: playerConfig)
+            do {
+                var world = try await Task.detached(priority: .userInitiated) {
+                    try ProceduralGenerator().generate(
+                        from: fallback,
+                        playerConfig: .fallback,
+                        enemyConfig: .fallback
+                    )
+                }.value
+                world.healthCount = health
+                world.energyCount = energy
+                return world
+            } catch {
+                return Self.minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
+            }
         }
     }
 
-    private static func minimalWorld(playerConfig: PlayerConfig) -> GameWorld {
+    private static func minimalWorld(
+        health: Int,
+        energy: Int,
+        playerConfig: PlayerConfig
+    ) -> GameWorld {
         GameWorld(
             width: 1,
             height: 1,
@@ -113,8 +138,8 @@ final class PreparingViewController: LandscapeHostingController {
                 ),
             ],
             spawn: GridCoord(x: 0, y: 0, story: 0),
-            healthCount: playerConfig.startingHealth,
-            energyCount: playerConfig.startingEnergy
+            healthCount: health,
+            energyCount: energy
         )
     }
 }

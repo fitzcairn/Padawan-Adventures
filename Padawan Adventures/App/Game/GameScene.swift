@@ -33,6 +33,8 @@ final class GameScene: SKScene {
     var onPickupCollected: ((PickupKind) -> Void)?
     /// Called after treasure shake + fade completes.
     var onTreasureCollected: (() -> Void)?
+    /// Called with a world snapshot whenever a mid-run save is scheduled.
+    var onWorldSaved: ((GameWorld) -> Void)?
 
     /// Snapshot of the live world for persistence (e.g. Menu exit).
     var currentWorld: GameWorld { world }
@@ -329,8 +331,9 @@ final class GameScene: SKScene {
     }
 
     private func scheduleSave() {
-        guard let saveService else { return }
         let snapshot = world
+        onWorldSaved?(snapshot)
+        guard let saveService else { return }
         Task {
             try? await saveService.save(snapshot)
         }

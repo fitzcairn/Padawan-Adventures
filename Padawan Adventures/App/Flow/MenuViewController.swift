@@ -3,6 +3,7 @@ import UIKit
 final class MenuViewController: LandscapeHostingController {
     private let session: AppSession
 
+    private let welcomeLabel = AppChrome.makeCenteredLabel("", size: 24, weight: .semibold)
     private lazy var continueButton = AppChrome.makeLargeButton(
         title: "CONTINUE",
         action: #selector(continueTapped),
@@ -38,6 +39,12 @@ final class MenuViewController: LandscapeHostingController {
         super.viewDidLoad()
         view.backgroundColor = AppChrome.backgroundColor
 
+        if let name = session.currentPlayerName {
+            welcomeLabel.text = "Welcome, \(name)"
+        } else {
+            welcomeLabel.text = "Welcome"
+        }
+
         versionLabel.text = AppChrome.versionBuildString
         versionLabel.textColor = AppChrome.secondaryTextColor
 
@@ -52,10 +59,22 @@ final class MenuViewController: LandscapeHostingController {
         stack.alignment = .fill
         stack.translatesAutoresizingMaskIntoConstraints = false
 
+        welcomeLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(welcomeLabel)
         view.addSubview(stack)
         view.addSubview(versionLabel)
 
         NSLayoutConstraint.activate([
+            welcomeLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            welcomeLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+            welcomeLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor
+            ),
+            welcomeLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor
+            ),
+
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             stack.widthAnchor.constraint(equalToConstant: 320),
