@@ -48,4 +48,10 @@ extension SimulationTickResult {
             || boomCoord != nil
             || gateCoord != nil
     }
+
+    /// True when a settled move should update the on-disk Continue save.
+    /// Open encounters are excluded so Continue never resumes mid-fight / mid-hazard.
+    nonisolated var shouldPersistContinueSave: Bool {
+        shouldPersist && !hasEncounterContact
+    }
 }

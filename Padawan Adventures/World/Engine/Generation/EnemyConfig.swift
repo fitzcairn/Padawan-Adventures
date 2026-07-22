@@ -2,6 +2,45 @@ import Foundation
 import UIKit
 import Yams
 
+/// One combat projectile kind keyed by letter in `shot_types`.
+nonisolated struct EnemyShotTypeConfig: Codable, Equatable, Sendable {
+    /// Cue SFX table; basename YAML form becomes `{ shoot: <basename> }`.
+    var fx: SoundEffectTable
+
+    enum CodingKeys: String, CodingKey {
+        case fx
+    }
+
+    init(fx: SoundEffectTable = .empty) {
+        self.fx = fx
+    }
+
+    init(trackBasename: String) {
+        fx = SoundEffectTable(events: ["shoot": trackBasename])
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let table = try? container.decode(SoundEffectTable.self, forKey: .fx) {
+            fx = table
+        } else if let basename = try container.decodeIfPresent(String.self, forKey: .fx) {
+            let trimmed = basename.trimmingCharacters(in: .whitespacesAndNewlines)
+            fx = trimmed.isEmpty ? .empty : SoundEffectTable(events: ["shoot": trimmed])
+        } else {
+            fx = .empty
+        }
+    }
+
+    func validate(typeID: String, letter: String) throws {
+        guard !letter.isEmpty else {
+            throw EnemyConfigError.invalid("\(typeID).shot_types key must be non-empty")
+        }
+        guard fx.trackID(for: "shoot") != nil else {
+            throw EnemyConfigError.invalid("\(typeID).shot_types.\(letter).fx must name a shoot track")
+        }
+    }
+}
+
 nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var letter: String
     var color: String
@@ -9,12 +48,12 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var forgetSeconds: Double
     /// Combat countdown duration in seconds.
     var combatTimerSeconds: Double
-    /// Average delay between enemy shot spawns during combat.
-    var shotIntervalSeconds: Double
     /// Time for a shot to travel from enemy to player.
     var shotTravelSeconds: Double
     /// Combat stars required to win the encounter.
     var starsToWin: Int
+    /// Combat projectile kinds keyed by display letter (e.g. A/B/C).
+    var shotTypes: [String: EnemyShotTypeConfig]
     /// Event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
 
@@ -24,9 +63,9 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         case tilesPerSecond = "tiles_per_second"
         case forgetSeconds = "forget_seconds"
         case combatTimerSeconds = "combat_timer_seconds"
-        case shotIntervalSeconds = "shot_interval_seconds"
         case shotTravelSeconds = "shot_travel_seconds"
         case starsToWin = "stars_to_win"
+        case shotTypes = "shot_types"
         case fx
     }
 
@@ -36,9 +75,9 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         tilesPerSecond: Double,
         forgetSeconds: Double,
         combatTimerSeconds: Double = 10,
-        shotIntervalSeconds: Double = 1.2,
-        shotTravelSeconds: Double = 1.5,
+        shotTravelSeconds: Double = 3.2,
         starsToWin: Int = 10,
+        shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.defaultShotTypes,
         fx: SoundEffectTable = .empty
     ) {
         self.letter = letter
@@ -46,9 +85,9 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         self.tilesPerSecond = tilesPerSecond
         self.forgetSeconds = forgetSeconds
         self.combatTimerSeconds = combatTimerSeconds
-        self.shotIntervalSeconds = shotIntervalSeconds
         self.shotTravelSeconds = shotTravelSeconds
         self.starsToWin = starsToWin
+        self.shotTypes = shotTypes
         self.fx = fx
     }
 
@@ -59,10 +98,22 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         tilesPerSecond = try container.decode(Double.self, forKey: .tilesPerSecond)
         forgetSeconds = try container.decode(Double.self, forKey: .forgetSeconds)
         combatTimerSeconds = try container.decodeIfPresent(Double.self, forKey: .combatTimerSeconds) ?? 10
-        shotIntervalSeconds = try container.decodeIfPresent(Double.self, forKey: .shotIntervalSeconds) ?? 1.2
-        shotTravelSeconds = try container.decodeIfPresent(Double.self, forKey: .shotTravelSeconds) ?? 1.5
+        shotTravelSeconds = try container.decodeIfPresent(Double.self, forKey: .shotTravelSeconds) ?? 3.2
         starsToWin = try container.decodeIfPresent(Int.self, forKey: .starsToWin) ?? 10
+        shotTypes = try container.decodeIfPresent([String: EnemyShotTypeConfig].self, forKey: .shotTypes)
+            ?? EnemyTypeConfig.defaultShotTypes
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
+    }
+
+    static let defaultShotTypes: [String: EnemyShotTypeConfig] = [
+        "A": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_a"),
+        "B": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_b"),
+        "C": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_c"),
+    ]
+
+    /// Stable letter keys for combat random selection.
+    var shotLetters: [String] {
+        shotTypes.keys.sorted()
     }
 
     func validate(typeID: String) throws {
@@ -81,14 +132,17 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         guard combatTimerSeconds > 0 else {
             throw EnemyConfigError.invalid("\(typeID).combat_timer_seconds must be > 0")
         }
-        guard shotIntervalSeconds > 0 else {
-            throw EnemyConfigError.invalid("\(typeID).shot_interval_seconds must be > 0")
-        }
         guard shotTravelSeconds > 0 else {
             throw EnemyConfigError.invalid("\(typeID).shot_travel_seconds must be > 0")
         }
         guard starsToWin >= 1 else {
             throw EnemyConfigError.invalid("\(typeID).stars_to_win must be >= 1")
+        }
+        guard !shotTypes.isEmpty else {
+            throw EnemyConfigError.invalid("\(typeID).shot_types must not be empty")
+        }
+        for (shotLetter, shotType) in shotTypes {
+            try shotType.validate(typeID: typeID, letter: shotLetter)
         }
     }
 
@@ -112,9 +166,9 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 tilesPerSecond: 1.0,
                 forgetSeconds: 3.0,
                 combatTimerSeconds: 10,
-                shotIntervalSeconds: 1.2,
-                shotTravelSeconds: 1.5,
+                shotTravelSeconds: 3.2,
                 starsToWin: 10,
+                shotTypes: EnemyTypeConfig.defaultShotTypes,
                 fx: .empty
             ),
         ]

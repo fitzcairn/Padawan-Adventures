@@ -226,6 +226,42 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         return true
     }
 
+    /// After defeat restore, push enemies within `maxProximity` tiles to about
+    /// `separationDistance` tiles from the player so contact isn't immediate.
+    @discardableResult
+    mutating func separateNearbyEnemiesOnRestore(
+        maxProximity: Int = 2,
+        separationDistance: Int = 4
+    ) -> Int {
+        guard let player = playerPosition else { return 0 }
+
+        let nearbyIDs = entities.compactMap { entity -> UUID? in
+            guard entity.isEnemy, entity.position.story == player.story else { return nil }
+            return manhattanDistance(entity.position, player) <= maxProximity ? entity.id : nil
+        }
+        guard !nearbyIDs.isEmpty else { return 0 }
+
+        var occupied = Set(entities.map(\.position))
+        var moved = 0
+
+        for id in nearbyIDs {
+            guard let enemy = entity(id: id) else { continue }
+            occupied.remove(enemy.position)
+            guard let destination = restoreSeparationDestination(
+                from: player,
+                distance: separationDistance,
+                occupied: occupied
+            ) else {
+                occupied.insert(enemy.position)
+                continue
+            }
+            setEntityPosition(destination, id: id)
+            occupied.insert(destination)
+            moved += 1
+        }
+        return moved
+    }
+
     mutating func resolvePit(at coord: GridCoord) -> PitResolution {
         guard tile(at: coord)?.isPit == true else { return .none }
         // Stay on the pit tile; UI relocates after the pit screen is dismissed.
@@ -236,6 +272,69 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         guard let tile = tile(at: coord) else { return false }
         if case .floor(let isPit) = tile.kind { return !isPit }
         return false
+    }
+
+    private func manhattanDistance(_ a: GridCoord, _ b: GridCoord) -> Int {
+        abs(a.x - b.x) + abs(a.y - b.y)
+    }
+
+    /// Prefers a non-pit floor exactly `distance` away (cardinals first), then any farther tile.
+    private func restoreSeparationDestination(
+        from player: GridCoord,
+        distance: Int,
+        occupied: Set<GridCoord>
+    ) -> GridCoord? {
+        let exactRing = coordinatesAtManhattanDistance(from: player, distance: distance)
+            .sorted { lhs, rhs in
+                let lhsCardinal = lhs.x == player.x || lhs.y == player.y
+                let rhsCardinal = rhs.x == player.x || rhs.y == player.y
+                if lhsCardinal != rhsCardinal { return lhsCardinal && !rhsCardinal }
+                if lhs.y != rhs.y { return lhs.y < rhs.y }
+                return lhs.x < rhs.x
+            }
+
+        for coord in exactRing {
+            if isFreeRestoreTile(coord, occupied: occupied) { return coord }
+        }
+
+        // Fallback: nearest free non-pit floor at least `distance` away.
+        var queue = [player]
+        var visited: Set<GridCoord> = [player]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard next.story == player.story, isInBounds(next), !visited.contains(next) else {
+                    continue
+                }
+                visited.insert(next)
+                queue.append(next)
+                guard manhattanDistance(next, player) >= distance else { continue }
+                if isFreeRestoreTile(next, occupied: occupied) { return next }
+            }
+        }
+        return nil
+    }
+
+    private func coordinatesAtManhattanDistance(from origin: GridCoord, distance: Int) -> [GridCoord] {
+        guard distance > 0 else { return [origin] }
+        var coords: [GridCoord] = []
+        for dx in -distance...distance {
+            let remaining = distance - abs(dx)
+            if remaining == 0 {
+                coords.append(origin.neighbor(dx: dx, dy: 0))
+            } else {
+                coords.append(origin.neighbor(dx: dx, dy: remaining))
+                coords.append(origin.neighbor(dx: dx, dy: -remaining))
+            }
+        }
+        return coords
+    }
+
+    private func isFreeRestoreTile(_ coord: GridCoord, occupied: Set<GridCoord>) -> Bool {
+        isNonPitFloor(at: coord) && !occupied.contains(coord)
     }
 
     func fingerprint() -> String {

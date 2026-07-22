@@ -16,13 +16,14 @@ final class CombatScene: SKScene {
         let end: CGPoint
         let spawnElapsed: Double
         let travelSeconds: Double
+        /// Only shots matching the sequence cue can impact the player.
+        let canHitPlayer: Bool
         let node: SKShapeNode
     }
 
     weak var combatDelegate: CombatSceneDelegate?
 
     private let enemyType: EnemyTypeConfig
-    private let enemyFx: SoundEffectTable
     private let playerFx: SoundEffectTable
 
     private var engine: CombatMinigameEngine
@@ -43,7 +44,6 @@ final class CombatScene: SKScene {
         playerFx: SoundEffectTable
     ) {
         self.enemyType = enemyType
-        self.enemyFx = enemyType.fx
         self.playerFx = playerFx
         self.engine = CombatMinigameEngine(config: .init(from: enemyType))
         super.init(size: size)
@@ -174,8 +174,10 @@ final class CombatScene: SKScene {
 
     private func handle(_ event: CombatEngineEvent) {
         switch event {
-        case let .spawnShot(id, travelSeconds):
-            spawnShot(id: id, travelSeconds: travelSeconds)
+        case let .sequenceCue(requiredLetter):
+            playSequenceCue(requiredLetter: requiredLetter)
+        case let .spawnShot(id, travelSeconds, visualLetter):
+            spawnShot(id: id, travelSeconds: travelSeconds, visualLetter: visualLetter)
         case .timerTick:
             SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
         case .won:
@@ -185,12 +187,22 @@ final class CombatScene: SKScene {
         }
     }
 
-    private func spawnShot(id: UUID, travelSeconds: Double) {
-        SoundEffectsController.shared.play(event: "shoot", from: enemyFx)
+    private func playSequenceCue(requiredLetter: String) {
+        if let typeFx = enemyType.shotTypes[requiredLetter]?.fx,
+           typeFx.trackID(for: "shoot") != nil {
+            SoundEffectsController.shared.play(event: "shoot", from: typeFx)
+        }
+    }
+
+    private func spawnShot(id: UUID, travelSeconds: Double, visualLetter: String) {
+        let requiredLetter = engine.shots[id]?.requiredLetter ?? visualLetter
+        let canHitPlayer = visualLetter == requiredLetter
 
         let start = enemyNode.position
-        let end = playerNode.position
-        let lateral = CGFloat.random(in: -size.width * 0.22...size.width * 0.22)
+        let end = shotEndPoint(canHitPlayer: canHitPlayer)
+        // Matching shots curve mildly; misses swing wide to clear the player.
+        let lateralSpread = canHitPlayer ? size.width * 0.18 : size.width * 0.34
+        let lateral = CGFloat.random(in: -lateralSpread...lateralSpread)
         let control = CGPoint(
             x: (start.x + end.x) * 0.5 + lateral,
             y: (start.y + end.y) * 0.5
@@ -206,14 +218,35 @@ final class CombatScene: SKScene {
         shot.name = "shot-\(id.uuidString)"
         addChild(shot)
 
+        let label = SKLabelNode(text: visualLetter)
+        label.fontName = "Helvetica-Bold"
+        label.fontSize = shotBaseSize * 0.62
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.fontColor = .white
+        label.zPosition = 1
+        shot.addChild(label)
+
         shotVisuals[id] = ShotVisual(
             start: start,
             control: control,
             end: end,
             spawnElapsed: engine.elapsed,
             travelSeconds: max(travelSeconds, 0.05),
+            canHitPlayer: canHitPlayer,
             node: shot
         )
+    }
+
+    /// Matching shots aim at the player; mismatches fly past on a random side.
+    private func shotEndPoint(canHitPlayer: Bool) -> CGPoint {
+        let player = playerNode.position
+        guard !canHitPlayer else { return player }
+
+        let side: CGFloat = Bool.random() ? -1 : 1
+        let missX = player.x + side * size.width * 0.42
+        let missY = max(player.y - size.height * 0.12, size.height * 0.02)
+        return CGPoint(x: missX, y: missY)
     }
 
     private func syncShotMotion() {
@@ -224,7 +257,7 @@ final class CombatScene: SKScene {
             visual.node.position = quadraticBezier(t: t, start: visual.start, control: visual.control, end: visual.end)
             visual.node.setScale(0.35 + 0.80 * t)
             if t >= 1 {
-                resolveImpactIfNeeded(shotID: id)
+                finishShotPath(shotID: id)
             }
         }
     }
@@ -238,7 +271,7 @@ final class CombatScene: SKScene {
 
     private func checkImpacts() {
         guard playerNode != nil else { return }
-        for (id, visual) in shotVisuals {
+        for (id, visual) in shotVisuals where visual.canHitPlayer {
             let hitRadius = max(shotBaseSize * visual.node.xScale * 0.5, 12)
             let dx = visual.node.position.x - playerNode.position.x
             let dy = visual.node.position.y - playerNode.position.y
@@ -249,13 +282,24 @@ final class CombatScene: SKScene {
         }
     }
 
+    private func finishShotPath(shotID: UUID) {
+        guard let visual = shotVisuals[shotID] else { return }
+        if visual.canHitPlayer {
+            resolveImpactIfNeeded(shotID: shotID)
+        } else {
+            // Missed the player — despawn quietly with no damage VFX.
+            _ = engine.registerImpact(shotID: shotID)
+            removeShotNode(id: shotID)
+        }
+    }
+
     private func resolveImpactIfNeeded(shotID: UUID) {
-        guard shotVisuals[shotID] != nil else { return }
+        guard let visual = shotVisuals[shotID], visual.canHitPlayer else { return }
         guard engine.registerImpact(shotID: shotID) else {
             removeShotNode(id: shotID)
             return
         }
-        let position = shotVisuals[shotID]?.node.position ?? playerNode.position
+        let position = visual.node.position
         removeShotNode(id: shotID)
         playDamage(at: position)
     }
@@ -296,6 +340,52 @@ final class CombatScene: SKScene {
         circle.run(SKAction.group([grow, fade])) {
             circle.removeFromParent()
         }
+    }
+
+    private func playIncorrectSlash(at position: CGPoint) {
+        playSlashErrorSound()
+
+        let container = SKNode()
+        container.position = position
+        container.zPosition = 45
+        addChild(container)
+
+        let flash = SKShapeNode(circleOfRadius: 22)
+        flash.fillColor = UIColor.systemBlue.withAlphaComponent(0.35)
+        flash.strokeColor = UIColor.systemBlue
+        flash.lineWidth = 2
+        container.addChild(flash)
+
+        // Distinct from the yellow correct explode: a blue "X".
+        for angle in [CGFloat.pi / 4, -CGFloat.pi / 4] {
+            let bar = SKShapeNode(rectOf: CGSize(width: 44, height: 6), cornerRadius: 2)
+            bar.fillColor = .systemBlue
+            bar.strokeColor = .white
+            bar.lineWidth = 1
+            bar.zRotation = angle
+            container.addChild(bar)
+        }
+
+        let pop = SKAction.sequence([
+            SKAction.group([
+                SKAction.scale(to: 1.35, duration: 0.08),
+                SKAction.fadeAlpha(to: 1, duration: 0.05),
+            ]),
+            SKAction.wait(forDuration: 0.06),
+            SKAction.group([
+                SKAction.scale(to: 1.7, duration: 0.18),
+                SKAction.fadeOut(withDuration: 0.18),
+            ]),
+            SKAction.removeFromParent(),
+        ])
+        container.setScale(0.7)
+        container.run(pop)
+    }
+
+    private func playSlashErrorSound() {
+        // Prefer player.yaml mapping; fall back so a missing key never silences feedback.
+        let trackID = playerFx.trackID(for: "slash_error") ?? "sfx_slash_error"
+        SoundEffectsController.shared.play(trackID: trackID)
     }
 
     // MARK: - Slash input
@@ -357,14 +447,25 @@ final class CombatScene: SKScene {
         for (id, visual) in shotVisuals {
             let hitRadius = slashHitRadius(for: visual.node)
             if slashPolylineHitsCircle(points: recent, center: visual.node.position, radius: hitRadius) {
-                guard engine.registerSlashHit(shotID: id) else { continue }
+                let result = engine.registerSlashHit(shotID: id)
                 let pos = visual.node.position
-                removeShotNode(id: id)
-                playExplosion(at: pos)
-                combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
-                if engine.hasWon || engine.outcome != nil {
-                    finishWin()
-                    return
+                switch result {
+                case .ignored:
+                    continue
+                case .correct:
+                    removeShotNode(id: id)
+                    playExplosion(at: pos)
+                    combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
+                    for pending in engine.drainPendingEvents() {
+                        handle(pending)
+                    }
+                    if engine.hasWon || engine.outcome != nil {
+                        finishWin()
+                        return
+                    }
+                case .wrong:
+                    removeShotNode(id: id)
+                    playIncorrectSlash(at: pos)
                 }
             }
         }

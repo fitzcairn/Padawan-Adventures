@@ -192,6 +192,8 @@ final class GameViewController: LandscapeHostingController {
         let playerFx = session.playerConfig.fx
         let outcomeBox = CombatOutcomeBox()
 
+        BackgroundMusicController.shared.applyScreen(named: "combat")
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -219,12 +221,15 @@ final class GameViewController: LandscapeHostingController {
                         await self.session.recordStat { $0.enemiesKilled += 1 }
                         await self.awardLevelStars(count: starsAwarded)
                     }
+                    BackgroundMusicController.shared.apply(
+                        MusicCue.parse(self.session.selectedLevelMusic)
+                    )
                     scene.resolveEnemyEncounter(enemyID: enemyID) {
                         self.setWorldHUDHidden(false)
                         done()
                     }
                 case .lost, .none:
-                    // Keep world HUD hidden; presentDefeat reveals it only after restore.
+                    // Keep world HUD hidden; presentDefeat silences then restores level music.
                     done()
                     self.presentDefeat()
                 }

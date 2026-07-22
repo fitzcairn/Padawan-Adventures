@@ -43,6 +43,22 @@ struct ContinuePointStoreTests {
 
         #expect(store.snapshot.energyCount == original.energyCount)
         #expect(store.snapshot.playerPosition == original.playerPosition)
+        #expect(!tick.shouldPersistContinueSave)
+    }
+
+    @Test func shouldPersistContinueSaveOnlyWhenSafeSettle() {
+        var safe = SimulationTickResult()
+        safe.shouldPersist = true
+        #expect(safe.shouldPersistContinueSave)
+
+        var enemyContact = SimulationTickResult()
+        enemyContact.shouldPersist = true
+        enemyContact.enemyContactID = UUID()
+        #expect(!enemyContact.shouldPersistContinueSave)
+
+        var notSettled = SimulationTickResult()
+        notSettled.shouldPersist = false
+        #expect(!notSettled.shouldPersistContinueSave)
     }
 
     @Test func captureIfSafeSkipsWhenPitContact() {
@@ -199,5 +215,11 @@ struct DefeatRulesTests {
         #expect(DefeatRules.isDefeatedByPit(health: 0))
         #expect(!DefeatRules.isDefeatedByPit(health: 1))
         #expect(!DefeatRules.isDefeatedByPit(health: 3))
+    }
+
+    @Test func restoredVitalFloorsZeroToOne() {
+        #expect(DefeatRules.restoredVital(0) == 1)
+        #expect(DefeatRules.restoredVital(1) == 1)
+        #expect(DefeatRules.restoredVital(3) == 3)
     }
 }

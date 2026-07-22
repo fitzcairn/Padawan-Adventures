@@ -16,3 +16,4 @@ fx:
   enemy_contact: sfx_enemy_contact
   damage: sfx_player_damage
   timer_tick: sfx_timer_tick
+  slash_error: sfx_slash_error

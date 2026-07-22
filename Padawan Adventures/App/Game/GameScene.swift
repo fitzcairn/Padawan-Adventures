@@ -154,7 +154,10 @@ final class GameScene: SKScene {
 
             if result.shouldPersist {
                 continuePoint.captureIfSafe(world, tick: result)
-                scheduleSave()
+                // Skip mid-encounter disk saves; resolve* paths write the post-combat checkpoint.
+                if result.shouldPersistContinueSave {
+                    scheduleSave()
+                }
             }
 
             if result.didEnterPit {
@@ -246,24 +249,27 @@ final class GameScene: SKScene {
     }
 
     /// Deducts one energy (no-op at 0). Returns the new energy count.
+    /// Does not persist — Continue stays on the last safe world until the encounter resolves.
     @discardableResult
     func deductEnergy() -> Int {
         world.energyCount = max(0, world.energyCount - 1)
-        scheduleSave()
         return world.energyCount
     }
 
     /// Deducts one health (no-op at 0). Returns the new health count.
+    /// Does not persist — Continue stays on the last safe world until the encounter resolves.
     @discardableResult
     func deductHealth() -> Int {
         world.healthCount = max(0, world.healthCount - 1)
-        scheduleSave()
         return world.healthCount
     }
 
     /// Restores the world to the last safe continue snapshot and resumes play.
     func restoreFromContinuePoint(completion: (() -> Void)? = nil) {
         world = continuePoint.snapshot
+        world.healthCount = DefeatRules.restoredVital(world.healthCount)
+        world.energyCount = DefeatRules.restoredVital(world.energyCount)
+        world.separateNearbyEnemiesOnRestore()
         movement = MovementSystem()
         pendingInput = PendingInput()
         simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)

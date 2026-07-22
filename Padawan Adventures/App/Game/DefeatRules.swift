@@ -10,4 +10,9 @@ nonisolated enum DefeatRules {
     static func isDefeatedByPit(health: Int) -> Bool {
         health == 0
     }
+
+    /// Floor a restored vital so defeat restore never leaves the player at zero.
+    static func restoredVital(_ count: Int) -> Int {
+        max(1, count)
+    }
 }
