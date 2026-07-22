@@ -8,7 +8,10 @@ final class FrontCameraController: NSObject {
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private var photoContinuation: CheckedContinuation<UIImage, Error>?
+    private(set) var cameraDevice: AVCaptureDevice?
     private(set) var isConfigured = false
+    /// Preview layer used so capture rotation matches what the user sees.
+    weak var previewLayer: AVCaptureVideoPreviewLayer?
 
     enum CameraError: Error {
         case unavailable
@@ -28,7 +31,10 @@ final class FrontCameraController: NSObject {
             throw CameraError.notAuthorized
         }
 
-        guard !isConfigured else { return }
+        guard !isConfigured else {
+            applyRotationToConnections()
+            return
+        }
 
         session.beginConfiguration()
         session.sessionPreset = .photo
@@ -41,6 +47,7 @@ final class FrontCameraController: NSObject {
             session.commitConfiguration()
             throw CameraError.unavailable
         }
+        cameraDevice = device
         session.addInput(input)
 
         guard session.canAddOutput(photoOutput) else {
@@ -48,14 +55,10 @@ final class FrontCameraController: NSObject {
             throw CameraError.unavailable
         }
         session.addOutput(photoOutput)
-        if let connection = photoOutput.connection(with: .video) {
-            if connection.isVideoMirroringSupported {
-                connection.isVideoMirrored = true
-            }
-        }
 
         session.commitConfiguration()
         isConfigured = true
+        applyRotationToConnections()
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async { [session] in
@@ -73,10 +76,44 @@ final class FrontCameraController: NSObject {
     }
 
     func capturePhoto() async throws -> UIImage {
-        try await withCheckedThrowingContinuation { continuation in
+        applyRotationToConnections()
+        return try await withCheckedThrowingContinuation { continuation in
             self.photoContinuation = continuation
             let settings = AVCapturePhotoSettings()
             self.photoOutput.capturePhoto(with: settings, delegate: self)
+        }
+    }
+
+    func applyRotationToConnections() {
+        guard let device = cameraDevice else { return }
+
+        let coordinator = AVCaptureDevice.RotationCoordinator(
+            device: device,
+            previewLayer: previewLayer
+        )
+
+        if let previewConnection = previewLayer?.connection {
+            configure(
+                connection: previewConnection,
+                rotationAngle: coordinator.videoRotationAngleForHorizonLevelPreview
+            )
+        }
+
+        if let photoConnection = photoOutput.connection(with: .video) {
+            configure(
+                connection: photoConnection,
+                rotationAngle: coordinator.videoRotationAngleForHorizonLevelCapture
+            )
+        }
+    }
+
+    private func configure(connection: AVCaptureConnection, rotationAngle: CGFloat) {
+        connection.automaticallyAdjustsVideoMirroring = false
+        if connection.isVideoMirroringSupported {
+            connection.isVideoMirrored = true
+        }
+        if connection.isVideoRotationAngleSupported(rotationAngle) {
+            connection.videoRotationAngle = rotationAngle
         }
     }
 }
@@ -108,25 +145,58 @@ extension FrontCameraController: AVCapturePhotoCaptureDelegate {
 }
 
 struct CameraPreviewView: UIViewRepresentable {
-    let session: AVCaptureSession
+    let controller: FrontCameraController
 
     func makeUIView(context: Context) -> PreviewUIView {
         let view = PreviewUIView()
-        view.previewLayer.session = session
+        view.controller = controller
+        view.previewLayer.session = controller.session
         view.previewLayer.videoGravity = .resizeAspectFill
+        controller.previewLayer = view.previewLayer
+        view.beginOrientationUpdates()
         return view
     }
 
     func updateUIView(_ uiView: PreviewUIView, context: Context) {
-        uiView.previewLayer.session = session
-        uiView.previewLayer.connection?.automaticallyAdjustsVideoMirroring = false
-        if uiView.previewLayer.connection?.isVideoMirroringSupported == true {
-            uiView.previewLayer.connection?.isVideoMirrored = true
-        }
+        uiView.controller = controller
+        uiView.previewLayer.session = controller.session
+        controller.previewLayer = uiView.previewLayer
+        uiView.applyRotation()
     }
 
     final class PreviewUIView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        weak var controller: FrontCameraController?
+        private var orientationObserver: NSObjectProtocol?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            previewLayer.frame = bounds
+            applyRotation()
+        }
+
+        func beginOrientationUpdates() {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            orientationObserver = NotificationCenter.default.addObserver(
+                forName: UIDevice.orientationDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.applyRotation()
+            }
+            applyRotation()
+        }
+
+        func applyRotation() {
+            controller?.applyRotationToConnections()
+        }
+
+        deinit {
+            if let orientationObserver {
+                NotificationCenter.default.removeObserver(orientationObserver)
+            }
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
+        }
     }
 }

@@ -129,7 +129,7 @@ struct PlayerSelfieView: View {
             let diameter = PlayerAvatarImage.circleDiameter(forPreviewSize: size)
 
             ZStack {
-                CameraPreviewView(session: model.camera.session)
+                CameraPreviewView(controller: model.camera)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                 Circle()
