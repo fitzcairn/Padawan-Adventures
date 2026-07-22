@@ -9,6 +9,7 @@ struct PreparingView: View {
         AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
             .padding(.horizontal)
             .appScreenBackground()
+            .playScreenMusic("preparing")
             .accessibilityIdentifier("preparing.status")
             .task {
                 guard !didStartLoad else { return }

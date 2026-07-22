@@ -4,6 +4,8 @@ import Yams
 /// Per-level map size and generation settings loaded from `base_level.yaml` / `Levels/*.yaml`.
 nonisolated struct LevelConfig: Codable, Equatable, Sendable {
     var name: String
+    /// Raw `music:` value; interpret with `MusicCue.parse`.
+    var music: String?
     var width: Int
     var height: Int
     var algorithm: String
@@ -11,9 +13,12 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
     var corridorWidth: Int
     var room: WorldSeedConfig.RoomParams
     var pickups: WorldSeedConfig.PickupsSpawnConfig?
+    /// Optional per-level overrides for `world.yaml` `fx:` (merged per event key).
+    var fx: SoundEffectTable?
 
     enum CodingKeys: String, CodingKey {
         case name
+        case music
         case width
         case height
         case algorithm
@@ -21,10 +26,12 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         case corridorWidth = "corridor_width"
         case room
         case pickups
+        case fx
     }
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
+        music: "level_theme",
         width: 100,
         height: 100,
         algorithm: "rooms_doors",
@@ -42,20 +49,24 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         pickups: .init(
             health: .init(spawnChancePerRoom: 0.8),
             energy: .init(spawnChancePerRoom: 0.8)
-        )
+        ),
+        fx: nil
     )
 
     nonisolated init(
         name: String,
+        music: String? = nil,
         width: Int,
         height: Int,
         algorithm: String,
         roomCount: Int,
         corridorWidth: Int,
         room: WorldSeedConfig.RoomParams,
-        pickups: WorldSeedConfig.PickupsSpawnConfig? = nil
+        pickups: WorldSeedConfig.PickupsSpawnConfig? = nil,
+        fx: SoundEffectTable? = nil
     ) {
         self.name = name
+        self.music = music
         self.width = width
         self.height = height
         self.algorithm = algorithm
@@ -63,6 +74,11 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         self.corridorWidth = corridorWidth
         self.room = room
         self.pickups = pickups
+        self.fx = fx
+    }
+
+    var musicCue: MusicCue {
+        MusicCue.parse(music)
     }
 
     var generation: WorldSeedConfig.GenerationParams {

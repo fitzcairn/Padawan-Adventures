@@ -12,6 +12,25 @@ struct PlayerConfigTests {
         #expect(config.letter == "P")
         #expect(config.startingHealth == 3)
         #expect(config.startingEnergy == 2)
+        #expect(config.fx == .empty)
+        try config.validate()
+    }
+
+    @Test func decodesFxDictionary() throws {
+        let yaml = """
+        letter: P
+        starting_health: 3
+        starting_energy: 2
+        fx:
+          move: sfx_player_move
+          pickup_health: sfx_pickup_health
+          pit: sfx_pit
+        """
+        let config = try PlayerConfig.decode(from: yaml)
+        #expect(config.fx.trackID(for: "move") == "sfx_player_move")
+        #expect(config.fx.trackID(for: "pickup_health") == "sfx_pickup_health")
+        #expect(config.fx.trackID(for: "pit") == "sfx_pit")
+        #expect(config.fx.trackID(for: "missing") == nil)
         try config.validate()
     }
 

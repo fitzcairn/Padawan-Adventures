@@ -53,11 +53,19 @@ nonisolated enum WorldLoader {
             withExtension: ext,
             subdirectory: levelSubdirectory
         )
+        applyLevel(level, to: &config)
+        return (config, level)
+    }
+
+    /// Overlays level map size, generation, pickups, and optional `fx` onto a world config.
+    static func applyLevel(_ level: LevelConfig, to config: inout WorldSeedConfig) {
         config.world.width = level.width
         config.world.height = level.height
         config.generation = level.generation
         config.pickups = level.pickups
-        return (config, level)
+        if let levelFx = level.fx {
+            config.fx = config.fx.merging(levelFx)
+        }
     }
 
     static func loadFromBundle(

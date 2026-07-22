@@ -52,5 +52,6 @@ struct LevelSelectView: View {
             .padding(.bottom, 24)
         }
         .appScreenBackground()
+        .playScreenMusic("level_select")
     }
 }

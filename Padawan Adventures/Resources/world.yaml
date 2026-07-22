@@ -17,4 +17,10 @@ enemies:
   type: grunt
   spawn_chance_per_room: 0.8
 
+# World-level event key → sound track basename (Resources/Audio/<name>.m4a).
+# Levels may override individual keys via their own `fx:` block.
+fx:
+  wall_destroyed: sfx_wall_destroyed
+  gate_opened: sfx_gate_opened
+
 extensions: {}

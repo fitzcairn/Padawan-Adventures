@@ -155,6 +155,7 @@ struct PlayerSelectView: View {
         }
         .padding(.horizontal)
         .appScreenBackground()
+        .playScreenMusic("player_select")
         .task {
             await model.reloadPlayers()
         }

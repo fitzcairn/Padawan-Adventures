@@ -4,6 +4,7 @@ import Testing
 struct LevelConfigTests {
     private static let baseLevelYAML = """
         name: Level
+        music: level_theme
         width: 100
         height: 100
         algorithm: rooms_doors
@@ -62,6 +63,77 @@ struct LevelConfigTests {
         #expect(level.room.gateChance == 0.5)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
+        #expect(level.music == nil)
+        #expect(level.musicCue == .unchanged)
+    }
+
+    @Test func inheritsMusicFromBase() throws {
+        let child = """
+        inherits: base_level
+        name: Level 1
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.music == "level_theme")
+        #expect(level.musicCue == .track("level_theme"))
+    }
+
+    @Test func childCanOverrideMusic() throws {
+        let child = """
+        inherits: base_level
+        name: Level 1
+        music: silence
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.music == "silence")
+        #expect(level.musicCue == .silence)
+    }
+
+    @Test func decodesFxDictionary() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        fx:
+          wall_destroyed: sfx_wall_destroyed_alt
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.fx?.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
+    }
+
+    @Test func childCanOverrideInheritedFxKeys() throws {
+        let base = Self.baseLevelYAML + """
+        
+        fx:
+          wall_destroyed: sfx_wall_destroyed
+          gate_opened: sfx_gate_opened
+        """
+        let child = """
+        inherits: base_level
+        name: Level 1
+        fx:
+          wall_destroyed: sfx_wall_destroyed_alt
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.fx?.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
+        #expect(level.fx?.trackID(for: "gate_opened") == "sfx_gate_opened")
     }
 
     @Test func inheritsFromBaseAndOverridesFields() throws {

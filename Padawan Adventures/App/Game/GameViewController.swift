@@ -14,6 +14,7 @@ final class GameViewController: LandscapeHostingController {
     private weak var gameScene: GameScene?
     private weak var hud: GameHUDView?
     private var isExitingToLevelSelect = false
+    private var didApplyLevelMusic = false
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
         fadeWorldOut: { [weak self] completion in
@@ -57,25 +58,32 @@ final class GameViewController: LandscapeHostingController {
             world: world,
             isoConfig: isoConfig,
             enemyConfig: session.enemyConfig,
+            playerFx: session.playerConfig.fx,
+            worldFx: session.seedConfig.fx,
             saveService: session.saveService
         )
         scene.scaleMode = .aspectFill
         scene.onEnemyContact = { [weak self] enemyID in
+            self?.playEnemyContactFx(enemyID: enemyID)
             self?.presentEnemyFight(enemyID: enemyID)
         }
         scene.onPitEntered = { [weak self] in
+            self?.playPlayerFx("pit")
             self?.presentPit()
         }
         scene.onBoomEntered = { [weak self] coord in
+            self?.playPlayerFx("boom")
             self?.presentDestructibleWall(at: coord)
         }
         scene.onGateEntered = { [weak self] coord in
+            self?.playPlayerFx("gate")
             self?.presentGate(at: coord)
         }
         scene.onPickupCollected = { [weak self] kind in
             self?.handlePickupCollected(kind)
         }
         scene.onTreasureCollected = { [weak self] in
+            self?.playPlayerFx("pickup_treasure")
             self?.presentYouWin()
         }
         scene.onWorldSaved = { [weak self] snapshot in
@@ -91,6 +99,14 @@ final class GameViewController: LandscapeHostingController {
         skView.showsNodeCount = true
 
         installHUD()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // One-shot: modal overlays also re-trigger viewDidAppear; don't clobber win/minigame cues.
+        guard !didApplyLevelMusic else { return }
+        didApplyLevelMusic = true
+        BackgroundMusicController.shared.apply(MusicCue.parse(session.selectedLevelMusic))
     }
 
     private func installHUD() {
@@ -125,12 +141,29 @@ final class GameViewController: LandscapeHostingController {
     private func handlePickupCollected(_ kind: PickupKind) {
         switch kind {
         case .health:
+            playPlayerFx("pickup_health")
             hud?.addHeart()
         case .energy:
+            playPlayerFx("pickup_energy")
             hud?.addBolt()
         case .treasure:
             break
         }
+    }
+
+    private func playPlayerFx(_ event: String) {
+        SoundEffectsController.shared.play(event: event, from: session.playerConfig.fx)
+    }
+
+    private func playEnemyContactFx(enemyID: UUID) {
+        let typeID = gameScene?.currentWorld.entity(id: enemyID)?.enemyTypeID
+        if let typeID,
+           let typeFx = session.enemyConfig.type(named: typeID)?.fx,
+           typeFx.trackID(for: "contact") != nil {
+            SoundEffectsController.shared.play(event: "contact", from: typeFx)
+            return
+        }
+        playPlayerFx("enemy_contact")
     }
 
     @MainActor
@@ -223,6 +256,7 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentYouWin() {
+        BackgroundMusicController.shared.applyScreen(named: "you_win")
         overlayPresenter.present(
             fadeWorldOut: false,
             makeViewController: {

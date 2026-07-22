@@ -115,6 +115,7 @@ struct PlayerSelfieView: View {
         }
         .padding(.horizontal)
         .appScreenBackground()
+        .playScreenMusic("player_selfie")
         .task {
             await model.startCamera()
         }

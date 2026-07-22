@@ -7,24 +7,38 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var color: String
     var tilesPerSecond: Double
     var forgetSeconds: Double
+    /// Event key → sound track basename (`Resources/Audio/`).
+    var fx: SoundEffectTable
 
     enum CodingKeys: String, CodingKey {
         case letter
         case color
         case tilesPerSecond = "tiles_per_second"
         case forgetSeconds = "forget_seconds"
+        case fx
     }
 
     init(
         letter: String,
         color: String,
         tilesPerSecond: Double,
-        forgetSeconds: Double
+        forgetSeconds: Double,
+        fx: SoundEffectTable = .empty
     ) {
         self.letter = letter
         self.color = color
         self.tilesPerSecond = tilesPerSecond
         self.forgetSeconds = forgetSeconds
+        self.fx = fx
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        letter = try container.decode(String.self, forKey: .letter)
+        color = try container.decode(String.self, forKey: .color)
+        tilesPerSecond = try container.decode(Double.self, forKey: .tilesPerSecond)
+        forgetSeconds = try container.decode(Double.self, forKey: .forgetSeconds)
+        fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
     }
 
     func validate(typeID: String) throws {
@@ -60,7 +74,8 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 letter: "E",
                 color: "#FF0000",
                 tilesPerSecond: 1.0,
-                forgetSeconds: 3.0
+                forgetSeconds: 3.0,
+                fx: .empty
             ),
         ]
     )

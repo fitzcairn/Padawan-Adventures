@@ -52,6 +52,7 @@ struct MenuView: View {
             .accessibilityIdentifier("menu.version")
         }
         .appScreenBackground()
+        .playScreenMusic("menu")
         .task {
             await session.refreshContinueEligibility()
             showContinue = session.hasCompatibleSave

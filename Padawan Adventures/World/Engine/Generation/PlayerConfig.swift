@@ -6,6 +6,8 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
     var startingHealth: Int
     var startingEnergy: Int
     var spawn: SpawnCoord?
+    /// Event key → sound track basename (`Resources/Audio/`).
+    var fx: SoundEffectTable
 
     struct SpawnCoord: Codable, Equatable, Sendable {
         var x: Int
@@ -18,25 +20,38 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         case startingHealth = "starting_health"
         case startingEnergy = "starting_energy"
         case spawn
+        case fx
     }
 
     init(
         letter: String,
         startingHealth: Int = 0,
         startingEnergy: Int = 0,
-        spawn: SpawnCoord? = nil
+        spawn: SpawnCoord? = nil,
+        fx: SoundEffectTable = .empty
     ) {
         self.letter = letter
         self.startingHealth = startingHealth
         self.startingEnergy = startingEnergy
         self.spawn = spawn
+        self.fx = fx
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        letter = try container.decode(String.self, forKey: .letter)
+        startingHealth = try container.decode(Int.self, forKey: .startingHealth)
+        startingEnergy = try container.decode(Int.self, forKey: .startingEnergy)
+        spawn = try container.decodeIfPresent(SpawnCoord.self, forKey: .spawn)
+        fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
     }
 
     nonisolated static let fallback = PlayerConfig(
         letter: "P",
         startingHealth: 3,
         startingEnergy: 2,
-        spawn: nil
+        spawn: nil,
+        fx: .empty
     )
 
     func validate() throws {

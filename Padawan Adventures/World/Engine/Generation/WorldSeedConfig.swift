@@ -10,6 +10,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     var enemies: EnemiesSpawnConfig?
     var pickups: PickupsSpawnConfig?
     var extensions: [String: String]?
+    /// World-level event key → sound track basename (`Resources/Audio/`).
+    var fx: SoundEffectTable
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -20,6 +22,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         case enemies
         case pickups
         case extensions
+        case fx
     }
 
     nonisolated init(
@@ -30,7 +33,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         display: DisplayParams = .default,
         enemies: EnemiesSpawnConfig? = nil,
         pickups: PickupsSpawnConfig? = nil,
-        extensions: [String: String]?
+        extensions: [String: String]?,
+        fx: SoundEffectTable = .empty
     ) {
         self.version = version
         self.seed = seed
@@ -40,6 +44,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.enemies = enemies
         self.pickups = pickups
         self.extensions = extensions
+        self.fx = fx
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +60,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         extensions = try container.decodeIfPresent([String: String].self, forKey: .extensions)
+        fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
     }
 
     /// Resolves a concrete RNG seed. Time-based seeds use milliseconds since epoch.

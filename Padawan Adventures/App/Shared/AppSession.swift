@@ -6,6 +6,8 @@ final class AppSession {
     private(set) var seedConfig: WorldSeedConfig
     private(set) var selectedLevelName: String
     private(set) var selectedLevelResourceName: String?
+    /// Raw level `music:` value for the selected level.
+    private(set) var selectedLevelMusic: String?
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let playerStore: PlayerStateStore
@@ -18,6 +20,7 @@ final class AppSession {
         seedConfig: WorldSeedConfig,
         selectedLevelName: String = LevelConfig.fallback.name,
         selectedLevelResourceName: String? = nil,
+        selectedLevelMusic: String? = LevelConfig.fallback.music,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         playerStore: PlayerStateStore,
@@ -29,6 +32,7 @@ final class AppSession {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
         self.selectedLevelResourceName = selectedLevelResourceName
+        self.selectedLevelMusic = selectedLevelMusic
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -61,15 +65,28 @@ final class AppSession {
     static func loadResources() async -> AppSession {
         let seedConfig: WorldSeedConfig
         let selectedLevelName: String
+        let selectedLevelMusic: String?
         do {
             let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
             try loaded.config.validate()
             seedConfig = loaded.config
             selectedLevelName = loaded.level.name
+            selectedLevelMusic = loaded.level.music
         } catch {
             seedConfig = fallbackConfig()
             selectedLevelName = LevelConfig.fallback.name
+            selectedLevelMusic = LevelConfig.fallback.music
         }
+
+        let musicSettings: MusicSettings
+        do {
+            let loaded = try MusicSettings.loadFromBundle()
+            try loaded.validate()
+            musicSettings = loaded
+        } catch {
+            musicSettings = .fallback
+        }
+        BackgroundMusicController.shared.configure(fadeSeconds: musicSettings.fadeSeconds)
 
         let playerConfig: PlayerConfig
         do {
@@ -109,6 +126,7 @@ final class AppSession {
         return AppSession(
             seedConfig: seedConfig,
             selectedLevelName: selectedLevelName,
+            selectedLevelMusic: selectedLevelMusic,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             playerStore: playerStore,
@@ -126,6 +144,7 @@ final class AppSession {
         seedConfig = loaded.config
         selectedLevelName = loaded.level.name
         selectedLevelResourceName = resourceName
+        selectedLevelMusic = loaded.level.music
     }
 
     func bindPlayer(name: String) async throws {

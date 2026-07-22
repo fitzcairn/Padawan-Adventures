@@ -7,3 +7,5 @@ types:
     color: "#FF0000"
     tiles_per_second: 1.0
     forget_seconds: 3.0
+    fx:
+      contact: sfx_enemy_contact

@@ -12,6 +12,8 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
+            fx:
+              contact: sfx_enemy_contact
           scout:
             letter: S
             color: "#00FF00"
@@ -25,7 +27,9 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt")?.color == "#FF0000")
         #expect(config.type(named: "grunt")?.tilesPerSecond == 1.0)
         #expect(config.type(named: "grunt")?.forgetSeconds == 3.0)
+        #expect(config.type(named: "grunt")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
         #expect(config.type(named: "scout")?.letter == "S")
+        #expect(config.type(named: "scout")?.fx == .empty)
         try config.validate()
     }
 

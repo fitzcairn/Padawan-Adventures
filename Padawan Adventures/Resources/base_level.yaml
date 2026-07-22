@@ -3,6 +3,14 @@
 
 name: Level
 
+# Background music track basename (Resources/Audio/<name>.m4a).
+# Use `none` to keep previous music, or `silence` to fade out.
+music: level_theme
+
+# Optional: override world.yaml `fx:` event keys for this level (partial merge).
+# fx:
+#   wall_destroyed: sfx_wall_destroyed_alt
+
 width: 100
 height: 100
 

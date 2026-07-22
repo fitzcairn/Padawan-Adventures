@@ -3,3 +3,14 @@
 letter: P
 starting_health: 3
 starting_energy: 2
+
+# Event key → sound track basename (Resources/Audio/<name>.m4a).
+fx:
+  move: sfx_player_move
+  pickup_health: sfx_pickup_health
+  pickup_energy: sfx_pickup_energy
+  pickup_treasure: sfx_pickup_treasure
+  pit: sfx_pit
+  boom: sfx_boom
+  gate: sfx_gate
+  enemy_contact: sfx_enemy_contact

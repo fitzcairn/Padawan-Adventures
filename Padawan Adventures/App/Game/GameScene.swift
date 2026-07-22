@@ -11,6 +11,8 @@ final class GameScene: SKScene {
     private var simulationClock = SimulationClock()
     private var isoConfig: IsometricConfig
     private let enemyConfig: EnemyConfig
+    private let playerFx: SoundEffectTable
+    private let worldFx: SoundEffectTable
     private var simulationLoop: SimulationLoop
     private var pendingInput = PendingInput()
     private var renderer: IsometricRenderer
@@ -47,11 +49,15 @@ final class GameScene: SKScene {
         world: GameWorld,
         isoConfig: IsometricConfig,
         enemyConfig: EnemyConfig = .fallback,
+        playerFx: SoundEffectTable = .empty,
+        worldFx: SoundEffectTable = .empty,
         saveService: GameSaveService?
     ) {
         self.world = world
         self.isoConfig = isoConfig
         self.enemyConfig = enemyConfig
+        self.playerFx = playerFx
+        self.worldFx = worldFx
         self.saveService = saveService
         self.simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
         self.renderer = IsometricRenderer(config: isoConfig, enemyConfig: enemyConfig)
@@ -204,7 +210,9 @@ final class GameScene: SKScene {
 
     /// Opens a destructible wall after BOOM!, then fades the world back in.
     func resolveBoomEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
-        _ = world.destroyWall(at: coord)
+        if world.destroyWall(at: coord) {
+            SoundEffectsController.shared.play(event: "wall_destroyed", from: worldFx)
+        }
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
         scheduleSave()
@@ -216,7 +224,9 @@ final class GameScene: SKScene {
 
     /// Opens a gate strip after GATE ENCOUNTERED!!, then fades the world back in.
     func resolveGateEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
-        _ = world.openGate(at: coord)
+        if world.openGate(at: coord) {
+            SoundEffectsController.shared.play(event: "gate_opened", from: worldFx)
+        }
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
         scheduleSave()
@@ -286,6 +296,12 @@ final class GameScene: SKScene {
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
+        for event in result.movementEvents {
+            if case .reached = event {
+                SoundEffectsController.shared.play(event: "move", from: playerFx)
+            }
+        }
+
         let occupancy = result.playerDisplayCoord ?? world.playerPosition ?? world.spawn
         let displayPoint = result.playerDisplayPoint
             ?? IsometricMath.entityScreenPosition(occupancy, config: isoConfig)

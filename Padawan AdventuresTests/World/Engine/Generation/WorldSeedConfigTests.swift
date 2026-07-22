@@ -35,7 +35,107 @@ struct WorldSeedConfigTests {
         #expect(config.world.stories == 1)
         #expect(config.display.tileWidth == 40)
         #expect(config.display.tileHeight == 40)
+        #expect(config.fx == .empty)
         try config.validate()
+    }
+
+    @Test func decodesFxDictionary() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 24
+          height: 24
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 4
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 8
+            pit_chance: 0
+            wall_destructible_chance: 0
+            gate_chance: 0
+        fx:
+          wall_destroyed: sfx_wall_destroyed
+          gate_opened: sfx_gate_opened
+        """
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.fx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed")
+        #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
+        try config.validate()
+    }
+
+    @Test func applyLevelMergesFxOverrides() throws {
+        var config = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 6
+            pit_chance: 0
+            wall_destructible_chance: 0
+            gate_chance: 0
+        fx:
+          wall_destroyed: sfx_wall_destroyed
+          gate_opened: sfx_gate_opened
+        """)
+        let level = try LevelConfig.decode(from: """
+        name: Level Override
+        width: 30
+        height: 40
+        algorithm: rooms_doors
+        room_count: 3
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        fx:
+          wall_destroyed: sfx_wall_destroyed_alt
+        """)
+        WorldLoader.applyLevel(level, to: &config)
+        #expect(config.world.width == 30)
+        #expect(config.world.height == 40)
+        #expect(config.fx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
+        #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
+    }
+
+    @Test func applyLevelWithoutFxKeepsWorldFx() throws {
+        var config = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 6
+            pit_chance: 0
+            wall_destructible_chance: 0
+            gate_chance: 0
+        fx:
+          gate_opened: sfx_gate_opened
+        """)
+        let level = LevelConfig.fallback
+        WorldLoader.applyLevel(level, to: &config)
+        #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
     }
 
     @Test func decodesTimeSeedToken() throws {
