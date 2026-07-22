@@ -122,11 +122,14 @@ final class GameViewController: LandscapeHostingController {
             hudConfig = .fallback
         }
 
+        let levelResource = session.selectedLevelResourceName
+        let starsCount = levelResource.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
         let hud = GameHUDView(
             config: hudConfig,
             levelName: session.selectedLevelName,
             healthCount: world.healthCount,
-            energyCount: world.energyCount
+            energyCount: world.energyCount,
+            starsCount: starsCount
         )
         hud.onFleeTapped = { [weak self] in
             self?.exitToLevelSelect(completedLevel: false)
@@ -193,6 +196,7 @@ final class GameViewController: LandscapeHostingController {
                 }
                 Task {
                     await self.session.recordStat { $0.enemiesKilled += 1 }
+                    await self.awardLevelStar()
                 }
                 scene.resolveEnemyEncounter(enemyID: enemyID, completion: done)
             }
@@ -223,6 +227,7 @@ final class GameViewController: LandscapeHostingController {
                 }
                 Task {
                     await self.session.recordStat { $0.pitsCrossed += 1 }
+                    await self.awardLevelStar()
                 }
                 scene.resolvePitEncounter(completion: done)
             }
@@ -270,6 +275,7 @@ final class GameViewController: LandscapeHostingController {
                 }
                 Task {
                     await self.session.recordStat { $0.wallsBlownUp += 1 }
+                    await self.awardLevelStar()
                 }
                 scene.resolveBoomEncounter(at: coord, completion: done)
             }
@@ -292,6 +298,7 @@ final class GameViewController: LandscapeHostingController {
                 }
                 Task {
                     await self.session.recordStat { $0.gatesOpened += 1 }
+                    await self.awardLevelStar()
                 }
                 scene.resolveGateEncounter(at: coord, completion: done)
             }
@@ -299,20 +306,42 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
+    private func awardLevelStar() async {
+        guard let resourceName = session.selectedLevelResourceName else { return }
+        await session.addLevelStar(resourceName: resourceName)
+        let stars = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
+        hud?.setStars(stars)
+    }
+
+    @MainActor
     private func presentYouWin() {
         BackgroundMusicController.shared.applyScreen(named: "you_win")
-        overlayPresenter.present(
-            fadeWorldOut: false,
-            makeViewController: {
-                FullscreenOverlayHost { finish in
-                    YouWinView(onFinished: finish)
-                }
-            },
-            onResolved: { [weak self] done in
-                self?.exitToLevelSelect(completedLevel: true)
-                done()
+        Task { @MainActor in
+            var didBeatPrevious = false
+            var newScore = 0
+            if let resourceName = session.selectedLevelResourceName,
+               let result = await session.finalizeLevelStars(resourceName: resourceName) {
+                didBeatPrevious = result.didBeatPrevious
+                newScore = result.newScore
             }
-        )
+
+            overlayPresenter.present(
+                fadeWorldOut: false,
+                makeViewController: {
+                    FullscreenOverlayHost { finish in
+                        YouWinView(
+                            didBeatPreviousScore: didBeatPrevious,
+                            newScore: newScore,
+                            onFinished: finish
+                        )
+                    }
+                },
+                onResolved: { [weak self] done in
+                    self?.exitToLevelSelect(completedLevel: true)
+                    done()
+                }
+            )
+        }
     }
 
     @MainActor

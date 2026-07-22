@@ -47,4 +47,17 @@ struct GameWorldPreparerTests {
         let world = await GameWorldPreparer.loadWorld(session: session, mode: .continueSave)
         #expect(world.healthCount == 7)
     }
+
+    @Test func newGameResetsLevelStarsCurrent() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Cody")
+        try session.selectLevel(resourceName: "level_1")
+        await session.addLevelStar(resourceName: "level_1")
+        await session.addLevelStar(resourceName: "level_1")
+        #expect(session.playerState?.levels["level_1"]?.starsCurrent == 2)
+
+        _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        #expect(session.playerState?.levels["level_1"]?.starsCurrent == 0)
+        #expect(session.playerState?.levels["level_1"]?.started == true)
+    }
 }

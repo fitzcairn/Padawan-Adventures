@@ -19,6 +19,17 @@ struct LevelSelectView: View {
         VStack(spacing: 16) {
             Spacer()
 
+            HStack(spacing: 8) {
+                Image(systemName: "star.fill")
+                    .foregroundStyle(.orange)
+                    .font(.system(size: 22, weight: .semibold))
+                Text("\(session.playerState?.totalStars ?? 0)")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(AppChrome.primaryTextColor)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("levelSelect.totalStars")
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(levels, id: \.resourceName) { level in

@@ -206,6 +206,27 @@ final class AppSession {
         await persistPlayerState()
     }
 
+    func resetLevelStarsCurrent(resourceName: String) async {
+        guard playerState != nil else { return }
+        playerState?.resetLevelStarsCurrent(resourceName)
+        await persistPlayerState()
+    }
+
+    func addLevelStar(resourceName: String) async {
+        guard playerState != nil else { return }
+        playerState?.addLevelStar(resourceName)
+        await persistPlayerState()
+    }
+
+    @discardableResult
+    func finalizeLevelStars(resourceName: String) async -> LevelStarsFinalizeResult? {
+        guard var state = playerState else { return nil }
+        let result = state.finalizeLevelStars(resourceName)
+        playerState = state
+        await persistPlayerState()
+        return result
+    }
+
     func recordStat(_ update: (inout PlayerStats) -> Void) async {
         guard var state = playerState else { return }
         update(&state.stats)

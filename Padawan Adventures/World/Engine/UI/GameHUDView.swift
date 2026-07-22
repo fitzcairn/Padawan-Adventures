@@ -10,6 +10,7 @@ final class GameHUDView: UIView {
     private let boltsStack: UIStackView
     private let heartImage: UIImage?
     private let boltImage: UIImage?
+    private let scoreLabel = UILabel()
 
     private static let hudIconFadeDuration: TimeInterval = 0.2
 
@@ -17,7 +18,8 @@ final class GameHUDView: UIView {
         config: HudConfig,
         levelName: String,
         healthCount: Int = 0,
-        energyCount: Int = 0
+        energyCount: Int = 0,
+        starsCount: Int = 0
     ) {
         self.config = config
         self.levelName = levelName
@@ -37,7 +39,7 @@ final class GameHUDView: UIView {
             pointSize: config.iconSize
         )
         super.init(frame: .zero)
-        setup(healthCount: healthCount, energyCount: energyCount)
+        setup(healthCount: healthCount, energyCount: energyCount, starsCount: starsCount)
     }
 
     @available(*, unavailable)
@@ -80,7 +82,11 @@ final class GameHUDView: UIView {
         }
     }
 
-    private func setup(healthCount: Int, energyCount: Int) {
+    func setStars(_ count: Int) {
+        scoreLabel.text = "\(max(count, 0))"
+    }
+
+    private func setup(healthCount: Int, energyCount: Int, starsCount: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = true
         translatesAutoresizingMaskIntoConstraints = false
@@ -92,7 +98,7 @@ final class GameHUDView: UIView {
             addIcon(image: boltImage, to: boltsStack, animated: false)
         }
 
-        let score = makeScoreRow()
+        let score = makeScoreRow(starsCount: starsCount)
         let levelLabel = makeLevelNameLabel()
         fleeButton.addTarget(self, action: #selector(fleeTapped), for: .touchUpInside)
 
@@ -210,7 +216,7 @@ final class GameHUDView: UIView {
         return stack
     }
 
-    private func makeScoreRow() -> UIStackView {
+    private func makeScoreRow(starsCount: Int) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .horizontal
         stack.spacing = CGFloat(config.scoreTextGap)
@@ -229,15 +235,14 @@ final class GameHUDView: UIView {
             star.heightAnchor.constraint(equalToConstant: size),
         ])
 
-        let label = UILabel()
-        label.text = "100"
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 22, weight: .semibold)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.isUserInteractionEnabled = false
+        scoreLabel.text = "\(max(starsCount, 0))"
+        scoreLabel.textColor = .white
+        scoreLabel.font = .systemFont(ofSize: 22, weight: .semibold)
+        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        scoreLabel.isUserInteractionEnabled = false
 
         stack.addArrangedSubview(star)
-        stack.addArrangedSubview(label)
+        stack.addArrangedSubview(scoreLabel)
         return stack
     }
 

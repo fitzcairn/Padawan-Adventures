@@ -8,6 +8,9 @@ enum GameWorldPreparer {
         }
 
         if let resourceName = session.selectedLevelResourceName {
+            if mode == .newGame {
+                await session.resetLevelStarsCurrent(resourceName: resourceName)
+            }
             await session.markLevelStarted(resourceName: resourceName)
         }
 

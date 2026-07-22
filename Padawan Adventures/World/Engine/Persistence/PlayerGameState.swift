@@ -5,22 +5,39 @@ nonisolated struct PlayerInventory: Codable, Equatable, Sendable {
     init() {}
 }
 
+/// Result of banking a level run into the player's best score.
+nonisolated struct LevelStarsFinalizeResult: Equatable, Sendable {
+    var didBeatPrevious: Bool
+    var previousBest: Int
+    var newScore: Int
+}
+
 /// Per-level progress. New fields should decode with defaults via `decodeIfPresent`.
 nonisolated struct LevelProgress: Codable, Equatable, Sendable {
     var started: Bool
     var completed: Bool
+    /// Best completed star count for this level.
     var starsEarned: Int
+    /// In-progress run stars shown in the HUD.
+    var starsCurrent: Int
 
-    init(started: Bool = false, completed: Bool = false, starsEarned: Int = 0) {
+    init(
+        started: Bool = false,
+        completed: Bool = false,
+        starsEarned: Int = 0,
+        starsCurrent: Int = 0
+    ) {
         self.started = started
         self.completed = completed
         self.starsEarned = starsEarned
+        self.starsCurrent = starsCurrent
     }
 
     private enum CodingKeys: String, CodingKey {
         case started
         case completed
         case starsEarned
+        case starsCurrent
     }
 
     init(from decoder: Decoder) throws {
@@ -28,6 +45,7 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
         started = try container.decodeIfPresent(Bool.self, forKey: .started) ?? false
         completed = try container.decodeIfPresent(Bool.self, forKey: .completed) ?? false
         starsEarned = try container.decodeIfPresent(Int.self, forKey: .starsEarned) ?? 0
+        starsCurrent = try container.decodeIfPresent(Int.self, forKey: .starsCurrent) ?? 0
     }
 }
 
@@ -84,6 +102,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var energy: Int
     var inventory: PlayerInventory
     var stats: PlayerStats
+    /// Sum of banked per-level bests (`starsEarned`).
+    var totalStars: Int
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -92,7 +112,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         health: Int,
         energy: Int,
         inventory: PlayerInventory = PlayerInventory(),
-        stats: PlayerStats = PlayerStats()
+        stats: PlayerStats = PlayerStats(),
+        totalStars: Int = 0
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -101,6 +122,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.energy = energy
         self.inventory = inventory
         self.stats = stats
+        self.totalStars = totalStars
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -111,6 +133,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case energy
         case inventory
         case stats
+        case totalStars
     }
 
     init(from decoder: Decoder) throws {
@@ -122,6 +145,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         energy = try container.decodeIfPresent(Int.self, forKey: .energy) ?? 0
         inventory = try container.decodeIfPresent(PlayerInventory.self, forKey: .inventory) ?? PlayerInventory()
         stats = try container.decodeIfPresent(PlayerStats.self, forKey: .stats) ?? PlayerStats()
+        totalStars = try container.decodeIfPresent(Int.self, forKey: .totalStars) ?? 0
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -136,6 +160,36 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         progress.started = true
         progress.completed = true
         levels[resourceName] = progress
+    }
+
+    mutating func resetLevelStarsCurrent(_ resourceName: String) {
+        var progress = levels[resourceName] ?? LevelProgress()
+        progress.starsCurrent = 0
+        levels[resourceName] = progress
+    }
+
+    mutating func addLevelStar(_ resourceName: String) {
+        var progress = levels[resourceName] ?? LevelProgress()
+        progress.starsCurrent += 1
+        levels[resourceName] = progress
+    }
+
+    @discardableResult
+    mutating func finalizeLevelStars(_ resourceName: String) -> LevelStarsFinalizeResult {
+        var progress = levels[resourceName] ?? LevelProgress()
+        let previousBest = progress.starsEarned
+        let newScore = progress.starsCurrent
+        let didBeatPrevious = newScore > previousBest
+        if didBeatPrevious {
+            totalStars += newScore - previousBest
+            progress.starsEarned = newScore
+            levels[resourceName] = progress
+        }
+        return LevelStarsFinalizeResult(
+            didBeatPrevious: didBeatPrevious,
+            previousBest: previousBest,
+            newScore: newScore
+        )
     }
 
     mutating func syncVitals(from world: GameWorld) {

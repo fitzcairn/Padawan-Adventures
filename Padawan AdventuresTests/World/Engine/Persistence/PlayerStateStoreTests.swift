@@ -97,6 +97,8 @@ struct PlayerStateStoreTests {
         state.markLevelStarted("level_2")
         state.markLevelCompleted("level_1")
         state.levels["level_1"]?.starsEarned = 2
+        state.levels["level_2"]?.starsCurrent = 4
+        state.totalStars = 2
         state.stats.gatesOpened = 3
         state.stats.wallsBlownUp = 1
         state.stats.pitsCrossed = 4
@@ -110,6 +112,8 @@ struct PlayerStateStoreTests {
         #expect(restored.levels["level_1"]?.completed == true)
         #expect(restored.levels["level_1"]?.starsEarned == 2)
         #expect(restored.levels["level_2"]?.started == true)
+        #expect(restored.levels["level_2"]?.starsCurrent == 4)
+        #expect(restored.totalStars == 2)
         #expect(restored.stats.gatesOpened == 3)
         #expect(restored.stats.enemiesKilled == 7)
         #expect(restored.stats.extras["secretsFound"] == 2)
@@ -127,6 +131,7 @@ struct PlayerStateStoreTests {
         #expect(decoded.health == 2)
         #expect(decoded.energy == 1)
         #expect(decoded.levels.isEmpty)
+        #expect(decoded.totalStars == 0)
         #expect(decoded.stats.gatesOpened == 0)
         #expect(decoded.stats.extras.isEmpty)
         #expect(decoded.inventory == PlayerInventory())
