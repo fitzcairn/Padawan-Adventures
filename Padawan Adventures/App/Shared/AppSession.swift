@@ -233,7 +233,7 @@ final class AppSession {
     }
 }
 
-enum GameLaunchMode: Equatable, Sendable {
+enum GameLaunchMode: Hashable, Sendable {
     case continueSave
     case newGame
 }

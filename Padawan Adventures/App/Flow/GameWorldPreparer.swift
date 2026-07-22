@@ -1,46 +1,8 @@
-import UIKit
+import Foundation
 
-final class PreparingViewController: LandscapeHostingController {
-    private let session: AppSession
-    private let mode: GameLaunchMode
-    private let statusLabel = AppChrome.makeCenteredLabel(
-        "PREPARING FOR TAKEOFF...",
-        size: 28,
-        weight: .semibold
-    )
-    private var didStartLoad = false
-
-    init(session: AppSession, mode: GameLaunchMode) {
-        self.session = session
-        self.mode = mode
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AppChrome.backgroundColor
-        view.addSubview(statusLabel)
-        NSLayoutConstraint.activate([
-            statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
-            statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
-        ])
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        guard !didStartLoad else { return }
-        didStartLoad = true
-        Task { await prepareAndPresentGame() }
-    }
-
+enum GameWorldPreparer {
     @MainActor
-    private func prepareAndPresentGame() async {
+    static func prepareLaunch(session: AppSession, mode: GameLaunchMode) async -> GameWorld {
         if mode == .continueSave, let lastLevel = session.playerState?.lastLevelStarted {
             try? session.selectLevel(resourceName: lastLevel)
         }
@@ -49,41 +11,27 @@ final class PreparingViewController: LandscapeHostingController {
             await session.markLevelStarted(resourceName: resourceName)
         }
 
-        let world = await loadWorld()
-        let isoConfig = session.seedConfig.display.makeIsometricConfig()
-        let game = GameViewController(
-            world: world,
-            isoConfig: isoConfig,
-            session: session
-        )
-
-        // Replace root so the player cannot navigate back into preparing/menu.
-        let window = view.window
-            ?? UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap(\.windows)
-                .first(where: \.isKeyWindow)
-
-        window?.rootViewController = game
-        window?.makeKeyAndVisible()
+        return await loadWorld(session: session, mode: mode)
     }
 
-    private func loadWorld() async -> GameWorld {
+    @MainActor
+    static func loadWorld(session: AppSession, mode: GameLaunchMode) async -> GameWorld {
         switch mode {
         case .continueSave:
             if let saved = try? await session.saveService.load(),
                WorldLoader.isCompatibleSave(saved, with: session.seedConfig) {
                 return saved
             }
-            return await generateWorld()
+            return await generateWorld(session: session)
 
         case .newGame:
             try? await session.saveService.delete()
-            return await generateWorld()
+            return await generateWorld(session: session)
         }
     }
 
-    private func generateWorld() async -> GameWorld {
+    @MainActor
+    private static func generateWorld(session: AppSession) async -> GameWorld {
         let config = session.seedConfig
         let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
@@ -115,7 +63,7 @@ final class PreparingViewController: LandscapeHostingController {
                 world.energyCount = energy
                 return world
             } catch {
-                return Self.minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
+                return minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
             }
         }
     }

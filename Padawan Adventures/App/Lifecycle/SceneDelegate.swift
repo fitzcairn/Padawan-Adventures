@@ -19,10 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        let navigation = LandscapeNavigationController(rootViewController: LoadingViewController())
-        navigation.setNavigationBarHidden(true, animated: false)
-        navigation.view.backgroundColor = .black
-        window.rootViewController = navigation
+        window.rootViewController = LandscapeSwiftUIHost(rootView: FlowRootView())
         window.makeKeyAndVisible()
         self.window = window
 

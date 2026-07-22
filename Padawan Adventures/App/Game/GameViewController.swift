@@ -136,7 +136,11 @@ final class GameViewController: LandscapeHostingController {
     private func presentEnemyFight(enemyID: UUID) {
         overlayPresenter.present(
             fadeWorldOut: true,
-            makeViewController: { EnemyMinigameViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    EnemyMinigameView(onFinished: finish)
+                }
+            },
             onResolved: { [weak self] done in
                 guard let self, let scene = self.gameScene else {
                     done()
@@ -154,7 +158,11 @@ final class GameViewController: LandscapeHostingController {
     private func presentPit() {
         overlayPresenter.present(
             fadeWorldOut: true,
-            makeViewController: { PitMinigameViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    PitMinigameView(onFinished: finish)
+                }
+            },
             onResolved: { [weak self] done in
                 guard let self, let scene = self.gameScene else {
                     done()
@@ -172,7 +180,11 @@ final class GameViewController: LandscapeHostingController {
     private func presentDestructibleWall(at coord: GridCoord) {
         overlayPresenter.present(
             fadeWorldOut: true,
-            makeViewController: { DestructibleWallMinigameViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    DestructibleWallMinigameView(onFinished: finish)
+                }
+            },
             onResolved: { [weak self] done in
                 guard let self, let scene = self.gameScene else {
                     done()
@@ -190,7 +202,11 @@ final class GameViewController: LandscapeHostingController {
     private func presentGate(at coord: GridCoord) {
         overlayPresenter.present(
             fadeWorldOut: true,
-            makeViewController: { GateMinigameViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    GateMinigameView(onFinished: finish)
+                }
+            },
             onResolved: { [weak self] done in
                 guard let self, let scene = self.gameScene else {
                     done()
@@ -208,7 +224,11 @@ final class GameViewController: LandscapeHostingController {
     private func presentYouWin() {
         overlayPresenter.present(
             fadeWorldOut: false,
-            makeViewController: { YouWinViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    YouWinView(onFinished: finish)
+                }
+            },
             onResolved: { [weak self] done in
                 self?.exitToLevelSelect(completedLevel: true)
                 done()
@@ -235,19 +255,15 @@ final class GameViewController: LandscapeHostingController {
             }
             await session.refreshContinueEligibility()
 
-            let menu = MenuViewController(session: session)
-            let levelSelect = LevelSelectViewController(session: session)
-            let nav = LandscapeNavigationController(rootViewController: menu)
-            nav.setNavigationBarHidden(true, animated: false)
-            nav.pushViewController(levelSelect, animated: false)
+            let flow = LandscapeSwiftUIHost(
+                rootView: FlowRootView(
+                    session: session,
+                    router: .postGameRouter()
+                )
+            )
 
-            let window = view.window
-                ?? UIApplication.shared.connectedScenes
-                    .compactMap { $0 as? UIWindowScene }
-                    .flatMap(\.windows)
-                    .first(where: \.isKeyWindow)
-
-            window?.rootViewController = nav
+            let window = view.window ?? AppWindow.key
+            window?.rootViewController = flow
             window?.makeKeyAndVisible()
         }
     }

@@ -1,9 +1,16 @@
+import SwiftUI
 import Testing
 import UIKit
 @testable import Padawan_Adventures
 
 @MainActor
 struct FullscreenOverlayPresenterTests {
+    private func makeHost() -> FullscreenOverlayHost {
+        FullscreenOverlayHost { _ in
+            Color.clear
+        }
+    }
+
     @Test func reentrancyIgnoresSecondPresentWhileBusy() {
         var fadeCompletions: [() -> Void] = []
         var presentedCount = 0
@@ -21,7 +28,7 @@ struct FullscreenOverlayPresenterTests {
         var resolveCount = 0
         presenter.present(
             fadeWorldOut: true,
-            makeViewController: { FullscreenOverlayController() },
+            makeViewController: { makeHost() },
             onResolved: { done in
                 resolveCount += 1
                 done()
@@ -29,7 +36,7 @@ struct FullscreenOverlayPresenterTests {
         )
         presenter.present(
             fadeWorldOut: true,
-            makeViewController: { FullscreenOverlayController() },
+            makeViewController: { makeHost() },
             onResolved: { done in
                 resolveCount += 1
                 done()
@@ -59,7 +66,7 @@ struct FullscreenOverlayPresenterTests {
 
         presenter.present(
             fadeWorldOut: true,
-            makeViewController: { FullscreenOverlayController() },
+            makeViewController: { makeHost() },
             onResolved: { done in done() }
         )
 
@@ -82,7 +89,11 @@ struct FullscreenOverlayPresenterTests {
 
         presenter.present(
             fadeWorldOut: false,
-            makeViewController: { YouWinViewController() },
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    YouWinView(onFinished: finish)
+                }
+            },
             onResolved: { done in done() }
         )
 
@@ -100,13 +111,13 @@ struct FullscreenOverlayPresenterTests {
         }
 
         var steps: [Step] = []
-        var presentedVC: FullscreenOverlayController?
+        var presentedVC: FullscreenOverlayHost?
 
         let presenter = FullscreenOverlayPresenter(dependencies: .init(
             fadeWorldOut: { completion in completion() },
             present: { viewController in
                 steps.append(.present)
-                presentedVC = viewController as? FullscreenOverlayController
+                presentedVC = viewController as? FullscreenOverlayHost
             },
             dismiss: { _, completion in
                 steps.append(.dismiss)
@@ -116,7 +127,7 @@ struct FullscreenOverlayPresenterTests {
 
         presenter.present(
             fadeWorldOut: true,
-            makeViewController: { FullscreenOverlayController() },
+            makeViewController: { makeHost() },
             onResolved: { done in
                 steps.append(.resolve)
                 done()
@@ -134,20 +145,20 @@ struct FullscreenOverlayPresenterTests {
     }
 
     @Test func completionRunsExactlyOnce() {
-        var presentedVC: FullscreenOverlayController?
+        var presentedVC: FullscreenOverlayHost?
         var resolveCount = 0
 
         let presenter = FullscreenOverlayPresenter(dependencies: .init(
             fadeWorldOut: { completion in completion() },
             present: { viewController in
-                presentedVC = viewController as? FullscreenOverlayController
+                presentedVC = viewController as? FullscreenOverlayHost
             },
             dismiss: { _, completion in completion() }
         ))
 
         presenter.present(
             fadeWorldOut: false,
-            makeViewController: { FullscreenOverlayController() },
+            makeViewController: { makeHost() },
             onResolved: { done in
                 resolveCount += 1
                 done()

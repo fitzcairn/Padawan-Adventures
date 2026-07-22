@@ -35,7 +35,7 @@ final class FullscreenOverlayPresenter {
                 let dismissHost = {
                     viewController.dismiss(animated: false, completion: completion)
                 }
-                if let overlay = viewController as? FullscreenOverlayController {
+                if let overlay = viewController as? FullscreenOverlayHost {
                     overlay.fadeOutContent(completion: dismissHost)
                 } else {
                     dismissHost()
@@ -46,11 +46,11 @@ final class FullscreenOverlayPresenter {
 
     /// - Parameters:
     ///   - fadeWorldOut: When true, runs the world fade before presenting.
-    ///   - makeViewController: Builds the overlay/minigame VC.
+    ///   - makeViewController: Builds the overlay/minigame host.
     ///   - onResolved: Called after dismiss; invoke `done` when resolve work finishes so the presenter unlocks.
     func present(
         fadeWorldOut: Bool = true,
-        makeViewController: @escaping () -> FullscreenOverlayController,
+        makeViewController: @escaping () -> FullscreenOverlayHost,
         onResolved: @escaping (_ done: @escaping () -> Void) -> Void
     ) {
         guard !isPresenting else { return }
