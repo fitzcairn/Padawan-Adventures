@@ -1,10 +1,11 @@
 import UIKit
 
 final class GameHUDView: UIView {
-    var onMenuTapped: (() -> Void)?
+    var onFleeTapped: (() -> Void)?
 
     private let config: HudConfig
-    private let menuButton: UIButton
+    private let levelName: String
+    private let fleeButton: UIButton
     private let heartsStack: UIStackView
     private let boltsStack: UIStackView
     private let heartImage: UIImage?
@@ -12,9 +13,15 @@ final class GameHUDView: UIView {
 
     private static let hudIconFadeDuration: TimeInterval = 0.2
 
-    init(config: HudConfig, healthCount: Int = 0, energyCount: Int = 0) {
+    init(
+        config: HudConfig,
+        levelName: String,
+        healthCount: Int = 0,
+        energyCount: Int = 0
+    ) {
         self.config = config
-        self.menuButton = Self.makeMenuButton()
+        self.levelName = levelName
+        self.fleeButton = Self.makeFleeButton()
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
         self.boltsStack = Self.makeIconStack(spacing: config.iconSpacing)
         // Trailing-aligned row that grows left as icons are inserted.
@@ -40,7 +47,7 @@ final class GameHUDView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
-        if hit === menuButton || hit?.isDescendant(of: menuButton) == true {
+        if hit === fleeButton || hit?.isDescendant(of: fleeButton) == true {
             return hit
         }
         return nil
@@ -67,12 +74,14 @@ final class GameHUDView: UIView {
         }
 
         let score = makeScoreRow()
-        menuButton.addTarget(self, action: #selector(menuTapped), for: .touchUpInside)
+        let levelLabel = makeLevelNameLabel()
+        fleeButton.addTarget(self, action: #selector(fleeTapped), for: .touchUpInside)
 
         addSubview(heartsStack)
         addSubview(boltsStack)
         addSubview(score)
-        addSubview(menuButton)
+        addSubview(levelLabel)
+        addSubview(fleeButton)
 
         let margin = CGFloat(config.edgeMargin)
 
@@ -86,8 +95,19 @@ final class GameHUDView: UIView {
             score.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
             score.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
 
-            menuButton.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
-            menuButton.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            levelLabel.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
+            levelLabel.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
+            levelLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: score.trailingAnchor,
+                constant: 8
+            ),
+            levelLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: fleeButton.leadingAnchor,
+                constant: -8
+            ),
+
+            fleeButton.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
+            fleeButton.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
         ])
     }
 
@@ -170,9 +190,20 @@ final class GameHUDView: UIView {
         return stack
     }
 
-    private static func makeMenuButton() -> UIButton {
+    private func makeLevelNameLabel() -> UILabel {
+        let label = UILabel()
+        label.text = levelName
+        label.textColor = .systemGreen
+        label.font = .systemFont(ofSize: 22, weight: .semibold)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.isUserInteractionEnabled = false
+        return label
+    }
+
+    private static func makeFleeButton() -> UIButton {
         var configuration = UIButton.Configuration.filled()
-        configuration.title = "Menu"
+        configuration.title = "Flee the planet!"
         configuration.baseForegroundColor = .black
         configuration.baseBackgroundColor = UIColor(white: 0.92, alpha: 1)
         configuration.cornerStyle = .medium
@@ -188,7 +219,7 @@ final class GameHUDView: UIView {
         return button
     }
 
-    @objc private func menuTapped() {
-        onMenuTapped?()
+    @objc private func fleeTapped() {
+        onFleeTapped?()
     }
 }

@@ -47,7 +47,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         version = try container.decode(Int.self, forKey: .version)
         seed = try Self.decodeSeed(from: container)
         world = try container.decode(WorldSize.self, forKey: .world)
-        // Prefer level.yaml at load time; embedded `generation:` remains for tests / legacy.
+        // Prefer level YAML at load time; embedded `generation:` remains for tests / legacy.
         generation = try container.decodeIfPresent(GenerationParams.self, forKey: .generation)
             ?? LevelConfig.fallback.generation
         display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
@@ -103,7 +103,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            // Width/height prefer level.yaml; world.yaml may omit them.
+            // Width/height prefer level YAML; world.yaml may omit them.
             width = try container.decodeIfPresent(Int.self, forKey: .width)
                 ?? LevelConfig.fallback.width
             height = try container.decodeIfPresent(Int.self, forKey: .height)

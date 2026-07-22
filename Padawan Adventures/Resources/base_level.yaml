@@ -1,4 +1,7 @@
 # Level generation knobs (merged into world.yaml at load).
+# Per-level files in Levels/ inherit from this base via `inherits: base_level`.
+
+name: Level
 
 width: 100
 height: 100

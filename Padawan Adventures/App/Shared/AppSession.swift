@@ -3,7 +3,8 @@ import Foundation
 /// Shared bootstrap state loaded before the menu appears.
 @MainActor
 final class AppSession {
-    let seedConfig: WorldSeedConfig
+    private(set) var seedConfig: WorldSeedConfig
+    private(set) var selectedLevelName: String
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let saveService: GameSaveService
@@ -11,12 +12,14 @@ final class AppSession {
 
     init(
         seedConfig: WorldSeedConfig,
+        selectedLevelName: String = LevelConfig.fallback.name,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         saveService: GameSaveService,
         hasCompatibleSave: Bool
     ) {
         self.seedConfig = seedConfig
+        self.selectedLevelName = selectedLevelName
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -45,12 +48,15 @@ final class AppSession {
     /// Loads seed config, save service, and continue eligibility.
     static func loadResources() async -> AppSession {
         let seedConfig: WorldSeedConfig
+        let selectedLevelName: String
         do {
-            let loaded = try WorldLoader.loadConfigFromBundle()
-            try loaded.validate()
-            seedConfig = loaded
+            let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
+            try loaded.config.validate()
+            seedConfig = loaded.config
+            selectedLevelName = loaded.level.name
         } catch {
             seedConfig = fallbackConfig()
+            selectedLevelName = LevelConfig.fallback.name
         }
 
         let playerConfig: PlayerConfig
@@ -88,11 +94,22 @@ final class AppSession {
 
         return AppSession(
             seedConfig: seedConfig,
+            selectedLevelName: selectedLevelName,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             saveService: saveService,
             hasCompatibleSave: hasCompatibleSave
         )
+    }
+
+    func selectLevel(resourceName: String) throws {
+        let loaded = try WorldLoader.loadConfigAndLevelFromBundle(
+            levelNamed: resourceName,
+            levelSubdirectory: LevelCatalog.subdirectory
+        )
+        try loaded.config.validate()
+        seedConfig = loaded.config
+        selectedLevelName = loaded.level.name
     }
 
     nonisolated static func isContinueEligible(savedWorld: GameWorld?, config: WorldSeedConfig) -> Bool {

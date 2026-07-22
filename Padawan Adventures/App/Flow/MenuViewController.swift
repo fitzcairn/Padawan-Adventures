@@ -85,8 +85,8 @@ final class MenuViewController: LandscapeHostingController {
     }
 
     @objc private func newGameTapped() {
-        let start = NewGameStartViewController(session: session)
-        navigationController?.pushViewController(start, animated: true)
+        let levelSelect = LevelSelectViewController(session: session)
+        navigationController?.pushViewController(levelSelect, animated: true)
     }
 
     @objc private func leaderboardTapped() {

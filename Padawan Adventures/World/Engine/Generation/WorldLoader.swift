@@ -26,32 +26,53 @@ nonisolated enum WorldLoader {
     static func loadConfigFromBundle(
         named name: String = "world",
         withExtension ext: String = "yaml",
-        levelNamed levelName: String = "level"
+        levelNamed levelName: String = "base_level",
+        levelSubdirectory: String? = nil
     ) throws -> WorldSeedConfig {
+        try loadConfigAndLevelFromBundle(
+            named: name,
+            withExtension: ext,
+            levelNamed: levelName,
+            levelSubdirectory: levelSubdirectory
+        ).config
+    }
+
+    static func loadConfigAndLevelFromBundle(
+        named name: String = "world",
+        withExtension ext: String = "yaml",
+        levelNamed levelName: String = "base_level",
+        levelSubdirectory: String? = nil
+    ) throws -> (config: WorldSeedConfig, level: LevelConfig) {
         guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
             throw WorldSeedError.missingResource
         }
         let data = try Data(contentsOf: url)
         var config = try decodeConfig(from: data)
-        let level = try LevelConfig.loadFromBundle(named: levelName, withExtension: ext)
+        let level = try LevelConfig.loadFromBundle(
+            named: levelName,
+            withExtension: ext,
+            subdirectory: levelSubdirectory
+        )
         config.world.width = level.width
         config.world.height = level.height
         config.generation = level.generation
         config.pickups = level.pickups
-        return config
+        return (config, level)
     }
 
     static func loadFromBundle(
         named name: String = "world",
         withExtension ext: String = "yaml",
-        levelNamed levelName: String = "level",
+        levelNamed levelName: String = "base_level",
+        levelSubdirectory: String? = nil,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback
     ) throws -> GameWorld {
         let config = try loadConfigFromBundle(
             named: name,
             withExtension: ext,
-            levelNamed: levelName
+            levelNamed: levelName,
+            levelSubdirectory: levelSubdirectory
         )
         return try ProceduralGenerator().generate(
             from: config,

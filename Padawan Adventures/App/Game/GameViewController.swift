@@ -12,7 +12,7 @@ final class GameViewController: LandscapeHostingController {
     private let session: AppSession
     private weak var gameScene: GameScene?
     private weak var hud: GameHUDView?
-    private var isExitingToMenu = false
+    private var isExitingToLevelSelect = false
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
         fadeWorldOut: { [weak self] completion in
@@ -99,11 +99,12 @@ final class GameViewController: LandscapeHostingController {
 
         let hud = GameHUDView(
             config: hudConfig,
+            levelName: session.selectedLevelName,
             healthCount: world.healthCount,
             energyCount: world.energyCount
         )
-        hud.onMenuTapped = { [weak self] in
-            self?.exitToMenu()
+        hud.onFleeTapped = { [weak self] in
+            self?.exitToLevelSelect()
         }
         view.addSubview(hud)
         NSLayoutConstraint.activate([
@@ -192,16 +193,16 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: false,
             makeViewController: { YouWinViewController() },
             onResolved: { [weak self] done in
-                self?.exitToMenu()
+                self?.exitToLevelSelect()
                 done()
             }
         )
     }
 
     @MainActor
-    private func exitToMenu() {
-        guard !isExitingToMenu else { return }
-        isExitingToMenu = true
+    private func exitToLevelSelect() {
+        guard !isExitingToLevelSelect else { return }
+        isExitingToLevelSelect = true
 
         Task {
             if let snapshot = gameScene?.currentWorld {
@@ -210,8 +211,10 @@ final class GameViewController: LandscapeHostingController {
             await session.refreshContinueEligibility()
 
             let menu = MenuViewController(session: session)
+            let levelSelect = LevelSelectViewController(session: session)
             let nav = LandscapeNavigationController(rootViewController: menu)
             nav.setNavigationBarHidden(true, animated: false)
+            nav.pushViewController(levelSelect, animated: false)
 
             let window = view.window
                 ?? UIApplication.shared.connectedScenes
