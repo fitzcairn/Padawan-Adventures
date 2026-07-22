@@ -37,4 +37,10 @@ struct ScreenConfigTests {
         let config = try ScreenConfig.loadFromBundle(named: "settings")
         #expect(config.musicCue == .track("menu_theme"))
     }
+
+    @Test func loadsDefeatScreenFromBundle() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "defeat")
+        #expect(config.musicCue == .silence)
+    }
 }
+

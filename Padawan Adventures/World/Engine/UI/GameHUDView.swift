@@ -61,6 +61,25 @@ final class GameHUDView: UIView {
         addIcon(image: boltImage, to: boltsStack, animated: true)
     }
 
+    func removeHeart() {
+        removeIcon(from: heartsStack, animated: true)
+    }
+
+    func removeBolt() {
+        removeIcon(from: boltsStack, animated: true)
+    }
+
+    func setVitals(health: Int, energy: Int) {
+        clearIcons(in: heartsStack)
+        clearIcons(in: boltsStack)
+        for _ in 0..<max(health, 0) {
+            addIcon(image: heartImage, to: heartsStack, animated: false)
+        }
+        for _ in 0..<max(energy, 0) {
+            addIcon(image: boltImage, to: boltsStack, animated: false)
+        }
+    }
+
     private func setup(healthCount: Int, energyCount: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = true
@@ -136,6 +155,38 @@ final class GameHUDView: UIView {
             options: [.curveEaseOut, .allowUserInteraction]
         ) {
             imageView.alpha = 1
+        }
+    }
+
+    private func removeIcon(from stack: UIStackView, animated: Bool) {
+        guard let icon = stack.arrangedSubviews.last else { return }
+        let remove = {
+            UIView.performWithoutAnimation {
+                stack.removeArrangedSubview(icon)
+                icon.removeFromSuperview()
+                stack.layoutIfNeeded()
+            }
+        }
+        guard animated else {
+            remove()
+            return
+        }
+        UIView.animate(
+            withDuration: Self.hudIconFadeDuration,
+            delay: 0,
+            options: [.curveEaseIn, .allowUserInteraction],
+            animations: { icon.alpha = 0 },
+            completion: { _ in remove() }
+        )
+    }
+
+    private func clearIcons(in stack: UIStackView) {
+        UIView.performWithoutAnimation {
+            for view in stack.arrangedSubviews {
+                stack.removeArrangedSubview(view)
+                view.removeFromSuperview()
+            }
+            stack.layoutIfNeeded()
         }
     }
 

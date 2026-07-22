@@ -22,6 +22,7 @@ final class GameScene: SKScene {
     private let saveService: GameSaveService?
     private var isPausedForEncounter = false
     private var isResolvingPickup = false
+    private var continuePoint: ContinuePointStore
 
     /// Called when the player contacts an enemy (same occupancy tile).
     var onEnemyContact: ((UUID) -> Void)?
@@ -37,9 +38,14 @@ final class GameScene: SKScene {
     var onTreasureCollected: (() -> Void)?
     /// Called with a world snapshot whenever a mid-run save is scheduled.
     var onWorldSaved: ((GameWorld) -> Void)?
+    /// Called when vitals change due to restore (absolute counts for HUD sync).
+    var onVitalsRestored: ((Int, Int) -> Void)?
 
     /// Snapshot of the live world for persistence (e.g. Menu exit).
     var currentWorld: GameWorld { world }
+
+    /// Last safe continue snapshot (for tests / debugging).
+    var lastSafeContinueWorld: GameWorld { continuePoint.snapshot }
 
     /// Player must stay within this many tiles of screen center.
     private static let cameraDeadzoneTiles: Double = 2
@@ -59,6 +65,7 @@ final class GameScene: SKScene {
         self.playerFx = playerFx
         self.worldFx = worldFx
         self.saveService = saveService
+        self.continuePoint = ContinuePointStore(world: world)
         self.simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
         self.renderer = IsometricRenderer(config: isoConfig, enemyConfig: enemyConfig)
         super.init(size: size)
@@ -146,6 +153,7 @@ final class GameScene: SKScene {
             applyTickResult(result)
 
             if result.shouldPersist {
+                continuePoint.captureIfSafe(world, tick: result)
                 scheduleSave()
             }
 
@@ -190,7 +198,7 @@ final class GameScene: SKScene {
         simulationLoop.removeEnemy(id: enemyID, from: &world)
         pendingInput = PendingInput()
         renderer.syncEntities(world.entities)
-        scheduleSave()
+        captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()
@@ -201,7 +209,7 @@ final class GameScene: SKScene {
     func resolvePitEncounter(completion: (() -> Void)? = nil) {
         pendingInput = PendingInput()
         renderer.syncEntities(world.entities)
-        scheduleSave()
+        captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()
@@ -215,7 +223,7 @@ final class GameScene: SKScene {
         }
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
-        scheduleSave()
+        captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()
@@ -229,7 +237,38 @@ final class GameScene: SKScene {
         }
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
+        captureContinueAndSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
+    }
+
+    /// Deducts one energy (no-op at 0). Returns the new energy count.
+    @discardableResult
+    func deductEnergy() -> Int {
+        world.energyCount = max(0, world.energyCount - 1)
         scheduleSave()
+        return world.energyCount
+    }
+
+    /// Deducts one health (no-op at 0). Returns the new health count.
+    @discardableResult
+    func deductHealth() -> Int {
+        world.healthCount = max(0, world.healthCount - 1)
+        scheduleSave()
+        return world.healthCount
+    }
+
+    /// Restores the world to the last safe continue snapshot and resumes play.
+    func restoreFromContinuePoint(completion: (() -> Void)? = nil) {
+        world = continuePoint.snapshot
+        movement = MovementSystem()
+        pendingInput = PendingInput()
+        simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
+        showFixedZoomView()
+        onVitalsRestored?(world.healthCount, world.energyCount)
+        captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()
@@ -277,7 +316,7 @@ final class GameScene: SKScene {
         onPickupCollected?(kind)
         renderer.playPickupCollectAnimation(id: id) { [weak self] in
             DispatchQueue.main.async { [weak self] in
-                self?.scheduleSave()
+                self?.captureContinueAndSave()
             }
         }
     }
@@ -346,6 +385,11 @@ final class GameScene: SKScene {
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
     }
 
+    private func captureContinueAndSave() {
+        continuePoint.capture(world)
+        scheduleSave()
+    }
+
     private func scheduleSave() {
         let snapshot = world
         onWorldSaved?(snapshot)
@@ -355,3 +399,4 @@ final class GameScene: SKScene {
         }
     }
 }
+

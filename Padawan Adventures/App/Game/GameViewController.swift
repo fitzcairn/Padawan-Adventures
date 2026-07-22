@@ -91,6 +91,9 @@ final class GameViewController: LandscapeHostingController {
                 await self?.session.syncVitals(from: snapshot)
             }
         }
+        scene.onVitalsRestored = { [weak self] health, energy in
+            self?.hud?.setVitals(health: health, energy: energy)
+        }
         skView.presentScene(scene)
         gameScene = scene
 
@@ -168,6 +171,14 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentEnemyFight(enemyID: UUID) {
+        guard let scene = gameScene else { return }
+        if DefeatRules.isDefeatedByEnemy(energy: scene.currentWorld.energyCount) {
+            presentDefeat()
+            return
+        }
+        scene.deductEnergy()
+        hud?.removeBolt()
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -190,6 +201,14 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentPit() {
+        guard let scene = gameScene else { return }
+        if DefeatRules.isDefeatedByPit(health: scene.currentWorld.healthCount) {
+            presentDefeat()
+            return
+        }
+        scene.deductHealth()
+        hud?.removeHeart()
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -206,6 +225,31 @@ final class GameViewController: LandscapeHostingController {
                     await self.session.recordStat { $0.pitsCrossed += 1 }
                 }
                 scene.resolvePitEncounter(completion: done)
+            }
+        )
+    }
+
+    @MainActor
+    private func presentDefeat() {
+        BackgroundMusicController.shared.applyScreen(named: "defeat")
+        overlayPresenter.present(
+            fadeWorldOut: true,
+            makeViewController: {
+                FullscreenOverlayHost { finish in
+                    DefeatView(onFinished: finish)
+                }
+            },
+            onResolved: { [weak self] done in
+                guard let self, let scene = self.gameScene else {
+                    done()
+                    return
+                }
+                scene.restoreFromContinuePoint {
+                    BackgroundMusicController.shared.apply(
+                        MusicCue.parse(self.session.selectedLevelMusic)
+                    )
+                    done()
+                }
             }
         )
     }
