@@ -302,16 +302,13 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     struct PickupsSpawnConfig: Codable, Equatable, Sendable {
         var health: PickupChanceConfig?
         var energy: PickupChanceConfig?
-        var treasure: PickupChanceConfig?
 
         init(
             health: PickupChanceConfig? = nil,
-            energy: PickupChanceConfig? = nil,
-            treasure: PickupChanceConfig? = nil
+            energy: PickupChanceConfig? = nil
         ) {
             self.health = health
             self.energy = energy
-            self.treasure = treasure
         }
     }
 
@@ -371,7 +368,6 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         if let pickups {
             try Self.validatePickupChance(pickups.health?.spawnChancePerRoom, kind: .health)
             try Self.validatePickupChance(pickups.energy?.spawnChancePerRoom, kind: .energy)
-            try Self.validatePickupChance(pickups.treasure?.spawnChancePerRoom, kind: .treasure)
         }
     }
 

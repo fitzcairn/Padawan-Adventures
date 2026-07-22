@@ -17,6 +17,11 @@ struct LevelConfigTests {
           pit_max_size: 5
           wall_destructible_chance: 0.8
           gate_chance: 0.5
+        pickups:
+          health:
+            spawn_chance_per_room: 0.8
+          energy:
+            spawn_chance_per_room: 0.8
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.width == 100)
@@ -31,6 +36,8 @@ struct LevelConfigTests {
         #expect(level.room.pitMaxSize == 5)
         #expect(level.room.wallDestructibleChance == 0.8)
         #expect(level.room.gateChance == 0.5)
+        #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
+        #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
     }
 
     @Test func worldYAMLAllowsMissingGenerationAndMapSize() throws {

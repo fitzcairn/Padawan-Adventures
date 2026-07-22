@@ -215,14 +215,11 @@ struct WorldSeedConfigTests {
             spawn_chance_per_room: 0.8
           energy:
             spawn_chance_per_room: 0.5
-          treasure:
-            spawn_chance_per_room: 1.0
         """
 
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.pickups?.health?.spawnChancePerRoom == 0.8)
         #expect(config.pickups?.energy?.spawnChancePerRoom == 0.5)
-        #expect(config.pickups?.treasure?.spawnChancePerRoom == 1.0)
         try config.validate()
     }
 

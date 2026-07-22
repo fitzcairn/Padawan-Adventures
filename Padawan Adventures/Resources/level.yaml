@@ -18,3 +18,9 @@ room:
   wall_destructible_chance: 0.8
   # Probability that a door opening becomes a gate strip.
   gate_chance: 0.5
+
+pickups:
+  health:
+    spawn_chance_per_room: 0.8
+  energy:
+    spawn_chance_per_room: 0.8

@@ -17,12 +17,4 @@ enemies:
   type: grunt
   spawn_chance_per_room: 0.8
 
-pickups:
-  health:
-    spawn_chance_per_room: 0.8
-  energy:
-    spawn_chance_per_room: 0.8
-  treasure:
-    spawn_chance_per_room: 0.8
-
 extensions: {}

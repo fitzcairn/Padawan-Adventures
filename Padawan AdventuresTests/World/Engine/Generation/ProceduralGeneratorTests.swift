@@ -321,50 +321,82 @@ struct ProceduralGeneratorTests {
         return visited.count == cells.count
     }
 
-    @Test func destructibleWallsAreAtMostTwoTilesBetweenRooms() throws {
-        for seed: UInt64 in [11, 42, 99, 123] {
-            var config = roomsDoorsConfig(seed: seed, roomCount: 10)
+    @Test func destructibleWallsAreTwoPartitionTilesWithWallFlanks() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 16)
             config.generation.room.wallDestructibleChance = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
                 for cell in room.cells { map[cell] = room.id }
             }
 
-            var softCells: [GridCoord] = []
-            for y in 0..<result.world.height {
-                for x in 0..<result.world.width {
-                    let coord = GridCoord(x: x, y: y, story: 0)
-                    guard result.world.tile(at: coord)?.isDestructibleWall == true else { continue }
-                    softCells.append(coord)
-                    let roomPair = GridCoord.cardinals.contains { dx, dy in
-                        let a = coord.neighbor(dx: dx, dy: dy)
-                        let b = coord.neighbor(dx: -dx, dy: -dy)
-                        guard let idA = roomByCell[a], let idB = roomByCell[b] else { return false }
-                        return idA != idB
-                    }
-                    #expect(roomPair, "Destructible wall at \(x),\(y) not between rooms (seed \(seed))")
+            func oppositeRoomPair(at coord: GridCoord) -> (Int, Int)? {
+                for (dx, dy) in GridCoord.cardinals {
+                    let a = coord.neighbor(dx: dx, dy: dy)
+                    let b = coord.neighbor(dx: -dx, dy: -dy)
+                    guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                    return (min(idA, idB), max(idA, idB))
                 }
+                return nil
             }
 
-            // Contiguous soft-wall groups must be at most 2 tiles.
-            var visited = Set<GridCoord>()
-            for start in softCells {
-                guard visited.insert(start).inserted else { continue }
-                var queue = [start]
-                var group = [start]
-                var head = 0
-                while head < queue.count {
-                    let current = queue[head]
-                    head += 1
-                    for (dx, dy) in GridCoord.cardinals {
-                        let next = current.neighbor(dx: dx, dy: dy)
-                        guard result.world.tile(at: next)?.isDestructibleWall == true else { continue }
-                        guard visited.insert(next).inserted else { continue }
-                        queue.append(next)
-                        group.append(next)
-                    }
+            func alongAxis(for coord: GridCoord) -> (Int, Int)? {
+                for (dx, dy) in GridCoord.cardinals {
+                    let a = coord.neighbor(dx: dx, dy: dy)
+                    let b = coord.neighbor(dx: -dx, dy: -dy)
+                    guard roomByCell[a] != nil, roomByCell[b] != nil, roomByCell[a] != roomByCell[b]
+                    else { continue }
+                    return (-dy, dx)
                 }
-                #expect(group.count <= 2, "soft wall group size \(group.count) > 2 (seed \(seed))")
+                return nil
+            }
+
+            func isSolidWall(_ coord: GridCoord) -> Bool {
+                if case .wall(false) = result.world.tile(at: coord)?.kind { return true }
+                return false
+            }
+
+            var visited = Set<GridCoord>()
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let start = GridCoord(x: x, y: y, story: 0)
+                    guard result.world.tile(at: start)?.isDestructibleWall == true else { continue }
+                    guard visited.insert(start).inserted else { continue }
+
+                    var queue = [start]
+                    var group = [start]
+                    var head = 0
+                    while head < queue.count {
+                        let current = queue[head]
+                        head += 1
+                        for (dx, dy) in GridCoord.cardinals {
+                            let next = current.neighbor(dx: dx, dy: dy)
+                            guard result.world.tile(at: next)?.isDestructibleWall == true else { continue }
+                            guard visited.insert(next).inserted else { continue }
+                            queue.append(next)
+                            group.append(next)
+                        }
+                    }
+
+                    #expect(group.count == 2, "soft wall group size \(group.count) != 2 (seed \(seed))")
+                    let pairs = group.compactMap(oppositeRoomPair)
+                    #expect(pairs.count == 2, "soft wall includes a corner cell (seed \(seed))")
+                    #expect(pairs[0] == pairs[1], "soft wall spans different room pairs (seed \(seed))")
+
+                    guard let (alongDX, alongDY) = alongAxis(for: group[0]) else {
+                        Issue.record("missing along-axis for soft wall (seed \(seed))")
+                        continue
+                    }
+                    let ordered = group.sorted {
+                        let lhs = $0.x * alongDX + $0.y * alongDY
+                        let rhs = $1.x * alongDX + $1.y * alongDY
+                        return lhs < rhs
+                    }
+                    let before = ordered[0].neighbor(dx: -alongDX, dy: -alongDY)
+                    let after = ordered[1].neighbor(dx: alongDX, dy: alongDY)
+                    #expect(isSolidWall(before), "soft wall missing wall flank before (seed \(seed))")
+                    #expect(isSolidWall(after), "soft wall missing wall flank after (seed \(seed))")
+                }
             }
         }
     }
@@ -389,6 +421,56 @@ struct ProceduralGeneratorTests {
         }
     }
 
+    @Test func gatesAreTwoTilesWithRoomsOnEachSide() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 16)
+            config.generation.room.gateChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+
+            func oppositeRoomPair(at coord: GridCoord) -> (Int, Int)? {
+                for (dx, dy) in GridCoord.cardinals {
+                    let a = coord.neighbor(dx: dx, dy: dy)
+                    let b = coord.neighbor(dx: -dx, dy: -dy)
+                    guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                    return (min(idA, idB), max(idA, idB))
+                }
+                return nil
+            }
+
+            var visited = Set<GridCoord>()
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let start = GridCoord(x: x, y: y, story: 0)
+                    guard result.world.tile(at: start)?.isGate == true else { continue }
+                    guard visited.insert(start).inserted else { continue }
+
+                    var queue = [start]
+                    var group = [start]
+                    var head = 0
+                    while head < queue.count {
+                        let current = queue[head]
+                        head += 1
+                        for (dx, dy) in GridCoord.cardinals {
+                            let next = current.neighbor(dx: dx, dy: dy)
+                            guard result.world.tile(at: next)?.isGate == true else { continue }
+                            guard visited.insert(next).inserted else { continue }
+                            queue.append(next)
+                            group.append(next)
+                        }
+                    }
+
+                    #expect(group.count == 2, "gate group size \(group.count) != 2 (seed \(seed))")
+                    let pairs = group.compactMap(oppositeRoomPair)
+                    #expect(pairs.count == 2, "gate includes a corner/non-partition cell (seed \(seed))")
+                    #expect(pairs[0] == pairs[1], "gate cells span different room pairs (seed \(seed))")
+                }
+            }
+        }
+    }
+
     @Test func zeroGateChanceProducesNoGates() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 12)
         config.generation.room.gateChance = 0
@@ -396,6 +478,98 @@ struct ProceduralGeneratorTests {
         for y in 0..<world.height {
             for x in 0..<world.width {
                 #expect(world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate != true)
+            }
+        }
+    }
+
+    @Test func softBlockersNeverPartitionHallwayConnectedRooms() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 16)
+            config.generation.room.gateChance = 1.0
+            config.generation.room.wallDestructibleChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let world = result.world
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+            let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+            let roomsByID = Dictionary(uniqueKeysWithValues: result.rooms.map { ($0.id, $0) })
+
+            func oppositeRoomPair(at coord: GridCoord) -> (Int, Int)? {
+                for (dx, dy) in GridCoord.cardinals {
+                    let a = coord.neighbor(dx: dx, dy: dy)
+                    let b = coord.neighbor(dx: -dx, dy: -dy)
+                    guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                    return (min(idA, idB), max(idA, idB))
+                }
+                return nil
+            }
+
+            func isHallway(_ coord: GridCoord) -> Bool {
+                guard !roomCells.contains(coord) else { return false }
+                return oppositeRoomPair(at: coord) == nil
+            }
+
+            func connectedViaHallway(lo: Int, hi: Int, blocked: Set<GridCoord>) -> Bool {
+                guard let roomA = roomsByID[lo], let roomB = roomsByID[hi] else { return false }
+                var queue: [(GridCoord, Bool)] = roomA.cells.map { ($0, false) }
+                var visited = roomA.cells
+                var head = 0
+                while head < queue.count {
+                    let (current, sawHallway) = queue[head]
+                    head += 1
+                    if sawHallway, roomB.cells.contains(current) { return true }
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        guard visited.insert(next).inserted else { continue }
+                        guard !blocked.contains(next) else { continue }
+                        guard let tile = world.tile(at: next) else { continue }
+                        let passable: Bool
+                        if tile.isGate {
+                            passable = true
+                        } else if case .floor = tile.kind {
+                            passable = true
+                        } else {
+                            passable = false
+                        }
+                        guard passable else { continue }
+                        queue.append((next, sawHallway || isHallway(next)))
+                    }
+                }
+                return false
+            }
+
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    let tile = world.tile(at: coord)
+                    let isSoft = tile?.isGate == true || tile?.isDestructibleWall == true
+                    guard isSoft, let (lo, hi) = oppositeRoomPair(at: coord) else { continue }
+
+                    // Soft blockers themselves aren't a hallway path; for gates, ignore the gate strip.
+                    var blocked = Set<GridCoord>()
+                    if tile?.isGate == true {
+                        var queue = [coord]
+                        var seen: Set<GridCoord> = [coord]
+                        var head = 0
+                        while head < queue.count {
+                            let current = queue[head]
+                            head += 1
+                            blocked.insert(current)
+                            for (dx, dy) in GridCoord.cardinals {
+                                let next = current.neighbor(dx: dx, dy: dy)
+                                guard world.tile(at: next)?.isGate == true else { continue }
+                                guard seen.insert(next).inserted else { continue }
+                                queue.append(next)
+                            }
+                        }
+                    }
+
+                    #expect(
+                        !connectedViaHallway(lo: lo, hi: hi, blocked: blocked),
+                        "soft blocker between hallway-connected rooms \(lo)-\(hi) at \(x),\(y) (seed \(seed))"
+                    )
+                }
             }
         }
     }
@@ -565,8 +739,7 @@ struct ProceduralGeneratorTests {
         var config = roomsDoorsConfig(seed: 55, roomCount: 12)
         config.pickups = .init(
             health: .init(spawnChancePerRoom: 1.0),
-            energy: .init(spawnChancePerRoom: 1.0),
-            treasure: .init(spawnChancePerRoom: 1.0)
+            energy: .init(spawnChancePerRoom: 1.0)
         )
 
         let result = try ProceduralGenerator().generateDetailed(from: config)
@@ -577,7 +750,7 @@ struct ProceduralGeneratorTests {
         let nonPlayer = result.world.entities.filter { !$0.isPlayer }
         #expect(Set(nonPlayer.map(\.position)).count == nonPlayer.count)
 
-        for pickup in pickups {
+        for pickup in pickups where pickup.pickupKind != .treasure {
             #expect(!spawnRoom.cells.contains(pickup.position))
             #expect(pickup.position != result.world.spawn)
             #expect(pickup.pickupKind != nil)
@@ -588,15 +761,73 @@ struct ProceduralGeneratorTests {
         #expect(pickups.contains { $0.pickupKind == .treasure })
     }
 
-    @Test func zeroPickupChanceProducesNoPickups() throws {
+    @Test func pickupsAndEnemiesOnlySpawnOnRoomFloorTiles() throws {
+        for seed: UInt64 in [11, 42, 99, 123] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.pickups = .init(
+                health: .init(spawnChancePerRoom: 1.0),
+                energy: .init(spawnChancePerRoom: 1.0)
+            )
+            config.enemies = .init(type: "grunt", spawnChancePerRoom: 1.0)
+            let result = try ProceduralGenerator().generateDetailed(
+                from: config,
+                enemyConfig: .fallback
+            )
+            let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+
+            let entities = result.world.entities.filter { $0.isPickup || $0.isEnemy }
+            #expect(entities.contains { $0.isPickup }, "expected pickups (seed \(seed))")
+            #expect(entities.contains { $0.isEnemy }, "expected enemies (seed \(seed))")
+            for entity in entities {
+                let coord = entity.position
+                #expect(roomCells.contains(coord), "entity outside any room at \(coord) (seed \(seed))")
+                guard let tile = result.world.tile(at: coord) else {
+                    Issue.record("missing tile under entity at \(coord) (seed \(seed))")
+                    continue
+                }
+                #expect(!tile.isPit, "entity on pit at \(coord) (seed \(seed))")
+                #expect(!tile.isGate, "entity on gate at \(coord) (seed \(seed))")
+                #expect(!tile.isWall, "entity on wall at \(coord) (seed \(seed))")
+                if case .floor(let isPit) = tile.kind {
+                    #expect(!isPit)
+                } else {
+                    Issue.record("entity not on floor at \(coord) (seed \(seed))")
+                }
+            }
+        }
+    }
+
+    @Test func zeroPickupChanceProducesOnlyTreasure() throws {
         var config = roomsDoorsConfig(seed: 8, roomCount: 10)
         config.pickups = .init(
             health: .init(spawnChancePerRoom: 0),
-            energy: .init(spawnChancePerRoom: 0),
-            treasure: .init(spawnChancePerRoom: 0)
+            energy: .init(spawnChancePerRoom: 0)
         )
         let world = try ProceduralGenerator().generate(from: config)
-        #expect(world.entities.filter(\.isPickup).isEmpty)
+        let pickups = world.entities.filter(\.isPickup)
+        #expect(pickups.count == 1)
+        #expect(pickups.first?.pickupKind == .treasure)
+    }
+
+    @Test func treasureSpawnsOnceInFarthestRoom() throws {
+        for seed: UInt64 in [11, 42, 99, 123] {
+            let result = try ProceduralGenerator().generateDetailed(from: roomsDoorsConfig(seed: seed, roomCount: 12))
+            let treasures = result.world.entities.filter { $0.pickupKind == .treasure }
+            #expect(treasures.count == 1, "expected one treasure (seed \(seed))")
+
+            guard let treasure = treasures.first else { continue }
+            let spawn = result.world.spawn
+            let farthest = result.rooms.max { lhs, rhs in
+                let lhsDist = abs(spawn.x - lhs.center.x) + abs(spawn.y - lhs.center.y)
+                let rhsDist = abs(spawn.x - rhs.center.x) + abs(spawn.y - rhs.center.y)
+                if lhsDist != rhsDist { return lhsDist < rhsDist }
+                return lhs.id < rhs.id
+            }!
+            #expect(
+                farthest.cells.contains(treasure.position),
+                "treasure not in farthest room \(farthest.id) (seed \(seed))"
+            )
+        }
     }
 
     @Test func generatesDestructibleWallsAndGates() throws {

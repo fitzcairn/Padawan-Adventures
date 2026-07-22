@@ -37,6 +37,7 @@ final class AppSession {
             generation: level.generation,
             display: WorldSeedConfig.DisplayParams(tileWidth: 40, tileHeight: 40),
             enemies: WorldSeedConfig.EnemiesSpawnConfig(type: "grunt", spawnChancePerRoom: 0.8),
+            pickups: level.pickups,
             extensions: nil
         )
     }

@@ -37,6 +37,7 @@ nonisolated enum WorldLoader {
         config.world.width = level.width
         config.world.height = level.height
         config.generation = level.generation
+        config.pickups = level.pickups
         return config
     }
 

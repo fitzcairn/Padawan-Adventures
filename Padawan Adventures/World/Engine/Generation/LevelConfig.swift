@@ -9,6 +9,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
     var roomCount: Int
     var corridorWidth: Int
     var room: WorldSeedConfig.RoomParams
+    var pickups: WorldSeedConfig.PickupsSpawnConfig?
 
     enum CodingKeys: String, CodingKey {
         case width
@@ -17,6 +18,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         case roomCount = "room_count"
         case corridorWidth = "corridor_width"
         case room
+        case pickups
     }
 
     nonisolated static let fallback = LevelConfig(
@@ -33,6 +35,10 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
             pitMaxSize: 5,
             wallDestructibleChance: 0.8,
             gateChance: 0.5
+        ),
+        pickups: .init(
+            health: .init(spawnChancePerRoom: 0.8),
+            energy: .init(spawnChancePerRoom: 0.8)
         )
     )
 
@@ -42,7 +48,8 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         algorithm: String,
         roomCount: Int,
         corridorWidth: Int,
-        room: WorldSeedConfig.RoomParams
+        room: WorldSeedConfig.RoomParams,
+        pickups: WorldSeedConfig.PickupsSpawnConfig? = nil
     ) {
         self.width = width
         self.height = height
@@ -50,6 +57,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         self.roomCount = roomCount
         self.corridorWidth = corridorWidth
         self.room = room
+        self.pickups = pickups
     }
 
     var generation: WorldSeedConfig.GenerationParams {
