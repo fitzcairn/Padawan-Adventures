@@ -87,6 +87,7 @@ final class AppSession {
             musicSettings = .fallback
         }
         BackgroundMusicController.shared.configure(fadeSeconds: musicSettings.fadeSeconds)
+        AudioPreferences.shared.applyToControllers()
 
         let playerConfig: PlayerConfig
         do {

@@ -33,6 +33,10 @@ struct MenuView: View {
                     // Intentionally no-op for now.
                 }
 
+                AppLargeButton(title: "SETTINGS", accessibilityID: "menu.settings") {
+                    router.navigate(to: .settings)
+                }
+
                 AppLargeButton(title: "QUIT", accessibilityID: "menu.quit") {
                     exit(0)
                 }

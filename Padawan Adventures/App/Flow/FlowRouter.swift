@@ -9,6 +9,7 @@ enum FlowRoot: Hashable, Sendable {
 
 enum FlowRoute: Hashable, Sendable {
     case levelSelect
+    case settings
     case preparing(GameLaunchMode)
 }
 

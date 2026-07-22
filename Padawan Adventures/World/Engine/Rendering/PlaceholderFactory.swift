@@ -15,6 +15,16 @@ enum PlaceholderFactory {
     /// Raised roof fill between wall tops.
     static let ceilingColor = UIColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
 
+    /// Nested z biases must stay well below one depth step and the entity/wall
+    /// half-step (`entitySortValue` = depth + 0.5). With `ignoresSiblingOrder`,
+    /// SpriteKit sorts by accumulated z — integer face offsets (+1/+2) used to
+    /// let sprites draw over front wall sides while wall tops still won.
+    static let wallFaceLeftZ: CGFloat = 0.01
+    static let wallFaceRightZ: CGFloat = 0.02
+    static let wallFaceTopZ: CGFloat = 0.03
+    static let entityBodyZ: CGFloat = 0.01
+    static let entityLabelZ: CGFloat = 0.02
+
     static func tileNode(
         for tile: Tile,
         at coord: GridCoord,
@@ -117,7 +127,7 @@ enum PlaceholderFactory {
             left.lineWidth = lineWidth
             left.strokeColor = stroke
             left.fillColor = baseLeft
-            left.zPosition = 0
+            left.zPosition = wallFaceLeftZ
             container.addChild(left)
         }
 
@@ -127,7 +137,7 @@ enum PlaceholderFactory {
             right.lineWidth = lineWidth
             right.strokeColor = stroke
             right.fillColor = baseRight
-            right.zPosition = 1
+            right.zPosition = wallFaceRightZ
             container.addChild(right)
         }
 
@@ -137,7 +147,7 @@ enum PlaceholderFactory {
             top.lineWidth = lineWidth
             top.strokeColor = stroke
             top.fillColor = baseTop
-            top.zPosition = 2
+            top.zPosition = wallFaceTopZ
             container.addChild(top)
         }
 
@@ -171,7 +181,7 @@ enum PlaceholderFactory {
             ?? (entity.isPlayer ? playerFillColor : defaultEntityFillColor)
         rect.strokeColor = .white
         rect.lineWidth = 3
-        rect.zPosition = 1
+        rect.zPosition = entityBodyZ
         // Feet near the tile center; body extends upward toward the camera's "up".
         rect.position = CGPoint(x: 0, y: size.height * 0.35)
 
@@ -182,7 +192,7 @@ enum PlaceholderFactory {
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
         label.position = rect.position
-        label.zPosition = 2
+        label.zPosition = entityLabelZ
 
         container.addChild(rect)
         container.addChild(label)
@@ -207,7 +217,7 @@ enum PlaceholderFactory {
         sprite.size = CGSize(width: pickupIconSize, height: pickupIconSize)
         // Lift slightly above the tile center so the icon sits on the floor diamond.
         sprite.position = CGPoint(x: 0, y: config.tileHeight * 0.35)
-        sprite.zPosition = 1
+        sprite.zPosition = entityBodyZ
         container.addChild(sprite)
 
         startIdleBounce(on: sprite)

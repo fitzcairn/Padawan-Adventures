@@ -32,4 +32,9 @@ struct ScreenConfigTests {
         let config = try ScreenConfig.loadFromBundle(named: "you_win")
         #expect(config.musicCue == .track("victory"))
     }
+
+    @Test func loadsSettingsScreenFromBundle() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "settings")
+        #expect(config.musicCue == .track("menu_theme"))
+    }
 }

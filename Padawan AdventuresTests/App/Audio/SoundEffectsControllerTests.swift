@@ -4,16 +4,20 @@ import Testing
 
 @MainActor
 final class MockSoundEffectPlayer: SoundEffectPlaying {
-    private(set) var playCalls: [String] = []
+    private(set) var playCalls: [(trackID: String, volume: Float)] = []
     var missingTrackIDs: Set<String> = []
 
     @discardableResult
-    func play(trackID: String) -> Bool {
+    func play(trackID: String, volume: Float) -> Bool {
         if missingTrackIDs.contains(trackID) {
             return false
         }
-        playCalls.append(trackID)
+        playCalls.append((trackID, volume))
         return true
+    }
+
+    var playedTrackIDs: [String] {
+        playCalls.map(\.trackID)
     }
 }
 
@@ -23,7 +27,8 @@ struct SoundEffectsControllerTests {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.play(trackID: "sfx_boom")
-        #expect(mock.playCalls == ["sfx_boom"])
+        #expect(mock.playedTrackIDs == ["sfx_boom"])
+        #expect(mock.playCalls.first?.volume == 1)
     }
 
     @Test func playTrackIDIgnoresBlank() {
@@ -33,13 +38,29 @@ struct SoundEffectsControllerTests {
         #expect(mock.playCalls.isEmpty)
     }
 
+    @Test func playSkipsWhenDisabled() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsEnabled(false)
+        controller.play(trackID: "sfx_boom")
+        #expect(mock.playCalls.isEmpty)
+    }
+
+    @Test func playUsesConfiguredVolume() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(0.4)
+        controller.play(trackID: "sfx_boom")
+        #expect(mock.playCalls.map(\.volume) == [0.4])
+    }
+
     @Test func playEventResolvesFromTable() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         let table = SoundEffectTable(events: ["move": "sfx_player_move", "pit": "sfx_pit"])
         controller.play(event: "move", from: table)
         controller.play(event: "pit", from: table)
-        #expect(mock.playCalls == ["sfx_player_move", "sfx_pit"])
+        #expect(mock.playedTrackIDs == ["sfx_player_move", "sfx_pit"])
     }
 
     @Test func playEventIgnoresUnknownKey() {
@@ -65,7 +86,7 @@ struct SoundEffectsControllerTests {
         controller.play(trackID: "sfx_a")
         controller.play(trackID: "sfx_b")
         controller.play(trackID: "sfx_c")
-        #expect(mock.playCalls == ["sfx_a", "sfx_b", "sfx_c"])
+        #expect(mock.playedTrackIDs == ["sfx_a", "sfx_b", "sfx_c"])
     }
 }
 

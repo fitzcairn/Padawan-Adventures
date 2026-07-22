@@ -48,6 +48,33 @@ struct IsometricMathTests {
         #expect(IsometricMath.wallOccludesEntity(wallCoord: wallInFront, entityCoord: entity, config: config))
     }
 
+    /// With `ignoresSiblingOrder`, SpriteKit sorts by accumulated z. Nested face/body
+    /// biases must not let a sprite leap over a front wall's side faces.
+    @Test func frontWallSideFaceAccumulatedZBeatsEntitySprite() {
+        let config = IsometricConfig()
+        let entity = GridCoord(x: 2, y: 2, story: 0)
+        let wallInFront = GridCoord(x: 3, y: 2, story: 0)
+
+        let entitySpriteZ = IsometricMath.entitySortValue(for: entity, config: config)
+            + PlaceholderFactory.entityLabelZ
+        let wallLeftFaceZ = IsometricMath.wallSortValue(for: wallInFront, config: config)
+            + PlaceholderFactory.wallFaceLeftZ
+
+        #expect(wallLeftFaceZ > entitySpriteZ)
+    }
+
+    @Test func entitySpriteAccumulatedZBeatsSameCellWallTop() {
+        let config = IsometricConfig()
+        let coord = GridCoord(x: 4, y: 1, story: 0)
+
+        let entityBodyZ = IsometricMath.entitySortValue(for: coord, config: config)
+            + PlaceholderFactory.entityBodyZ
+        let wallTopZ = IsometricMath.wallSortValue(for: coord, config: config)
+            + PlaceholderFactory.wallFaceTopZ
+
+        #expect(entityBodyZ > wallTopZ)
+    }
+
     @Test func wallBehindDoesNotOccludeEntity() {
         let config = IsometricConfig()
         let entity = GridCoord(x: 3, y: 3, story: 0)

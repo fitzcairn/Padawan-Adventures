@@ -6,7 +6,7 @@ import Foundation
 protocol SoundEffectPlaying: AnyObject {
     /// Plays a short effect. Returns `false` when the track cannot be loaded.
     @discardableResult
-    func play(trackID: String) -> Bool
+    func play(trackID: String, volume: Float) -> Bool
 }
 
 /// Bundle-backed multi-channel `AVAudioPlayer` pool for overlapping one-shots.
@@ -22,7 +22,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     }
 
     @discardableResult
-    func play(trackID: String) -> Bool {
+    func play(trackID: String, volume: Float) -> Bool {
         guard let url = BundleMusicAudioPlayer.audioURL(for: trackID) else {
             return false
         }
@@ -30,6 +30,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         do {
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = 0
+            player.volume = min(1, max(0, volume))
             player.prepareToPlay()
             insert(player)
             return player.play()

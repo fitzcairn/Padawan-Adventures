@@ -8,10 +8,16 @@ final class BackgroundMusicController {
     private(set) var fadeSeconds: TimeInterval = MusicSettings.fallback.fadeSeconds
     private(set) var currentTrackID: String?
     private(set) var isPausedForBackground = false
+    private(set) var musicEnabled = true
+    private(set) var musicVolume: Float = 1
 
     private let player: any MusicAudioPlaying
     private var transitionTask: Task<Void, Never>?
     private var transitionGeneration = 0
+
+    var effectiveVolume: Float {
+        musicEnabled ? musicVolume : 0
+    }
 
     init(player: (any MusicAudioPlaying)? = nil) {
         self.player = player ?? BundleMusicAudioPlayer()
@@ -19,6 +25,19 @@ final class BackgroundMusicController {
 
     func configure(fadeSeconds: TimeInterval) {
         self.fadeSeconds = max(0, fadeSeconds)
+    }
+
+    func setMusicEnabled(_ enabled: Bool) {
+        guard musicEnabled != enabled else { return }
+        musicEnabled = enabled
+        applyEffectiveVolumeLive()
+    }
+
+    func setMusicVolume(_ volume: Float) {
+        let clamped = min(1, max(0, volume))
+        guard musicVolume != clamped else { return }
+        musicVolume = clamped
+        applyEffectiveVolumeLive()
     }
 
     /// Loads `Resources/Screens/<name>.yaml` and applies its music cue.
@@ -80,6 +99,11 @@ final class BackgroundMusicController {
         fadeSeconds / 2
     }
 
+    private func applyEffectiveVolumeLive() {
+        guard currentTrackID != nil else { return }
+        player.volume = effectiveVolume
+    }
+
     private func fadeOutAndClear() async {
         if player.isPlaying || player.currentTrackID != nil {
             await player.fadeVolume(to: 0, duration: halfFade)
@@ -107,13 +131,13 @@ final class BackgroundMusicController {
 
         if isPausedForBackground {
             currentTrackID = trackID
-            player.volume = 1
+            player.volume = effectiveVolume
             return
         }
 
         player.volume = 0
         player.play()
         currentTrackID = trackID
-        await player.fadeVolume(to: 1, duration: halfFade)
+        await player.fadeVolume(to: effectiveVolume, duration: halfFade)
     }
 }

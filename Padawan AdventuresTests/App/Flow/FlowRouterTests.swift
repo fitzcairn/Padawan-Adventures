@@ -37,6 +37,14 @@ struct FlowRouterTests {
         #expect(router.path == [.levelSelect, .preparing(.newGame)])
     }
 
+    @Test func navigateAndPopSettings() {
+        let router = FlowRouter(root: .menu)
+        router.navigate(to: .settings)
+        #expect(router.path == [.settings])
+        router.pop()
+        #expect(router.path.isEmpty)
+    }
+
     @Test func continueNavigatesToPreparingContinueSave() {
         let router = FlowRouter(root: .menu)
         router.navigate(to: .preparing(.continueSave))

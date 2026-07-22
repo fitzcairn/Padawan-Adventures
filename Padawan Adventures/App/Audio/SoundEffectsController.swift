@@ -5,17 +5,29 @@ import Foundation
 final class SoundEffectsController {
     static let shared = SoundEffectsController()
 
+    private(set) var soundEffectsEnabled = true
+    private(set) var soundEffectsVolume: Float = 1
+
     private let player: any SoundEffectPlaying
 
     init(player: (any SoundEffectPlaying)? = nil) {
         self.player = player ?? BundleSoundEffectPlayer()
     }
 
+    func setSoundEffectsEnabled(_ enabled: Bool) {
+        soundEffectsEnabled = enabled
+    }
+
+    func setSoundEffectsVolume(_ volume: Float) {
+        soundEffectsVolume = min(1, max(0, volume))
+    }
+
     /// Plays a track by basename under `Resources/Audio/`. Missing assets are ignored.
     func play(trackID: String) {
+        guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        _ = player.play(trackID: trimmed)
+        _ = player.play(trackID: trimmed, volume: soundEffectsVolume)
     }
 
     /// Looks up `event` in `table` and plays it. Unmapped events and missing assets are ignored.

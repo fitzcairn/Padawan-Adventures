@@ -132,6 +132,45 @@ struct BackgroundMusicControllerTests {
         #expect(mock.isPlaying)
     }
 
+    @Test func fadeInUsesMusicVolume() async {
+        let mock = MockMusicAudioPlayer()
+        let controller = BackgroundMusicController(player: mock)
+        controller.configure(fadeSeconds: 1)
+        controller.setMusicVolume(0.5)
+        controller.apply(.track("menu_theme"))
+        await waitFor { mock.playCount == 1 && mock.volume == 0.5 }
+        #expect(mock.fadeCalls.map(\.0) == [0.5])
+        #expect(controller.effectiveVolume == 0.5)
+    }
+
+    @Test func disablingMutesWhileKeepingTrack() async {
+        let mock = MockMusicAudioPlayer()
+        let controller = BackgroundMusicController(player: mock)
+        controller.configure(fadeSeconds: 0)
+        controller.apply(.track("menu_theme"))
+        await waitFor { controller.currentTrackID == "menu_theme" && mock.volume == 1 }
+
+        controller.setMusicEnabled(false)
+        #expect(controller.currentTrackID == "menu_theme")
+        #expect(mock.volume == 0)
+        #expect(controller.effectiveVolume == 0)
+
+        controller.setMusicEnabled(true)
+        #expect(mock.volume == 1)
+        #expect(controller.effectiveVolume == 1)
+    }
+
+    @Test func liveVolumeChangeUpdatesPlayer() async {
+        let mock = MockMusicAudioPlayer()
+        let controller = BackgroundMusicController(player: mock)
+        controller.configure(fadeSeconds: 0)
+        controller.apply(.track("menu_theme"))
+        await waitFor { mock.volume == 1 }
+
+        controller.setMusicVolume(0.3)
+        #expect(mock.volume == 0.3)
+    }
+
     private func waitFor(
         timeoutNanoseconds: UInt64 = 200_000_000,
         _ condition: @MainActor () -> Bool
