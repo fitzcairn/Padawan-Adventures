@@ -1,24 +1,45 @@
 import SwiftUI
+import UIKit
 
 @MainActor
 @Observable
 final class PlayerSelectModel {
     var playerNames: [String] = []
+    var avatarDataByName: [String: Data] = [:]
     var isShowingNewPlayerAlert = false
     var isShowingDeleteConfirm = false
     var isShowingDuplicateNameAlert = false
     var newPlayerName = ""
     var playerPendingDelete: String?
     var attemptedDuplicateName = ""
+    var isCreatingAvatar = false
 
     private let session: AppSession
+    private let frontCamera: any FrontCameraAvailability
 
-    init(session: AppSession) {
+    init(
+        session: AppSession,
+        frontCamera: any FrontCameraAvailability = LiveFrontCameraAvailability()
+    ) {
         self.session = session
+        self.frontCamera = frontCamera
+    }
+
+    enum CreatePlayerOutcome: Equatable {
+        case failed
+        case showSelfie
+        case showMenu
     }
 
     func reloadPlayers() async {
         playerNames = (try? await session.playerStore.listPlayers()) ?? []
+        var avatars: [String: Data] = [:]
+        for name in playerNames {
+            if let data = await session.playerStore.loadAvatar(for: name) {
+                avatars[name] = data
+            }
+        }
+        avatarDataByName = avatars
     }
 
     func selectPlayer(named name: String) async -> Bool {
@@ -36,25 +57,36 @@ final class PlayerSelectModel {
         isShowingNewPlayerAlert = true
     }
 
-    func createPlayer() async -> Bool {
+    func createPlayer() async -> CreatePlayerOutcome {
         let trimmed = PlayerStateStore.normalizedName(newPlayerName)
         guard !trimmed.isEmpty else {
             isShowingNewPlayerAlert = true
-            return false
+            return .failed
         }
 
         do {
             try await session.createAndBindPlayer(name: trimmed)
-            return true
         } catch PlayerStateError.nameNotUnique {
             attemptedDuplicateName = trimmed
             isShowingDuplicateNameAlert = true
-            return false
+            return .failed
         } catch {
             newPlayerName = trimmed
             isShowingNewPlayerAlert = true
-            return false
+            return .failed
         }
+
+        if frontCamera.isFrontCameraAvailable {
+            return .showSelfie
+        }
+
+        isCreatingAvatar = true
+        defer { isCreatingAvatar = false }
+        let jpeg = await SillyFaceAvatarGenerator.generateJPEG(seedName: trimmed)
+        if !jpeg.isEmpty {
+            try? await session.playerStore.saveAvatar(jpeg, for: trimmed)
+        }
+        return .showMenu
     }
 
     func confirmDelete(playerName: String) {
@@ -117,6 +149,7 @@ struct PlayerSelectView: View {
             AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
                 model.beginCreatePlayer()
             }
+            .disabled(model.isCreatingAvatar)
             .appReadableWidth()
             .padding(.bottom, 24)
         }
@@ -131,7 +164,12 @@ struct PlayerSelectView: View {
             Button("Cancel", role: .cancel) {}
             Button("OK") {
                 Task {
-                    if await model.createPlayer() {
+                    switch await model.createPlayer() {
+                    case .failed:
+                        break
+                    case .showSelfie:
+                        router.showPlayerSelfie()
+                    case .showMenu:
                         router.showMenu()
                     }
                 }
@@ -162,6 +200,8 @@ struct PlayerSelectView: View {
 
     private func playerRow(name: String) -> some View {
         HStack(spacing: 12) {
+            avatarView(for: name)
+
             Button {
                 Task {
                     if await model.selectPlayer(named: name) {
@@ -190,5 +230,26 @@ struct PlayerSelectView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("playerSelect.delete.\(name)")
         }
+    }
+
+    @ViewBuilder
+    private func avatarView(for name: String) -> some View {
+        Group {
+            if let data = model.avatarDataByName[name],
+               let uiImage = PlayerAvatarImage.uiImage(from: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(AppChrome.secondaryTextColor)
+                    .padding(4)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+        .accessibilityIdentifier("playerSelect.avatar.\(name)")
     }
 }

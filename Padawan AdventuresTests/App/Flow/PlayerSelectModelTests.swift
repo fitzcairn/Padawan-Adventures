@@ -23,7 +23,10 @@ struct PlayerSelectModelTests {
             name: "Ahsoka",
             initialState: PlayerGameState(health: 3, energy: 2)
         )
-        let model = PlayerSelectModel(session: session)
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
 
         await model.reloadPlayers()
         #expect(model.playerNames == ["Ahsoka"])
@@ -35,32 +38,59 @@ struct PlayerSelectModelTests {
             name: "Rex",
             initialState: PlayerGameState(health: 3, energy: 2)
         )
-        let model = PlayerSelectModel(session: session)
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
 
         let ok = await model.selectPlayer(named: "Rex")
         #expect(ok)
         #expect(session.currentPlayerName == "Rex")
     }
 
-    @Test func createPlayerBindsNewPlayer() async throws {
+    @Test func createPlayerWithoutFrontCameraSavesAvatarAndShowsMenu() async throws {
         let session = try makeSession()
-        let model = PlayerSelectModel(session: session)
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
         model.newPlayerName = "  Cody  "
 
-        let ok = await model.createPlayer()
-        #expect(ok)
+        let outcome = await model.createPlayer()
+        #expect(outcome == .showMenu)
         #expect(session.currentPlayerName == "Cody")
         #expect(try await session.playerStore.listPlayers() == ["Cody"])
+        let avatar = await session.playerStore.loadAvatar(for: "Cody")
+        #expect(avatar != nil)
+        #expect(avatar?.isEmpty == false)
+    }
+
+    @Test func createPlayerWithFrontCameraShowsSelfie() async throws {
+        let session = try makeSession()
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: true)
+        )
+        model.newPlayerName = "Wolffe"
+
+        let outcome = await model.createPlayer()
+        #expect(outcome == .showSelfie)
+        #expect(session.currentPlayerName == "Wolffe")
+        let avatar = await session.playerStore.loadAvatar(for: "Wolffe")
+        #expect(avatar == nil)
     }
 
     @Test func createPlayerSurfacesDuplicateName() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Echo")
-        let model = PlayerSelectModel(session: session)
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
         model.newPlayerName = "Echo"
 
-        let ok = await model.createPlayer()
-        #expect(!ok)
+        let outcome = await model.createPlayer()
+        #expect(outcome == .failed)
         #expect(model.isShowingDuplicateNameAlert)
         #expect(model.attemptedDuplicateName == "Echo")
     }
@@ -71,7 +101,10 @@ struct PlayerSelectModelTests {
             name: "Fives",
             initialState: PlayerGameState(health: 3, energy: 2)
         )
-        let model = PlayerSelectModel(session: session)
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
         await model.reloadPlayers()
         model.confirmDelete(playerName: "Fives")
         #expect(model.isShowingDeleteConfirm)
@@ -79,5 +112,22 @@ struct PlayerSelectModelTests {
         await model.deletePendingPlayer()
         #expect(model.playerNames.isEmpty)
         #expect(try await session.playerStore.listPlayers().isEmpty)
+    }
+
+    @Test func reloadPlayersLoadsAvatars() async throws {
+        let session = try makeSession()
+        try await session.playerStore.createPlayer(
+            name: "Bly",
+            initialState: PlayerGameState(health: 3, energy: 2)
+        )
+        let jpeg = SillyFaceAvatarGenerator.proceduralJPEG(seedName: "Bly")
+        try await session.playerStore.saveAvatar(jpeg, for: "Bly")
+
+        let model = PlayerSelectModel(
+            session: session,
+            frontCamera: FixedFrontCameraAvailability(isFrontCameraAvailable: false)
+        )
+        await model.reloadPlayers()
+        #expect(model.avatarDataByName["Bly"] != nil)
     }
 }

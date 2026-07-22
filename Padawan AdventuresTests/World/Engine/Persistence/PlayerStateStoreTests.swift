@@ -155,4 +155,23 @@ struct PlayerStateStoreTests {
         #expect(encoded.contains("/") == false)
         #expect(PlayerStateStore.decodedPlayerName(fromDirectoryName: encoded) == name)
     }
+
+    @Test func avatarSaveLoadAndDeleteWithPlayer() async throws {
+        let (store, _) = try makeStore()
+        try await store.createPlayer(name: "Gree", initialState: initialState())
+
+        let jpeg = SillyFaceAvatarGenerator.proceduralJPEG(seedName: "Gree")
+        #expect(!jpeg.isEmpty)
+        try await store.saveAvatar(jpeg, for: "Gree")
+
+        let loaded = await store.loadAvatar(for: "Gree")
+        #expect(loaded == jpeg)
+
+        let avatarURL = await store.avatarURL(for: "Gree")
+        #expect(FileManager.default.fileExists(atPath: avatarURL.path))
+
+        try await store.deletePlayer(name: "Gree")
+        #expect(FileManager.default.fileExists(atPath: avatarURL.path) == false)
+        #expect(await store.loadAvatar(for: "Gree") == nil)
+    }
 }

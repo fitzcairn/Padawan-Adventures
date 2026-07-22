@@ -23,6 +23,13 @@ struct FlowRouterTests {
         #expect(router.path.isEmpty)
     }
 
+    @Test func showPlayerSelfieResetsPath() {
+        let router = FlowRouter(root: .playerSelect, path: [.levelSelect])
+        router.showPlayerSelfie()
+        #expect(router.root == .playerSelfie)
+        #expect(router.path.isEmpty)
+    }
+
     @Test func navigateAppendsRoutes() {
         let router = FlowRouter(root: .menu)
         router.navigate(to: .levelSelect)

@@ -13,6 +13,7 @@ actor PlayerStateStore {
     static let rosterFileName = "players.json"
     static let playersDirectoryName = "players"
     static let stateFileName = "state.plist"
+    static let avatarFileName = "avatar.jpg"
 
     private let fileManager: FileManager
     /// Stable root path; safe to read outside the actor.
@@ -112,6 +113,38 @@ actor PlayerStateStore {
         let directory = playerDirectoryURL(for: name)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         return try GameSaveService(fileManager: fileManager, directoryURL: directory)
+    }
+
+    // MARK: - Avatars
+
+    func avatarURL(for name: String) -> URL {
+        playerDirectoryURL(for: name).appendingPathComponent(Self.avatarFileName)
+    }
+
+    func saveAvatar(_ data: Data, for name: String) throws {
+        let trimmed = Self.normalizedName(name)
+        let roster = try loadRoster()
+        guard roster.contains(trimmed) else {
+            throw PlayerStateError.playerNotFound
+        }
+
+        let directory = playerDirectoryURL(for: trimmed)
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let url = avatarURL(for: trimmed)
+        let temporaryURL = url.appendingPathExtension("tmp")
+        try data.write(to: temporaryURL, options: .atomic)
+        if fileManager.fileExists(atPath: url.path) {
+            _ = try fileManager.replaceItemAt(url, withItemAt: temporaryURL)
+        } else {
+            try fileManager.moveItem(at: temporaryURL, to: url)
+        }
+    }
+
+    func loadAvatar(for name: String) -> Data? {
+        let url = avatarURL(for: name)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        return try? Data(contentsOf: url)
     }
 
     // MARK: - Orphan cleanup

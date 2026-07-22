@@ -5,6 +5,7 @@
 
 import UIKit
 import SpriteKit
+import SwiftUI
 
 final class GameViewController: LandscapeHostingController {
     private let world: GameWorld

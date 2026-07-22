@@ -5,9 +5,9 @@ struct FlowRootView: View {
     @State private var router: FlowRouter
 
     @MainActor
-    init(session: AppSession? = nil, router: FlowRouter = FlowRouter()) {
+    init(session: AppSession? = nil, router: FlowRouter? = nil) {
         _session = State(initialValue: session)
-        _router = State(initialValue: router)
+        _router = State(initialValue: router ?? FlowRouter())
     }
 
     var body: some View {
@@ -32,6 +32,12 @@ struct FlowRootView: View {
         case .playerSelect:
             if let session {
                 PlayerSelectView(session: session, router: router)
+            } else {
+                LoadingView(session: $session, router: router)
+            }
+        case .playerSelfie:
+            if let session {
+                PlayerSelfieView(session: session, router: router)
             } else {
                 LoadingView(session: $session, router: router)
             }

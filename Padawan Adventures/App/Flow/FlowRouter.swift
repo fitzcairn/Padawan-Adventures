@@ -3,6 +3,7 @@ import Foundation
 enum FlowRoot: Hashable, Sendable {
     case loading
     case playerSelect
+    case playerSelfie
     case menu
 }
 
@@ -24,6 +25,11 @@ final class FlowRouter {
 
     func showPlayerSelect() {
         root = .playerSelect
+        path = []
+    }
+
+    func showPlayerSelfie() {
+        root = .playerSelfie
         path = []
     }
 
