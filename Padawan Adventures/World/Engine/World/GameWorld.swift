@@ -194,10 +194,48 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         return nil
     }
 
+    /// Nearest non-pit floor on the same story (BFS; may traverse pit tiles).
+    func nearestNonPitTile(from coord: GridCoord) -> GridCoord? {
+        guard isInBounds(coord) else { return nil }
+        if isNonPitFloor(at: coord) { return coord }
+
+        var queue = [coord]
+        var visited: Set<GridCoord> = [coord]
+        var head = 0
+
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard next.story == coord.story, isInBounds(next), !visited.contains(next) else { continue }
+                if isNonPitFloor(at: next) { return next }
+                visited.insert(next)
+                queue.append(next)
+            }
+        }
+        return nil
+    }
+
+    /// Moves the player from a pit onto the nearest non-pit floor tile.
+    @discardableResult
+    mutating func relocatePlayerOffPit() -> Bool {
+        guard let position = playerPosition, tile(at: position)?.isPit == true else { return false }
+        guard let safe = nearestNonPitTile(from: position) else { return false }
+        setPlayerPosition(safe)
+        return true
+    }
+
     mutating func resolvePit(at coord: GridCoord) -> PitResolution {
         guard tile(at: coord)?.isPit == true else { return .none }
-        // Stay on the pit tile; UI handles the encounter (no auto-respawn).
+        // Stay on the pit tile; UI relocates after the pit screen is dismissed.
         return .hazard
+    }
+
+    private func isNonPitFloor(at coord: GridCoord) -> Bool {
+        guard let tile = tile(at: coord) else { return false }
+        if case .floor(let isPit) = tile.kind { return !isPit }
+        return false
     }
 
     func fingerprint() -> String {

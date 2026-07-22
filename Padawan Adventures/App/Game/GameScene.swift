@@ -205,10 +205,11 @@ final class GameScene: SKScene {
         }
     }
 
-    /// Resumes simulation after the PIT! screen is dismissed.
+    /// Relocates off the pit, then resumes simulation after the PIT! screen is dismissed.
     func resolvePitEncounter(completion: (() -> Void)? = nil) {
+        world.relocatePlayerOffPit()
         pendingInput = PendingInput()
-        renderer.syncEntities(world.entities)
+        showFixedZoomView()
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
