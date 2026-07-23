@@ -21,6 +21,8 @@ nonisolated struct SimulationTickResult: Sendable {
     var pickupContactID: UUID?
     /// True when the player entered a pit this tick (fell or hazard).
     var didEnterPit: Bool = false
+    /// Floor tile the player approached the pit from (for timeout retreat).
+    var pitApproachCoord: GridCoord?
     /// Destructible wall the player walked onto this tick, if any.
     var boomCoord: GridCoord?
     /// Floor tile the player approached the soft wall from (for timeout retreat).
@@ -128,12 +130,15 @@ struct SimulationLoop: Sendable {
         let events = movement.update(deltaTime: SimulationClock.tickDuration, world: &world)
         result.movementEvents = events
         result.didEnterPit = events.contains { event in
-            if case .pit(let resolution) = event {
+            if case .pit(let resolution, _) = event {
                 return resolution != .none
             }
             return false
         }
         for event in events {
+            if case .pit(_, let approach) = event {
+                result.pitApproachCoord = approach
+            }
             if case .boom(let wall, let approach) = event {
                 result.boomCoord = wall
                 result.boomApproachCoord = approach

@@ -1,0 +1,74 @@
+import SwiftUI
+
+struct PitResultOverlay: View {
+    enum Kind {
+        case escaped(word: String, starsAwarded: Int)
+        case falling
+    }
+
+    let kind: Kind
+    let onFinished: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { onFinished() }
+
+            VStack(spacing: 28) {
+                titleView
+                    .padding(.horizontal, 24)
+                    .accessibilityIdentifier(titleAccessibilityID)
+
+                if case let .escaped(_, starsAwarded) = kind, starsAwarded > 0 {
+                    HStack(spacing: 16) {
+                        ForEach(0..<starsAwarded, id: \.self) { _ in
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 54))
+                                .foregroundStyle(.yellow)
+                        }
+                    }
+                    .accessibilityIdentifier("pit.result.escaped.stars")
+                }
+            }
+        }
+        .accessibilityIdentifier(rootAccessibilityID)
+    }
+
+    @ViewBuilder
+    private var titleView: some View {
+        switch kind {
+        case let .escaped(word, _):
+            (
+                Text("you escaped the pit by spelling ")
+                    .foregroundStyle(.white)
+                + Text(word.lowercased())
+                    .foregroundStyle(.red)
+                + Text("!")
+                    .foregroundStyle(.white)
+            )
+            .font(.system(size: 36, weight: .bold))
+            .multilineTextAlignment(.center)
+        case .falling:
+            Text("you're fallllling!")
+                .font(.system(size: 36, weight: .bold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+        }
+    }
+
+    private var titleAccessibilityID: String {
+        switch kind {
+        case .escaped: return "pit.result.escaped.title"
+        case .falling: return "pit.result.falling.title"
+        }
+    }
+
+    private var rootAccessibilityID: String {
+        switch kind {
+        case .escaped: return "pit.result.escaped.root"
+        case .falling: return "pit.result.falling.root"
+        }
+    }
+}

@@ -193,10 +193,10 @@ final class DestructibleWallScene: SKScene {
         case let .playName(trackID):
             SoundEffectsController.shared.play(trackID: trackID)
         case .playYay:
-            let winTrack = puzzleConfig.winSound
-            if !winTrack.isEmpty {
-                SoundEffectsController.shared.play(trackID: winTrack)
-            }
+            SoundEffectsController.shared.playCommon(
+                event: "correct",
+                override: puzzleConfig.correctSound
+            )
         case let .correctMatch(id):
             applyMatchedAppearance(id: id)
         case let .incorrectMatch(id, pronunciationTrackID):

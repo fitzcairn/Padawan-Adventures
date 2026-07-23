@@ -1,0 +1,10 @@
+# Global sound settings (music fade + shared one-shot FX).
+fade_seconds: 1.0
+
+# Common event → track basename (Resources/Audio/FX/<name>.m4a).
+# Used for cross-game feedback (puzzle win/lose, correct match, input error).
+fx:
+  win: sfx_win
+  lose: sfx_lose
+  error: sfx_error
+  correct: sfx_correct

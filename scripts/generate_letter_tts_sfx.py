@@ -80,7 +80,9 @@ def main() -> int:
             out_dir / f"sfx_letter_{letter}_pronunciation.m4a",
         )
 
-    generate("yay!", out_dir / "sfx_wall_yay.m4a")
+    generate("yay!", out_dir / "sfx_correct.m4a")
+    generate("ta-da!", out_dir / "sfx_win.m4a")
+    generate("you're falling!", out_dir / "sfx_lose.m4a")
     return 0
 
 

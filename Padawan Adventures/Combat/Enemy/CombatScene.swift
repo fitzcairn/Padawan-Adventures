@@ -401,9 +401,7 @@ final class CombatScene: SKScene {
     }
 
     private func playSlashErrorSound() {
-        // Prefer player.yaml mapping; fall back so a missing key never silences feedback.
-        let trackID = playerFx.trackID(for: "slash_error") ?? "sfx_slash_error"
-        SoundEffectsController.shared.play(trackID: trackID)
+        SoundEffectsController.shared.playCommon(event: "error")
     }
 
     // MARK: - Slash input

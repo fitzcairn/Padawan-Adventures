@@ -10,6 +10,8 @@ final class AppSession {
     private(set) var selectedLevelMusic: String?
     /// Per-minigame music for the selected level.
     private(set) var selectedGameMusic: GameMusicConfig
+    /// Pit puzzle knobs for the selected level.
+    private(set) var selectedPitConfig: PitPuzzleConfig
     /// Gate puzzle knobs for the selected level.
     private(set) var selectedGateConfig: GatePuzzleConfig
     /// Destructible-wall puzzle knobs for the selected level.
@@ -31,6 +33,7 @@ final class AppSession {
         selectedLevelResourceName: String? = nil,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
         selectedGameMusic: GameMusicConfig = .fallback,
+        selectedPitConfig: PitPuzzleConfig = .fallback,
         selectedGateConfig: GatePuzzleConfig = .fallback,
         selectedDestructibleWallConfig: DestructibleWallPuzzleConfig = .fallback,
         selectedLetterSoundRepeatSeconds: Double = LevelConfig.fallback.letterSoundRepeatSeconds,
@@ -48,6 +51,7 @@ final class AppSession {
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelMusic = selectedLevelMusic
         self.selectedGameMusic = selectedGameMusic
+        self.selectedPitConfig = selectedPitConfig
         self.selectedGateConfig = selectedGateConfig
         self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
@@ -86,6 +90,7 @@ final class AppSession {
         let selectedLevelName: String
         let selectedLevelMusic: String?
         let selectedGameMusic: GameMusicConfig
+        let selectedPitConfig: PitPuzzleConfig
         let selectedGateConfig: GatePuzzleConfig
         let selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
         let selectedLetterSoundRepeatSeconds: Double
@@ -96,6 +101,7 @@ final class AppSession {
             selectedLevelName = loaded.level.name
             selectedLevelMusic = loaded.level.music
             selectedGameMusic = loaded.level.gameMusic
+            selectedPitConfig = loaded.level.pit
             selectedGateConfig = loaded.level.gate
             selectedDestructibleWallConfig = loaded.level.destructibleWall
             selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
@@ -104,20 +110,22 @@ final class AppSession {
             selectedLevelName = LevelConfig.fallback.name
             selectedLevelMusic = LevelConfig.fallback.music
             selectedGameMusic = LevelConfig.fallback.gameMusic
+            selectedPitConfig = LevelConfig.fallback.pit
             selectedGateConfig = LevelConfig.fallback.gate
             selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
             selectedLetterSoundRepeatSeconds = LevelConfig.fallback.letterSoundRepeatSeconds
         }
 
-        let musicSettings: MusicSettings
+        let soundSettings: SoundSettings
         do {
-            let loaded = try MusicSettings.loadFromBundle()
+            let loaded = try SoundSettings.loadFromBundle()
             try loaded.validate()
-            musicSettings = loaded
+            soundSettings = loaded
         } catch {
-            musicSettings = .fallback
+            soundSettings = .fallback
         }
-        BackgroundMusicController.shared.configure(fadeSeconds: musicSettings.fadeSeconds)
+        BackgroundMusicController.shared.configure(fadeSeconds: soundSettings.fadeSeconds)
+        SoundEffectsController.shared.configure(commonFx: soundSettings.fx)
         AudioPreferences.shared.applyToControllers()
 
         let playerConfig: PlayerConfig
@@ -160,6 +168,7 @@ final class AppSession {
             selectedLevelName: selectedLevelName,
             selectedLevelMusic: selectedLevelMusic,
             selectedGameMusic: selectedGameMusic,
+            selectedPitConfig: selectedPitConfig,
             selectedGateConfig: selectedGateConfig,
             selectedDestructibleWallConfig: selectedDestructibleWallConfig,
             selectedLetterSoundRepeatSeconds: selectedLetterSoundRepeatSeconds,
@@ -182,6 +191,7 @@ final class AppSession {
         selectedLevelResourceName = resourceName
         selectedLevelMusic = loaded.level.music
         selectedGameMusic = loaded.level.gameMusic
+        selectedPitConfig = loaded.level.pit
         selectedGateConfig = loaded.level.gate
         selectedDestructibleWallConfig = loaded.level.destructibleWall
         selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds

@@ -26,8 +26,8 @@ final class GameScene: SKScene {
 
     /// Called when the player contacts an enemy (same occupancy tile).
     var onEnemyContact: ((UUID) -> Void)?
-    /// Called when the player enters a pit tile.
-    var onPitEntered: (() -> Void)?
+    /// Called when the player enters a pit tile (`approach` retreat tile).
+    var onPitEntered: ((_ approach: GridCoord) -> Void)?
     /// Called when the player walks onto a destructible wall (`wall` tile, `approach` retreat tile).
     var onBoomEntered: ((_ wall: GridCoord, _ approach: GridCoord) -> Void)?
     /// Called when the player walks onto a gate (`gate` tile, `approach` retreat tile).
@@ -162,7 +162,8 @@ final class GameScene: SKScene {
 
             if result.didEnterPit {
                 isPausedForEncounter = true
-                onPitEntered?()
+                let approach = result.pitApproachCoord ?? world.playerPosition ?? world.spawn
+                onPitEntered?(approach)
                 break
             }
 
@@ -210,12 +211,26 @@ final class GameScene: SKScene {
         }
     }
 
-    /// Relocates off the pit, then resumes simulation after the PIT! screen is dismissed.
-    func resolvePitEncounter(completion: (() -> Void)? = nil) {
+    /// Relocates off the pit after a successful escape, then resumes simulation.
+    func resolvePitWin(completion: (() -> Void)? = nil) {
         world.relocatePlayerOffPit()
         pendingInput = PendingInput()
         showFixedZoomView()
         captureContinueAndSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
+    }
+
+    /// Retreats the player to the approach tile after a pit timeout (pit stays).
+    func resolvePitTimeout(approach: GridCoord, completion: (() -> Void)? = nil) {
+        world.setPlayerPosition(approach)
+        pendingInput = PendingInput()
+        renderer.syncEntities(world.entities)
+        renderer.render(world: world, focus: viewportFocus)
+        showFixedZoomView()
+        // Do not overwrite Continue — the last safe world remains before the failed attempt.
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()

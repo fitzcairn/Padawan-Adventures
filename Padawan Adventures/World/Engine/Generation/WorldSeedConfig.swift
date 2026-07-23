@@ -401,6 +401,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidGateWordSoundRepeat(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
+    case invalidPitTimer(Double)
+    case invalidPitWords
     case invalidDestructibleWallTimer(Double)
     case invalidDestructibleWallLetterSoundRepeat(Double)
     case invalidDestructibleWallIncorrectReplayDelay(Double)

@@ -254,7 +254,8 @@ struct MovementSystem: Sendable {
 
         if tile.isPit {
             let resolution = world.resolvePit(at: end)
-            events.append(.pit(resolution))
+            let approach = segmentStart ?? end
+            events.append(.pit(resolution: resolution, approach: approach))
             reset()
             return
         }
@@ -317,7 +318,8 @@ struct MovementSystem: Sendable {
 
 enum MovementEvent: Equatable, Sendable {
     case reached(GridCoord)
-    case pit(PitResolution)
+    /// `approach` is the floor tile the player walked from (timeout retreat).
+    case pit(resolution: PitResolution, approach: GridCoord)
     /// `wall` is the occupied soft-wall tile; `approach` is the floor tile the player walked from.
     case boom(wall: GridCoord, approach: GridCoord)
     /// `gate` is the occupied gate tile; `approach` is the floor tile the player walked from.

@@ -5,7 +5,7 @@ import Foundation
 final class BackgroundMusicController {
     static let shared = BackgroundMusicController()
 
-    private(set) var fadeSeconds: TimeInterval = MusicSettings.fallback.fadeSeconds
+    private(set) var fadeSeconds: TimeInterval = SoundSettings.fallback.fadeSeconds
     private(set) var currentTrackID: String?
     private(set) var isPausedForBackground = false
     private(set) var musicEnabled = true

@@ -376,10 +376,7 @@ final class GateScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
-        let winTrack = puzzleConfig.winSound
-        if !winTrack.isEmpty {
-            SoundEffectsController.shared.play(trackID: winTrack)
-        }
+        SoundEffectsController.shared.playCommon(event: "win", override: puzzleConfig.winSound)
         if case let .won(stars) = engine.outcome {
             gateDelegate?.gateSceneDidWin(starsAwarded: stars)
         } else {

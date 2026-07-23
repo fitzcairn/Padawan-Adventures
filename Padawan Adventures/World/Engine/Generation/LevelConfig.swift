@@ -42,8 +42,8 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     var timerSeconds: Double
     /// Max seconds between word-sound plays before auto-replay.
     var wordSoundRepeatSeconds: Double
-    /// Track basename played when the puzzle is solved.
-    var winSound: String
+    /// Optional override for shared `sound.yaml` `fx.win`; `nil` uses the common track.
+    var winSound: String?
     /// Track basename played in the world when the gate strip opens after a win.
     var gateOpened: String
     /// Extra random letters beyond the chosen word (total sprites = word length + this).
@@ -65,7 +65,6 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     nonisolated static let fallback = GatePuzzleConfig(
         timerSeconds: 30,
         wordSoundRepeatSeconds: 10,
-        winSound: "sfx_gate_win",
         gateOpened: "sfx_gate_opened",
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words
@@ -74,7 +73,7 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     nonisolated init(
         timerSeconds: Double,
         wordSoundRepeatSeconds: Double = 10,
-        winSound: String = "sfx_gate_win",
+        winSound: String? = nil,
         gateOpened: String = "sfx_gate_opened",
         numPaddingLetters: Int = 6,
         wordIDs: [String]? = nil,
@@ -82,7 +81,7 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     ) {
         self.timerSeconds = timerSeconds
         self.wordSoundRepeatSeconds = wordSoundRepeatSeconds
-        self.winSound = winSound.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.winSound = Self.normalizedOptionalTrack(winSound)
         self.gateOpened = gateOpened.trimmingCharacters(in: .whitespacesAndNewlines)
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
@@ -97,10 +96,9 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
             Double.self,
             forKey: .wordSoundRepeatSeconds
         ) ?? Self.fallback.wordSoundRepeatSeconds
-        winSound = (
+        winSound = Self.normalizedOptionalTrack(
             try container.decodeIfPresent(String.self, forKey: .winSound)
-                ?? Self.fallback.winSound
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        )
         gateOpened = (
             try container.decodeIfPresent(String.self, forKey: .gateOpened)
                 ?? Self.fallback.gateOpened
@@ -131,9 +129,6 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
         }
         guard numPaddingLetters >= 0 else {
             throw WorldSeedError.invalidGatePaddingLetters(numPaddingLetters)
-        }
-        guard !winSound.isEmpty else {
-            throw WorldSeedError.invalidGateWords
         }
         guard !gateOpened.isEmpty else {
             throw WorldSeedError.invalidGateWords
@@ -174,6 +169,110 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
             }
             .sorted { $0.word < $1.word }
     }
+
+    /// Trims YAML track basenames; blank values mean “use shared `sound.yaml` FX”.
+    static func normalizedOptionalTrack(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+}
+
+/// Per-level pit spelling-hop settings from `pit:` in level YAML.
+/// Vocabulary lives in shared `Vocab/words.yaml`; levels may optionally subset via `pit.words: [id, …]`.
+nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
+    var timerSeconds: Double
+    /// Optional override for shared `sound.yaml` `fx.win`; `nil` uses the common track.
+    var winSound: String?
+    /// Optional override for shared `sound.yaml` `fx.lose`; `nil` uses the common track.
+    var failSound: String?
+    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
+    var wordIDs: [String]?
+    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    var words: [GateWord]
+
+    enum CodingKeys: String, CodingKey {
+        case timerSeconds = "timer_seconds"
+        case winSound = "win_sound"
+        case failSound = "fail_sound"
+        case words
+    }
+
+    nonisolated static let fallback = PitPuzzleConfig(
+        timerSeconds: 30,
+        words: WordCatalog.fallback.words.filter { ["cat", "dog", "star"].contains($0.word) }
+    )
+
+    nonisolated init(
+        timerSeconds: Double,
+        winSound: String? = nil,
+        failSound: String? = nil,
+        wordIDs: [String]? = nil,
+        words: [GateWord]
+    ) {
+        self.timerSeconds = timerSeconds
+        self.winSound = GatePuzzleConfig.normalizedOptionalTrack(winSound)
+        self.failSound = GatePuzzleConfig.normalizedOptionalTrack(failSound)
+        self.wordIDs = wordIDs?.map { $0.lowercased() }
+        self.words = GatePuzzleConfig.normalizedWords(words)
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        timerSeconds = try container.decodeIfPresent(Double.self, forKey: .timerSeconds)
+            ?? Self.fallback.timerSeconds
+        winSound = GatePuzzleConfig.normalizedOptionalTrack(
+            try container.decodeIfPresent(String.self, forKey: .winSound)
+        )
+        failSound = GatePuzzleConfig.normalizedOptionalTrack(
+            try container.decodeIfPresent(String.self, forKey: .failSound)
+        )
+
+        if container.contains(.words) {
+            wordIDs = try container.decode([String].self, forKey: .words)
+                .map { $0.lowercased() }
+        } else {
+            wordIDs = nil
+        }
+        // Filled by `resolveWords(from:)` after decode.
+        words = []
+    }
+
+    mutating func resolveWords(from catalog: WordCatalog) throws {
+        do {
+            // `nil` wordIDs → full shared catalog (same as gate); YAML subsets via `words: [id, …]`.
+            words = try catalog.resolve(ids: wordIDs)
+        } catch WorldSeedError.invalidGateWords {
+            throw WorldSeedError.invalidPitWords
+        }
+    }
+
+    func validate() throws {
+        guard timerSeconds > 0 else {
+            throw WorldSeedError.invalidPitTimer(timerSeconds)
+        }
+        guard !words.isEmpty else {
+            throw WorldSeedError.invalidPitWords
+        }
+        let letterSet = CharacterSet.letters
+        for entry in words {
+            guard !entry.word.isEmpty,
+                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
+                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw WorldSeedError.invalidPitWords
+            }
+            var prefix = ""
+            for character in entry.word {
+                prefix.append(character)
+                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !track.isEmpty else {
+                    throw WorldSeedError.invalidPitWords
+                }
+            }
+        }
+    }
 }
 
 /// A destructible-wall puzzle letter: glyph + pronunciation/name track basenames.
@@ -193,8 +292,8 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
     var incorrectReplayDelaySeconds: Double
     /// Expected number of letters chosen for a round (sampled in `1...letters.count`).
     var letterCountMean: Double
-    /// Track basename played on each correct match (“yay!”).
-    var winSound: String
+    /// Optional override for shared `sound.yaml` `fx.correct`; `nil` uses the common track.
+    var correctSound: String?
     /// Track basename played in the world when the soft wall is destroyed after a win.
     var wallDestroyed: String
     /// Optional subset of shared catalog ids (`nil` = use the full catalog).
@@ -207,7 +306,7 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
         case incorrectReplayDelaySeconds = "incorrect_replay_delay_seconds"
         case letterCountMean = "letter_count_mean"
-        case winSound = "win_sound"
+        case correctSound = "correct_sound"
         case wallDestroyed = "wall_destroyed"
         case letters
     }
@@ -217,7 +316,6 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         letterSoundRepeatSeconds: 3,
         incorrectReplayDelaySeconds: 1,
         letterCountMean: 4,
-        winSound: "sfx_wall_yay",
         wallDestroyed: "sfx_wall_destroyed",
         letters: LetterCatalog.fallback.letters
     )
@@ -227,7 +325,7 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         letterSoundRepeatSeconds: Double = 3,
         incorrectReplayDelaySeconds: Double = 1,
         letterCountMean: Double = 4,
-        winSound: String = "sfx_wall_yay",
+        correctSound: String? = nil,
         wallDestroyed: String = "sfx_wall_destroyed",
         letterIDs: [String]? = nil,
         letters: [DestructibleWallLetter]
@@ -236,7 +334,7 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
         self.letterCountMean = letterCountMean
-        self.winSound = winSound.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.correctSound = GatePuzzleConfig.normalizedOptionalTrack(correctSound)
         self.wallDestroyed = wallDestroyed.trimmingCharacters(in: .whitespacesAndNewlines)
         self.letterIDs = letterIDs?.map { $0.lowercased() }
         self.letters = Self.normalizedLetters(letters)
@@ -256,10 +354,9 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         ) ?? Self.fallback.incorrectReplayDelaySeconds
         letterCountMean = try container.decodeIfPresent(Double.self, forKey: .letterCountMean)
             ?? Self.fallback.letterCountMean
-        winSound = (
-            try container.decodeIfPresent(String.self, forKey: .winSound)
-                ?? Self.fallback.winSound
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        correctSound = GatePuzzleConfig.normalizedOptionalTrack(
+            try container.decodeIfPresent(String.self, forKey: .correctSound)
+        )
         wallDestroyed = (
             try container.decodeIfPresent(String.self, forKey: .wallDestroyed)
                 ?? Self.fallback.wallDestroyed
@@ -291,9 +388,6 @@ nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable 
         }
         guard letterCountMean >= 1 else {
             throw WorldSeedError.invalidDestructibleWallLetterCountMean(letterCountMean)
-        }
-        guard !winSound.isEmpty else {
-            throw WorldSeedError.invalidDestructibleWallLetters
         }
         guard !wallDestroyed.isEmpty else {
             throw WorldSeedError.invalidDestructibleWallLetters
@@ -391,6 +485,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var room: WorldSeedConfig.RoomParams
     var enemies: WorldSeedConfig.EnemiesSpawnConfig?
     var pickups: WorldSeedConfig.PickupsSpawnConfig?
+    var pit: PitPuzzleConfig
     var gate: GatePuzzleConfig
     var destructibleWall: DestructibleWallPuzzleConfig
 
@@ -407,6 +502,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case room
         case enemies
         case pickups
+        case pit
         case gate
         case destructibleWall = "destructible_wall"
     }
@@ -435,6 +531,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             health: .init(spawnChancePerRoom: 0.8),
             energy: .init(spawnChancePerRoom: 0.8)
         ),
+        pit: .fallback,
         gate: .fallback,
         destructibleWall: .fallback
     )
@@ -460,6 +557,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         room: WorldSeedConfig.RoomParams,
         enemies: WorldSeedConfig.EnemiesSpawnConfig? = nil,
         pickups: WorldSeedConfig.PickupsSpawnConfig? = nil,
+        pit: PitPuzzleConfig = .fallback,
         gate: GatePuzzleConfig = .fallback,
         destructibleWall: DestructibleWallPuzzleConfig = .fallback
     ) {
@@ -475,6 +573,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.room = room
         self.enemies = enemies
         self.pickups = pickups
+        self.pit = pit
         self.gate = gate
         self.destructibleWall = destructibleWall
     }
@@ -492,6 +591,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         room = try container.decode(WorldSeedConfig.RoomParams.self, forKey: .room)
         enemies = try container.decodeIfPresent(WorldSeedConfig.EnemiesSpawnConfig.self, forKey: .enemies)
         pickups = try container.decodeIfPresent(WorldSeedConfig.PickupsSpawnConfig.self, forKey: .pickups)
+        pit = try container.decodeIfPresent(PitPuzzleConfig.self, forKey: .pit) ?? .fallback
         gate = try container.decodeIfPresent(GatePuzzleConfig.self, forKey: .gate) ?? .fallback
         let decodedWall = try container.decodeIfPresent(
             DestructibleWallPuzzleConfig.self,
@@ -509,7 +609,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
                 letterSoundRepeatSeconds: topLevelRepeat,
                 incorrectReplayDelaySeconds: decodedWall.incorrectReplayDelaySeconds,
                 letterCountMean: decodedWall.letterCountMean,
-                winSound: decodedWall.winSound,
+                correctSound: decodedWall.correctSound,
                 wallDestroyed: decodedWall.wallDestroyed,
                 letterIDs: decodedWall.letterIDs,
                 letters: decodedWall.letters
@@ -523,6 +623,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         guard letterSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidDestructibleWallLetterSoundRepeat(letterSoundRepeatSeconds)
         }
+        try pit.validate()
         try gate.validate()
         try destructibleWall.validate()
     }
@@ -577,6 +678,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             var level = try YAMLDecoder().decode(LevelConfig.self, from: yaml)
             let words = try wordCatalog ?? Self.loadWordCatalog()
             let letters = try letterCatalog ?? Self.loadLetterCatalog()
+            try level.pit.resolveWords(from: words)
             try level.gate.resolveWords(from: words)
             try level.destructibleWall.resolveLetters(from: letters)
             try level.validate()

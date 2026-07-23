@@ -67,9 +67,9 @@ final class GameViewController: LandscapeHostingController {
             self?.playEnemyContactFx(enemyID: enemyID)
             self?.presentEnemyFight(enemyID: enemyID)
         }
-        scene.onPitEntered = { [weak self] in
+        scene.onPitEntered = { [weak self] approach in
             self?.playPlayerFx("pit")
-            self?.presentPit()
+            self?.presentPit(approach: approach)
         }
         scene.onBoomEntered = { [weak self] wall, approach in
             self?.playPlayerFx("boom")
@@ -256,14 +256,17 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
-    private func presentPit() {
+    private func presentPit(approach: GridCoord) {
         guard let scene = gameScene else { return }
         if DefeatRules.isDefeatedByPit(health: scene.currentWorld.healthCount) {
             presentDefeat()
             return
         }
-        scene.deductHealth()
-        hud?.removeHeart()
+
+        let puzzleConfig = session.selectedPitConfig
+        let playerFx = session.playerConfig.fx
+        let hudConfig = loadHudConfig()
+        let outcomeBox = PitOutcomeBox()
 
         BackgroundMusicController.shared.apply(session.selectedGameMusic.pitCue)
 
@@ -271,7 +274,15 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: {
                 FullscreenOverlayHost { finish in
-                    PitMinigameView(onFinished: finish)
+                    PitMinigameView(
+                        puzzleConfig: puzzleConfig,
+                        playerFx: playerFx,
+                        hudConfig: hudConfig,
+                        onFinished: { outcome in
+                            outcomeBox.outcome = outcome
+                            finish()
+                        }
+                    )
                 }
             },
             onResolved: { [weak self] done in
@@ -282,11 +293,23 @@ final class GameViewController: LandscapeHostingController {
                 BackgroundMusicController.shared.apply(
                     MusicCue.parse(self.session.selectedLevelMusic)
                 )
-                Task {
-                    await self.session.recordStat { $0.pitsCrossed += 1 }
-                    await self.awardLevelStar()
+                switch outcomeBox.outcome {
+                case let .won(starsAwarded):
+                    Task {
+                        await self.session.recordStat { $0.pitsCrossed += 1 }
+                        await self.awardLevelStars(count: starsAwarded)
+                    }
+                    scene.resolvePitWin(completion: done)
+                case .lost, .none:
+                    scene.deductHealth()
+                    self.hud?.removeHeart()
+                    if DefeatRules.isDefeatedByPit(health: scene.currentWorld.healthCount) {
+                        done()
+                        self.presentDefeat()
+                    } else {
+                        scene.resolvePitTimeout(approach: approach, completion: done)
+                    }
                 }
-                scene.resolvePitEncounter(completion: done)
             }
         )
     }
@@ -490,6 +513,11 @@ final class GameViewController: LandscapeHostingController {
 /// Captures combat result across the overlay finish callback.
 private final class CombatOutcomeBox {
     var outcome: CombatOutcome?
+}
+
+/// Captures pit puzzle result across the overlay finish callback.
+private final class PitOutcomeBox {
+    var outcome: PitOutcome?
 }
 
 /// Captures gate puzzle result across the overlay finish callback.

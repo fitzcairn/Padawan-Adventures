@@ -24,7 +24,7 @@ struct PitResolutionTests {
         movement.begin(path: [start, pit])
 
         let events = movement.update(deltaTime: 10, world: &world)
-        #expect(events.contains(.pit(.hazard)))
+        #expect(events.contains(.pit(resolution: .hazard, approach: start)))
         #expect(world.playerPosition == pit)
         #expect(movement.isMoving == false)
     }

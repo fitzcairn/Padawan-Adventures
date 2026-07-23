@@ -37,12 +37,20 @@ room:
   # Probability that a door opening becomes a gate strip.
   gate_chance: 0.5
 
+# Pit spelling-hop minigame (triggered on pit tile contact).
+# Stars awarded on win = number of letters in the solved word.
+# Optional `win_sound` / `fail_sound` override shared `sound.yaml` (`fx.win` / `fx.lose`).
+pit:
+  timer_seconds: 30
+  # Selectable pit words for this level (keys into shared `Vocab/words.yaml`).
+  words: [cat, dog, star]
+
 # Gate letter-puzzle minigame (triggered on gate tile contact).
 # Stars awarded on win = number of letters in the solved word.
+# Optional `win_sound` overrides shared `sound.yaml` (`fx.win`).
 gate:
   timer_seconds: 30
   word_sound_repeat_seconds: 10
-  win_sound: sfx_gate_win
   # Played in the world when the gate strip opens after a win.
   gate_opened: sfx_gate_opened
   # Extra random letters beyond the chosen word (total sprites = word length + this).
@@ -52,12 +60,12 @@ gate:
 
 # Destructible-wall letter-matching minigame (triggered on soft-wall contact).
 # Stars awarded on win = number of letters chosen for the round.
+# Optional `correct_sound` overrides shared `sound.yaml` (`fx.correct`).
 destructible_wall:
   timer_seconds: 30
   # Optional override; defaults to top-level `letter_sound_repeat_seconds`.
   incorrect_replay_delay_seconds: 1
   letter_count_mean: 3
-  win_sound: sfx_wall_yay
   # Played in the world when the soft wall is destroyed after a win.
   wall_destroyed: sfx_wall_destroyed
   # Selectable letters for this level (keys into shared `Vocab/letters.yaml` for pronunciation/name FX).

@@ -23,7 +23,6 @@ nonisolated struct DestructibleWallMinigameEngine {
         var letterSoundRepeatSeconds: Double
         var incorrectReplayDelaySeconds: Double
         var letterCountMean: Double
-        var winSound: String
         var letters: [DestructibleWallLetter]
 
         init(from puzzle: DestructibleWallPuzzleConfig) {
@@ -31,7 +30,6 @@ nonisolated struct DestructibleWallMinigameEngine {
             letterSoundRepeatSeconds = puzzle.letterSoundRepeatSeconds
             incorrectReplayDelaySeconds = puzzle.incorrectReplayDelaySeconds
             letterCountMean = puzzle.letterCountMean
-            winSound = puzzle.winSound
             letters = puzzle.letters
         }
 
@@ -40,14 +38,12 @@ nonisolated struct DestructibleWallMinigameEngine {
             letterSoundRepeatSeconds: Double = 3,
             incorrectReplayDelaySeconds: Double = 1,
             letterCountMean: Double = 4,
-            winSound: String = "sfx_wall_yay",
             letters: [DestructibleWallLetter]
         ) {
             self.timerSeconds = timerSeconds
             self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
             self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
             self.letterCountMean = letterCountMean
-            self.winSound = winSound.trimmingCharacters(in: .whitespacesAndNewlines)
             self.letters = letters.map {
                 DestructibleWallLetter(
                     letter: $0.letter.lowercased(),

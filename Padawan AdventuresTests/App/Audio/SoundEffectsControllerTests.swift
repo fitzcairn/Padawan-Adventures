@@ -63,6 +63,29 @@ struct SoundEffectsControllerTests {
         #expect(mock.playedTrackIDs == ["sfx_player_move", "sfx_pit"])
     }
 
+    @Test func playCommonUsesConfiguredTable() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.configure(commonFx: SoundEffectTable(events: [
+            "win": "sfx_win",
+            "error": "sfx_error",
+        ]))
+        controller.playCommon(event: "win")
+        controller.playCommon(event: "error")
+        controller.playCommon(event: "missing")
+        #expect(mock.playedTrackIDs == ["sfx_win", "sfx_error"])
+    }
+
+    @Test func playCommonOverrideBeatsSharedTable() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.configure(commonFx: SoundEffectTable(events: ["win": "sfx_win"]))
+        controller.playCommon(event: "win", override: "sfx_win_alt")
+        controller.playCommon(event: "win", override: "   ")
+        controller.playCommon(event: "win", override: nil)
+        #expect(mock.playedTrackIDs == ["sfx_win_alt", "sfx_win", "sfx_win"])
+    }
+
     @Test func playEventIgnoresUnknownKey() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
