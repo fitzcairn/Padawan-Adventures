@@ -10,12 +10,7 @@ struct GateResultOverlay: View {
     let onFinished: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { onFinished() }
-
+        DismissibleOverlay(accessibilityRootID: rootAccessibilityID, onFinished: onFinished) {
             VStack(spacing: 28) {
                 Text(title)
                     .font(.system(size: 36, weight: .bold))
@@ -24,19 +19,14 @@ struct GateResultOverlay: View {
                     .padding(.horizontal, 24)
                     .accessibilityIdentifier(titleAccessibilityID)
 
-                if case let .unlocked(starsAwarded) = kind, starsAwarded > 0 {
-                    HStack(spacing: 16) {
-                        ForEach(0..<starsAwarded, id: \.self) { _ in
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 54))
-                                .foregroundStyle(.yellow)
-                        }
-                    }
-                    .accessibilityIdentifier("gate.result.unlocked.stars")
+                if case let .unlocked(starsAwarded) = kind {
+                    OverlayStars(
+                        count: starsAwarded,
+                        accessibilityID: "gate.result.unlocked.stars"
+                    )
                 }
             }
         }
-        .accessibilityIdentifier(rootAccessibilityID)
     }
 
     private var title: String {

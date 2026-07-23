@@ -81,4 +81,23 @@ struct PlayerGameStateStarsTests {
 
         #expect(inventory.artifacts == ["key.fill", "sparkles"])
     }
+
+    @Test func resetForNewGameClearsProgressAndRestoresVitals() {
+        var state = PlayerGameState(health: 1, energy: 1, totalStars: 9)
+        state.markLevelCompleted("level_1", artifact: "key.fill")
+        state.levels["level_1"]?.starsEarned = 5
+        state.levels["level_1"]?.starsCurrent = 2
+        state.lastLevelStarted = "level_1"
+        state.stats.enemiesKilled = 3
+
+        state.resetForNewGame(health: 5, energy: 4)
+
+        #expect(state.inventory.artifacts.isEmpty)
+        #expect(state.totalStars == 0)
+        #expect(state.levels.isEmpty)
+        #expect(state.lastLevelStarted == nil)
+        #expect(state.health == 5)
+        #expect(state.energy == 4)
+        #expect(state.stats.enemiesKilled == 3)
+    }
 }

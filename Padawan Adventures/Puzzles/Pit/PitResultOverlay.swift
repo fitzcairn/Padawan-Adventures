@@ -10,30 +10,20 @@ struct PitResultOverlay: View {
     let onFinished: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { onFinished() }
-
+        DismissibleOverlay(accessibilityRootID: rootAccessibilityID, onFinished: onFinished) {
             VStack(spacing: 28) {
                 titleView
                     .padding(.horizontal, 24)
                     .accessibilityIdentifier(titleAccessibilityID)
 
-                if case let .escaped(_, starsAwarded) = kind, starsAwarded > 0 {
-                    HStack(spacing: 16) {
-                        ForEach(0..<starsAwarded, id: \.self) { _ in
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 54))
-                                .foregroundStyle(.yellow)
-                        }
-                    }
-                    .accessibilityIdentifier("pit.result.escaped.stars")
+                if case let .escaped(_, starsAwarded) = kind {
+                    OverlayStars(
+                        count: starsAwarded,
+                        accessibilityID: "pit.result.escaped.stars"
+                    )
                 }
             }
         }
-        .accessibilityIdentifier(rootAccessibilityID)
     }
 
     @ViewBuilder

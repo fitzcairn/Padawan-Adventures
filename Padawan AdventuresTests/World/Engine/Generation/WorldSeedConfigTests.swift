@@ -198,11 +198,40 @@ struct WorldSeedConfigTests {
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.display.tileWidth == 48)
         #expect(config.display.tileHeight == 24)
+        #expect(config.display.overlayDismissSeconds == 6)
         let iso = config.display.makeIsometricConfig()
         #expect(iso.tileWidth == 48 as CGFloat)
         #expect(iso.tileHeight == 24 as CGFloat)
         #expect(iso.wallHeight == 36 as CGFloat)
         #expect(iso.storyHeight == 48 as CGFloat)
+    }
+
+    @Test func decodesOverlayDismissSeconds() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 10
+          height: 10
+          stories: 1
+        display:
+          tile_width: 48
+          tile_height: 24
+          overlay_dismiss_seconds: 3.5
+        generation:
+          algorithm: rooms_doors
+          room_count: 2
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 12
+            pit_chance: 0.0
+            wall_destructible_chance: 0.0
+            gate_chance: 0.0
+        """
+
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.display.overlayDismissSeconds == 3.5)
     }
 
     @Test func rejectsInvalidStoryCount() throws {

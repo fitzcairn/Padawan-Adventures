@@ -271,6 +271,19 @@ final class AppSession {
         await persistPlayerState()
     }
 
+    /// Starts a fresh game: empty inventory, zero stars, default vitals, no mid-run save.
+    func beginNewGame() async {
+        guard var state = playerState else { return }
+        state.resetForNewGame(
+            health: playerConfig.startingHealth,
+            energy: playerConfig.startingEnergy
+        )
+        playerState = state
+        await persistPlayerState()
+        try? await saveService.delete()
+        await refreshContinueEligibility()
+    }
+
     func markLevelStarted(resourceName: String) async {
         playerState?.markLevelStarted(resourceName)
         selectedLevelResourceName = resourceName

@@ -199,7 +199,7 @@ final class GameViewController: LandscapeHostingController {
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
-                FullscreenOverlayHost { finish in
+                self.makeOverlayHost { finish in
                     EnemyMinigameView(
                         enemyType: enemyType,
                         healthCount: healthCount,
@@ -255,6 +255,17 @@ final class GameViewController: LandscapeHostingController {
         }
     }
 
+    /// Builds a fullscreen host with world.yaml overlay dismiss timing applied.
+    private func makeOverlayHost<Content: View>(
+        @ViewBuilder content: @escaping (_ finish: @escaping () -> Void) -> Content
+    ) -> FullscreenOverlayHost {
+        let dismissSeconds = session.seedConfig.display.overlayDismissSeconds
+        return FullscreenOverlayHost { finish in
+            content(finish)
+                .environment(\.overlayDismissSeconds, dismissSeconds)
+        }
+    }
+
     @MainActor
     private func presentPit(approach: GridCoord) {
         guard let scene = gameScene else { return }
@@ -273,7 +284,7 @@ final class GameViewController: LandscapeHostingController {
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
-                FullscreenOverlayHost { finish in
+                self.makeOverlayHost { finish in
                     PitMinigameView(
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
@@ -321,7 +332,7 @@ final class GameViewController: LandscapeHostingController {
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
-                FullscreenOverlayHost { finish in
+                self.makeOverlayHost { finish in
                     DefeatView(onFinished: finish)
                 }
             },
@@ -353,7 +364,7 @@ final class GameViewController: LandscapeHostingController {
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
-                FullscreenOverlayHost { finish in
+                self.makeOverlayHost { finish in
                     DestructibleWallMinigameView(
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
@@ -399,7 +410,7 @@ final class GameViewController: LandscapeHostingController {
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
-                FullscreenOverlayHost { finish in
+                self.makeOverlayHost { finish in
                     GateMinigameView(
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
@@ -461,7 +472,7 @@ final class GameViewController: LandscapeHostingController {
             overlayPresenter.present(
                 fadeWorldOut: false,
                 makeViewController: {
-                    FullscreenOverlayHost { finish in
+                    self.makeOverlayHost { finish in
                         YouWinView(
                             didBeatPreviousScore: didBeatPrevious,
                             newScore: newScore,

@@ -118,32 +118,41 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         }
     }
 
-    /// On-screen isometric tile footprint (zoom).
+    /// On-screen isometric tile footprint (zoom) and shared UI display knobs.
     nonisolated struct DisplayParams: Codable, Equatable, Sendable {
         var tileWidth: Int
         var tileHeight: Int
         var wallHeight: Int?
         var storyHeight: Int?
+        /// Seconds before overlays auto-dismiss (tap also dismisses). `0` disables auto-dismiss.
+        var overlayDismissSeconds: Double
 
-        nonisolated static let `default` = DisplayParams(tileWidth: 40, tileHeight: 40)
+        nonisolated static let `default` = DisplayParams(
+            tileWidth: 40,
+            tileHeight: 40,
+            overlayDismissSeconds: 6
+        )
 
         enum CodingKeys: String, CodingKey {
             case tileWidth = "tile_width"
             case tileHeight = "tile_height"
             case wallHeight = "wall_height"
             case storyHeight = "story_height"
+            case overlayDismissSeconds = "overlay_dismiss_seconds"
         }
 
         nonisolated init(
             tileWidth: Int = 40,
             tileHeight: Int = 40,
             wallHeight: Int? = nil,
-            storyHeight: Int? = nil
+            storyHeight: Int? = nil,
+            overlayDismissSeconds: Double = 6
         ) {
             self.tileWidth = tileWidth
             self.tileHeight = tileHeight
             self.wallHeight = wallHeight
             self.storyHeight = storyHeight
+            self.overlayDismissSeconds = overlayDismissSeconds
         }
 
         init(from decoder: Decoder) throws {
@@ -152,6 +161,10 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             tileHeight = try container.decodeIfPresent(Int.self, forKey: .tileHeight) ?? 40
             wallHeight = try container.decodeIfPresent(Int.self, forKey: .wallHeight)
             storyHeight = try container.decodeIfPresent(Int.self, forKey: .storyHeight)
+            overlayDismissSeconds = try container.decodeIfPresent(
+                Double.self,
+                forKey: .overlayDismissSeconds
+            ) ?? 6
         }
 
         func makeIsometricConfig() -> IsometricConfig {

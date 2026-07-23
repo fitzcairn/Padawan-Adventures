@@ -26,7 +26,10 @@ struct MenuView: View {
                 }
 
                 AppLargeButton(title: "NEW GAME", accessibilityID: "menu.newGame") {
-                    router.navigate(to: .levelSelect)
+                    Task {
+                        await session.beginNewGame()
+                        router.navigate(to: .levelSelect)
+                    }
                 }
 
                 AppLargeButton(title: "LEADERBOARD", accessibilityID: "menu.leaderboard") {

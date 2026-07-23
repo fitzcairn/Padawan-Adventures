@@ -6,11 +6,12 @@ struct YouWinView: View {
     let onFinished: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture { onFinished() }
-
+        // Host chrome already provides the dark backdrop; keep this layer clear for taps.
+        DismissibleOverlay(
+            accessibilityRootID: "youWin.root",
+            onFinished: onFinished,
+            background: { Color.clear }
+        ) {
             VStack(spacing: 12) {
                 Text("You win!")
                     .font(.system(size: 44, weight: .bold))
@@ -25,6 +26,5 @@ struct YouWinView: View {
                 }
             }
         }
-        .accessibilityIdentifier("youWin.root")
     }
 }

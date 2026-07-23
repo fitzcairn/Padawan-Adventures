@@ -279,4 +279,13 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.health = health
         self.energy = energy
     }
+
+    /// Clears run progress for a fresh game (inventory, stars, level flags) and restores starting vitals.
+    mutating func resetForNewGame(health: Int, energy: Int) {
+        lastLevelStarted = nil
+        levels = [:]
+        inventory = PlayerInventory()
+        totalStars = 0
+        resetVitals(health: health, energy: energy)
+    }
 }
