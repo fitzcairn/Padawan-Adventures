@@ -20,16 +20,12 @@ nonisolated enum DestructibleWallEngineEvent: Equatable, Sendable {
 nonisolated struct DestructibleWallMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var timerSeconds: Double
-        var letterSoundRepeatSeconds: Double
-        var incorrectReplayDelaySeconds: Double
         var letterCountMin: Int
         var letterCountMax: Int
         var letters: [DestructibleWallLetter]
 
         init(from puzzle: DestructibleWallPuzzleConfig) {
             timerSeconds = puzzle.timerSeconds
-            letterSoundRepeatSeconds = puzzle.letterSoundRepeatSeconds
-            incorrectReplayDelaySeconds = puzzle.incorrectReplayDelaySeconds
             letterCountMin = puzzle.letterCountMin
             letterCountMax = puzzle.letterCountMax
             letters = puzzle.letters
@@ -37,15 +33,11 @@ nonisolated struct DestructibleWallMinigameEngine {
 
         init(
             timerSeconds: Double,
-            letterSoundRepeatSeconds: Double = 3,
-            incorrectReplayDelaySeconds: Double = 1,
             letterCountMin: Int = 2,
             letterCountMax: Int = 4,
             letters: [DestructibleWallLetter]
         ) {
             self.timerSeconds = timerSeconds
-            self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
-            self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
             self.letterCountMin = letterCountMin
             self.letterCountMax = letterCountMax
             self.letters = letters.map {
@@ -77,8 +69,6 @@ nonisolated struct DestructibleWallMinigameEngine {
     private(set) var isFrozen = false
 
     private var lastDisplayedSecond: Int
-    /// Absolute elapsed time when the next target pronunciation should auto-play.
-    private var nextTargetSoundElapsed: Double = 0
     private var rng: any RandomNumberGenerator
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
@@ -105,8 +95,6 @@ nonisolated struct DestructibleWallMinigameEngine {
         outcome = nil
         matchedIDs = []
         lastDisplayedSecond = Int(ceil(config.timerSeconds))
-        // Scene plays the first prompt; auto-replay waits for the repeat interval (or mark).
-        nextTargetSoundElapsed = config.letterSoundRepeatSeconds
         letters = pickRoundLetters()
         pickNextTarget()
     }
@@ -117,11 +105,6 @@ nonisolated struct DestructibleWallMinigameEngine {
     }
 
     var hasLost: Bool { remainingTime <= 0 }
-
-    /// Resets the auto-replay clock after the scene plays the target pronunciation.
-    mutating func markTargetSoundPlayed() {
-        nextTargetSoundElapsed = elapsed + config.letterSoundRepeatSeconds
-    }
 
     /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
     mutating func tick(dt: Double) -> [DestructibleWallEngineEvent] {
@@ -137,11 +120,6 @@ nonisolated struct DestructibleWallMinigameEngine {
                 events.append(.timerTick)
             }
             lastDisplayedSecond = displayedSecond
-        }
-
-        if elapsed >= nextTargetSoundElapsed {
-            nextTargetSoundElapsed = elapsed + config.letterSoundRepeatSeconds
-            events.append(.playTargetPronunciation)
         }
 
         if hasLost {
@@ -177,14 +155,12 @@ nonisolated struct DestructibleWallMinigameEngine {
                 events.append(.won)
             } else {
                 pickNextTarget()
-                // Prompt the next target promptly after a correct match.
-                nextTargetSoundElapsed = elapsed
+                events.append(.playTargetPronunciation)
             }
         } else {
             events.append(
                 .incorrectMatch(id: id, pronunciationTrackID: token.pronunciationTrackID)
             )
-            nextTargetSoundElapsed = elapsed + config.incorrectReplayDelaySeconds
         }
 
         return events

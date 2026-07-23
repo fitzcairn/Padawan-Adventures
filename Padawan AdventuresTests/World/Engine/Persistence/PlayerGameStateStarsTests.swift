@@ -60,4 +60,25 @@ struct PlayerGameStateStarsTests {
         #expect(state.levels["level_1"]?.starsEarned == 7)
         #expect(state.totalStars == 7)
     }
+
+    @Test func markLevelCompletedAddsArtifactOnce() {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.markLevelCompleted("level_1", artifact: "key.fill")
+        state.markLevelCompleted("level_1", artifact: "key.fill")
+        state.markLevelCompleted("level_2", artifact: "crown.fill")
+
+        #expect(state.levels["level_1"]?.completed == true)
+        #expect(state.levels["level_2"]?.completed == true)
+        #expect(state.inventory.artifacts == ["key.fill", "crown.fill"])
+    }
+
+    @Test func inventoryAddArtifactIgnoresEmptyAndDuplicates() {
+        var inventory = PlayerInventory()
+        inventory.addArtifact("")
+        inventory.addArtifact("key.fill")
+        inventory.addArtifact("key.fill")
+        inventory.addArtifact("sparkles")
+
+        #expect(inventory.artifacts == ["key.fill", "sparkles"])
+    }
 }

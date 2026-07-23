@@ -17,6 +17,7 @@ final class DestructibleWallScene: SKScene {
 
     private var engine: DestructibleWallMinigameEngine
     private var stagingNode: SKShapeNode!
+    private var replayBoxNode: SKNode!
     private var letterNodes: [UUID: SKNode] = [:]
     private var squareNodes: [UUID: SKShapeNode] = [:]
     private var didEnd = false
@@ -25,6 +26,7 @@ final class DestructibleWallScene: SKScene {
     private var lastUpdateTime: TimeInterval?
 
     private let stagingFill = UIColor(white: 0.45, alpha: 1)
+    private let replayFill = UIColor(white: 0.28, alpha: 1)
     private let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
     private let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
     private let squareWrongFill = UIColor.systemRed
@@ -109,6 +111,24 @@ final class DestructibleWallScene: SKScene {
         return min(maxByWidth, maxByHeight, min(size.width, size.height) * 0.18)
     }
 
+    private var replayBoxSize: CGSize {
+        let width = min(size.width * 0.28, 160)
+        let height = min(size.height * 0.10, 56)
+        return CGSize(width: max(width, 96), height: max(height, 44))
+    }
+
+    private var replayBoxRect: CGRect {
+        let box = replayBoxSize
+        // Sit below the timer HUD (upper-trailing) and centered horizontally near the top.
+        let topInset = max(size.height * 0.06, 28)
+        return CGRect(
+            x: (size.width - box.width) * 0.5,
+            y: size.height - topInset - box.height,
+            width: box.width,
+            height: box.height
+        )
+    }
+
     private func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
@@ -124,7 +144,36 @@ final class DestructibleWallScene: SKScene {
         stagingNode.name = "staging"
         addChild(stagingNode)
 
+        layoutReplayBox()
         layoutLetterRow()
+    }
+
+    private func layoutReplayBox() {
+        let rect = replayBoxRect
+        let root = SKNode()
+        root.name = "replayBox"
+        root.position = CGPoint(x: rect.midX, y: rect.midY)
+        root.zPosition = 20
+
+        let box = SKShapeNode(rectOf: rect.size, cornerRadius: 12)
+        box.fillColor = replayFill
+        box.strokeColor = UIColor(white: 0.65, alpha: 1)
+        box.lineWidth = 2
+        box.zPosition = 0
+        root.addChild(box)
+
+        let label = SKLabelNode(text: "♪")
+        label.fontName = "Helvetica-Bold"
+        label.fontSize = min(rect.height * 0.62, 34)
+        label.fontColor = .white
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        label.isUserInteractionEnabled = false
+        root.addChild(label)
+
+        replayBoxNode = root
+        addChild(root)
     }
 
     private func rebuildLayout() {
@@ -193,10 +242,7 @@ final class DestructibleWallScene: SKScene {
         case let .playName(trackID):
             SoundEffectsController.shared.play(trackID: trackID)
         case .playYay:
-            SoundEffectsController.shared.playCommon(
-                event: "correct",
-                override: puzzleConfig.correctSound
-            )
+            playCorrectSound()
         case let .correctMatch(id):
             applyMatchedAppearance(id: id)
         case let .incorrectMatch(id, pronunciationTrackID):
@@ -208,11 +254,89 @@ final class DestructibleWallScene: SKScene {
         }
     }
 
+    /// Processes letter-tap events; sequences name → correct (and follow-ups) so they don't overlap.
+    private func handleTapEvents(_ events: [DestructibleWallEngineEvent]) {
+        let nameTrack = events.compactMap { event -> String? in
+            if case let .playName(trackID) = event { return trackID }
+            return nil
+        }.first
+        let isCorrect = events.contains(.playYay)
+
+        if isCorrect {
+            runCorrectFeedback(events: events, nameTrackID: nameTrack)
+            return
+        }
+
+        for event in events {
+            handle(event)
+        }
+    }
+
+    private func runCorrectFeedback(
+        events: [DestructibleWallEngineEvent],
+        nameTrackID: String?
+    ) {
+        inputLocked = true
+
+        for event in events {
+            switch event {
+            case let .playName(trackID):
+                SoundEffectsController.shared.play(trackID: trackID)
+            case let .correctMatch(id):
+                applyMatchedAppearance(id: id)
+            case .playYay, .playTargetPronunciation, .won:
+                break
+            default:
+                handle(event)
+            }
+        }
+
+        let playNextPrompt = events.contains(.playTargetPronunciation)
+        let didWin = events.contains(.won)
+        let nameDuration = audioDuration(for: nameTrackID)
+        let correctDuration = audioDuration(for: correctSoundTrackID)
+        /// Beat between “correct” feedback and the next target pronunciation.
+        let nextLetterPause: TimeInterval = 0.45
+
+        var steps: [SKAction] = [
+            SKAction.wait(forDuration: nameDuration),
+            SKAction.run { [weak self] in self?.playCorrectSound() },
+            SKAction.wait(forDuration: correctDuration),
+        ]
+        if playNextPrompt {
+            steps.append(SKAction.wait(forDuration: nextLetterPause))
+            steps.append(SKAction.run { [weak self] in self?.playTargetPronunciation() })
+        }
+        steps.append(SKAction.run { [weak self] in
+            guard let self else { return }
+            if didWin {
+                self.finishWon()
+            }
+            self.inputLocked = false
+        })
+        run(SKAction.sequence(steps))
+    }
+
+    private var correctSoundTrackID: String? {
+        if let override = puzzleConfig.correctSound?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !override.isEmpty {
+            return override
+        }
+        return SoundEffectsController.shared.commonFx.trackID(for: "correct")
+    }
+
+    private func playCorrectSound() {
+        SoundEffectsController.shared.playCommon(
+            event: "correct",
+            override: puzzleConfig.correctSound
+        )
+    }
+
     private func playTargetPronunciation() {
         let trackID = engine.targetPronunciationTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-        engine.markTargetSoundPlayed()
     }
 
     private func applyMatchedAppearance(id: UUID) {
@@ -287,13 +411,31 @@ final class DestructibleWallScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, !inputLocked, let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if replayBoxRect.contains(location) {
+            playTargetPronunciation()
+            flashReplayBox()
+            return
+        }
+
         guard let id = letterID(at: location),
               !engine.matchedIDs.contains(id) else { return }
 
         let events = engine.tapLetter(id: id)
-        for event in events {
-            handle(event)
+        handleTapEvents(events)
+    }
+
+    private func flashReplayBox() {
+        guard let box = replayBoxNode?.children.first as? SKShapeNode else { return }
+        let highlight = SKAction.run { box.fillColor = UIColor(white: 0.42, alpha: 1) }
+        let restore = SKAction.run { [weak self] in
+            box.fillColor = self?.replayFill ?? UIColor(white: 0.28, alpha: 1)
         }
+        box.run(SKAction.sequence([
+            highlight,
+            SKAction.wait(forDuration: 0.12),
+            restore,
+        ]))
     }
 
     private func letterID(at point: CGPoint) -> UUID? {

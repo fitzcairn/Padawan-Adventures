@@ -95,7 +95,7 @@ struct PlayerStateStoreTests {
         let (store, _) = try makeStore()
         var state = initialState(health: 5, energy: 4)
         state.markLevelStarted("level_2")
-        state.markLevelCompleted("level_1")
+        state.markLevelCompleted("level_1", artifact: "key.fill")
         state.levels["level_1"]?.starsEarned = 2
         state.levels["level_2"]?.starsCurrent = 4
         state.totalStars = 2
@@ -117,6 +117,7 @@ struct PlayerStateStoreTests {
         #expect(restored.stats.gatesOpened == 3)
         #expect(restored.stats.enemiesKilled == 7)
         #expect(restored.stats.extras["secretsFound"] == 2)
+        #expect(restored.inventory.artifacts == ["key.fill"])
         #expect(restored.health == 5)
         #expect(restored.energy == 4)
     }

@@ -6,6 +6,8 @@ final class AppSession {
     private(set) var seedConfig: WorldSeedConfig
     private(set) var selectedLevelName: String
     private(set) var selectedLevelResourceName: String?
+    /// SF Symbol name awarded to inventory when this level is completed.
+    private(set) var selectedLevelArtifact: String
     /// Raw level `music:` value for the selected level.
     private(set) var selectedLevelMusic: String?
     /// Per-minigame music for the selected level.
@@ -31,6 +33,7 @@ final class AppSession {
         seedConfig: WorldSeedConfig,
         selectedLevelName: String = LevelConfig.fallback.name,
         selectedLevelResourceName: String? = nil,
+        selectedLevelArtifact: String = LevelConfig.fallbackArtifact,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
         selectedGameMusic: GameMusicConfig = .fallback,
         selectedPitConfig: PitPuzzleConfig = .fallback,
@@ -49,6 +52,7 @@ final class AppSession {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
         self.selectedLevelResourceName = selectedLevelResourceName
+        self.selectedLevelArtifact = selectedLevelArtifact
         self.selectedLevelMusic = selectedLevelMusic
         self.selectedGameMusic = selectedGameMusic
         self.selectedPitConfig = selectedPitConfig
@@ -88,6 +92,7 @@ final class AppSession {
     static func loadResources() async -> AppSession {
         let seedConfig: WorldSeedConfig
         let selectedLevelName: String
+        let selectedLevelArtifact: String
         let selectedLevelMusic: String?
         let selectedGameMusic: GameMusicConfig
         let selectedPitConfig: PitPuzzleConfig
@@ -99,6 +104,7 @@ final class AppSession {
             try loaded.config.validate()
             seedConfig = loaded.config
             selectedLevelName = loaded.level.name
+            selectedLevelArtifact = loaded.level.artifact
             selectedLevelMusic = loaded.level.music
             selectedGameMusic = loaded.level.gameMusic
             selectedPitConfig = loaded.level.pit
@@ -108,6 +114,7 @@ final class AppSession {
         } catch {
             seedConfig = fallbackConfig()
             selectedLevelName = LevelConfig.fallback.name
+            selectedLevelArtifact = LevelConfig.fallback.artifact
             selectedLevelMusic = LevelConfig.fallback.music
             selectedGameMusic = LevelConfig.fallback.gameMusic
             selectedPitConfig = LevelConfig.fallback.pit
@@ -166,6 +173,7 @@ final class AppSession {
         return AppSession(
             seedConfig: seedConfig,
             selectedLevelName: selectedLevelName,
+            selectedLevelArtifact: selectedLevelArtifact,
             selectedLevelMusic: selectedLevelMusic,
             selectedGameMusic: selectedGameMusic,
             selectedPitConfig: selectedPitConfig,
@@ -189,6 +197,7 @@ final class AppSession {
         seedConfig = loaded.config
         selectedLevelName = loaded.level.name
         selectedLevelResourceName = resourceName
+        selectedLevelArtifact = loaded.level.artifact
         selectedLevelMusic = loaded.level.music
         selectedGameMusic = loaded.level.gameMusic
         selectedPitConfig = loaded.level.pit
@@ -269,7 +278,7 @@ final class AppSession {
     }
 
     func markLevelCompleted(resourceName: String) async {
-        playerState?.markLevelCompleted(resourceName)
+        playerState?.markLevelCompleted(resourceName, artifact: selectedLevelArtifact)
         await persistPlayerState()
     }
 

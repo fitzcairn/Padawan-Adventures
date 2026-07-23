@@ -15,8 +15,6 @@ struct DestructibleWallMinigameEngineTests {
 
     private func makeEngine(
         timer: Double = 30,
-        letterSoundRepeatSeconds: Double = 10,
-        incorrectReplayDelaySeconds: Double = 1,
         letterCountMin: Int = 2,
         letterCountMax: Int = 4,
         pool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h"],
@@ -25,8 +23,6 @@ struct DestructibleWallMinigameEngineTests {
         var engine = DestructibleWallMinigameEngine(
             config: .init(
                 timerSeconds: timer,
-                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
-                incorrectReplayDelaySeconds: incorrectReplayDelaySeconds,
                 letterCountMin: letterCountMin,
                 letterCountMax: letterCountMax,
                 letters: letters(pool)
@@ -112,6 +108,7 @@ struct DestructibleWallMinigameEngineTests {
         #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: firstTarget.nameTrackID)))
         #expect(events.contains(DestructibleWallEngineEvent.correctMatch(id: firstTarget.id)))
         #expect(events.contains(DestructibleWallEngineEvent.playYay))
+        #expect(events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.contains(firstTarget.id))
         #expect(!events.contains(DestructibleWallEngineEvent.won))
         #expect(engine.currentTargetID != firstTarget.id)
@@ -122,13 +119,13 @@ struct DestructibleWallMinigameEngineTests {
         }
         let winEvents = engine.tapLetter(id: secondTarget.id)
         #expect(winEvents.contains(DestructibleWallEngineEvent.won))
+        #expect(!winEvents.contains(DestructibleWallEngineEvent.playTargetPronunciation))
         #expect(engine.outcome == .won(starsAwarded: 2))
         #expect(engine.isFrozen)
     }
 
-    @Test func incorrectTapSchedulesPromptAndDoesNotMatch() {
+    @Test func incorrectTapDoesNotAutoReplayTarget() {
         var engine = makeEngine(
-            incorrectReplayDelaySeconds: 1,
             letterCountMin: 2,
             letterCountMax: 2,
             pool: ["a", "b"],
@@ -140,7 +137,6 @@ struct DestructibleWallMinigameEngineTests {
             return
         }
 
-        engine.markTargetSoundPlayed()
         let events = engine.tapLetter(id: wrong.id)
         #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: wrong.nameTrackID)))
         #expect(
@@ -151,14 +147,23 @@ struct DestructibleWallMinigameEngineTests {
                 )
             )
         )
+        #expect(!events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.isEmpty)
         #expect(engine.currentTargetID == target.id)
 
-        let early = engine.tick(dt: 0.5)
-        #expect(!early.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        let later = engine.tick(dt: 5.0)
+        #expect(!later.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+    }
 
-        let due = engine.tick(dt: 0.6)
-        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+    @Test func tickNeverAutoReplaysTargetPronunciation() {
+        var engine = makeEngine(
+            letterCountMin: 1,
+            letterCountMax: 1,
+            pool: ["a"],
+            seed: 1
+        )
+        let events = engine.tick(dt: 30)
+        #expect(!events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
     }
 
     @Test func timerExpiryProducesLostAndUrgentTicks() {
@@ -192,44 +197,6 @@ struct DestructibleWallMinigameEngineTests {
         #expect(engine.outcome == .lost)
         guard let target = engine.letters.first else { return }
         #expect(engine.tapLetter(id: target.id).isEmpty)
-    }
-
-    @Test func autoPlaysTargetSoundAfterRepeatInterval() {
-        var engine = makeEngine(
-            timer: 30,
-            letterSoundRepeatSeconds: 10,
-            letterCountMin: 1,
-            letterCountMax: 1,
-            pool: ["a"],
-            seed: 1
-        )
-        engine.markTargetSoundPlayed()
-
-        let early = engine.tick(dt: 9.0)
-        #expect(!early.contains(DestructibleWallEngineEvent.playTargetPronunciation))
-
-        let due = engine.tick(dt: 1.1)
-        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
-    }
-
-    @Test func markTargetSoundPlayedDelaysNextAutoPlay() {
-        var engine = makeEngine(
-            timer: 30,
-            letterSoundRepeatSeconds: 5,
-            letterCountMin: 1,
-            letterCountMax: 1,
-            pool: ["a"],
-            seed: 1
-        )
-        engine.markTargetSoundPlayed()
-        _ = engine.tick(dt: 4.0)
-        engine.markTargetSoundPlayed()
-
-        let stillEarly = engine.tick(dt: 4.0)
-        #expect(!stillEarly.contains(DestructibleWallEngineEvent.playTargetPronunciation))
-
-        let due = engine.tick(dt: 1.5)
-        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
     }
 
     @Test func matchedLetterCannotBeTappedAgain() {

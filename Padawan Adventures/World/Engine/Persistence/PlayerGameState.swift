@@ -1,8 +1,27 @@
 import Foundation
 
-/// Empty placeholder for future inventory contents.
+/// Persistent collectibles earned by completing levels.
 nonisolated struct PlayerInventory: Codable, Equatable, Sendable {
-    init() {}
+    /// Ordered unique artifact IDs (SF Symbol names for now).
+    var artifacts: [String]
+
+    init(artifacts: [String] = []) {
+        self.artifacts = artifacts
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case artifacts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        artifacts = try container.decodeIfPresent([String].self, forKey: .artifacts) ?? []
+    }
+
+    mutating func addArtifact(_ id: String) {
+        guard !id.isEmpty, !artifacts.contains(id) else { return }
+        artifacts.append(id)
+    }
 }
 
 /// Result of banking a level run into the player's best score.
@@ -206,11 +225,14 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         levels[resourceName] = progress
     }
 
-    mutating func markLevelCompleted(_ resourceName: String) {
+    mutating func markLevelCompleted(_ resourceName: String, artifact: String? = nil) {
         var progress = levels[resourceName] ?? LevelProgress()
         progress.started = true
         progress.completed = true
         levels[resourceName] = progress
+        if let artifact {
+            inventory.addArtifact(artifact)
+        }
     }
 
     mutating func resetLevelStarsCurrent(_ resourceName: String) {

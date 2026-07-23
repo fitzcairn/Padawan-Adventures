@@ -66,8 +66,6 @@ gate:
 # Optional `correct_sound` overrides shared `sound.yaml` (`fx.correct`).
 destructible_wall:
   timer_seconds: 30
-  # Optional override; defaults to top-level `letter_sound_repeat_seconds`.
-  incorrect_replay_delay_seconds: 1
   # Inclusive range for how many letters appear in a round (clamped to the letter pool).
   letter_count_min: 4
   letter_count_max: 8

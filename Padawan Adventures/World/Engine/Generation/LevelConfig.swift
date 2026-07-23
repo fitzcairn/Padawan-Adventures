@@ -479,7 +479,12 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
 
 /// Per-level map size and generation settings loaded from `base_level.yaml` / `Levels/*.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
+    /// Default SF Symbol used when a level omits `artifact:`.
+    static let fallbackArtifact = "star.fill"
+
     var name: String
+    /// SF Symbol name awarded to inventory on first level completion.
+    var artifact: String
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
     /// Per-minigame music overrides for this level.
@@ -500,6 +505,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case name
+        case artifact
         case music
         case gameMusic = "game_music"
         case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
@@ -518,6 +524,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
+        artifact: fallbackArtifact,
         music: "level_theme",
         gameMusic: .fallback,
         letterSoundRepeatSeconds: 3,
@@ -555,6 +562,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     nonisolated init(
         name: String,
+        artifact: String = LevelConfig.fallbackArtifact,
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
         letterSoundRepeatSeconds: Double = 3,
@@ -571,6 +579,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         destructibleWall: DestructibleWallPuzzleConfig = .fallback
     ) {
         self.name = name
+        self.artifact = artifact
         self.music = music
         self.gameMusic = gameMusic
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
@@ -590,6 +599,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decode(String.self, forKey: .name)
+        artifact = try container.decodeIfPresent(String.self, forKey: .artifact) ?? Self.fallbackArtifact
         music = try container.decodeIfPresent(String.self, forKey: .music)
         gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
         width = try container.decode(Int.self, forKey: .width)

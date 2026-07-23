@@ -115,6 +115,30 @@ struct LevelConfigTests {
         #expect(level.music == nil)
         #expect(level.musicCue == .unchanged)
         #expect(level.gameMusic == .fallback)
+        #expect(level.artifact == LevelConfig.fallbackArtifact)
+    }
+
+    @Test func missingArtifactUsesFallback() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Level 1
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.artifact == LevelConfig.fallbackArtifact)
+    }
+
+    @Test func childCanOverrideArtifact() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Level 1
+            artifact: key.fill
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.artifact == "key.fill")
     }
 
     @Test func inheritsMusicFromBase() throws {
@@ -869,10 +893,11 @@ struct LevelConfigTests {
         #expect(level1.letterSoundRepeatSeconds == 3)
         #expect(level1.destructibleWall.letterSoundRepeatSeconds == 3)
         #expect(level1.destructibleWall.incorrectReplayDelaySeconds == 1)
-        #expect(level1.destructibleWall.letterCountMin == 2)
-        #expect(level1.destructibleWall.letterCountMax == 4)
+        #expect(level1.destructibleWall.letterCountMin == 4)
+        #expect(level1.destructibleWall.letterCountMax == 8)
         #expect(level1.destructibleWall.correctSound == nil)
         #expect(level1.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+        #expect(level1.artifact == "key.fill")
     }
 
     @Test func topLevelLetterSoundRepeatOverridesWallNestedValue() throws {
