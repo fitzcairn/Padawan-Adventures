@@ -17,11 +17,11 @@ struct EnemyConfigTests {
             stars_to_win: 10
             shot_types:
               A:
-                fx: sfx_enemy_shot_a
+                fx: sfx_letter_a_name
               B:
-                fx: sfx_enemy_shot_b
+                fx: sfx_letter_b_name
               C:
-                fx: sfx_enemy_shot_c
+                fx: sfx_letter_c_name
             fx:
               contact: sfx_enemy_contact
           scout:
@@ -31,7 +31,7 @@ struct EnemyConfigTests {
             forget_seconds: 1.5
             shot_types:
               X:
-                fx: sfx_enemy_shot_a
+                fx: sfx_letter_a_name
         """
 
         let config = try EnemyConfig.decode(from: yaml)
@@ -44,14 +44,14 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "grunt")?.starsToWin == 10)
         #expect(config.type(named: "grunt")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
-        #expect(config.type(named: "grunt")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_enemy_shot_a")
-        #expect(config.type(named: "grunt")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_enemy_shot_b")
-        #expect(config.type(named: "grunt")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_enemy_shot_c")
+        #expect(config.type(named: "grunt")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "grunt")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
+        #expect(config.type(named: "grunt")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.combatTimerSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
-        #expect(config.type(named: "scout")?.shotTypes["X"]?.fx.trackID(for: "shoot") == "sfx_enemy_shot_a")
+        #expect(config.type(named: "scout")?.shotTypes["X"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         try config.validate()
     }
 

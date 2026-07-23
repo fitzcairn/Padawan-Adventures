@@ -106,9 +106,9 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     }
 
     static let defaultShotTypes: [String: EnemyShotTypeConfig] = [
-        "A": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_a"),
-        "B": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_b"),
-        "C": EnemyShotTypeConfig(trackBasename: "sfx_enemy_shot_c"),
+        "A": EnemyShotTypeConfig(trackBasename: "sfx_letter_a_name"),
+        "B": EnemyShotTypeConfig(trackBasename: "sfx_letter_b_name"),
+        "C": EnemyShotTypeConfig(trackBasename: "sfx_letter_c_name"),
     ]
 
     /// Stable letter keys for combat random selection.

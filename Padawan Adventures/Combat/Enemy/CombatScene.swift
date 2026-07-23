@@ -1,3 +1,4 @@
+import QuartzCore
 import SpriteKit
 import UIKit
 
@@ -25,6 +26,7 @@ final class CombatScene: SKScene {
 
     private let enemyType: EnemyTypeConfig
     private let playerFx: SoundEffectTable
+    private let slashMaxSeconds: Double
 
     private var engine: CombatMinigameEngine
     private var playerNode: SKShapeNode!
@@ -32,20 +34,27 @@ final class CombatScene: SKScene {
     private var shotVisuals: [UUID: ShotVisual] = [:]
     private var slashPoints: [CGPoint] = []
     private var slashLine: SKShapeNode?
+    private var slashStartedAt: TimeInterval?
+    private var isSlashActive = false
     private var didEnd = false
     private var didSetup = false
     private var lastUpdateTime: TimeInterval?
 
-    private let shotBaseSize: CGFloat = 36
+    private let shotBaseSize: CGFloat = 72
 
     init(
         size: CGSize,
         enemyType: EnemyTypeConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
-        self.engine = CombatMinigameEngine(config: .init(from: enemyType))
+        self.slashMaxSeconds = max(slashMaxSeconds, 0.05)
+        self.engine = CombatMinigameEngine(
+            config: .init(from: enemyType, letterSoundRepeatSeconds: letterSoundRepeatSeconds)
+        )
         super.init(size: size)
         // Aspect-fit avoids distorting paths when the SKView aspect differs from scene size.
         scaleMode = .aspectFit
@@ -79,6 +88,10 @@ final class CombatScene: SKScene {
 
     override func update(_ currentTime: TimeInterval) {
         guard !didEnd else { return }
+
+        if isSlashActive, hasSlashTimedOut(at: currentTime) {
+            endSlash()
+        }
 
         let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
         lastUpdateTime = currentTime
@@ -188,9 +201,14 @@ final class CombatScene: SKScene {
     }
 
     private func playSequenceCue(requiredLetter: String) {
+        // Prefer shared letter-name tracks so combat matches wall / other letter games.
+        if let shared = LetterSoundCatalog.nameTrackID(for: requiredLetter) {
+            SoundEffectsController.shared.play(trackID: shared)
+            return
+        }
         if let typeFx = enemyType.shotTypes[requiredLetter]?.fx,
-           typeFx.trackID(for: "shoot") != nil {
-            SoundEffectsController.shared.play(event: "shoot", from: typeFx)
+           let trackID = typeFx.trackID(for: "shoot") {
+            SoundEffectsController.shared.play(trackID: trackID)
         }
     }
 
@@ -393,13 +411,16 @@ final class CombatScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, !engine.isFrozen else { return }
         guard let touch = touches.first else { return }
-        slashPoints = [touch.location(in: self)]
-        updateSlashLine()
+        beginSlash(at: touch.location(in: self), time: CACurrentMediaTime())
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !engine.isFrozen else { return }
+        guard !didEnd, !engine.isFrozen, isSlashActive else { return }
         guard let touch = touches.first else { return }
+        if hasSlashTimedOut(at: CACurrentMediaTime()) {
+            endSlash()
+            return
+        }
         let point = touch.location(in: self)
         slashPoints.append(point)
         updateSlashLine()
@@ -407,13 +428,30 @@ final class CombatScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        endSlash()
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        endSlash()
+    }
+
+    private func beginSlash(at point: CGPoint, time: TimeInterval) {
+        isSlashActive = true
+        slashStartedAt = time
+        slashPoints = [point]
+        updateSlashLine()
+    }
+
+    private func endSlash() {
+        isSlashActive = false
+        slashStartedAt = nil
         clearSlashLine()
         slashPoints = []
     }
 
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        clearSlashLine()
-        slashPoints = []
+    private func hasSlashTimedOut(at time: TimeInterval) -> Bool {
+        guard let started = slashStartedAt else { return false }
+        return time - started >= slashMaxSeconds
     }
 
     private func updateSlashLine() {
@@ -439,7 +477,7 @@ final class CombatScene: SKScene {
     }
 
     private func resolveSlashHits() {
-        guard slashPoints.count >= 2 else { return }
+        guard isSlashActive, slashPoints.count >= 2 else { return }
 
         let startIndex = max(0, slashPoints.count - 8)
         let recent = Array(slashPoints[startIndex...])

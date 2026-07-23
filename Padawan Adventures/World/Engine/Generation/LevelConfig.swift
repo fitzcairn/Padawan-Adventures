@@ -120,11 +120,163 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     }
 }
 
+/// A destructible-wall puzzle letter: glyph + pronunciation/name track basenames.
+nonisolated struct DestructibleWallLetter: Equatable, Sendable {
+    var letter: String
+    var pronunciation: String
+    var name: String
+}
+
+/// Per-level destructible-wall letter-matching settings from `destructible_wall:` in level YAML.
+nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable {
+    var timerSeconds: Double
+    /// Max seconds between target-pronunciation plays before auto-replay.
+    var letterSoundRepeatSeconds: Double
+    /// Seconds after an incorrect tap before replaying the target pronunciation.
+    var incorrectReplayDelaySeconds: Double
+    /// Expected number of letters chosen for a round (sampled in `1...letters.count`).
+    var letterCountMean: Double
+    /// Track basename played on each correct match (“yay!”).
+    var winSound: String
+    /// Sorted by letter for deterministic RNG over map-decoded YAML.
+    var letters: [DestructibleWallLetter]
+
+    enum CodingKeys: String, CodingKey {
+        case timerSeconds = "timer_seconds"
+        case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
+        case incorrectReplayDelaySeconds = "incorrect_replay_delay_seconds"
+        case letterCountMean = "letter_count_mean"
+        case winSound = "win_sound"
+        case letters
+    }
+
+    private struct LetterSoundsDTO: Decodable {
+        var pronunciation: String
+        var name: String
+    }
+
+    nonisolated static let fallback = DestructibleWallPuzzleConfig(
+        timerSeconds: 30,
+        letterSoundRepeatSeconds: 3,
+        incorrectReplayDelaySeconds: 1,
+        letterCountMean: 4,
+        winSound: "sfx_wall_yay",
+        letters: [
+            .init(letter: "a", pronunciation: "sfx_letter_a_pronunciation", name: "sfx_letter_a_name"),
+            .init(letter: "b", pronunciation: "sfx_letter_b_pronunciation", name: "sfx_letter_b_name"),
+            .init(letter: "c", pronunciation: "sfx_letter_c_pronunciation", name: "sfx_letter_c_name"),
+            .init(letter: "d", pronunciation: "sfx_letter_d_pronunciation", name: "sfx_letter_d_name"),
+            .init(letter: "e", pronunciation: "sfx_letter_e_pronunciation", name: "sfx_letter_e_name"),
+            .init(letter: "f", pronunciation: "sfx_letter_f_pronunciation", name: "sfx_letter_f_name"),
+            .init(letter: "g", pronunciation: "sfx_letter_g_pronunciation", name: "sfx_letter_g_name"),
+            .init(letter: "h", pronunciation: "sfx_letter_h_pronunciation", name: "sfx_letter_h_name"),
+        ]
+    )
+
+    nonisolated init(
+        timerSeconds: Double,
+        letterSoundRepeatSeconds: Double = 3,
+        incorrectReplayDelaySeconds: Double = 1,
+        letterCountMean: Double = 4,
+        winSound: String = "sfx_wall_yay",
+        letters: [DestructibleWallLetter]
+    ) {
+        self.timerSeconds = timerSeconds
+        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
+        self.letterCountMean = letterCountMean
+        self.winSound = winSound.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.letters = Self.normalizedLetters(letters)
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        timerSeconds = try container.decodeIfPresent(Double.self, forKey: .timerSeconds)
+            ?? Self.fallback.timerSeconds
+        letterSoundRepeatSeconds = try container.decodeIfPresent(
+            Double.self,
+            forKey: .letterSoundRepeatSeconds
+        ) ?? Self.fallback.letterSoundRepeatSeconds
+        incorrectReplayDelaySeconds = try container.decodeIfPresent(
+            Double.self,
+            forKey: .incorrectReplayDelaySeconds
+        ) ?? Self.fallback.incorrectReplayDelaySeconds
+        letterCountMean = try container.decodeIfPresent(Double.self, forKey: .letterCountMean)
+            ?? Self.fallback.letterCountMean
+        winSound = (
+            try container.decodeIfPresent(String.self, forKey: .winSound)
+                ?? Self.fallback.winSound
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let map = try container.decodeIfPresent([String: LetterSoundsDTO].self, forKey: .letters) {
+            letters = Self.normalizedLetters(
+                map.map {
+                    DestructibleWallLetter(
+                        letter: $0.key,
+                        pronunciation: $0.value.pronunciation,
+                        name: $0.value.name
+                    )
+                }
+            )
+        } else {
+            letters = Self.fallback.letters
+        }
+    }
+
+    func validate() throws {
+        guard timerSeconds > 0 else {
+            throw WorldSeedError.invalidDestructibleWallTimer(timerSeconds)
+        }
+        guard letterSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidDestructibleWallLetterSoundRepeat(letterSoundRepeatSeconds)
+        }
+        guard incorrectReplayDelaySeconds > 0 else {
+            throw WorldSeedError.invalidDestructibleWallIncorrectReplayDelay(incorrectReplayDelaySeconds)
+        }
+        guard letterCountMean >= 1 else {
+            throw WorldSeedError.invalidDestructibleWallLetterCountMean(letterCountMean)
+        }
+        guard !winSound.isEmpty else {
+            throw WorldSeedError.invalidDestructibleWallLetters
+        }
+        guard !letters.isEmpty else {
+            throw WorldSeedError.invalidDestructibleWallLetters
+        }
+        let letterSet = CharacterSet.letters
+        var seen = Set<String>()
+        for entry in letters {
+            guard entry.letter.count == 1,
+                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
+                  !entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  seen.insert(entry.letter).inserted else {
+                throw WorldSeedError.invalidDestructibleWallLetters
+            }
+        }
+    }
+
+    private static func normalizedLetters(_ letters: [DestructibleWallLetter]) -> [DestructibleWallLetter] {
+        letters
+            .map {
+                DestructibleWallLetter(
+                    letter: $0.letter.lowercased(),
+                    pronunciation: $0.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines),
+                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            }
+            .sorted { $0.letter < $1.letter }
+    }
+}
+
 /// Per-level map size and generation settings loaded from `base_level.yaml` / `Levels/*.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var name: String
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
+    /// Shared letter-name prompt replay interval (combat cues, wall puzzle, etc.).
+    var letterSoundRepeatSeconds: Double
+    /// Max seconds a combat slash stays active after the initial tap.
+    var slashMaxSeconds: Double
     var width: Int
     var height: Int
     var algorithm: String
@@ -135,10 +287,13 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Optional per-level overrides for `world.yaml` `fx:` (merged per event key).
     var fx: SoundEffectTable?
     var gate: GatePuzzleConfig
+    var destructibleWall: DestructibleWallPuzzleConfig
 
     enum CodingKeys: String, CodingKey {
         case name
         case music
+        case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
+        case slashMaxSeconds = "slash_max_seconds"
         case width
         case height
         case algorithm
@@ -148,11 +303,16 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case pickups
         case fx
         case gate
+        case destructibleWall = "destructible_wall"
     }
+
+    nonisolated static let fallbackSlashMaxSeconds: Double = 1
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
         music: "level_theme",
+        letterSoundRepeatSeconds: 3,
+        slashMaxSeconds: fallbackSlashMaxSeconds,
         width: 100,
         height: 100,
         algorithm: "rooms_doors",
@@ -172,12 +332,15 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             energy: .init(spawnChancePerRoom: 0.8)
         ),
         fx: nil,
-        gate: .fallback
+        gate: .fallback,
+        destructibleWall: .fallback
     )
 
     nonisolated init(
         name: String,
         music: String? = nil,
+        letterSoundRepeatSeconds: Double = 3,
+        slashMaxSeconds: Double = fallbackSlashMaxSeconds,
         width: Int,
         height: Int,
         algorithm: String,
@@ -186,10 +349,13 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         room: WorldSeedConfig.RoomParams,
         pickups: WorldSeedConfig.PickupsSpawnConfig? = nil,
         fx: SoundEffectTable? = nil,
-        gate: GatePuzzleConfig = .fallback
+        gate: GatePuzzleConfig = .fallback,
+        destructibleWall: DestructibleWallPuzzleConfig = .fallback
     ) {
         self.name = name
         self.music = music
+        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.slashMaxSeconds = slashMaxSeconds
         self.width = width
         self.height = height
         self.algorithm = algorithm
@@ -199,6 +365,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.pickups = pickups
         self.fx = fx
         self.gate = gate
+        self.destructibleWall = destructibleWall
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -214,10 +381,41 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pickups = try container.decodeIfPresent(WorldSeedConfig.PickupsSpawnConfig.self, forKey: .pickups)
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx)
         gate = try container.decodeIfPresent(GatePuzzleConfig.self, forKey: .gate) ?? .fallback
+        let decodedWall = try container.decodeIfPresent(
+            DestructibleWallPuzzleConfig.self,
+            forKey: .destructibleWall
+        ) ?? .fallback
+        let topLevelRepeat = try container.decodeIfPresent(
+            Double.self,
+            forKey: .letterSoundRepeatSeconds
+        )
+        // Top-level shared cadence wins; otherwise keep wall-nested / fallback value.
+        letterSoundRepeatSeconds = topLevelRepeat ?? decodedWall.letterSoundRepeatSeconds
+        if let topLevelRepeat {
+            destructibleWall = DestructibleWallPuzzleConfig(
+                timerSeconds: decodedWall.timerSeconds,
+                letterSoundRepeatSeconds: topLevelRepeat,
+                incorrectReplayDelaySeconds: decodedWall.incorrectReplayDelaySeconds,
+                letterCountMean: decodedWall.letterCountMean,
+                winSound: decodedWall.winSound,
+                letters: decodedWall.letters
+            )
+        } else {
+            destructibleWall = decodedWall
+        }
+        slashMaxSeconds = try container.decodeIfPresent(Double.self, forKey: .slashMaxSeconds)
+            ?? Self.fallbackSlashMaxSeconds
     }
 
     func validate() throws {
+        guard letterSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidDestructibleWallLetterSoundRepeat(letterSoundRepeatSeconds)
+        }
+        guard slashMaxSeconds > 0 else {
+            throw WorldSeedError.invalidSlashMaxSeconds(slashMaxSeconds)
+        }
         try gate.validate()
+        try destructibleWall.validate()
     }
 
     var musicCue: MusicCue {

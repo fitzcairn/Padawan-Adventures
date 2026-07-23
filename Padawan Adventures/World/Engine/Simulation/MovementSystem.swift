@@ -259,7 +259,8 @@ struct MovementSystem: Sendable {
             return
         }
         if tile.isDestructibleWall {
-            events.append(.boom(end))
+            let approach = segmentStart ?? end
+            events.append(.boom(wall: end, approach: approach))
             reset()
             return
         }
@@ -317,7 +318,8 @@ struct MovementSystem: Sendable {
 enum MovementEvent: Equatable, Sendable {
     case reached(GridCoord)
     case pit(PitResolution)
-    case boom(GridCoord)
+    /// `wall` is the occupied soft-wall tile; `approach` is the floor tile the player walked from.
+    case boom(wall: GridCoord, approach: GridCoord)
     /// `gate` is the occupied gate tile; `approach` is the floor tile the player walked from.
     case gate(gate: GridCoord, approach: GridCoord)
 }

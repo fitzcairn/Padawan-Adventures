@@ -23,6 +23,8 @@ nonisolated struct SimulationTickResult: Sendable {
     var didEnterPit: Bool = false
     /// Destructible wall the player walked onto this tick, if any.
     var boomCoord: GridCoord?
+    /// Floor tile the player approached the soft wall from (for timeout retreat).
+    var boomApproachCoord: GridCoord?
     /// Gate cell the player walked onto this tick, if any.
     var gateCoord: GridCoord?
     /// Floor tile the player approached the gate from (for timeout retreat).
@@ -132,8 +134,9 @@ struct SimulationLoop: Sendable {
             return false
         }
         for event in events {
-            if case .boom(let coord) = event {
-                result.boomCoord = coord
+            if case .boom(let wall, let approach) = event {
+                result.boomCoord = wall
+                result.boomApproachCoord = approach
             }
             if case .gate(let gate, let approach) = event {
                 result.gateCoord = gate

@@ -71,9 +71,9 @@ final class GameViewController: LandscapeHostingController {
             self?.playPlayerFx("pit")
             self?.presentPit()
         }
-        scene.onBoomEntered = { [weak self] coord in
+        scene.onBoomEntered = { [weak self] wall, approach in
             self?.playPlayerFx("boom")
-            self?.presentDestructibleWall(at: coord)
+            self?.presentDestructibleWall(at: wall, approach: approach)
         }
         scene.onGateEntered = { [weak self] gate, approach in
             self?.playPlayerFx("gate")
@@ -190,6 +190,8 @@ final class GameViewController: LandscapeHostingController {
         let healthCount = scene.currentWorld.healthCount
         let hudConfig = loadHudConfig()
         let playerFx = session.playerConfig.fx
+        let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
+        let slashMaxSeconds = session.selectedSlashMaxSeconds
         let outcomeBox = CombatOutcomeBox()
 
         BackgroundMusicController.shared.applyScreen(named: "combat")
@@ -203,6 +205,8 @@ final class GameViewController: LandscapeHostingController {
                         healthCount: healthCount,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
+                        letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                        slashMaxSeconds: slashMaxSeconds,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -310,12 +314,25 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
-    private func presentDestructibleWall(at coord: GridCoord) {
+    private func presentDestructibleWall(at coord: GridCoord, approach: GridCoord) {
+        let puzzleConfig = session.selectedDestructibleWallConfig
+        let playerFx = session.playerConfig.fx
+        let hudConfig = loadHudConfig()
+        let outcomeBox = DestructibleWallOutcomeBox()
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
                 FullscreenOverlayHost { finish in
-                    DestructibleWallMinigameView(onFinished: finish)
+                    DestructibleWallMinigameView(
+                        puzzleConfig: puzzleConfig,
+                        playerFx: playerFx,
+                        hudConfig: hudConfig,
+                        onFinished: { outcome in
+                            outcomeBox.outcome = outcome
+                            finish()
+                        }
+                    )
                 }
             },
             onResolved: { [weak self] done in
@@ -323,11 +340,16 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
-                Task {
-                    await self.session.recordStat { $0.wallsBlownUp += 1 }
-                    await self.awardLevelStar()
+                switch outcomeBox.outcome {
+                case let .won(starsAwarded):
+                    Task {
+                        await self.session.recordStat { $0.wallsBlownUp += 1 }
+                        await self.awardLevelStars(count: starsAwarded)
+                    }
+                    scene.resolveBoomEncounter(at: coord, completion: done)
+                case .lost, .none:
+                    scene.resolveBoomTimeout(approach: approach, completion: done)
                 }
-                scene.resolveBoomEncounter(at: coord, completion: done)
             }
         )
     }
@@ -458,4 +480,8 @@ private final class CombatOutcomeBox {
 /// Captures gate puzzle result across the overlay finish callback.
 private final class GateOutcomeBox {
     var outcome: GateOutcome?
+}
+
+private final class DestructibleWallOutcomeBox {
+    var outcome: DestructibleWallOutcome?
 }

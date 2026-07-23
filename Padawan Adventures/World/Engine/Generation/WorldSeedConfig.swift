@@ -401,6 +401,12 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidGateWordSoundRepeat(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
+    case invalidDestructibleWallTimer(Double)
+    case invalidDestructibleWallLetterSoundRepeat(Double)
+    case invalidSlashMaxSeconds(Double)
+    case invalidDestructibleWallIncorrectReplayDelay(Double)
+    case invalidDestructibleWallLetterCountMean(Double)
+    case invalidDestructibleWallLetters
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)

@@ -424,4 +424,253 @@ struct LevelConfigTests {
         #expect(level1.gate.words.map(\.word).contains("gate"))
         #expect(level1.gate.words.contains { $0.word == "cat" && $0.sound == "sfx_word_cat" })
     }
+
+    @Test func decodesDestructibleWallPuzzleConfigWithDefaultsWhenOmitted() throws {
+        let level = try LevelConfig.decode(from: """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        """)
+        #expect(level.destructibleWall == DestructibleWallPuzzleConfig.fallback)
+    }
+
+    @Test func decodesDestructibleWallPuzzleConfigFromYAML() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        destructible_wall:
+          timer_seconds: 15
+          letter_sound_repeat_seconds: 8
+          incorrect_replay_delay_seconds: 2
+          letter_count_mean: 3
+          win_sound: sfx_wall_yay
+          letters:
+            B:
+              pronunciation: sfx_letter_b_pronunciation
+              name: sfx_letter_b_name
+            a:
+              pronunciation: sfx_letter_a_pronunciation
+              name: sfx_letter_a_name
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.destructibleWall.timerSeconds == 15)
+        #expect(level.destructibleWall.letterSoundRepeatSeconds == 8)
+        #expect(level.destructibleWall.incorrectReplayDelaySeconds == 2)
+        #expect(level.destructibleWall.letterCountMean == 3)
+        #expect(level.destructibleWall.letters.map(\.letter) == ["a", "b"])
+        #expect(level.destructibleWall.letters.map(\.pronunciation) == [
+            "sfx_letter_a_pronunciation",
+            "sfx_letter_b_pronunciation",
+        ])
+    }
+
+    @Test func inheritsDestructibleWallConfigFromBase() throws {
+        let base = Self.baseLevelYAML + """
+
+        destructible_wall:
+          timer_seconds: 22
+          letter_sound_repeat_seconds: 6
+          letter_count_mean: 2
+          letters:
+            a:
+              pronunciation: sfx_letter_a_pronunciation
+              name: sfx_letter_a_name
+            c:
+              pronunciation: sfx_letter_c_pronunciation
+              name: sfx_letter_c_name
+        """
+        let child = """
+        inherits: base_level
+        name: Level 1
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.destructibleWall.timerSeconds == 22)
+        #expect(level.destructibleWall.letterSoundRepeatSeconds == 6)
+        #expect(level.destructibleWall.letterCountMean == 2)
+        #expect(level.destructibleWall.letters.map(\.letter) == ["a", "c"])
+    }
+
+    @Test func childCanOverrideInheritedDestructibleWallFields() throws {
+        let base = Self.baseLevelYAML + """
+
+        destructible_wall:
+          timer_seconds: 22
+          letter_sound_repeat_seconds: 6
+          letters:
+            a:
+              pronunciation: sfx_letter_a_pronunciation
+              name: sfx_letter_a_name
+        """
+        let child = """
+        inherits: base_level
+        name: Level 1
+        destructible_wall:
+          letter_sound_repeat_seconds: 12
+          letters:
+            b:
+              pronunciation: sfx_letter_b_pronunciation
+              name: sfx_letter_b_name
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.destructibleWall.timerSeconds == 22)
+        #expect(level.destructibleWall.letterSoundRepeatSeconds == 12)
+        // Letter maps deep-merge like `fx:` — child keys overwrite/add, parent keys remain.
+        #expect(level.destructibleWall.letters.map(\.letter) == ["a", "b"])
+    }
+
+    @Test func rejectsInvalidDestructibleWallTimer() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        destructible_wall:
+          timer_seconds: 0
+          letters:
+            a:
+              pronunciation: sfx_letter_a_pronunciation
+              name: sfx_letter_a_name
+        """
+        #expect(throws: WorldSeedError.invalidDestructibleWallTimer(0)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsEmptyDestructibleWallLetters() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        destructible_wall:
+          letters: {}
+        """
+        #expect(throws: WorldSeedError.invalidDestructibleWallLetters) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func bundleBaseLevelProvidesDestructibleWallDefaults() throws {
+        let level1 = try LevelConfig.loadFromBundle(
+            named: "level_1",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        #expect(level1.destructibleWall.timerSeconds == 30)
+        #expect(level1.letterSoundRepeatSeconds == 3)
+        #expect(level1.slashMaxSeconds == 1)
+        #expect(level1.destructibleWall.letterSoundRepeatSeconds == 3)
+        #expect(level1.destructibleWall.incorrectReplayDelaySeconds == 1)
+        #expect(level1.destructibleWall.letterCountMean == 4)
+        #expect(level1.destructibleWall.winSound == "sfx_wall_yay")
+        #expect(level1.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+    }
+
+    @Test func decodesSlashMaxSeconds() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        slash_max_seconds: 0.75
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.slashMaxSeconds == 0.75)
+    }
+
+    @Test func rejectsInvalidSlashMaxSeconds() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        slash_max_seconds: 0
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        """
+        #expect(throws: WorldSeedError.invalidSlashMaxSeconds(0)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func topLevelLetterSoundRepeatOverridesWallNestedValue() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        letter_sound_repeat_seconds: 3
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        destructible_wall:
+          letter_sound_repeat_seconds: 9
+          letters:
+            a:
+              pronunciation: sfx_letter_a_pronunciation
+              name: sfx_letter_a_name
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.letterSoundRepeatSeconds == 3)
+        #expect(level.destructibleWall.letterSoundRepeatSeconds == 3)
+    }
 }

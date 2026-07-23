@@ -7,6 +7,12 @@ name: Level
 # Use `none` to keep previous music, or `silence` to fade out.
 music: level_theme
 
+# How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
+letter_sound_repeat_seconds: 3
+
+# Max seconds a combat slash gesture stays active after the initial tap.
+slash_max_seconds: 1
+
 # Optional: override world.yaml `fx:` event keys for this level (partial merge).
 # fx:
 #   wall_destroyed: sfx_wall_destroyed_alt
@@ -44,6 +50,40 @@ gate:
     star: sfx_word_star
     gate: sfx_word_gate
     open: sfx_word_open
+
+# Destructible-wall letter-matching minigame (triggered on soft-wall contact).
+# Stars awarded on win = number of letters chosen for the round.
+destructible_wall:
+  timer_seconds: 30
+  # Optional override; defaults to top-level `letter_sound_repeat_seconds`.
+  incorrect_replay_delay_seconds: 1
+  letter_count_mean: 4
+  win_sound: sfx_wall_yay
+  letters:
+    a:
+      pronunciation: sfx_letter_a_pronunciation
+      name: sfx_letter_a_name
+    b:
+      pronunciation: sfx_letter_b_pronunciation
+      name: sfx_letter_b_name
+    c:
+      pronunciation: sfx_letter_c_pronunciation
+      name: sfx_letter_c_name
+    d:
+      pronunciation: sfx_letter_d_pronunciation
+      name: sfx_letter_d_name
+    e:
+      pronunciation: sfx_letter_e_pronunciation
+      name: sfx_letter_e_name
+    f:
+      pronunciation: sfx_letter_f_pronunciation
+      name: sfx_letter_f_name
+    g:
+      pronunciation: sfx_letter_g_pronunciation
+      name: sfx_letter_g_name
+    h:
+      pronunciation: sfx_letter_h_pronunciation
+      name: sfx_letter_h_name
 
 pickups:
   health:

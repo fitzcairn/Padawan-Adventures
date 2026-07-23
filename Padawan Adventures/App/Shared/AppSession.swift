@@ -10,6 +10,12 @@ final class AppSession {
     private(set) var selectedLevelMusic: String?
     /// Gate puzzle knobs for the selected level.
     private(set) var selectedGateConfig: GatePuzzleConfig
+    /// Destructible-wall puzzle knobs for the selected level.
+    private(set) var selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
+    /// Shared letter-name prompt replay interval for combat / wall / related games.
+    private(set) var selectedLetterSoundRepeatSeconds: Double
+    /// Max seconds a combat slash stays active after the initial tap.
+    private(set) var selectedSlashMaxSeconds: Double
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let playerStore: PlayerStateStore
@@ -25,6 +31,9 @@ final class AppSession {
         selectedLevelResourceName: String? = nil,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
         selectedGateConfig: GatePuzzleConfig = .fallback,
+        selectedDestructibleWallConfig: DestructibleWallPuzzleConfig = .fallback,
+        selectedLetterSoundRepeatSeconds: Double = LevelConfig.fallback.letterSoundRepeatSeconds,
+        selectedSlashMaxSeconds: Double = LevelConfig.fallback.slashMaxSeconds,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         playerStore: PlayerStateStore,
@@ -39,6 +48,9 @@ final class AppSession {
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelMusic = selectedLevelMusic
         self.selectedGateConfig = selectedGateConfig
+        self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
+        self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
+        self.selectedSlashMaxSeconds = selectedSlashMaxSeconds
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -74,6 +86,9 @@ final class AppSession {
         let selectedLevelName: String
         let selectedLevelMusic: String?
         let selectedGateConfig: GatePuzzleConfig
+        let selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
+        let selectedLetterSoundRepeatSeconds: Double
+        let selectedSlashMaxSeconds: Double
         do {
             let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
             try loaded.config.validate()
@@ -81,11 +96,17 @@ final class AppSession {
             selectedLevelName = loaded.level.name
             selectedLevelMusic = loaded.level.music
             selectedGateConfig = loaded.level.gate
+            selectedDestructibleWallConfig = loaded.level.destructibleWall
+            selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
+            selectedSlashMaxSeconds = loaded.level.slashMaxSeconds
         } catch {
             seedConfig = fallbackConfig()
             selectedLevelName = LevelConfig.fallback.name
             selectedLevelMusic = LevelConfig.fallback.music
             selectedGateConfig = LevelConfig.fallback.gate
+            selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
+            selectedLetterSoundRepeatSeconds = LevelConfig.fallback.letterSoundRepeatSeconds
+            selectedSlashMaxSeconds = LevelConfig.fallback.slashMaxSeconds
         }
 
         let musicSettings: MusicSettings
@@ -139,6 +160,9 @@ final class AppSession {
             selectedLevelName: selectedLevelName,
             selectedLevelMusic: selectedLevelMusic,
             selectedGateConfig: selectedGateConfig,
+            selectedDestructibleWallConfig: selectedDestructibleWallConfig,
+            selectedLetterSoundRepeatSeconds: selectedLetterSoundRepeatSeconds,
+            selectedSlashMaxSeconds: selectedSlashMaxSeconds,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             playerStore: playerStore,
@@ -158,6 +182,9 @@ final class AppSession {
         selectedLevelResourceName = resourceName
         selectedLevelMusic = loaded.level.music
         selectedGateConfig = loaded.level.gate
+        selectedDestructibleWallConfig = loaded.level.destructibleWall
+        selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
+        selectedSlashMaxSeconds = loaded.level.slashMaxSeconds
     }
 
     func bindPlayer(name: String) async throws {

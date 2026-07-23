@@ -10,12 +10,13 @@ types:
     combat_timer_seconds: 30
     shot_travel_seconds: 8
     stars_to_win: 5
+    # Shot letters; cue SFX use shared letter-name tracks (sfx_letter_*_name).
     shot_types:
       A:
-        fx: sfx_enemy_shot_a
+        fx: sfx_letter_a_name
       B:
-        fx: sfx_enemy_shot_b
+        fx: sfx_letter_b_name
       C:
-        fx: sfx_enemy_shot_c
+        fx: sfx_letter_c_name
     fx:
       contact: sfx_enemy_contact

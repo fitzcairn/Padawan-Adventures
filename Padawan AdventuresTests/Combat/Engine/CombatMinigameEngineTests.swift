@@ -9,6 +9,7 @@ struct CombatMinigameEngineTests {
         starsToWin: Int = 10,
         shotLetters: [String] = ["A", "B", "C"],
         meanInterval: Double? = 0.01,
+        letterSoundRepeatSeconds: Double = 3,
         seed: UInt64 = 42
     ) -> CombatMinigameEngine {
         var engine = CombatMinigameEngine(
@@ -17,7 +18,8 @@ struct CombatMinigameEngineTests {
                 shotTravelSeconds: travel,
                 starsToWin: starsToWin,
                 shotLetters: shotLetters,
-                meanShotIntervalSeconds: meanInterval
+                meanShotIntervalSeconds: meanInterval,
+                letterSoundRepeatSeconds: letterSoundRepeatSeconds
             ),
             rng: CombatSeededGenerator(seed: seed)
         )
@@ -346,6 +348,41 @@ struct CombatMinigameEngineTests {
             if engine.outcome != nil { break }
         }
         #expect(tickCount >= 5)
+    }
+
+    @Test func sequenceCueReplaysOnLetterSoundInterval() {
+        var engine = makeEngine(
+            timer: 20,
+            starsToWin: 99,
+            meanInterval: 0.01,
+            letterSoundRepeatSeconds: 3,
+            seed: 1
+        )
+
+        var firstCue: String?
+        for _ in 0..<40 {
+            let events = engine.tick(dt: 0.05)
+            for event in events {
+                if case let .sequenceCue(letter) = event {
+                    firstCue = letter
+                }
+            }
+            if firstCue != nil { break }
+        }
+        #expect(firstCue != nil)
+
+        var replayCount = 0
+        for _ in 0..<70 {
+            let events = engine.tick(dt: 0.1)
+            for event in events {
+                if case let .sequenceCue(letter) = event {
+                    #expect(letter == firstCue)
+                    replayCount += 1
+                }
+            }
+        }
+        // ~7 seconds of post-cue time at 3s interval → at least two replays.
+        #expect(replayCount >= 2)
     }
 
     @Test func impactRemovesShotWithoutStar() throws {

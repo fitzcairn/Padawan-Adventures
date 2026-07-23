@@ -8,26 +8,34 @@ struct EnemyMinigameView: View {
     let healthCount: Int
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
+    let letterSoundRepeatSeconds: Double
+    let slashMaxSeconds: Double
     let onFinished: (CombatOutcome) -> Void
 
     @StateObject private var session: CombatSessionController
 
     init(
         enemyType: EnemyTypeConfig,
-        healthCount: Int, 
+        healthCount: Int,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds,
         onFinished: @escaping (CombatOutcome) -> Void
     ) {
         self.enemyType = enemyType
         self.healthCount = healthCount
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.slashMaxSeconds = slashMaxSeconds
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: CombatSessionController(
                 enemyType: enemyType,
                 playerFx: playerFx,
+                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                slashMaxSeconds: slashMaxSeconds,
                 initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds))
             )
         )
@@ -86,12 +94,22 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
 
     private let enemyType: EnemyTypeConfig
     private let playerFx: SoundEffectTable
+    private let letterSoundRepeatSeconds: Double
+    private let slashMaxSeconds: Double
     private var starsAwarded = 0
     private var didFinish = false
 
-    init(enemyType: EnemyTypeConfig, playerFx: SoundEffectTable, initialTimerSeconds: Int) {
+    init(
+        enemyType: EnemyTypeConfig,
+        playerFx: SoundEffectTable,
+        letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds,
+        initialTimerSeconds: Int
+    ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
+        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.slashMaxSeconds = slashMaxSeconds
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -101,7 +119,13 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
             return
         }
         let safeSize = Self.sanitizedSize(size)
-        let created = CombatScene(size: safeSize, enemyType: enemyType, playerFx: playerFx)
+        let created = CombatScene(
+            size: safeSize,
+            enemyType: enemyType,
+            playerFx: playerFx,
+            letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+            slashMaxSeconds: slashMaxSeconds
+        )
         created.combatDelegate = self
         scene = created
     }

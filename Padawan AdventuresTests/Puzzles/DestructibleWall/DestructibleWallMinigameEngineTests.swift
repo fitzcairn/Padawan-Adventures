@@ -1,0 +1,196 @@
+import Foundation
+import Testing
+@testable import Padawan_Adventures
+
+struct DestructibleWallMinigameEngineTests {
+    private func letters(_ values: [String]) -> [DestructibleWallLetter] {
+        values.map {
+            DestructibleWallLetter(
+                letter: $0,
+                pronunciation: "sfx_letter_\($0)_pronunciation",
+                name: "sfx_letter_\($0)_name"
+            )
+        }
+    }
+
+    private func makeEngine(
+        timer: Double = 30,
+        letterSoundRepeatSeconds: Double = 10,
+        incorrectReplayDelaySeconds: Double = 1,
+        letterCountMean: Double = 4,
+        pool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h"],
+        seed: UInt64 = 42
+    ) -> DestructibleWallMinigameEngine {
+        var engine = DestructibleWallMinigameEngine(
+            config: .init(
+                timerSeconds: timer,
+                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                incorrectReplayDelaySeconds: incorrectReplayDelaySeconds,
+                letterCountMean: letterCountMean,
+                letters: letters(pool)
+            ),
+            rng: GateSeededGenerator(seed: seed)
+        )
+        engine.begin()
+        return engine
+    }
+
+    @Test func constructsInactive() {
+        let engine = DestructibleWallMinigameEngine(
+            config: .init(timerSeconds: 30, letters: letters(["a"]))
+        )
+        #expect(!engine.isActive)
+        #expect(engine.letters.isEmpty)
+        #expect(engine.currentTargetID == nil)
+    }
+
+    @Test func beginPicksLettersAndTarget() {
+        let engine = makeEngine(letterCountMean: 4, seed: 7)
+        #expect(engine.isActive)
+        #expect(engine.letters.count >= 1)
+        #expect(engine.letters.count <= 8)
+        #expect(engine.currentTargetID != nil)
+        #expect(!engine.targetPronunciationTrackID.isEmpty)
+    }
+
+    @Test func beginIsDeterministicForSeed() {
+        let a = makeEngine(letterCountMean: 4, seed: 99)
+        let b = makeEngine(letterCountMean: 4, seed: 99)
+        #expect(a.letters.map(\.letter) == b.letters.map(\.letter))
+        #expect(a.currentTarget?.letter == b.currentTarget?.letter)
+    }
+
+    @Test func letterCountMeanOneSelectsSingleLetter() {
+        let engine = makeEngine(letterCountMean: 1, pool: ["a", "b", "c"], seed: 1)
+        #expect(engine.letters.count == 1)
+    }
+
+    @Test func letterCountMeanAtPoolSizeSelectsAll() {
+        let engine = makeEngine(letterCountMean: 3, pool: ["a", "b", "c"], seed: 2)
+        #expect(engine.letters.count == 3)
+    }
+
+    @Test func correctTapGreensAndAdvancesTowardWin() {
+        var engine = makeEngine(letterCountMean: 2, pool: ["a", "b"], seed: 5)
+        #expect(engine.letters.count == 2)
+        guard let firstTarget = engine.currentTarget else {
+            Issue.record("expected a target")
+            return
+        }
+
+        let events = engine.tapLetter(id: firstTarget.id)
+        #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: firstTarget.nameTrackID)))
+        #expect(events.contains(DestructibleWallEngineEvent.correctMatch(id: firstTarget.id)))
+        #expect(events.contains(DestructibleWallEngineEvent.playYay))
+        #expect(engine.matchedIDs.contains(firstTarget.id))
+        #expect(!events.contains(DestructibleWallEngineEvent.won))
+        #expect(engine.currentTargetID != firstTarget.id)
+
+        guard let secondTarget = engine.currentTarget else {
+            Issue.record("expected a second target")
+            return
+        }
+        let winEvents = engine.tapLetter(id: secondTarget.id)
+        #expect(winEvents.contains(DestructibleWallEngineEvent.won))
+        #expect(engine.outcome == .won(starsAwarded: 2))
+        #expect(engine.isFrozen)
+    }
+
+    @Test func incorrectTapSchedulesPromptAndDoesNotMatch() {
+        var engine = makeEngine(
+            incorrectReplayDelaySeconds: 1,
+            letterCountMean: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        guard let target = engine.currentTarget,
+              let wrong = engine.letters.first(where: { $0.id != target.id }) else {
+            Issue.record("expected target and wrong letter")
+            return
+        }
+
+        engine.markTargetSoundPlayed()
+        let events = engine.tapLetter(id: wrong.id)
+        #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: wrong.nameTrackID)))
+        #expect(
+            events.contains(
+                DestructibleWallEngineEvent.incorrectMatch(
+                    id: wrong.id,
+                    pronunciationTrackID: wrong.pronunciationTrackID
+                )
+            )
+        )
+        #expect(engine.matchedIDs.isEmpty)
+        #expect(engine.currentTargetID == target.id)
+
+        let early = engine.tick(dt: 0.5)
+        #expect(!early.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+
+        let due = engine.tick(dt: 0.6)
+        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+    }
+
+    @Test func timerExpiryProducesLostAndUrgentTicks() {
+        var engine = makeEngine(timer: 3, letterCountMean: 1, pool: ["a"], seed: 1)
+        var ticks = 0
+        for _ in 0..<3 {
+            let events = engine.tick(dt: 1.0)
+            ticks += events.filter { $0 == DestructibleWallEngineEvent.timerTick }.count
+        }
+        #expect(ticks >= 1)
+        #expect(engine.outcome == .lost)
+        #expect(engine.isFrozen)
+        #expect(engine.tick(dt: 0.5).isEmpty)
+    }
+
+    @Test func tapIgnoredAfterFrozen() {
+        var engine = makeEngine(timer: 1, letterCountMean: 1, pool: ["a"], seed: 1)
+        _ = engine.tick(dt: 1.1)
+        #expect(engine.outcome == .lost)
+        guard let target = engine.letters.first else { return }
+        #expect(engine.tapLetter(id: target.id).isEmpty)
+    }
+
+    @Test func autoPlaysTargetSoundAfterRepeatInterval() {
+        var engine = makeEngine(
+            timer: 30,
+            letterSoundRepeatSeconds: 10,
+            letterCountMean: 1,
+            pool: ["a"],
+            seed: 1
+        )
+        engine.markTargetSoundPlayed()
+
+        let early = engine.tick(dt: 9.0)
+        #expect(!early.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+
+        let due = engine.tick(dt: 1.1)
+        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+    }
+
+    @Test func markTargetSoundPlayedDelaysNextAutoPlay() {
+        var engine = makeEngine(
+            timer: 30,
+            letterSoundRepeatSeconds: 5,
+            letterCountMean: 1,
+            pool: ["a"],
+            seed: 1
+        )
+        engine.markTargetSoundPlayed()
+        _ = engine.tick(dt: 4.0)
+        engine.markTargetSoundPlayed()
+
+        let stillEarly = engine.tick(dt: 4.0)
+        #expect(!stillEarly.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+
+        let due = engine.tick(dt: 1.5)
+        #expect(due.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+    }
+
+    @Test func matchedLetterCannotBeTappedAgain() {
+        var engine = makeEngine(letterCountMean: 2, pool: ["a", "b"], seed: 5)
+        guard let first = engine.currentTarget else { return }
+        _ = engine.tapLetter(id: first.id)
+        #expect(engine.tapLetter(id: first.id).isEmpty)
+    }
+}

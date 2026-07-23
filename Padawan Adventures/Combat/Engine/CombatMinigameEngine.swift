@@ -28,16 +28,23 @@ nonisolated struct CombatMinigameEngine {
         var shotTravelSeconds: Double
         var starsToWin: Int
         var shotLetters: [String]
+        /// Seconds between letter-name cue replays while a sequence is active.
+        var letterSoundRepeatSeconds: Double
 
         /// Assumed fraction of matching shots the player successfully slashes.
         static let defaultAssumedPlayerHitRate: Double = 0.5
+        static let defaultLetterSoundRepeatSeconds: Double = 3
 
-        init(from type: EnemyTypeConfig) {
+        init(
+            from type: EnemyTypeConfig,
+            letterSoundRepeatSeconds: Double = defaultLetterSoundRepeatSeconds
+        ) {
             let letters = type.shotLetters
             combatTimerSeconds = type.combatTimerSeconds
             shotTravelSeconds = type.shotTravelSeconds
             starsToWin = type.starsToWin
             shotLetters = letters
+            self.letterSoundRepeatSeconds = max(letterSoundRepeatSeconds, 0.05)
             meanShotIntervalSeconds = Self.derivedMeanShotInterval(
                 combatTimerSeconds: type.combatTimerSeconds,
                 shotTravelSeconds: type.shotTravelSeconds,
@@ -51,12 +58,14 @@ nonisolated struct CombatMinigameEngine {
             shotTravelSeconds: Double,
             starsToWin: Int,
             shotLetters: [String] = ["A", "B", "C"],
-            meanShotIntervalSeconds: Double? = nil
+            meanShotIntervalSeconds: Double? = nil,
+            letterSoundRepeatSeconds: Double = defaultLetterSoundRepeatSeconds
         ) {
             self.combatTimerSeconds = combatTimerSeconds
             self.shotTravelSeconds = shotTravelSeconds
             self.starsToWin = starsToWin
             self.shotLetters = shotLetters
+            self.letterSoundRepeatSeconds = max(letterSoundRepeatSeconds, 0.05)
             self.meanShotIntervalSeconds = meanShotIntervalSeconds ?? Self.derivedMeanShotInterval(
                 combatTimerSeconds: combatTimerSeconds,
                 shotTravelSeconds: shotTravelSeconds,
@@ -114,6 +123,7 @@ nonisolated struct CombatMinigameEngine {
     private(set) var correctSlashesRemainingInSequence: Int = 0
 
     private var lastDisplayedSecond: Int
+    private var nextCueReplayAt: Double = .infinity
     private var pendingEvents: [CombatEngineEvent] = []
     private var rng: any RandomNumberGenerator
 
@@ -139,6 +149,7 @@ nonisolated struct CombatMinigameEngine {
         outcome = nil
         sequenceRequiredLetter = ""
         correctSlashesRemainingInSequence = 0
+        nextCueReplayAt = .infinity
         pendingEvents = []
         lastDisplayedSecond = Int(ceil(config.combatTimerSeconds))
         nextSpawnAt = scheduleNextSpawnDelay()
@@ -173,6 +184,11 @@ nonisolated struct CombatMinigameEngine {
                 events.append(.timerTick)
             }
             lastDisplayedSecond = displayedSecond
+        }
+
+        if !sequenceRequiredLetter.isEmpty, elapsed >= nextCueReplayAt {
+            nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
+            events.append(.sequenceCue(requiredLetter: sequenceRequiredLetter))
         }
 
         while nextSpawnAt <= elapsed,
@@ -263,6 +279,7 @@ nonisolated struct CombatMinigameEngine {
         let required = randomShotLetter()
         sequenceRequiredLetter = required
         correctSlashesRemainingInSequence = scheduleCorrectSlashesRequired()
+        nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
         events.append(.sequenceCue(requiredLetter: required))
     }
 
