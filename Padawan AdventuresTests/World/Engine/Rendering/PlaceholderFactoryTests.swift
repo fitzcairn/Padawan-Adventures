@@ -192,6 +192,31 @@ struct PlaceholderFactoryTests {
         #expect(!IsometricTileGeometry.needsCeiling(at: wall, in: world))
     }
 
+    @Test func floorBehindFrontWallIsOccludedForPickups() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        // Wall south of center (higher isometric depth) covers a sprite on the center tile.
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 1, y: 2, story: 0))
+        let center = GridCoord(x: 1, y: 1, story: 0)
+        #expect(IsometricTileGeometry.hasFrontWallOccluder(at: center, in: world.tiles[0]))
+        #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: center, in: world))
+    }
+
+    @Test func interiorFloorWithOpenFrontIsVisibleForPickups() {
+        // 5×5 open floor — center has no wall/gate to the east, south, or southeast.
+        let world = TestWorldFactory.emptyFloor(width: 5, height: 5)
+        let center = GridCoord(x: 2, y: 2, story: 0)
+        #expect(!IsometricTileGeometry.hasFrontWallOccluder(at: center, in: world.tiles[0]))
+        #expect(IsometricTileGeometry.isPickupVisibleFloor(at: center, in: world))
+    }
+
+    @Test func gateToTheEastOccludesPickupFloor() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 1, story: 0))
+        let cell = GridCoord(x: 1, y: 1, story: 0)
+        #expect(IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: world.tiles[0]))
+        #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: world))
+    }
+
     @Test func ceilingNodeIsGrayRaisedDiamond() {
         let config = IsometricConfig(tileWidth: 40, tileHeight: 40, wallHeight: 40)
         let node = PlaceholderFactory.ceilingNode(config: config)

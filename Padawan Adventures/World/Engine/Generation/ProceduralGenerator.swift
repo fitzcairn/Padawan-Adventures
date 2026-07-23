@@ -516,7 +516,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         return enemies
     }
 
-    /// One roll per room per kind (except the spawn room); place on a room floor cell only.
+    /// One roll per room per kind (except the spawn room); visible room floor only.
     private func spawnPickups(
         _ config: WorldSeedConfig.PickupsSpawnConfig,
         in rooms: [GeneratedRoom],
@@ -535,7 +535,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             guard let chance else { continue }
             for room in rooms where room.id != excludingRoomID {
                 guard rng.nextBool(probability: chance) else { continue }
-                guard let position = pickRoomFloorCell(
+                guard let position = pickVisiblePickupFloorCell(
                     in: room,
                     tiles: tiles,
                     occupied: occupied,
@@ -557,7 +557,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         return pickups
     }
 
-    /// Places exactly one treasure in the room farthest from spawn (tile Manhattan distance).
+    /// Places exactly one treasure on a visible floor tile in the farthest room that has one.
     private func spawnTreasure(
         in rooms: [GeneratedRoom],
         spawn: GridCoord,
@@ -565,21 +565,30 @@ nonisolated struct ProceduralGenerator: Sendable {
         occupied: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> GameEntity? {
-        guard let room = farthestRoom(from: spawn, in: rooms) else { return nil }
-        guard let position = pickRoomFloorCell(
-            in: room,
-            tiles: tiles,
-            occupied: occupied,
-            rng: &rng
-        ) else { return nil }
+        let ordered = rooms.sorted { lhs, rhs in
+            let lhsDist = manhattan(spawn, lhs.center)
+            let rhsDist = manhattan(spawn, rhs.center)
+            if lhsDist != rhsDist { return lhsDist > rhsDist }
+            return lhs.id > rhs.id
+        }
 
-        occupied.insert(position)
-        return GameEntity(
-            letter: " ",
-            position: position,
-            isPlayer: false,
-            pickupKind: .treasure
-        )
+        for room in ordered {
+            guard let position = pickVisiblePickupFloorCell(
+                in: room,
+                tiles: tiles,
+                occupied: occupied,
+                rng: &rng
+            ) else { continue }
+
+            occupied.insert(position)
+            return GameEntity(
+                letter: " ",
+                position: position,
+                isPlayer: false,
+                pickupKind: .treasure
+            )
+        }
+        return nil
     }
 
     /// Room whose center is farthest from `spawn` by Manhattan distance (ties → higher room id).
@@ -592,7 +601,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         }
     }
 
-    /// Picks a cell for pickups or enemies: room floor only (never pit, gate, wall, or hallway).
+    /// Picks a cell for enemies: room floor only (never pit, gate, wall, or hallway).
     private func pickRoomFloorCell(
         in room: GeneratedRoom,
         tiles: [[[Tile]]],
@@ -603,6 +612,26 @@ nonisolated struct ProceduralGenerator: Sendable {
             .filter { cell in
                 guard !occupied.contains(cell) else { return false }
                 return isEntityPlaceableRoomFloor(cell, in: room, tiles: tiles)
+            }
+            .sorted { lhs, rhs in
+                if lhs.x != rhs.x { return lhs.x < rhs.x }
+                return lhs.y < rhs.y
+            }
+        return rng.pick(candidates)
+    }
+
+    /// Picks a pickup cell that stays in full view (not covered by a front wall/gate).
+    private func pickVisiblePickupFloorCell(
+        in room: GeneratedRoom,
+        tiles: [[[Tile]]],
+        occupied: Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> GridCoord? {
+        let candidates = room.cells
+            .filter { cell in
+                guard !occupied.contains(cell) else { return false }
+                guard isEntityPlaceableRoomFloor(cell, in: room, tiles: tiles) else { return false }
+                return !IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: tiles[0])
             }
             .sorted { lhs, rhs in
                 if lhs.x != rhs.x { return lhs.x < rhs.x }

@@ -45,6 +45,8 @@ final class GateScene: SKScene {
     private let stagingFill = UIColor(white: 0.35, alpha: 1)
     private let circleFill = UIColor(white: 0.22, alpha: 1)
     private let circleWrongFlash = UIColor.systemRed
+    /// Bright blue fill for the completed start → letters → stop chain.
+    private let circleSolvedFill = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)
     private let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)
 
     init(
@@ -609,10 +611,17 @@ final class GateScene: SKScene {
         }
 
         // Last correct letter → right endpoint (circuit complete).
-        if connectedCount == target.count, connectedCount >= 1 {
+        let isFullyConnected = connectedCount == target.count && connectedCount >= 1
+        if isFullyConnected {
             let last = staged[connectedCount - 1]
             addConnectorLine(from: last.node.position, to: rightEndpointNode.position)
         }
+
+        applyConnectedCircleColors(
+            staged: staged,
+            connectedCount: connectedCount,
+            isFullyConnected: isFullyConnected
+        )
 
         if prefix != lastConnectedPrefix {
             lastConnectedPrefix = prefix
@@ -620,6 +629,36 @@ final class GateScene: SKScene {
             if !prefix.isEmpty {
                 playConnectedPrefixSound(prefix)
             }
+        }
+    }
+
+    /// When the full word chain is complete, paint every linked circle bright blue.
+    private func applyConnectedCircleColors(
+        staged: [(node: SKNode, letter: String)],
+        connectedCount: Int,
+        isFullyConnected: Bool
+    ) {
+        if isFullyConnected {
+            leftEndpointNode.fillColor = circleSolvedFill
+            rightEndpointNode.fillColor = circleSolvedFill
+            var solvedNodes = Set<ObjectIdentifier>()
+            for index in 0..<connectedCount {
+                let node = staged[index].node
+                letterCircle(in: node)?.fillColor = circleSolvedFill
+                solvedNodes.insert(ObjectIdentifier(node))
+            }
+            for (_, node) in letterNodes where !solvedNodes.contains(ObjectIdentifier(node)) {
+                guard node.action(forKey: Self.wrongMoveActionKey) == nil else { continue }
+                letterCircle(in: node)?.fillColor = circleFill
+            }
+            return
+        }
+
+        leftEndpointNode.fillColor = circleFill
+        rightEndpointNode.fillColor = circleFill
+        for (_, node) in letterNodes {
+            guard node.action(forKey: Self.wrongMoveActionKey) == nil else { continue }
+            letterCircle(in: node)?.fillColor = circleFill
         }
     }
 

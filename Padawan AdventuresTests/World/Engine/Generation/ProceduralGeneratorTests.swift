@@ -820,16 +820,45 @@ struct ProceduralGeneratorTests {
 
             guard let treasure = treasures.first else { continue }
             let spawn = result.world.spawn
-            let farthest = result.rooms.max { lhs, rhs in
-                let lhsDist = abs(spawn.x - lhs.center.x) + abs(spawn.y - lhs.center.y)
-                let rhsDist = abs(spawn.x - rhs.center.x) + abs(spawn.y - rhs.center.y)
-                if lhsDist != rhsDist { return lhsDist < rhsDist }
-                return lhs.id < rhs.id
-            }!
-            #expect(
-                farthest.cells.contains(treasure.position),
-                "treasure not in farthest room \(farthest.id) (seed \(seed))"
+            func roomHasVisiblePickupFloor(_ room: GeneratedRoom) -> Bool {
+                room.cells.contains { cell in
+                    IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: result.world)
+                }
+            }
+            let farthestVisible = result.rooms
+                .filter(roomHasVisiblePickupFloor)
+                .max { lhs, rhs in
+                    let lhsDist = abs(spawn.x - lhs.center.x) + abs(spawn.y - lhs.center.y)
+                    let rhsDist = abs(spawn.x - rhs.center.x) + abs(spawn.y - rhs.center.y)
+                    if lhsDist != rhsDist { return lhsDist < rhsDist }
+                    return lhs.id < rhs.id
+                }
+            #expect(farthestVisible != nil, "expected a room with visible floor (seed \(seed))")
+            if let farthestVisible {
+                #expect(
+                    farthestVisible.cells.contains(treasure.position),
+                    "treasure not in farthest visible room \(farthestVisible.id) (seed \(seed))"
+                )
+            }
+        }
+    }
+
+    @Test func pickupsNeverSpawnBehindFrontWalls() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.pickups = .init(
+                health: .init(spawnChancePerRoom: 1.0),
+                energy: .init(spawnChancePerRoom: 1.0)
             )
+            let world = try ProceduralGenerator().generate(from: config)
+            let pickups = world.entities.filter(\.isPickup)
+            #expect(!pickups.isEmpty, "expected pickups (seed \(seed))")
+            for pickup in pickups {
+                #expect(
+                    IsometricTileGeometry.isPickupVisibleFloor(at: pickup.position, in: world),
+                    "pickup \(pickup.pickupKind!) occluded at \(pickup.position) (seed \(seed))"
+                )
+            }
         }
     }
 

@@ -122,12 +122,39 @@ enum IsometricTileGeometry {
 
     static func isOpaqueWall(at coord: GridCoord, in world: GameWorld) -> Bool {
         guard let tile = world.tile(at: coord) else { return false }
+        return isOpaqueOccluder(tile)
+    }
+
+    /// Walls and gates draw solid blocks that can hide sprites behind them.
+    static func isOpaqueOccluder(_ tile: Tile) -> Bool {
         switch tile.kind {
         case .wall, .gate:
             return true
         case .floor:
             return false
         }
+    }
+
+    /// East / south / southeast neighbors sit in front in isometric depth and can cover a sprite.
+    static let frontOcclusionOffsets: [(Int, Int)] = [(1, 0), (0, 1), (1, 1)]
+
+    /// True when a front-adjacent wall/gate would draw over a sprite standing on `coord`.
+    static func hasFrontWallOccluder(at coord: GridCoord, in story: [[Tile]]) -> Bool {
+        for (dx, dy) in frontOcclusionOffsets {
+            let neighbor = coord.neighbor(dx: dx, dy: dy)
+            guard neighbor.y >= 0, neighbor.y < story.count else { continue }
+            guard neighbor.x >= 0, neighbor.x < story[neighbor.y].count else { continue }
+            if isOpaqueOccluder(story[neighbor.y][neighbor.x]) { return true }
+        }
+        return false
+    }
+
+    /// Floor cell suitable for pickups: non-pit floor with no front wall/gate covering it.
+    static func isPickupVisibleFloor(at coord: GridCoord, in world: GameWorld) -> Bool {
+        guard let tile = world.tile(at: coord) else { return false }
+        guard case .floor(let isPit) = tile.kind, !isPit else { return false }
+        guard coord.story >= 0, coord.story < world.tiles.count else { return false }
+        return !hasFrontWallOccluder(at: coord, in: world.tiles[coord.story])
     }
 
     /// True when the tile draws as a floor diamond (including pits).
