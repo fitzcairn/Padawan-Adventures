@@ -453,7 +453,7 @@ nonisolated struct ProceduralGenerator: Sendable {
            let configured = enemyConfig.type(named: spawnConfig.type) {
             typeID = spawnConfig.type
             typeConfig = configured
-        } else if let first = enemyConfig.types.sorted(by: { $0.key < $1.key }).first {
+        } else if let first = enemyConfig.enemies.sorted(by: { $0.key < $1.key }).first {
             typeID = first.key
             typeConfig = first.value
         } else {

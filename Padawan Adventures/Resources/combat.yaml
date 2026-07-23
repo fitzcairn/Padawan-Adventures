@@ -1,7 +1,10 @@
-# Padawan Adventures — enemy type definitions
-# Each key under `types` is a named enemy kind referenced by world.yaml.
+# Padawan Adventures — combat / enemy type definitions
+# Each key under `enemies` is a named enemy kind referenced by level YAML spawn config.
 
-types:
+# Max seconds a combat slash gesture stays active after the initial tap.
+slash_max_seconds: 0.5
+
+enemies:
   grunt:
     letter: E
     color: "#FF0000"

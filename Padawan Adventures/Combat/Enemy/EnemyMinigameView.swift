@@ -20,7 +20,7 @@ struct EnemyMinigameView: View {
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
-        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds,
+        slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         onFinished: @escaping (CombatOutcome) -> Void
     ) {
         self.enemyType = enemyType
@@ -103,7 +103,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         enemyType: EnemyTypeConfig,
         playerFx: SoundEffectTable,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
-        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds,
+        slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         initialTimerSeconds: Int
     ) {
         self.enemyType = enemyType

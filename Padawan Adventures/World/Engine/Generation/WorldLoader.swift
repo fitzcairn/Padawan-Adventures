@@ -57,15 +57,14 @@ nonisolated enum WorldLoader {
         return (config, level)
     }
 
-    /// Overlays level map size, generation, pickups, and optional `fx` onto a world config.
+    /// Overlays level map size, generation, enemies, pickups, and puzzle FX onto a world config.
     static func applyLevel(_ level: LevelConfig, to config: inout WorldSeedConfig) {
         config.world.width = level.width
         config.world.height = level.height
         config.generation = level.generation
+        config.enemies = level.enemies
         config.pickups = level.pickups
-        if let levelFx = level.fx {
-            config.fx = config.fx.merging(levelFx)
-        }
+        config.fx = level.worldFx
     }
 
     static func loadFromBundle(

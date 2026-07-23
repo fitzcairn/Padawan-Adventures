@@ -1,7 +1,7 @@
 # Padawan Adventures — world (v1)
 # All procedural generation is deterministic for a given seed + params.
 # Use `seed: time` for a fresh seed from the clock on each new game, or a number to fix it.
-# Map size and generation knobs live in base_level.yaml / Levels/*.yaml.
+# Map size, generation knobs, and enemy spawn live in base_level.yaml / Levels/*.yaml.
 
 version: 1
 seed: time
@@ -12,15 +12,3 @@ world:
 display:
   tile_width: 80
   tile_height: 40
-
-enemies:
-  type: grunt
-  spawn_chance_per_room: 0.8
-
-# World-level event key → sound track basename (Resources/Audio/FX/<name>.m4a).
-# Levels may override individual keys via their own `fx:` block.
-fx:
-  wall_destroyed: sfx_wall_destroyed
-  gate_opened: sfx_gate_opened
-
-extensions: {}

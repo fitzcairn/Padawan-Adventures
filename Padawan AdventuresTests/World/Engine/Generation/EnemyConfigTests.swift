@@ -6,7 +6,7 @@ import UIKit
 struct EnemyConfigTests {
     @Test func decodesNamedTypes() throws {
         let yaml = """
-        types:
+        enemies:
           grunt:
             letter: E
             color: "#FF0000"
@@ -35,7 +35,8 @@ struct EnemyConfigTests {
         """
 
         let config = try EnemyConfig.decode(from: yaml)
-        #expect(config.types.count == 2)
+        #expect(config.slashMaxSeconds == EnemyConfig.fallbackSlashMaxSeconds)
+        #expect(config.enemies.count == 2)
         #expect(config.type(named: "grunt")?.letter == "E")
         #expect(config.type(named: "grunt")?.color == "#FF0000")
         #expect(config.type(named: "grunt")?.tilesPerSecond == 1.0)
@@ -57,6 +58,7 @@ struct EnemyConfigTests {
 
     @Test func fallbackMatchesGruntDefaults() {
         let config = EnemyConfig.fallback
+        #expect(config.slashMaxSeconds == 0.5)
         let grunt = config.type(named: "grunt")
         #expect(grunt?.letter == "E")
         #expect(grunt?.color == "#FF0000")
@@ -68,9 +70,39 @@ struct EnemyConfigTests {
         #expect(grunt?.shotLetters == ["A", "B", "C"])
     }
 
+    @Test func decodesSlashMaxSeconds() throws {
+        let yaml = """
+        slash_max_seconds: 0.75
+        enemies:
+          grunt:
+            letter: E
+            color: "#FF0000"
+            tiles_per_second: 1.0
+            forget_seconds: 3.0
+            shot_types:
+              A:
+                fx: sfx_letter_a_name
+        """
+        let config = try EnemyConfig.decode(from: yaml)
+        #expect(config.slashMaxSeconds == 0.75)
+    }
+
+    @Test func validateRejectsNonPositiveSlashMaxSeconds() {
+        var config = EnemyConfig.fallback
+        config.slashMaxSeconds = 0
+        #expect(throws: EnemyConfigError.invalid("slash_max_seconds must be > 0")) {
+            try config.validate()
+        }
+    }
+
+    @Test func loadsSlashMaxSecondsFromBundle() throws {
+        let config = try EnemyConfig.loadFromBundle()
+        #expect(config.slashMaxSeconds == 0.5)
+    }
+
     @Test func validateRejectsEmptyShotTypes() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.shotTypes = [:]
+        config.enemies["grunt"]?.shotTypes = [:]
         #expect(throws: EnemyConfigError.invalid("grunt.shot_types must not be empty")) {
             try config.validate()
         }
@@ -78,7 +110,7 @@ struct EnemyConfigTests {
 
     @Test func validateRejectsShotTypeMissingFx() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.shotTypes["A"] = EnemyShotTypeConfig(fx: .empty)
+        config.enemies["grunt"]?.shotTypes["A"] = EnemyShotTypeConfig(fx: .empty)
         #expect(throws: EnemyConfigError.invalid("grunt.shot_types.A.fx must name a shoot track")) {
             try config.validate()
         }
@@ -86,7 +118,7 @@ struct EnemyConfigTests {
 
     @Test func validateRejectsNonPositiveCombatTimer() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.combatTimerSeconds = 0
+        config.enemies["grunt"]?.combatTimerSeconds = 0
         #expect(throws: EnemyConfigError.invalid("grunt.combat_timer_seconds must be > 0")) {
             try config.validate()
         }
@@ -94,22 +126,22 @@ struct EnemyConfigTests {
 
     @Test func validateRejectsInvalidStarsToWin() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.starsToWin = 0
+        config.enemies["grunt"]?.starsToWin = 0
         #expect(throws: EnemyConfigError.invalid("grunt.stars_to_win must be >= 1")) {
             try config.validate()
         }
     }
 
-    @Test func validateRejectsEmptyTypes() {
-        let config = EnemyConfig(types: [:])
-        #expect(throws: EnemyConfigError.invalid("types must not be empty")) {
+    @Test func validateRejectsEmptyEnemies() {
+        let config = EnemyConfig(enemies: [:])
+        #expect(throws: EnemyConfigError.invalid("enemies must not be empty")) {
             try config.validate()
         }
     }
 
     @Test func validateRejectsBadColor() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.color = "red"
+        config.enemies["grunt"]?.color = "red"
         #expect(throws: EnemyConfigError.invalid("grunt.color must be a hex color like #RRGGBB")) {
             try config.validate()
         }
@@ -117,7 +149,7 @@ struct EnemyConfigTests {
 
     @Test func validateRejectsNonPositiveSpeed() {
         var config = EnemyConfig.fallback
-        config.types["grunt"]?.tilesPerSecond = 0
+        config.enemies["grunt"]?.tilesPerSecond = 0
         #expect(throws: EnemyConfigError.invalid("grunt.tiles_per_second must be > 0")) {
             try config.validate()
         }
@@ -125,7 +157,7 @@ struct EnemyConfigTests {
 
     @Test func decodeFailsOnInvalidYAML() {
         #expect(throws: EnemyConfigError.decodeFailed) {
-            try EnemyConfig.decode(from: "types: [not, valid]")
+            try EnemyConfig.decode(from: "enemies: [not, valid]")
         }
     }
 

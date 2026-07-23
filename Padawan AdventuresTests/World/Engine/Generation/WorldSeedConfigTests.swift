@@ -67,7 +67,7 @@ struct WorldSeedConfigTests {
         try config.validate()
     }
 
-    @Test func applyLevelMergesFxOverrides() throws {
+    @Test func applyLevelUsesPuzzleWorldFx() throws {
         var config = try WorldLoader.decodeConfig(from: """
         version: 1
         seed: 1
@@ -86,8 +86,8 @@ struct WorldSeedConfigTests {
             wall_destructible_chance: 0
             gate_chance: 0
         fx:
-          wall_destroyed: sfx_wall_destroyed
-          gate_opened: sfx_gate_opened
+          wall_destroyed: sfx_from_world
+          gate_opened: sfx_from_world
         """)
         let level = try LevelConfig.decode(from: """
         name: Level Override
@@ -102,7 +102,9 @@ struct WorldSeedConfigTests {
           pit_chance: 0
           wall_destructible_chance: 0
           gate_chance: 0
-        fx:
+        gate:
+          gate_opened: sfx_gate_opened
+        destructible_wall:
           wall_destroyed: sfx_wall_destroyed_alt
         """)
         WorldLoader.applyLevel(level, to: &config)
@@ -112,7 +114,7 @@ struct WorldSeedConfigTests {
         #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
     }
 
-    @Test func applyLevelWithoutFxKeepsWorldFx() throws {
+    @Test func applyLevelFallbackPuzzleFxReplacesWorldFx() throws {
         var config = try WorldLoader.decodeConfig(from: """
         version: 1
         seed: 1
@@ -131,11 +133,14 @@ struct WorldSeedConfigTests {
             wall_destructible_chance: 0
             gate_chance: 0
         fx:
-          gate_opened: sfx_gate_opened
+          gate_opened: sfx_from_world
         """)
         let level = LevelConfig.fallback
         WorldLoader.applyLevel(level, to: &config)
+        #expect(config.fx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed")
         #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
+        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.spawnChancePerRoom == 0.8)
     }
 
     @Test func decodesTimeSeedToken() throws {

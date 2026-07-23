@@ -8,14 +8,14 @@ final class AppSession {
     private(set) var selectedLevelResourceName: String?
     /// Raw level `music:` value for the selected level.
     private(set) var selectedLevelMusic: String?
+    /// Per-minigame music for the selected level.
+    private(set) var selectedGameMusic: GameMusicConfig
     /// Gate puzzle knobs for the selected level.
     private(set) var selectedGateConfig: GatePuzzleConfig
     /// Destructible-wall puzzle knobs for the selected level.
     private(set) var selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
     /// Shared letter-name prompt replay interval for combat / wall / related games.
     private(set) var selectedLetterSoundRepeatSeconds: Double
-    /// Max seconds a combat slash stays active after the initial tap.
-    private(set) var selectedSlashMaxSeconds: Double
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let playerStore: PlayerStateStore
@@ -30,10 +30,10 @@ final class AppSession {
         selectedLevelName: String = LevelConfig.fallback.name,
         selectedLevelResourceName: String? = nil,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
+        selectedGameMusic: GameMusicConfig = .fallback,
         selectedGateConfig: GatePuzzleConfig = .fallback,
         selectedDestructibleWallConfig: DestructibleWallPuzzleConfig = .fallback,
         selectedLetterSoundRepeatSeconds: Double = LevelConfig.fallback.letterSoundRepeatSeconds,
-        selectedSlashMaxSeconds: Double = LevelConfig.fallback.slashMaxSeconds,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         playerStore: PlayerStateStore,
@@ -47,10 +47,10 @@ final class AppSession {
         self.selectedLevelName = selectedLevelName
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelMusic = selectedLevelMusic
+        self.selectedGameMusic = selectedGameMusic
         self.selectedGateConfig = selectedGateConfig
         self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
-        self.selectedSlashMaxSeconds = selectedSlashMaxSeconds
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -74,7 +74,7 @@ final class AppSession {
             ),
             generation: level.generation,
             display: WorldSeedConfig.DisplayParams(tileWidth: 40, tileHeight: 40),
-            enemies: WorldSeedConfig.EnemiesSpawnConfig(type: "grunt", spawnChancePerRoom: 0.8),
+            enemies: level.enemies,
             pickups: level.pickups,
             extensions: nil
         )
@@ -85,28 +85,28 @@ final class AppSession {
         let seedConfig: WorldSeedConfig
         let selectedLevelName: String
         let selectedLevelMusic: String?
+        let selectedGameMusic: GameMusicConfig
         let selectedGateConfig: GatePuzzleConfig
         let selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
         let selectedLetterSoundRepeatSeconds: Double
-        let selectedSlashMaxSeconds: Double
         do {
             let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
             try loaded.config.validate()
             seedConfig = loaded.config
             selectedLevelName = loaded.level.name
             selectedLevelMusic = loaded.level.music
+            selectedGameMusic = loaded.level.gameMusic
             selectedGateConfig = loaded.level.gate
             selectedDestructibleWallConfig = loaded.level.destructibleWall
             selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
-            selectedSlashMaxSeconds = loaded.level.slashMaxSeconds
         } catch {
             seedConfig = fallbackConfig()
             selectedLevelName = LevelConfig.fallback.name
             selectedLevelMusic = LevelConfig.fallback.music
+            selectedGameMusic = LevelConfig.fallback.gameMusic
             selectedGateConfig = LevelConfig.fallback.gate
             selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
             selectedLetterSoundRepeatSeconds = LevelConfig.fallback.letterSoundRepeatSeconds
-            selectedSlashMaxSeconds = LevelConfig.fallback.slashMaxSeconds
         }
 
         let musicSettings: MusicSettings
@@ -159,10 +159,10 @@ final class AppSession {
             seedConfig: seedConfig,
             selectedLevelName: selectedLevelName,
             selectedLevelMusic: selectedLevelMusic,
+            selectedGameMusic: selectedGameMusic,
             selectedGateConfig: selectedGateConfig,
             selectedDestructibleWallConfig: selectedDestructibleWallConfig,
             selectedLetterSoundRepeatSeconds: selectedLetterSoundRepeatSeconds,
-            selectedSlashMaxSeconds: selectedSlashMaxSeconds,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             playerStore: playerStore,
@@ -181,10 +181,10 @@ final class AppSession {
         selectedLevelName = loaded.level.name
         selectedLevelResourceName = resourceName
         selectedLevelMusic = loaded.level.music
+        selectedGameMusic = loaded.level.gameMusic
         selectedGateConfig = loaded.level.gate
         selectedDestructibleWallConfig = loaded.level.destructibleWall
         selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
-        selectedSlashMaxSeconds = loaded.level.slashMaxSeconds
     }
 
     func bindPlayer(name: String) async throws {

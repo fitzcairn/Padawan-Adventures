@@ -1,4 +1,5 @@
 # Level generation knobs (merged into world.yaml at load).
+# Includes map size, generation, enemy spawn, pickups, and puzzle FX.
 # Per-level files in Levels/ inherit from this base via `inherits: base_level`.
 
 name: Level
@@ -7,15 +8,15 @@ name: Level
 # Use `none` to keep previous music, or `silence` to fade out.
 music: level_theme
 
+# Per-minigame music for this level (same cue rules as `music:`).
+game_music:
+  combat: combat_theme
+  pit: pit_theme
+  destructible_wall: destructible_wall_theme
+  gate: gate_theme
+
 # How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
 letter_sound_repeat_seconds: 3
-
-# Max seconds a combat slash gesture stays active after the initial tap.
-slash_max_seconds: 0.5
-
-# Optional: override world.yaml `fx:` event keys for this level (partial merge).
-# fx:
-#   wall_destroyed: sfx_wall_destroyed_alt
 
 width: 20
 height: 20
@@ -42,14 +43,12 @@ gate:
   timer_seconds: 30
   word_sound_repeat_seconds: 10
   win_sound: sfx_gate_win
+  # Played in the world when the gate strip opens after a win.
+  gate_opened: sfx_gate_opened
   # Extra random letters beyond the chosen word (total sprites = word length + this).
   num_padding_letters: 6
-  words:
-    cat: sfx_word_cat
-    dog: sfx_word_dog
-    star: sfx_word_star
-    gate: sfx_word_gate
-    open: sfx_word_open
+  # Selectable gate words for this level (keys into shared `Vocab/words.yaml` for spelling/progressive FX).
+  words: [cat, dog, star, gate, open]
 
 # Destructible-wall letter-matching minigame (triggered on soft-wall contact).
 # Stars awarded on win = number of letters chosen for the round.
@@ -59,31 +58,14 @@ destructible_wall:
   incorrect_replay_delay_seconds: 1
   letter_count_mean: 3
   win_sound: sfx_wall_yay
-  letters:
-    a:
-      pronunciation: sfx_letter_a_pronunciation
-      name: sfx_letter_a_name
-    b:
-      pronunciation: sfx_letter_b_pronunciation
-      name: sfx_letter_b_name
-    c:
-      pronunciation: sfx_letter_c_pronunciation
-      name: sfx_letter_c_name
-    d:
-      pronunciation: sfx_letter_d_pronunciation
-      name: sfx_letter_d_name
-    e:
-      pronunciation: sfx_letter_e_pronunciation
-      name: sfx_letter_e_name
-    f:
-      pronunciation: sfx_letter_f_pronunciation
-      name: sfx_letter_f_name
-    g:
-      pronunciation: sfx_letter_g_pronunciation
-      name: sfx_letter_g_name
-    h:
-      pronunciation: sfx_letter_h_pronunciation
-      name: sfx_letter_h_name
+  # Played in the world when the soft wall is destroyed after a win.
+  wall_destroyed: sfx_wall_destroyed
+  # Selectable letters for this level (keys into shared `Vocab/letters.yaml` for pronunciation/name FX).
+  letters: [a, b, c, d, e, f, g, h]
+
+enemies:
+  type: grunt
+  spawn_chance_per_room: 0.8
 
 pickups:
   health:

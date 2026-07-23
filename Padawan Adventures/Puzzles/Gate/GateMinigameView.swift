@@ -42,6 +42,8 @@ struct GateMinigameView: View {
 
                 GateHUDRepresentable(
                     config: hudConfig,
+                    word: session.targetWord,
+                    connectedCount: session.connectedCount,
                     timerSeconds: session.timerSeconds,
                     timerUrgent: session.timerUrgent
                 )
@@ -79,6 +81,8 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     @Published var showUnlocked = false
     @Published var showTimesUp = false
     @Published private(set) var starsAwarded = 0
+    @Published private(set) var targetWord = ""
+    @Published private(set) var connectedCount = 0
     @Published private(set) var scene: GateScene?
 
     private let puzzleConfig: GatePuzzleConfig
@@ -135,6 +139,19 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         }
     }
 
+    func gateSceneDidSelectWord(_ word: String) {
+        Task { @MainActor in
+            self.targetWord = word
+            self.connectedCount = 0
+        }
+    }
+
+    func gateSceneDidUpdateConnectedPrefix(_ prefix: String) {
+        Task { @MainActor in
+            self.connectedCount = prefix.count
+        }
+    }
+
     func gateSceneDidWin(starsAwarded: Int) {
         Task { @MainActor in
             self.starsAwarded = starsAwarded
@@ -169,6 +186,8 @@ private struct GateSpriteView: UIViewRepresentable {
 
 private struct GateHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
+    let word: String
+    let connectedCount: Int
     let timerSeconds: Int
     let timerUrgent: Bool
 
@@ -185,7 +204,12 @@ private struct GateHUDRepresentable: UIViewRepresentable {
         container.backgroundColor = .clear
         container.isUserInteractionEnabled = false
 
-        let hud = GateHUDView(config: config, timerSeconds: timerSeconds)
+        let hud = GateHUDView(
+            config: config,
+            timerSeconds: timerSeconds,
+            word: word,
+            connectedCount: connectedCount
+        )
         hud.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(hud)
         NSLayoutConstraint.activate([
@@ -199,6 +223,7 @@ private struct GateHUDRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.hud?.setWord(word, connectedCount: connectedCount)
         context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
 }

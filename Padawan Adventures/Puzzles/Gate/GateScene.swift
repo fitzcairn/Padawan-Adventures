@@ -1,14 +1,19 @@
+import AVFoundation
 import SpriteKit
 import UIKit
 
 protocol GateSceneDelegate: AnyObject {
     func gateSceneDidUpdateTimer(seconds: Int, urgent: Bool)
+    func gateSceneDidSelectWord(_ word: String)
+    func gateSceneDidUpdateConnectedPrefix(_ prefix: String)
     func gateSceneDidWin(starsAwarded: Int)
     func gateSceneDidLose()
 }
 
 /// SpriteKit gate puzzle: staging area, draggable letter tokens, timer-driven engine.
 final class GateScene: SKScene {
+    private static let connectedSoundActionKey = "gateConnectedSound"
+
     weak var gateDelegate: GateSceneDelegate?
 
     private let puzzleConfig: GatePuzzleConfig
@@ -23,6 +28,7 @@ final class GateScene: SKScene {
     private var didEnd = false
     private var didSetup = false
     private var lastUpdateTime: TimeInterval?
+    private var lastConnectedPrefix = ""
     private var placementRNG = SystemRandomNumberGenerator()
 
     private let stagingFill = UIColor(white: 0.35, alpha: 1)
@@ -53,6 +59,7 @@ final class GateScene: SKScene {
         guard !didSetup else { return }
         didSetup = true
         engine.begin()
+        gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         buildPuzzle()
         playWordSound()
         publishTimer()
@@ -317,10 +324,47 @@ final class GateScene: SKScene {
     }
 
     private func playWordSound() {
+        removeAction(forKey: Self.connectedSoundActionKey)
         let trackID = engine.targetSoundTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
         engine.markWordSoundPlayed()
+    }
+
+    /// Progressive prefix sound, then the spelling/word sound.
+    private func playConnectedPrefixSound(_ prefix: String) {
+        removeAction(forKey: Self.connectedSoundActionKey)
+        guard !prefix.isEmpty else { return }
+
+        let progressiveID = engine.targetEntry.progressiveTrack(forPrefix: prefix)
+        let spellingID = engine.targetSoundTrackID
+
+        var actions: [SKAction] = []
+        if let progressiveID, !progressiveID.isEmpty {
+            actions.append(SKAction.run {
+                SoundEffectsController.shared.play(trackID: progressiveID)
+            })
+            actions.append(SKAction.wait(forDuration: audioDuration(for: progressiveID)))
+        }
+        if !spellingID.isEmpty {
+            actions.append(SKAction.run { [weak self] in
+                SoundEffectsController.shared.play(trackID: spellingID)
+                self?.engine.markWordSoundPlayed()
+            })
+        }
+        guard !actions.isEmpty else { return }
+        run(SKAction.sequence(actions), withKey: Self.connectedSoundActionKey)
+    }
+
+    private func audioDuration(for trackID: String) -> TimeInterval {
+        guard let url = BundleMusicAudioPlayer.audioURL(
+            for: trackID,
+            subdirectories: ["Audio/FX", "Audio"]
+        ),
+        let player = try? AVAudioPlayer(contentsOf: url) else {
+            return 0.7
+        }
+        return max(player.duration, 0.35)
     }
 
     private func publishTimer() {
@@ -359,7 +403,6 @@ final class GateScene: SKScene {
         draggedNode = node
         dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
         node.zPosition = 50
-        playWordSound()
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -423,31 +466,43 @@ final class GateScene: SKScene {
         connectorNodes.removeAll(keepingCapacity: true)
 
         guard !didEnd else { return }
-        let target = Array(engine.targetWord.lowercased())
-        guard target.count >= 2 else { return }
-
         let staged = stagedLettersLeftToRight()
-        guard staged.count >= 2 else { return }
+        let ordered = staged.map(\.letter)
+        let prefix = GateMinigameEngine.connectedPrefix(
+            orderedLetters: ordered,
+            targetWord: engine.targetWord
+        )
 
-        let pairCount = min(staged.count - 1, target.count - 1)
-        for index in 0..<pairCount {
-            let left = staged[index]
-            let right = staged[index + 1]
-            guard left.letter == String(target[index]),
-                  right.letter == String(target[index + 1]) else {
-                continue
+        let target = Array(engine.targetWord.lowercased())
+        if target.count >= 2, staged.count >= 2 {
+            let pairCount = min(staged.count - 1, target.count - 1)
+            for index in 0..<pairCount {
+                let left = staged[index]
+                let right = staged[index + 1]
+                guard left.letter == String(target[index]),
+                      right.letter == String(target[index + 1]) else {
+                    continue
+                }
+                let path = CGMutablePath()
+                path.move(to: left.node.position)
+                path.addLine(to: right.node.position)
+                let line = SKShapeNode(path: path)
+                line.strokeColor = connectorColor
+                line.lineWidth = 6
+                line.lineCap = .round
+                line.zPosition = 5
+                line.name = "connector"
+                addChild(line)
+                connectorNodes.append(line)
             }
-            let path = CGMutablePath()
-            path.move(to: left.node.position)
-            path.addLine(to: right.node.position)
-            let line = SKShapeNode(path: path)
-            line.strokeColor = connectorColor
-            line.lineWidth = 6
-            line.lineCap = .round
-            line.zPosition = 5
-            line.name = "connector"
-            addChild(line)
-            connectorNodes.append(line)
+        }
+
+        if prefix != lastConnectedPrefix {
+            lastConnectedPrefix = prefix
+            gateDelegate?.gateSceneDidUpdateConnectedPrefix(prefix)
+            if !prefix.isEmpty {
+                playConnectedPrefixSound(prefix)
+            }
         }
     }
 

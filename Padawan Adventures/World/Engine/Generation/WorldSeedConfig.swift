@@ -403,7 +403,6 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidGateWords
     case invalidDestructibleWallTimer(Double)
     case invalidDestructibleWallLetterSoundRepeat(Double)
-    case invalidSlashMaxSeconds(Double)
     case invalidDestructibleWallIncorrectReplayDelay(Double)
     case invalidDestructibleWallLetterCountMean(Double)
     case invalidDestructibleWallLetters

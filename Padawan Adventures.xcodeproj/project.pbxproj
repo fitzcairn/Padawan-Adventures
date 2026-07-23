@@ -49,6 +49,9 @@
 			exceptions = (
 				AAF1EE3E3010075F00DB57A4 /* Exceptions for "Padawan Adventures" folder in "Padawan Adventures" target */,
 			);
+			explicitFolders = (
+				Resources/Screens,
+			);
 			path = "Padawan Adventures";
 			sourceTree = "<group>";
 		};

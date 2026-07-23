@@ -191,10 +191,10 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = loadHudConfig()
         let playerFx = session.playerConfig.fx
         let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
-        let slashMaxSeconds = session.selectedSlashMaxSeconds
+        let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let outcomeBox = CombatOutcomeBox()
 
-        BackgroundMusicController.shared.applyScreen(named: "combat")
+        BackgroundMusicController.shared.apply(session.selectedGameMusic.combatCue)
 
         overlayPresenter.present(
             fadeWorldOut: true,
@@ -265,6 +265,8 @@ final class GameViewController: LandscapeHostingController {
         scene.deductHealth()
         hud?.removeHeart()
 
+        BackgroundMusicController.shared.apply(session.selectedGameMusic.pitCue)
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -277,6 +279,9 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
+                BackgroundMusicController.shared.apply(
+                    MusicCue.parse(self.session.selectedLevelMusic)
+                )
                 Task {
                     await self.session.recordStat { $0.pitsCrossed += 1 }
                     await self.awardLevelStar()
@@ -320,6 +325,8 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = loadHudConfig()
         let outcomeBox = DestructibleWallOutcomeBox()
 
+        BackgroundMusicController.shared.apply(session.selectedGameMusic.destructibleWallCue)
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -340,6 +347,9 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
+                BackgroundMusicController.shared.apply(
+                    MusicCue.parse(self.session.selectedLevelMusic)
+                )
                 switch outcomeBox.outcome {
                 case let .won(starsAwarded):
                     Task {
@@ -361,6 +371,8 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = loadHudConfig()
         let outcomeBox = GateOutcomeBox()
 
+        BackgroundMusicController.shared.apply(session.selectedGameMusic.gateCue)
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -381,6 +393,9 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
+                BackgroundMusicController.shared.apply(
+                    MusicCue.parse(self.session.selectedLevelMusic)
+                )
                 switch outcomeBox.outcome {
                 case let .won(starsAwarded):
                     Task {

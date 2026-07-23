@@ -1,0 +1,28 @@
+# Shared letter FX for minigames (destructible wall, combat cues, etc.).
+# Each letter: pronunciation track + letter-name track.
+
+letters:
+  a:
+    pronunciation: sfx_letter_a_pronunciation
+    name: sfx_letter_a_name
+  b:
+    pronunciation: sfx_letter_b_pronunciation
+    name: sfx_letter_b_name
+  c:
+    pronunciation: sfx_letter_c_pronunciation
+    name: sfx_letter_c_name
+  d:
+    pronunciation: sfx_letter_d_pronunciation
+    name: sfx_letter_d_name
+  e:
+    pronunciation: sfx_letter_e_pronunciation
+    name: sfx_letter_e_name
+  f:
+    pronunciation: sfx_letter_f_pronunciation
+    name: sfx_letter_f_name
+  g:
+    pronunciation: sfx_letter_g_pronunciation
+    name: sfx_letter_g_name
+  h:
+    pronunciation: sfx_letter_h_pronunciation
+    name: sfx_letter_h_name

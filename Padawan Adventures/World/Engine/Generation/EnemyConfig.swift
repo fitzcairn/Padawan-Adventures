@@ -156,10 +156,20 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
 }
 
 nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
-    var types: [String: EnemyTypeConfig]
+    /// Max seconds a combat slash stays active after the initial tap.
+    var slashMaxSeconds: Double
+    var enemies: [String: EnemyTypeConfig]
+
+    enum CodingKeys: String, CodingKey {
+        case slashMaxSeconds = "slash_max_seconds"
+        case enemies
+    }
+
+    nonisolated static let fallbackSlashMaxSeconds: Double = 0.5
 
     nonisolated static let fallback = EnemyConfig(
-        types: [
+        slashMaxSeconds: fallbackSlashMaxSeconds,
+        enemies: [
             "grunt": EnemyTypeConfig(
                 letter: "E",
                 color: "#FF0000",
@@ -174,21 +184,39 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         ]
     )
 
+    init(
+        slashMaxSeconds: Double = fallbackSlashMaxSeconds,
+        enemies: [String: EnemyTypeConfig]
+    ) {
+        self.slashMaxSeconds = slashMaxSeconds
+        self.enemies = enemies
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        slashMaxSeconds = try container.decodeIfPresent(Double.self, forKey: .slashMaxSeconds)
+            ?? Self.fallbackSlashMaxSeconds
+        enemies = try container.decode([String: EnemyTypeConfig].self, forKey: .enemies)
+    }
+
     func validate() throws {
-        guard !types.isEmpty else {
-            throw EnemyConfigError.invalid("types must not be empty")
+        guard slashMaxSeconds > 0 else {
+            throw EnemyConfigError.invalid("slash_max_seconds must be > 0")
         }
-        for (id, type) in types {
+        guard !enemies.isEmpty else {
+            throw EnemyConfigError.invalid("enemies must not be empty")
+        }
+        for (id, type) in enemies {
             try type.validate(typeID: id)
         }
     }
 
     func type(named id: String) -> EnemyTypeConfig? {
-        types[id]
+        enemies[id]
     }
 
     static func loadFromBundle(
-        named name: String = "enemy",
+        named name: String = "combat",
         withExtension ext: String = "yaml"
     ) throws -> EnemyConfig {
         guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
@@ -200,7 +228,9 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 
     static func decode(from data: Data) throws -> EnemyConfig {
         do {
-            return try YAMLDecoder().decode(EnemyConfig.self, from: data)
+            let config = try YAMLDecoder().decode(EnemyConfig.self, from: data)
+            try config.validate()
+            return config
         } catch let error as EnemyConfigError {
             throw error
         } catch {

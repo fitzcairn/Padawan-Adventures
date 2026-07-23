@@ -1,14 +1,20 @@
 import UIKit
 
-/// Gate-only HUD: countdown timer in the upper-trailing corner.
+/// Gate-only HUD: large target word (top-center) + countdown timer (upper-trailing).
+/// Connected prefix letters render red; remaining letters stay white.
 final class GateHUDView: UIView {
     private let config: HudConfig
+    private let wordLabel = UILabel()
     private let timerLabel = UILabel()
+    private let wordFont = UIFont.systemFont(ofSize: 44, weight: .bold)
 
-    init(config: HudConfig, timerSeconds: Int) {
+    private var currentWord = ""
+    private var connectedCount = 0
+
+    init(config: HudConfig, timerSeconds: Int, word: String = "", connectedCount: Int = 0) {
         self.config = config
         super.init(frame: .zero)
-        setup(timerSeconds: timerSeconds)
+        setup(timerSeconds: timerSeconds, word: word, connectedCount: connectedCount)
     }
 
     @available(*, unavailable)
@@ -25,10 +31,32 @@ final class GateHUDView: UIView {
         timerLabel.textColor = urgent ? .systemRed : .white
     }
 
-    private func setup(timerSeconds: Int) {
+    func setWord(_ word: String, connectedCount: Int = 0) {
+        currentWord = word.lowercased()
+        self.connectedCount = max(0, min(connectedCount, currentWord.count))
+        wordLabel.attributedText = Self.attributedWord(
+            currentWord,
+            connectedCount: self.connectedCount,
+            font: wordFont
+        )
+    }
+
+    private func setup(timerSeconds: Int, word: String, connectedCount: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = false
         translatesAutoresizingMaskIntoConstraints = true
+
+        currentWord = word.lowercased()
+        self.connectedCount = max(0, min(connectedCount, currentWord.count))
+        wordLabel.attributedText = Self.attributedWord(
+            currentWord,
+            connectedCount: self.connectedCount,
+            font: wordFont
+        )
+        wordLabel.textAlignment = .center
+        wordLabel.translatesAutoresizingMaskIntoConstraints = false
+        wordLabel.accessibilityIdentifier = "gate.word"
+        wordLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         timerLabel.text = "\(max(timerSeconds, 0))"
         timerLabel.textColor = .white
@@ -39,13 +67,50 @@ final class GateHUDView: UIView {
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
+        addSubview(wordLabel)
         addSubview(timerLabel)
 
         let margin = CGFloat(config.edgeMargin)
         NSLayoutConstraint.activate([
+            wordLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
+            wordLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            wordLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
+                constant: margin + 48
+            ),
+            wordLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: timerLabel.leadingAnchor,
+                constant: -12
+            ),
+
             timerLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
             timerLabel.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
         ])
+    }
+
+    private static func attributedWord(
+        _ word: String,
+        connectedCount: Int,
+        font: UIFont
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString(string: word)
+        let fullRange = NSRange(location: 0, length: (word as NSString).length)
+        result.addAttributes(
+            [
+                .font: font,
+                .foregroundColor: UIColor.white,
+            ],
+            range: fullRange
+        )
+        let redCount = max(0, min(connectedCount, word.count))
+        if redCount > 0 {
+            result.addAttribute(
+                .foregroundColor,
+                value: UIColor.systemRed,
+                range: NSRange(location: 0, length: redCount)
+            )
+        }
+        return result
     }
 }

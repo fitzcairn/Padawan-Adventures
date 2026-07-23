@@ -47,7 +47,7 @@ final class CombatScene: SKScene {
         enemyType: EnemyTypeConfig,
         playerFx: SoundEffectTable,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
-        slashMaxSeconds: Double = LevelConfig.fallbackSlashMaxSeconds
+        slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx

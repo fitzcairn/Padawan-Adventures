@@ -11,7 +11,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
     var letter: Character
     var position: GridCoord
     var isPlayer: Bool
-    /// Named enemy type from `enemy.yaml`; nil for the player.
+    /// Named enemy type from `combat.yaml`; nil for the player.
     var enemyTypeID: String?
     /// Pickup type when this entity is a collectible; nil otherwise.
     var pickupKind: PickupKind?

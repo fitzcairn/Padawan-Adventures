@@ -1,0 +1,37 @@
+# Shared vocabulary + word FX for minigames (gate, etc.).
+# Each word: spelling track + progressive tracks for every prefix (s, st, sta, star, …).
+
+words:
+  cat:
+    spelling: sfx_word_cat
+    progressive:
+      c: sfx_word_cat_c
+      ca: sfx_word_cat_ca
+      cat: sfx_word_cat_cat
+  dog:
+    spelling: sfx_word_dog
+    progressive:
+      d: sfx_word_dog_d
+      do: sfx_word_dog_do
+      dog: sfx_word_dog_dog
+  star:
+    spelling: sfx_word_star
+    progressive:
+      s: sfx_word_star_s
+      st: sfx_word_star_st
+      sta: sfx_word_star_sta
+      star: sfx_word_star_star
+  gate:
+    spelling: sfx_word_gate
+    progressive:
+      g: sfx_word_gate_g
+      ga: sfx_word_gate_ga
+      gat: sfx_word_gate_gat
+      gate: sfx_word_gate_gate
+  open:
+    spelling: sfx_word_open
+    progressive:
+      o: sfx_word_open_o
+      op: sfx_word_open_op
+      ope: sfx_word_open_ope
+      open: sfx_word_open_open

@@ -37,7 +37,11 @@ nonisolated struct GateMinigameEngine {
             self.wordSoundRepeatSeconds = wordSoundRepeatSeconds
             self.numPaddingLetters = max(0, numPaddingLetters)
             self.words = words.map {
-                GateWord(word: $0.word.lowercased(), sound: $0.sound)
+                GateWord(
+                    word: $0.word.lowercased(),
+                    spelling: $0.spelling,
+                    progressive: $0.progressive
+                )
             }
         }
     }
@@ -53,7 +57,7 @@ nonisolated struct GateMinigameEngine {
     private(set) var elapsed: Double = 0
     private(set) var remainingTime: Double
     private(set) var targetWord: String = ""
-    private(set) var targetSoundTrackID: String = ""
+    private(set) var targetEntry: GateWord = .fallbackEntry(word: "gate")
     private(set) var letters: [LetterToken] = []
     private(set) var outcome: GateOutcome?
     private(set) var isFrozen = false
@@ -63,6 +67,9 @@ nonisolated struct GateMinigameEngine {
     private var rng: any RandomNumberGenerator
 
     private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
+
+    /// Spelling track for the chosen word (open / auto-repeat / after progressive).
+    var targetSoundTrackID: String { targetEntry.spelling }
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
@@ -80,8 +87,8 @@ nonisolated struct GateMinigameEngine {
         lastDisplayedSecond = Int(ceil(config.timerSeconds))
         lastWordSoundElapsed = 0
         let picked = pickTargetEntry()
+        targetEntry = picked
         targetWord = picked.word
-        targetSoundTrackID = picked.sound
         letters = buildLetterBag(for: targetWord)
     }
 
@@ -140,10 +147,22 @@ nonisolated struct GateMinigameEngine {
         return true
     }
 
+    /// Longest staging prefix that matches the target word left-to-right.
+    static func connectedPrefix(orderedLetters: [String], targetWord: String) -> String {
+        let staged = orderedLetters.map { $0.lowercased() }
+        let target = Array(targetWord.lowercased()).map(String.init)
+        var prefix = ""
+        for index in 0..<min(staged.count, target.count) {
+            guard staged[index] == target[index] else { break }
+            prefix += staged[index]
+        }
+        return prefix
+    }
+
     private mutating func pickTargetEntry() -> GateWord {
         let words = config.words
         guard !words.isEmpty else {
-            return GateWord(word: "gate", sound: "sfx_word_gate")
+            return .fallbackEntry(word: "gate")
         }
         let index = Int.random(in: 0..<words.count, using: &rng)
         return words[index]

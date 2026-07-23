@@ -4,7 +4,7 @@ import Testing
 
 struct GateMinigameEngineTests {
     private func words(_ values: [String]) -> [GateWord] {
-        values.map { GateWord(word: $0, sound: "sfx_word_\($0)") }
+        values.map { GateWord.fallbackEntry(word: $0) }
     }
 
     private func makeEngine(
@@ -34,7 +34,6 @@ struct GateMinigameEngineTests {
         #expect(!engine.isActive)
         #expect(engine.letters.isEmpty)
         #expect(engine.targetWord.isEmpty)
-        #expect(engine.targetSoundTrackID.isEmpty)
     }
 
     @Test func beginPicksWordAndBuildsPaddedLetterBag() {
@@ -42,7 +41,8 @@ struct GateMinigameEngineTests {
         #expect(engine.isActive)
         #expect(engine.targetWord == "cat")
         #expect(engine.targetSoundTrackID == "sfx_word_cat")
-        #expect(engine.letters.count == 9) // 3 letters + 6 padding
+        #expect(engine.targetEntry.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
+        #expect(engine.letters.count == 9)
 
         let letterCounts = Dictionary(grouping: engine.letters, by: \.letter).mapValues(\.count)
         #expect((letterCounts["c"] ?? 0) >= 1)
@@ -53,7 +53,7 @@ struct GateMinigameEngineTests {
     @Test func letterBagSizeUsesConfiguredPadding() {
         let engine = makeEngine(numPaddingLetters: 2, words: ["star"], seed: 3)
         #expect(engine.targetWord == "star")
-        #expect(engine.letters.count == 6) // 4 + 2
+        #expect(engine.letters.count == 6)
     }
 
     @Test func beginIsDeterministicForSeed() {
@@ -93,6 +93,33 @@ struct GateMinigameEngineTests {
         let won = engine.evaluateStaging(orderedLetters: ["c", "a"])
         #expect(!won)
         #expect(engine.outcome == nil)
+    }
+
+    @Test func connectedPrefixMatchesLeadingWordLetters() {
+        #expect(
+            GateMinigameEngine.connectedPrefix(
+                orderedLetters: ["s", "t", "x"],
+                targetWord: "star"
+            ) == "st"
+        )
+        #expect(
+            GateMinigameEngine.connectedPrefix(
+                orderedLetters: ["s", "a"],
+                targetWord: "star"
+            ) == "s"
+        )
+        #expect(
+            GateMinigameEngine.connectedPrefix(
+                orderedLetters: ["a", "s"],
+                targetWord: "star"
+            ) == ""
+        )
+        #expect(
+            GateMinigameEngine.connectedPrefix(
+                orderedLetters: ["s", "t", "a", "r"],
+                targetWord: "star"
+            ) == "star"
+        )
     }
 
     @Test func timerExpiryProducesLostAndUrgentTicks() {
