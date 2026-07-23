@@ -10,6 +10,7 @@ struct CombatMinigameEngineTests {
         shotLetters: [String] = ["A", "B", "C"],
         meanInterval: Double? = 0.01,
         letterSoundRepeatSeconds: Double = 3,
+        startingHealth: Int = 3,
         seed: UInt64 = 42
     ) -> CombatMinigameEngine {
         var engine = CombatMinigameEngine(
@@ -21,6 +22,7 @@ struct CombatMinigameEngineTests {
                 meanShotIntervalSeconds: meanInterval,
                 letterSoundRepeatSeconds: letterSoundRepeatSeconds
             ),
+            startingHealth: startingHealth,
             rng: CombatSeededGenerator(seed: seed)
         )
         engine.begin()
@@ -385,8 +387,15 @@ struct CombatMinigameEngineTests {
         #expect(replayCount >= 2)
     }
 
-    @Test func impactRemovesShotWithoutStar() throws {
-        var engine = makeEngine(timer: 10, travel: 1.5, starsToWin: 10, meanInterval: 0.01, seed: 7)
+    @Test func impactRemovesShotWithoutStarAndDeductsHealth() throws {
+        var engine = makeEngine(
+            timer: 10,
+            travel: 1.5,
+            starsToWin: 10,
+            meanInterval: 0.01,
+            startingHealth: 3,
+            seed: 7
+        )
         var matchingID: UUID?
         var mismatchID: UUID?
         for _ in 0..<80 {
@@ -409,8 +418,30 @@ struct CombatMinigameEngineTests {
         #expect(matchDamaged)
         #expect(!mismatchDamaged)
         #expect(engine.combatStars == 0)
+        #expect(engine.healthCount == 2)
         #expect(engine.shots[match] == nil)
         #expect(engine.shots[mismatch] == nil)
+        let pending = engine.drainPendingEvents()
+        #expect(pending.contains(.healthChanged(2)))
+    }
+
+    @Test func matchingImpactsToZeroHealthLoseCombat() throws {
+        var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, startingHealth: 2, seed: 7)
+        var hits = 0
+        for _ in 0..<200 where engine.outcome == nil {
+            let events = engine.tick(dt: 0.05)
+            for event in events {
+                guard case let .spawnShot(id, _, _) = event,
+                      engine.matchesCurrentCue(shotID: id) else { continue }
+                if engine.registerImpact(shotID: id) {
+                    hits += 1
+                }
+            }
+        }
+        #expect(hits == 2)
+        #expect(engine.healthCount == 0)
+        #expect(engine.outcome == .lost)
+        #expect(engine.isFrozen)
     }
 }
 

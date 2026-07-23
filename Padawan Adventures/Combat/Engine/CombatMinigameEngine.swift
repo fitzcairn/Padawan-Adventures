@@ -15,6 +15,7 @@ nonisolated enum CombatEngineEvent: Equatable, Sendable {
     case sequenceCue(requiredLetter: String)
     case spawnShot(id: UUID, travelSeconds: Double, visualLetter: String)
     case timerTick
+    case healthChanged(Int)
     case won
     case lost
 }
@@ -110,6 +111,9 @@ nonisolated struct CombatMinigameEngine {
     }
 
     let config: Config
+    /// Hearts remaining; starts at `startingHealth` and drops when a matching shot hits.
+    private(set) var healthCount: Int
+    private let startingHealth: Int
     private(set) var isActive = false
     private(set) var elapsed: Double = 0
     private(set) var remainingTime: Double
@@ -132,8 +136,14 @@ nonisolated struct CombatMinigameEngine {
     static let spawnIntervalJitterRange: ClosedRange<Double> = 0.5...1.5
     static let correctSlashesJitterRange: ClosedRange<Double> = 0.5...1.5
 
-    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+    init(
+        config: Config,
+        startingHealth: Int = 3,
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator()
+    ) {
         self.config = config
+        self.startingHealth = max(startingHealth, 0)
+        self.healthCount = self.startingHealth
         self.remainingTime = config.combatTimerSeconds
         self.lastDisplayedSecond = Int(ceil(config.combatTimerSeconds))
         self.rng = rng
@@ -144,6 +154,7 @@ nonisolated struct CombatMinigameEngine {
         isFrozen = false
         elapsed = 0
         remainingTime = config.combatTimerSeconds
+        healthCount = startingHealth
         combatStars = 0
         shots = [:]
         outcome = nil
@@ -161,7 +172,7 @@ nonisolated struct CombatMinigameEngine {
     }
 
     var hasWon: Bool { combatStars >= config.starsToWin }
-    var hasLost: Bool { remainingTime <= 0 }
+    var hasLost: Bool { remainingTime <= 0 || healthCount <= 0 }
 
     /// Events queued outside `tick` (e.g. cue changes after a correct slash).
     mutating func drainPendingEvents() -> [CombatEngineEvent] {
@@ -252,11 +263,27 @@ nonisolated struct CombatMinigameEngine {
         return .wrong
     }
 
-    /// Removes the shot. Returns `true` when it should damage the player (visual matches the live cue).
+    /// Removes a shot with no damage (e.g. a miss-path projectile leaving the arena).
+    mutating func discardShot(shotID: UUID) {
+        shots.removeValue(forKey: shotID)
+    }
+
+    /// Removes the shot. Returns `true` when it damages the player (visual matches the live cue).
+    /// Matching impacts deduct one heart; at zero hearts the fight is lost.
     @discardableResult
     mutating func registerImpact(shotID: UUID) -> Bool {
         guard let shot = shots.removeValue(forKey: shotID) else { return false }
-        return shot.visualLetter == sequenceRequiredLetter
+        guard isActive, !isFrozen, outcome == nil else { return false }
+        guard shot.visualLetter == sequenceRequiredLetter else { return false }
+
+        healthCount = max(0, healthCount - 1)
+        pendingEvents.append(.healthChanged(healthCount))
+        if healthCount <= 0 {
+            isFrozen = true
+            outcome = .lost
+            pendingEvents.append(.lost)
+        }
+        return true
     }
 
     /// Whether this shot's visual letter matches the enemy's current cue sound.

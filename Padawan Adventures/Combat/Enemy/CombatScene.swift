@@ -4,6 +4,7 @@ import UIKit
 
 protocol CombatSceneDelegate: AnyObject {
     func combatSceneDidUpdateStars(_ stars: Int)
+    func combatSceneDidUpdateHealth(_ health: Int)
     func combatSceneDidUpdateTimer(seconds: Int, urgent: Bool)
     func combatSceneDidWin(starsAwarded: Int)
     func combatSceneDidLose()
@@ -48,6 +49,7 @@ final class CombatScene: SKScene {
         size: CGSize,
         enemyType: EnemyTypeConfig,
         playerFx: SoundEffectTable,
+        startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds
     ) {
@@ -55,7 +57,8 @@ final class CombatScene: SKScene {
         self.playerFx = playerFx
         self.slashMaxSeconds = max(slashMaxSeconds, 0.05)
         self.engine = CombatMinigameEngine(
-            config: .init(from: enemyType, letterSoundRepeatSeconds: letterSoundRepeatSeconds)
+            config: .init(from: enemyType, letterSoundRepeatSeconds: letterSoundRepeatSeconds),
+            startingHealth: startingHealth
         )
         super.init(size: size)
         // Aspect-fit avoids distorting paths when the SKView aspect differs from scene size.
@@ -195,6 +198,8 @@ final class CombatScene: SKScene {
             spawnShot(id: id, travelSeconds: travelSeconds, visualLetter: visualLetter)
         case .timerTick:
             SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
+        case let .healthChanged(health):
+            combatDelegate?.combatSceneDidUpdateHealth(health)
         case .won:
             finishWin()
         case .lost:
@@ -308,7 +313,7 @@ final class CombatScene: SKScene {
             resolveImpactIfNeeded(shotID: shotID)
         } else {
             // Missed the player — despawn quietly with no damage VFX.
-            _ = engine.registerImpact(shotID: shotID)
+            engine.discardShot(shotID: shotID)
             removeShotNode(id: shotID)
         }
     }
@@ -322,6 +327,9 @@ final class CombatScene: SKScene {
         let position = visual.node.position
         removeShotNode(id: shotID)
         playDamage(at: position)
+        for pending in engine.drainPendingEvents() {
+            handle(pending)
+        }
     }
 
     private func removeShotNode(id: UUID) {

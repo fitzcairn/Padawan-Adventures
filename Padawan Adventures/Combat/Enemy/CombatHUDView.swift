@@ -33,6 +33,18 @@ final class CombatHUDView: UIView {
         scoreLabel.text = "\(max(count, 0))"
     }
 
+    func setHealth(_ count: Int) {
+        let target = max(count, 0)
+        while heartsStack.arrangedSubviews.count > target {
+            guard let view = heartsStack.arrangedSubviews.last else { break }
+            heartsStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        while heartsStack.arrangedSubviews.count < target {
+            addIcon(image: heartImage, to: heartsStack)
+        }
+    }
+
     func setTimer(seconds: Int, urgent: Bool) {
         timerLabel.text = "\(max(seconds, 0))"
         timerLabel.textColor = urgent ? .systemRed : .white

@@ -34,6 +34,7 @@ struct EnemyMinigameView: View {
             wrappedValue: CombatSessionController(
                 enemyType: enemyType,
                 playerFx: playerFx,
+                startingHealth: healthCount,
                 letterSoundRepeatSeconds: letterSoundRepeatSeconds,
                 slashMaxSeconds: slashMaxSeconds,
                 initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds))
@@ -53,7 +54,7 @@ struct EnemyMinigameView: View {
 
                 CombatHUDRepresentable(
                     config: hudConfig,
-                    healthCount: healthCount,
+                    healthCount: session.health,
                     stars: session.stars,
                     timerSeconds: session.timerSeconds,
                     timerUrgent: session.timerUrgent
@@ -85,6 +86,7 @@ struct EnemyMinigameView: View {
 @MainActor
 final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     @Published var stars = 0
+    @Published var health: Int
     @Published var timerSeconds: Int
     @Published var timerUrgent = false
     @Published var showVictory = false
@@ -94,6 +96,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
 
     private let enemyType: EnemyTypeConfig
     private let playerFx: SoundEffectTable
+    private let startingHealth: Int
     private let letterSoundRepeatSeconds: Double
     private let slashMaxSeconds: Double
     private var starsAwarded = 0
@@ -102,14 +105,17 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     init(
         enemyType: EnemyTypeConfig,
         playerFx: SoundEffectTable,
+        startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         initialTimerSeconds: Int
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
+        self.startingHealth = startingHealth
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.slashMaxSeconds = slashMaxSeconds
+        self.health = startingHealth
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -123,6 +129,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
             size: safeSize,
             enemyType: enemyType,
             playerFx: playerFx,
+            startingHealth: startingHealth,
             letterSoundRepeatSeconds: letterSoundRepeatSeconds,
             slashMaxSeconds: slashMaxSeconds
         )
@@ -154,6 +161,13 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         // SpriteKit callbacks can land during a SwiftUI view update; defer publishes.
         Task { @MainActor in
             self.stars = stars
+        }
+    }
+
+    func combatSceneDidUpdateHealth(_ health: Int) {
+        guard health != self.health else { return }
+        Task { @MainActor in
+            self.health = health
         }
     }
 
@@ -239,6 +253,7 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.hud?.setHealth(healthCount)
         context.coordinator.hud?.setStars(stars)
         context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
