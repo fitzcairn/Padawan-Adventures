@@ -11,7 +11,7 @@ music: level_theme
 letter_sound_repeat_seconds: 3
 
 # Max seconds a combat slash gesture stays active after the initial tap.
-slash_max_seconds: 1
+slash_max_seconds: 0.5
 
 # Optional: override world.yaml `fx:` event keys for this level (partial merge).
 # fx:
@@ -57,7 +57,7 @@ destructible_wall:
   timer_seconds: 30
   # Optional override; defaults to top-level `letter_sound_repeat_seconds`.
   incorrect_replay_delay_seconds: 1
-  letter_count_mean: 4
+  letter_count_mean: 3
   win_sound: sfx_wall_yay
   letters:
     a:

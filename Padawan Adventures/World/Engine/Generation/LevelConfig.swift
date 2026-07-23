@@ -306,7 +306,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case destructibleWall = "destructible_wall"
     }
 
-    nonisolated static let fallbackSlashMaxSeconds: Double = 1
+    nonisolated static let fallbackSlashMaxSeconds: Double = 0.5
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",

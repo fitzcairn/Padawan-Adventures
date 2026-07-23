@@ -598,7 +598,7 @@ struct LevelConfigTests {
         )
         #expect(level1.destructibleWall.timerSeconds == 30)
         #expect(level1.letterSoundRepeatSeconds == 3)
-        #expect(level1.slashMaxSeconds == 1)
+        #expect(level1.slashMaxSeconds == 0.5)
         #expect(level1.destructibleWall.letterSoundRepeatSeconds == 3)
         #expect(level1.destructibleWall.incorrectReplayDelaySeconds == 1)
         #expect(level1.destructibleWall.letterCountMean == 4)

@@ -5,7 +5,7 @@ types:
   grunt:
     letter: E
     color: "#FF0000"
-    tiles_per_second: 1.0
+    tiles_per_second: 0.5
     forget_seconds: 3.0
     combat_timer_seconds: 30
     shot_travel_seconds: 8
