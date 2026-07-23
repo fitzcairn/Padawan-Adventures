@@ -620,7 +620,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         return rng.pick(candidates)
     }
 
-    /// Picks a pickup cell that stays in full view (not covered by a front wall/gate).
+    /// Picks a pickup cell in full view and at least one tile from any wall/gate.
     private func pickVisiblePickupFloorCell(
         in room: GeneratedRoom,
         tiles: [[[Tile]]],
@@ -631,7 +631,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             .filter { cell in
                 guard !occupied.contains(cell) else { return false }
                 guard isEntityPlaceableRoomFloor(cell, in: room, tiles: tiles) else { return false }
-                return !IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: tiles[0])
+                return !IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: tiles[0])
             }
             .sorted { lhs, rhs in
                 if lhs.x != rhs.x { return lhs.x < rhs.x }

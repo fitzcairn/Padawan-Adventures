@@ -22,10 +22,9 @@ struct SettingsView: View {
             Spacer()
 
             VStack(spacing: 28) {
-                settingsRow(
-                    checkboxLabel: "Sound Effects",
-                    checkboxID: "settings.soundEffects.enabled",
-                    isOn: $preferences.soundEffectsEnabled,
+                volumeRow(
+                    label: "Sound Effects",
+                    labelID: "settings.soundEffects.label",
                     sliderValue: Binding(
                         get: { Double(preferences.soundEffectsVolume) },
                         set: { preferences.soundEffectsVolume = Float($0) }
@@ -65,6 +64,27 @@ struct SettingsView: View {
             Task {
                 await session.persistCurrentSettings()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func volumeRow(
+        label: String,
+        labelID: String,
+        sliderValue: Binding<Double>,
+        sliderID: String
+    ) -> some View {
+        HStack(spacing: 16) {
+            Text(label)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(AppChrome.primaryTextColor)
+                .frame(maxWidth: 180, alignment: .leading)
+                .accessibilityIdentifier(labelID)
+
+            AppSlider(
+                value: sliderValue,
+                accessibilityID: sliderID
+            )
         }
     }
 

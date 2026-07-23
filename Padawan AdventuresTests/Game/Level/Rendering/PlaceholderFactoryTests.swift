@@ -198,14 +198,15 @@ struct PlaceholderFactoryTests {
         world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 1, y: 2, story: 0))
         let center = GridCoord(x: 1, y: 1, story: 0)
         #expect(IsometricTileGeometry.hasFrontWallOccluder(at: center, in: world.tiles[0]))
+        #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: center, in: world.tiles[0]))
         #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: center, in: world))
     }
 
-    @Test func interiorFloorWithOpenFrontIsVisibleForPickups() {
-        // 5×5 open floor — center has no wall/gate to the east, south, or southeast.
+    @Test func interiorFloorClearOfWallsIsVisibleForPickups() {
+        // 5×5 open floor — center is at least one tile from every edge (and has no walls).
         let world = TestWorldFactory.emptyFloor(width: 5, height: 5)
         let center = GridCoord(x: 2, y: 2, story: 0)
-        #expect(!IsometricTileGeometry.hasFrontWallOccluder(at: center, in: world.tiles[0]))
+        #expect(!IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: center, in: world.tiles[0]))
         #expect(IsometricTileGeometry.isPickupVisibleFloor(at: center, in: world))
     }
 
@@ -213,7 +214,17 @@ struct PlaceholderFactoryTests {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 1, story: 0))
         let cell = GridCoord(x: 1, y: 1, story: 0)
-        #expect(IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: world.tiles[0]))
+        #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: world.tiles[0]))
+        #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: world))
+    }
+
+    @Test func wallBehindPickupAlsoBlocksVisibleFloor() {
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
+        // North wall is behind the sprite in depth, but still adjacent — not allowed.
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        let cell = GridCoord(x: 2, y: 2, story: 0)
+        #expect(!IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: world.tiles[0]))
+        #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: world.tiles[0]))
         #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: world))
     }
 

@@ -149,12 +149,23 @@ enum IsometricTileGeometry {
         return false
     }
 
-    /// Floor cell suitable for pickups: non-pit floor with no front wall/gate covering it.
+    /// True when any of the 8 neighbors is a wall/gate (pickup must sit ≥1 tile from walls).
+    static func isAdjacentToOpaqueOccluder(at coord: GridCoord, in story: [[Tile]]) -> Bool {
+        for (dx, dy) in GridCoord.directions8 {
+            let neighbor = coord.neighbor(dx: dx, dy: dy)
+            guard neighbor.y >= 0, neighbor.y < story.count else { continue }
+            guard neighbor.x >= 0, neighbor.x < story[neighbor.y].count else { continue }
+            if isOpaqueOccluder(story[neighbor.y][neighbor.x]) { return true }
+        }
+        return false
+    }
+
+    /// Floor cell suitable for pickups: non-pit floor, clear of adjacent walls/gates.
     static func isPickupVisibleFloor(at coord: GridCoord, in world: GameWorld) -> Bool {
         guard let tile = world.tile(at: coord) else { return false }
         guard case .floor(let isPit) = tile.kind, !isPit else { return false }
         guard coord.story >= 0, coord.story < world.tiles.count else { return false }
-        return !hasFrontWallOccluder(at: coord, in: world.tiles[coord.story])
+        return !isAdjacentToOpaqueOccluder(at: coord, in: world.tiles[coord.story])
     }
 
     /// True when the tile draws as a floor diamond (including pits).

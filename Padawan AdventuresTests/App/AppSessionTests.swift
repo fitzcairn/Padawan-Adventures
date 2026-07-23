@@ -96,18 +96,23 @@ struct AppSessionTests {
             musicEnabled: false,
             musicVolume: 0.6
         )
+        let expected = PlayerSettings(
+            soundEffectsEnabled: true,
+            soundEffectsVolume: 0.3,
+            musicEnabled: false,
+            musicVolume: 0.6
+        )
         try await session.playerStore.createPlayer(
             name: "Rex",
             initialState: PlayerGameState(health: 5, energy: 4, settings: settings)
         )
 
-        prefs.soundEffectsEnabled = true
         prefs.soundEffectsVolume = 1
         prefs.musicEnabled = true
         prefs.musicVolume = 1
 
         try await session.bindPlayer(name: "Rex")
-        #expect(prefs.snapshot == settings)
+        #expect(prefs.snapshot == expected)
         #expect(session.playerState?.settings == settings)
     }
 
@@ -116,13 +121,13 @@ struct AppSessionTests {
         let session = try makeSession(audioPreferences: prefs)
         try await session.createAndBindPlayer(name: "Fives")
 
-        prefs.soundEffectsEnabled = false
         prefs.soundEffectsVolume = 0.2
         prefs.musicEnabled = false
         prefs.musicVolume = 0.8
 
         await session.persistCurrentSettings()
         #expect(session.playerState?.settings == prefs.snapshot)
+        #expect(prefs.snapshot.soundEffectsEnabled)
 
         let reloaded = try await session.playerStore.loadState(for: "Fives")
         #expect(reloaded.settings == prefs.snapshot)

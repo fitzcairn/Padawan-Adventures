@@ -18,8 +18,13 @@ final class AudioPreferences {
 
     var soundEffectsEnabled: Bool {
         didSet {
-            guard !isLoading, soundEffectsEnabled != oldValue else { return }
-            defaults.set(soundEffectsEnabled, forKey: Keys.soundEffectsEnabled)
+            guard !isLoading else { return }
+            if !soundEffectsEnabled {
+                soundEffectsEnabled = true
+                return
+            }
+            guard soundEffectsEnabled != oldValue else { return }
+            defaults.set(true, forKey: Keys.soundEffectsEnabled)
             applySoundEffects()
         }
     }
@@ -64,11 +69,8 @@ final class AudioPreferences {
         self.defaults = defaults
         self.isLoading = true
 
-        if defaults.object(forKey: Keys.soundEffectsEnabled) == nil {
-            soundEffectsEnabled = true
-        } else {
-            soundEffectsEnabled = defaults.bool(forKey: Keys.soundEffectsEnabled)
-        }
+        // Sound effects cannot be disabled — the game depends on them.
+        soundEffectsEnabled = true
 
         if defaults.object(forKey: Keys.soundEffectsVolume) == nil {
             soundEffectsVolume = 1
@@ -89,12 +91,13 @@ final class AudioPreferences {
         }
 
         isLoading = false
+        defaults.set(true, forKey: Keys.soundEffectsEnabled)
     }
 
     /// Current values as a per-player settings snapshot.
     var snapshot: PlayerSettings {
         PlayerSettings(
-            soundEffectsEnabled: soundEffectsEnabled,
+            soundEffectsEnabled: true,
             soundEffectsVolume: soundEffectsVolume,
             musicEnabled: musicEnabled,
             musicVolume: musicVolume
@@ -104,11 +107,12 @@ final class AudioPreferences {
     /// Replaces preferences from per-player settings and pushes them to controllers.
     func apply(_ settings: PlayerSettings) {
         isLoading = true
-        soundEffectsEnabled = settings.soundEffectsEnabled
+        // Sound effects cannot be disabled — ignore any stored off value.
+        soundEffectsEnabled = true
         soundEffectsVolume = settings.soundEffectsVolume
         musicEnabled = settings.musicEnabled
         musicVolume = settings.musicVolume
-        defaults.set(soundEffectsEnabled, forKey: Keys.soundEffectsEnabled)
+        defaults.set(true, forKey: Keys.soundEffectsEnabled)
         defaults.set(Double(soundEffectsVolume), forKey: Keys.soundEffectsVolume)
         defaults.set(musicEnabled, forKey: Keys.musicEnabled)
         defaults.set(Double(musicVolume), forKey: Keys.musicVolume)
@@ -123,7 +127,7 @@ final class AudioPreferences {
     }
 
     private func applySoundEffects() {
-        SoundEffectsController.shared.setSoundEffectsEnabled(soundEffectsEnabled)
+        SoundEffectsController.shared.setSoundEffectsEnabled(true)
         SoundEffectsController.shared.setSoundEffectsVolume(soundEffectsVolume)
     }
 

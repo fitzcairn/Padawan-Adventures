@@ -28,36 +28,39 @@ struct AudioPreferencesTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let prefs = AudioPreferences(defaults: defaults)
-        prefs.soundEffectsEnabled = false
         prefs.soundEffectsVolume = 0.25
         prefs.musicEnabled = false
         prefs.musicVolume = 0.75
 
         let reloaded = AudioPreferences(defaults: defaults)
-        #expect(!reloaded.soundEffectsEnabled)
+        #expect(reloaded.soundEffectsEnabled)
         #expect(reloaded.soundEffectsVolume == 0.25)
         #expect(!reloaded.musicEnabled)
         #expect(reloaded.musicVolume == 0.75)
     }
 
-    @Test func snapshotAndApplyRoundTrip() {
+    @Test func snapshotAndApplyAlwaysKeepSoundEffectsEnabled() {
         let prefs = AudioPreferences(defaults: Self.makeSuite())
-        prefs.soundEffectsEnabled = false
         prefs.soundEffectsVolume = 0.4
         prefs.musicEnabled = false
         prefs.musicVolume = 0.55
 
         let snapshot = prefs.snapshot
         #expect(snapshot == PlayerSettings(
-            soundEffectsEnabled: false,
+            soundEffectsEnabled: true,
             soundEffectsVolume: 0.4,
             musicEnabled: false,
             musicVolume: 0.55
         ))
 
         let other = AudioPreferences(defaults: Self.makeSuite())
-        other.apply(snapshot)
-        #expect(!other.soundEffectsEnabled)
+        other.apply(PlayerSettings(
+            soundEffectsEnabled: false,
+            soundEffectsVolume: 0.4,
+            musicEnabled: false,
+            musicVolume: 0.55
+        ))
+        #expect(other.soundEffectsEnabled)
         #expect(other.soundEffectsVolume == 0.4)
         #expect(!other.musicEnabled)
         #expect(other.musicVolume == 0.55)

@@ -843,7 +843,7 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func pickupsNeverSpawnBehindFrontWalls() throws {
+    @Test func pickupsStayAtLeastOneTileFromWalls() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
             config.pickups = .init(
@@ -856,7 +856,7 @@ struct ProceduralGeneratorTests {
             for pickup in pickups {
                 #expect(
                     IsometricTileGeometry.isPickupVisibleFloor(at: pickup.position, in: world),
-                    "pickup \(pickup.pickupKind!) occluded at \(pickup.position) (seed \(seed))"
+                    "pickup \(pickup.pickupKind!) too close to a wall at \(pickup.position) (seed \(seed))"
                 )
             }
         }
