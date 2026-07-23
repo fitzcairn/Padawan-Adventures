@@ -1,4 +1,3 @@
-import AVFoundation
 import SpriteKit
 import UIKit
 
@@ -13,35 +12,50 @@ protocol GateSceneDelegate: AnyObject {
 /// SpriteKit gate puzzle: staging area, draggable letter tokens, timer-driven engine.
 final class GateScene: SKScene {
     private static let connectedSoundActionKey = "gateConnectedSound"
+    private static let wrongMoveActionKey = "gateWrongMove"
+    private static let winSequenceActionKey = "gateWinSequence"
+    private static let wrongMoveDuration: TimeInterval = 1.0
+    /// Brief beat after the final right-end connector appears, before win SFX / overlay.
+    private static let winConnectorHoldDuration: TimeInterval = 0.45
 
     weak var gateDelegate: GateSceneDelegate?
 
     private let puzzleConfig: GatePuzzleConfig
     private let playerFx: SoundEffectTable
+    private let hudConfig: HudConfig
 
     private var engine: GateMinigameEngine
     private var stagingNode: SKShapeNode!
+    private var leftEndpointNode: SKShapeNode!
+    private var rightEndpointNode: SKShapeNode!
     private var letterNodes: [UUID: SKNode] = [:]
     private var connectorNodes: [SKShapeNode] = []
     private var draggedNode: SKNode?
     private var dragOffset: CGPoint = .zero
+    private var dragStartPosition: CGPoint = .zero
     private var didEnd = false
+    private var isCompletingWin = false
     private var didSetup = false
     private var lastUpdateTime: TimeInterval?
     private var lastConnectedPrefix = ""
+    /// Connected prefix when the current drag began; used to detect non-advancing moves.
+    private var connectedPrefixAtDragStart: String?
     private var placementRNG = SystemRandomNumberGenerator()
 
     private let stagingFill = UIColor(white: 0.35, alpha: 1)
     private let circleFill = UIColor(white: 0.22, alpha: 1)
+    private let circleWrongFlash = UIColor.systemRed
     private let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)
 
     init(
         size: CGSize,
         puzzleConfig: GatePuzzleConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        hudConfig: HudConfig
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.hudConfig = hudConfig
         self.engine = GateMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -112,6 +126,35 @@ final class GateScene: SKScene {
         min(size.width, size.height) * 0.07
     }
 
+    /// Top band reserved for the HUD word/timer (safe area + margin + label height).
+    /// SpriteKit Y grows upward, so playable content must stay below `size.height - this`.
+    private var topHUDReservedHeight: CGFloat {
+        let safeTop = view?.safeAreaInsets.top ?? 54
+        let margin = CGFloat(hudConfig.edgeMargin)
+        // Matches GateHUDView's 44pt bold word, plus a little breathing room under the label.
+        let wordBand: CGFloat = 56
+        return safeTop + margin + wordBand
+    }
+
+    /// Highest Y a letter/endpoint center may use without overlapping the HUD word band.
+    private func maxPlayableCenterY(for radius: CGFloat) -> CGFloat {
+        size.height - topHUDReservedHeight - radius
+    }
+
+    /// Midpoint between the left screen edge and the left side of the staging box.
+    private var leftEndpointPosition: CGPoint {
+        let rect = stagingRect
+        let y = min(size.height * 0.5, maxPlayableCenterY(for: letterRadius))
+        return CGPoint(x: rect.minX * 0.5, y: y)
+    }
+
+    /// Midpoint between the right side of the staging box and the right screen edge.
+    private var rightEndpointPosition: CGPoint {
+        let rect = stagingRect
+        let y = min(size.height * 0.5, maxPlayableCenterY(for: letterRadius))
+        return CGPoint(x: (rect.maxX + size.width) * 0.5, y: y)
+    }
+
     private func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
@@ -128,7 +171,15 @@ final class GateScene: SKScene {
         addChild(stagingNode)
 
         let radius = letterRadius
-        var placedCenters: [CGPoint] = []
+        leftEndpointNode = makeEndpointCircle(radius: radius, name: "endpoint:left")
+        leftEndpointNode.position = leftEndpointPosition
+        addChild(leftEndpointNode)
+
+        rightEndpointNode = makeEndpointCircle(radius: radius, name: "endpoint:right")
+        rightEndpointNode.position = rightEndpointPosition
+        addChild(rightEndpointNode)
+
+        var placedCenters: [CGPoint] = [leftEndpointPosition, rightEndpointPosition]
         for token in engine.letters {
             let node = makeLetterNode(token: token, radius: radius)
             let position = placeLetter(radius: radius, avoiding: placedCenters)
@@ -143,7 +194,7 @@ final class GateScene: SKScene {
         let previousPositions = letterNodes.mapValues(\.position)
         buildPuzzle()
         let radius = letterRadius
-        var placedCenters: [CGPoint] = []
+        var placedCenters: [CGPoint] = [leftEndpointPosition, rightEndpointPosition]
         // Restore prior positions when still valid and non-overlapping; otherwise re-place.
         for (id, node) in letterNodes {
             if let previous = previousPositions[id],
@@ -186,6 +237,31 @@ final class GateScene: SKScene {
         return root
     }
 
+    private func makeEndpointCircle(radius: CGFloat, name: String) -> SKShapeNode {
+        let circle = SKShapeNode(circleOfRadius: radius)
+        circle.fillColor = circleFill
+        circle.strokeColor = UIColor(white: 0.65, alpha: 1)
+        circle.lineWidth = 2
+        circle.zPosition = 8
+        circle.name = name
+        circle.isUserInteractionEnabled = false
+        return circle
+    }
+
+    private func addConnectorLine(from start: CGPoint, to end: CGPoint) {
+        let path = CGMutablePath()
+        path.move(to: start)
+        path.addLine(to: end)
+        let line = SKShapeNode(path: path)
+        line.strokeColor = connectorColor
+        line.lineWidth = 6
+        line.lineCap = .round
+        line.zPosition = 5
+        line.name = "connector"
+        addChild(line)
+        connectorNodes.append(line)
+    }
+
     /// Minimum center-to-center distance so circles do not overlap (includes a small gap).
     private func minCenterDistance(for radius: CGFloat) -> CGFloat {
         radius * 2 + 6
@@ -193,11 +269,13 @@ final class GateScene: SKScene {
 
     private func placeLetter(radius: CGFloat, avoiding occupied: [CGPoint]) -> CGPoint {
         let inset = radius + 8
+        let maxY = maxPlayableCenterY(for: radius)
+        let minY = inset
         let bounds = CGRect(
             x: inset,
-            y: inset,
+            y: minY,
             width: max(size.width - inset * 2, 1),
-            height: max(size.height - inset * 2, 1)
+            height: max(maxY - minY, 1)
         )
 
         for _ in 0..<120 {
@@ -291,10 +369,11 @@ final class GateScene: SKScene {
         avoiding occupied: [CGPoint],
         gap: CGFloat? = nil
     ) -> Bool {
+        let maxY = maxPlayableCenterY(for: radius)
         guard point.x >= radius,
               point.y >= radius,
               point.x <= size.width - radius,
-              point.y <= size.height - radius else {
+              point.y <= maxY else {
             return false
         }
         guard isOutsideStaging(point, radius: radius) else { return false }
@@ -314,8 +393,6 @@ final class GateScene: SKScene {
         switch event {
         case .timerTick:
             SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
-        case .playWordSound:
-            playWordSound()
         case .won:
             break
         case .lost:
@@ -328,48 +405,39 @@ final class GateScene: SKScene {
         let trackID = engine.targetSoundTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-        engine.markWordSoundPlayed()
     }
 
-    /// Progressive prefix sound, then the spelling/word sound.
+    /// Progressive cue for a newly lengthened connected prefix (no full-word spelling replay).
     private func playConnectedPrefixSound(_ prefix: String) {
         removeAction(forKey: Self.connectedSoundActionKey)
-        guard !prefix.isEmpty else { return }
-
-        let progressiveID = engine.targetEntry.progressiveTrack(forPrefix: prefix)
-        let spellingID = engine.targetSoundTrackID
-
-        var actions: [SKAction] = []
-        if let progressiveID, !progressiveID.isEmpty {
-            actions.append(SKAction.run {
-                SoundEffectsController.shared.play(trackID: progressiveID)
-            })
-            actions.append(SKAction.wait(forDuration: audioDuration(for: progressiveID)))
+        guard !prefix.isEmpty,
+              let progressiveID = engine.targetEntry.progressiveTrack(forPrefix: prefix),
+              !progressiveID.isEmpty else {
+            return
         }
-        if !spellingID.isEmpty {
-            actions.append(SKAction.run { [weak self] in
-                SoundEffectsController.shared.play(trackID: spellingID)
-                self?.engine.markWordSoundPlayed()
-            })
-        }
-        guard !actions.isEmpty else { return }
-        run(SKAction.sequence(actions), withKey: Self.connectedSoundActionKey)
-    }
-
-    private func audioDuration(for trackID: String) -> TimeInterval {
-        guard let url = BundleMusicAudioPlayer.audioURL(
-            for: trackID,
-            subdirectories: ["Audio/FX", "Audio"]
-        ),
-        let player = try? AVAudioPlayer(contentsOf: url) else {
-            return 0.7
-        }
-        return max(player.duration, 0.35)
+        SoundEffectsController.shared.play(trackID: progressiveID)
     }
 
     private func publishTimer() {
         let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
         gateDelegate?.gateSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
+    }
+
+    private func beginWinSequence() {
+        guard !didEnd, !isCompletingWin else { return }
+        isCompletingWin = true
+        isUserInteractionEnabled = false
+        draggedNode = nil
+        // Draw the final right-end connector before win SFX / overlay.
+        updateCorrectOrderConnectors()
+        removeAction(forKey: Self.winSequenceActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: Self.winConnectorHoldDuration),
+                SKAction.run { [weak self] in self?.finishWon() },
+            ]),
+            withKey: Self.winSequenceActionKey
+        )
     }
 
     private func finishWon() {
@@ -385,30 +453,34 @@ final class GateScene: SKScene {
     }
 
     private func finishLost() {
-        guard !didEnd else { return }
+        guard !didEnd, !isCompletingWin else { return }
         didEnd = true
         isUserInteractionEnabled = false
+        removeAction(forKey: Self.winSequenceActionKey)
         gateDelegate?.gateSceneDidLose()
     }
 
     // MARK: - Touch / drag
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, let touch = touches.first else { return }
+        guard !didEnd, !isCompletingWin, let touch = touches.first else { return }
         let location = touch.location(in: self)
         guard let node = letterNode(at: location) else { return }
+        guard node.action(forKey: Self.wrongMoveActionKey) == nil else { return }
         draggedNode = node
+        dragStartPosition = node.position
         dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
         node.zPosition = 50
+        connectedPrefixAtDragStart = lastConnectedPrefix
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, let touch = touches.first, let node = draggedNode else { return }
+        guard !didEnd, !isCompletingWin, let touch = touches.first, let node = draggedNode else { return }
         let location = touch.location(in: self)
         var next = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
         let r = letterRadius
         next.x = min(max(next.x, r), size.width - r)
-        next.y = min(max(next.y, r), size.height - r)
+        next.y = min(max(next.y, r), maxPlayableCenterY(for: r))
         node.position = next
         updateCorrectOrderConnectors()
     }
@@ -422,11 +494,56 @@ final class GateScene: SKScene {
     }
 
     private func endDrag() {
-        guard let node = draggedNode else { return }
-        node.zPosition = 10
+        guard !isCompletingWin, let node = draggedNode else { return }
         draggedNode = nil
+        let prefixBeforeMove = connectedPrefixAtDragStart ?? lastConnectedPrefix
+        let origin = dragStartPosition
+        connectedPrefixAtDragStart = nil
         updateCorrectOrderConnectors()
+        // Non-advancing drop: spelling cue + reject animation back to drag start.
+        if lastConnectedPrefix.count <= prefixBeforeMove.count {
+            playWordSound()
+            animateWrongMove(node, backTo: origin)
+            return
+        }
+        node.zPosition = 10
         evaluateWinCondition()
+    }
+
+    /// Flash the letter red and ease it back to `origin` over 1s.
+    private func animateWrongMove(_ node: SKNode, backTo origin: CGPoint) {
+        node.removeAction(forKey: Self.wrongMoveActionKey)
+        node.zPosition = 50
+
+        let circle = letterCircle(in: node)
+        circle?.fillColor = circleWrongFlash
+
+        let move = SKAction.move(to: origin, duration: Self.wrongMoveDuration)
+        move.timingMode = .easeInEaseOut
+
+        let refreshConnectors = SKAction.customAction(withDuration: Self.wrongMoveDuration) {
+            [weak self] _, _ in
+            self?.updateCorrectOrderConnectors()
+        }
+
+        let finish = SKAction.run { [weak self, weak node] in
+            guard let self, let node else { return }
+            self.letterCircle(in: node)?.fillColor = self.circleFill
+            node.zPosition = 10
+            self.updateCorrectOrderConnectors()
+        }
+
+        node.run(
+            SKAction.sequence([
+                SKAction.group([move, refreshConnectors]),
+                finish,
+            ]),
+            withKey: Self.wrongMoveActionKey
+        )
+    }
+
+    private func letterCircle(in root: SKNode) -> SKShapeNode? {
+        root.children.compactMap { $0 as? SKShapeNode }.first
     }
 
     private func letterNode(at point: CGPoint) -> SKNode? {
@@ -455,7 +572,7 @@ final class GateScene: SKScene {
         return staged.map { ($0.node, $0.letter) }
     }
 
-    /// Light-blue lines between adjacent staging letters that match the target word in order.
+    /// Light-blue lines for the connected prefix: left end → letters → right end (when complete).
     private func updateCorrectOrderConnectors() {
         for line in connectorNodes {
             line.removeFromParent()
@@ -471,27 +588,30 @@ final class GateScene: SKScene {
         )
 
         let target = Array(engine.targetWord.lowercased())
-        if target.count >= 2, staged.count >= 2 {
-            let pairCount = min(staged.count - 1, target.count - 1)
-            for index in 0..<pairCount {
+        let connectedCount = prefix.count
+
+        // Left endpoint → first correctly placed letter.
+        if connectedCount >= 1, let first = staged.first {
+            addConnectorLine(from: leftEndpointNode.position, to: first.node.position)
+        }
+
+        // Adjacent correct staging letters.
+        if connectedCount >= 2 {
+            for index in 0..<(connectedCount - 1) {
                 let left = staged[index]
                 let right = staged[index + 1]
                 guard left.letter == String(target[index]),
                       right.letter == String(target[index + 1]) else {
                     continue
                 }
-                let path = CGMutablePath()
-                path.move(to: left.node.position)
-                path.addLine(to: right.node.position)
-                let line = SKShapeNode(path: path)
-                line.strokeColor = connectorColor
-                line.lineWidth = 6
-                line.lineCap = .round
-                line.zPosition = 5
-                line.name = "connector"
-                addChild(line)
-                connectorNodes.append(line)
+                addConnectorLine(from: left.node.position, to: right.node.position)
             }
+        }
+
+        // Last correct letter → right endpoint (circuit complete).
+        if connectedCount == target.count, connectedCount >= 1 {
+            let last = staged[connectedCount - 1]
+            addConnectorLine(from: last.node.position, to: rightEndpointNode.position)
         }
 
         if prefix != lastConnectedPrefix {
@@ -504,10 +624,10 @@ final class GateScene: SKScene {
     }
 
     private func evaluateWinCondition() {
-        guard !didEnd else { return }
+        guard !didEnd, !isCompletingWin else { return }
         let ordered = stagedLettersLeftToRight().map(\.letter)
         if engine.evaluateStaging(orderedLetters: ordered) {
-            finishWon()
+            beginWinSequence()
         }
     }
 }

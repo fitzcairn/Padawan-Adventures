@@ -398,7 +398,6 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidRoomWallDestructibleChance(Double)
     case invalidRoomGateChance(Double)
     case invalidGateTimer(Double)
-    case invalidGateWordSoundRepeat(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
     case invalidPitTimer(Double)
@@ -406,7 +405,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidDestructibleWallTimer(Double)
     case invalidDestructibleWallLetterSoundRepeat(Double)
     case invalidDestructibleWallIncorrectReplayDelay(Double)
-    case invalidDestructibleWallLetterCountMean(Double)
+    case invalidDestructibleWallLetterCountRange(min: Int, max: Int)
     case invalidDestructibleWallLetters
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)

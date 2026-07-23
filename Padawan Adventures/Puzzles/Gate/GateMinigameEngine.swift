@@ -7,7 +7,6 @@ nonisolated enum GateOutcome: Equatable, Sendable {
 
 nonisolated enum GateEngineEvent: Equatable, Sendable {
     case timerTick
-    case playWordSound
     case won
     case lost
 }
@@ -16,25 +15,21 @@ nonisolated enum GateEngineEvent: Equatable, Sendable {
 nonisolated struct GateMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var timerSeconds: Double
-        var wordSoundRepeatSeconds: Double
         var numPaddingLetters: Int
         var words: [GateWord]
 
         init(from puzzle: GatePuzzleConfig) {
             timerSeconds = puzzle.timerSeconds
-            wordSoundRepeatSeconds = puzzle.wordSoundRepeatSeconds
             numPaddingLetters = puzzle.numPaddingLetters
             words = puzzle.words
         }
 
         init(
             timerSeconds: Double,
-            wordSoundRepeatSeconds: Double = 10,
             numPaddingLetters: Int = 6,
             words: [GateWord]
         ) {
             self.timerSeconds = timerSeconds
-            self.wordSoundRepeatSeconds = wordSoundRepeatSeconds
             self.numPaddingLetters = max(0, numPaddingLetters)
             self.words = words.map {
                 GateWord(
@@ -63,12 +58,11 @@ nonisolated struct GateMinigameEngine {
     private(set) var isFrozen = false
 
     private var lastDisplayedSecond: Int
-    private var lastWordSoundElapsed: Double = 0
     private var rng: any RandomNumberGenerator
 
     private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
 
-    /// Spelling track for the chosen word (open / auto-repeat / after progressive).
+    /// Spelling track for the chosen word (open cue / non-advancing moves).
     var targetSoundTrackID: String { targetEntry.spelling }
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
@@ -85,7 +79,6 @@ nonisolated struct GateMinigameEngine {
         remainingTime = config.timerSeconds
         outcome = nil
         lastDisplayedSecond = Int(ceil(config.timerSeconds))
-        lastWordSoundElapsed = 0
         let picked = pickTargetEntry()
         targetEntry = picked
         targetWord = picked.word
@@ -98,11 +91,6 @@ nonisolated struct GateMinigameEngine {
     }
 
     var hasLost: Bool { remainingTime <= 0 }
-
-    /// Resets the auto-replay clock after the scene plays the word sound (open / drag).
-    mutating func markWordSoundPlayed() {
-        lastWordSoundElapsed = elapsed
-    }
 
     /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
     mutating func tick(dt: Double) -> [GateEngineEvent] {
@@ -118,11 +106,6 @@ nonisolated struct GateMinigameEngine {
                 events.append(.timerTick)
             }
             lastDisplayedSecond = displayedSecond
-        }
-
-        if elapsed - lastWordSoundElapsed >= config.wordSoundRepeatSeconds {
-            lastWordSoundElapsed = elapsed
-            events.append(.playWordSound)
         }
 
         if hasLost {

@@ -41,6 +41,8 @@ final class CombatScene: SKScene {
     private var lastUpdateTime: TimeInterval?
 
     private let shotBaseSize: CGFloat = 72
+    private let playerBaseFill = UIColor(white: 0.35, alpha: 1)
+    private let playerFlashActionKey = "playerFlash"
 
     init(
         size: CGSize,
@@ -124,7 +126,7 @@ final class CombatScene: SKScene {
 
         let playerSize = CGSize(width: w * 0.50, height: h * 0.25)
         playerNode = SKShapeNode(rectOf: playerSize, cornerRadius: 8)
-        playerNode.fillColor = UIColor(white: 0.35, alpha: 1)
+        playerNode.fillColor = playerBaseFill
         playerNode.strokeColor = .white
         playerNode.lineWidth = 2
         playerNode.position = playerPosition
@@ -329,6 +331,7 @@ final class CombatScene: SKScene {
 
     private func playDamage(at position: CGPoint) {
         SoundEffectsController.shared.play(event: "damage", from: playerFx)
+        flashPlayer(color: .orange)
 
         let square = SKShapeNode(rectOf: CGSize(width: 48, height: 48))
         square.fillColor = .red
@@ -342,6 +345,27 @@ final class CombatScene: SKScene {
         square.run(SKAction.group([spin, fade])) {
             square.removeFromParent()
         }
+    }
+
+    /// Temporary fill flash on the bottom player placeholder.
+    private func flashPlayer(color: UIColor, hold: TimeInterval = 0.08, gap: TimeInterval = 0.05) {
+        guard let playerNode else { return }
+        playerNode.removeAction(forKey: playerFlashActionKey)
+
+        let paint = SKAction.run { [weak self] in
+            self?.playerNode.fillColor = color
+        }
+        let clear = SKAction.run { [weak self] in
+            guard let self else { return }
+            self.playerNode.fillColor = self.playerBaseFill
+        }
+        let pulse = SKAction.sequence([
+            paint,
+            SKAction.wait(forDuration: hold),
+            clear,
+            SKAction.wait(forDuration: gap),
+        ])
+        playerNode.run(SKAction.sequence([pulse, pulse]), withKey: playerFlashActionKey)
     }
 
     private func playExplosion(at position: CGPoint) {
@@ -438,6 +462,7 @@ final class CombatScene: SKScene {
         slashStartedAt = time
         slashPoints = [point]
         updateSlashLine()
+        flashPlayer(color: .yellow)
     }
 
     private func endSlash() {
@@ -477,65 +502,44 @@ final class CombatScene: SKScene {
     private func resolveSlashHits() {
         guard isSlashActive, slashPoints.count >= 2 else { return }
 
-        let startIndex = max(0, slashPoints.count - 8)
-        let recent = Array(slashPoints[startIndex...])
+        // Use the full active stroke so enter→exit across the sprite can be detected.
+        let stroke = slashPoints
 
         for (id, visual) in shotVisuals {
-            let hitRadius = slashHitRadius(for: visual.node)
-            if slashPolylineHitsCircle(points: recent, center: visual.node.position, radius: hitRadius) {
-                let result = engine.registerSlashHit(shotID: id)
-                let pos = visual.node.position
-                switch result {
-                case .ignored:
-                    continue
-                case .correct:
-                    removeShotNode(id: id)
-                    playExplosion(at: pos)
-                    combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
-                    for pending in engine.drainPendingEvents() {
-                        handle(pending)
-                    }
-                    if engine.hasWon || engine.outcome != nil {
-                        finishWin()
-                        return
-                    }
-                case .wrong:
-                    removeShotNode(id: id)
-                    playIncorrectSlash(at: pos)
+            let side = shotSpriteSide(for: visual.node)
+            guard CombatSlashGeometry.slashBisectsSquare(
+                points: stroke,
+                center: visual.node.position,
+                side: side
+            ) else {
+                continue
+            }
+
+            let result = engine.registerSlashHit(shotID: id)
+            let pos = visual.node.position
+            switch result {
+            case .ignored:
+                continue
+            case .correct:
+                removeShotNode(id: id)
+                playExplosion(at: pos)
+                combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
+                for pending in engine.drainPendingEvents() {
+                    handle(pending)
                 }
+                if engine.hasWon || engine.outcome != nil {
+                    finishWin()
+                    return
+                }
+            case .wrong:
+                removeShotNode(id: id)
+                playIncorrectSlash(at: pos)
             }
         }
     }
 
-    private func slashHitRadius(for node: SKNode) -> CGFloat {
-        let scaled = shotBaseSize * max(abs(node.xScale), abs(node.yScale)) * 0.5
-        return max(scaled + 28, 40)
-    }
-
-    private func slashPolylineHitsCircle(points: [CGPoint], center: CGPoint, radius: CGFloat) -> Bool {
-        guard points.count >= 2 else { return false }
-        for i in 1..<points.count {
-            if distanceFromPointToSegment(center, points[i - 1], points[i]) <= radius {
-                return true
-            }
-        }
-        return false
-    }
-
-    private func distanceFromPointToSegment(_ point: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
-        let abx = b.x - a.x
-        let aby = b.y - a.y
-        let lengthSq = abx * abx + aby * aby
-        guard lengthSq > 0.0001 else {
-            let dx = point.x - a.x
-            let dy = point.y - a.y
-            return sqrt(dx * dx + dy * dy)
-        }
-        let t = max(0, min(1, ((point.x - a.x) * abx + (point.y - a.y) * aby) / lengthSq))
-        let proj = CGPoint(x: a.x + t * abx, y: a.y + t * aby)
-        let dx = point.x - proj.x
-        let dy = point.y - proj.y
-        return sqrt(dx * dx + dy * dy)
+    private func shotSpriteSide(for node: SKNode) -> CGFloat {
+        shotBaseSize * max(abs(node.xScale), abs(node.yScale))
     }
 
     // MARK: - End states

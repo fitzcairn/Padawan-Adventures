@@ -25,6 +25,7 @@ struct GateMinigameView: View {
             wrappedValue: GateSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
+                hudConfig: hudConfig,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -87,11 +88,18 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
 
     private let puzzleConfig: GatePuzzleConfig
     private let playerFx: SoundEffectTable
+    private let hudConfig: HudConfig
     private var didFinish = false
 
-    init(puzzleConfig: GatePuzzleConfig, playerFx: SoundEffectTable, initialTimerSeconds: Int) {
+    init(
+        puzzleConfig: GatePuzzleConfig,
+        playerFx: SoundEffectTable,
+        hudConfig: HudConfig,
+        initialTimerSeconds: Int
+    ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.hudConfig = hudConfig
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -101,7 +109,12 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
             return
         }
         let safeSize = Self.sanitizedSize(size)
-        let created = GateScene(size: safeSize, puzzleConfig: puzzleConfig, playerFx: playerFx)
+        let created = GateScene(
+            size: safeSize,
+            puzzleConfig: puzzleConfig,
+            playerFx: playerFx,
+            hudConfig: hudConfig
+        )
         created.gateDelegate = self
         scene = created
     }

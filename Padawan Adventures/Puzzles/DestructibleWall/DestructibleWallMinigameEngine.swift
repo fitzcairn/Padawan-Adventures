@@ -22,14 +22,16 @@ nonisolated struct DestructibleWallMinigameEngine {
         var timerSeconds: Double
         var letterSoundRepeatSeconds: Double
         var incorrectReplayDelaySeconds: Double
-        var letterCountMean: Double
+        var letterCountMin: Int
+        var letterCountMax: Int
         var letters: [DestructibleWallLetter]
 
         init(from puzzle: DestructibleWallPuzzleConfig) {
             timerSeconds = puzzle.timerSeconds
             letterSoundRepeatSeconds = puzzle.letterSoundRepeatSeconds
             incorrectReplayDelaySeconds = puzzle.incorrectReplayDelaySeconds
-            letterCountMean = puzzle.letterCountMean
+            letterCountMin = puzzle.letterCountMin
+            letterCountMax = puzzle.letterCountMax
             letters = puzzle.letters
         }
 
@@ -37,13 +39,15 @@ nonisolated struct DestructibleWallMinigameEngine {
             timerSeconds: Double,
             letterSoundRepeatSeconds: Double = 3,
             incorrectReplayDelaySeconds: Double = 1,
-            letterCountMean: Double = 4,
+            letterCountMin: Int = 2,
+            letterCountMax: Int = 4,
             letters: [DestructibleWallLetter]
         ) {
             self.timerSeconds = timerSeconds
             self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
             self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
-            self.letterCountMean = letterCountMean
+            self.letterCountMin = letterCountMin
+            self.letterCountMax = letterCountMax
             self.letters = letters.map {
                 DestructibleWallLetter(
                     letter: $0.letter.lowercased(),
@@ -191,8 +195,9 @@ nonisolated struct DestructibleWallMinigameEngine {
         guard !pool.isEmpty else { return [] }
 
         let count = Self.sampleLetterCount(
-            mean: config.letterCountMean,
-            maxSize: pool.count,
+            minimum: config.letterCountMin,
+            maximum: config.letterCountMax,
+            poolSize: pool.count,
             rng: &rng
         )
         var shuffled = pool
@@ -217,44 +222,16 @@ nonisolated struct DestructibleWallMinigameEngine {
         currentTargetID = unmatched[index].id
     }
 
-    /// Samples a count in `1...maxSize` with expected value ≈ `mean` via successive growth.
+    /// Uniformly samples a count in `minimum...maximum`, clamped to `1...poolSize`.
     static func sampleLetterCount(
-        mean: Double,
-        maxSize: Int,
+        minimum: Int,
+        maximum: Int,
+        poolSize: Int,
         rng: inout some RandomNumberGenerator
     ) -> Int {
-        let maxS = max(1, maxSize)
-        let mu = min(Double(maxS), max(1.0, mean))
-        if mu >= Double(maxS) - 1e-9 { return maxS }
-        if mu <= 1.0 + 1e-9 { return 1 }
-
-        let growthP = growthProbability(forMean: mu, maxSize: maxS)
-        var count = 1
-        while count < maxS {
-            // Unit interval from the high 53 bits of a UInt64.
-            let unit = Double(rng.next() >> 11) / Double(1 << 53)
-            if unit < growthP {
-                count += 1
-            } else {
-                break
-            }
-        }
-        return count
-    }
-
-    /// Growth probability `p` such that `E[1 + sum I_k] ≈ mean` for max `maxSize` steps.
-    private static func growthProbability(forMean mean: Double, maxSize: Int) -> Double {
-        var lo = 0.0
-        var hi = 0.999_999
-        for _ in 0..<48 {
-            let mid = (lo + hi) * 0.5
-            let expected = (1 - pow(mid, Double(maxSize))) / (1 - mid)
-            if expected < mean {
-                lo = mid
-            } else {
-                hi = mid
-            }
-        }
-        return (lo + hi) * 0.5
+        let poolCap = max(1, poolSize)
+        let lo = min(max(1, min(minimum, maximum)), poolCap)
+        let hi = min(max(lo, max(minimum, maximum)), poolCap)
+        return Int.random(in: lo...hi, using: &rng)
     }
 }

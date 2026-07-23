@@ -9,12 +9,14 @@ struct PitMinigameEngineTests {
 
     private func makeEngine(
         timer: Double = 30,
+        numPaddingLetters: Int = 6,
         words: [String] = ["cat", "dog"],
         seed: UInt64 = 42
     ) -> PitMinigameEngine {
         var engine = PitMinigameEngine(
             config: .init(
                 timerSeconds: timer,
+                numPaddingLetters: numPaddingLetters,
                 words: self.words(words)
             ),
             rng: PitSeededGenerator(seed: seed)
@@ -32,14 +34,13 @@ struct PitMinigameEngineTests {
         #expect(engine.targetWord.isEmpty)
     }
 
-    @Test func beginPicksWordAndBuildsMultisetPlusDecoys() {
-        let engine = makeEngine(words: ["cat"], seed: 7)
+    @Test func beginPicksWordAndBuildsPaddedLetterBag() {
+        let engine = makeEngine(numPaddingLetters: 6, words: ["cat"], seed: 7)
         #expect(engine.isActive)
         #expect(engine.targetWord == "cat")
         #expect(engine.targetSoundTrackID == "sfx_word_cat")
         #expect(engine.wordLetterIDs.count == 3)
-        #expect(engine.letters.count >= 4)
-        #expect(engine.letters.count <= 6)
+        #expect(engine.letters.count == 9)
 
         let letterCounts = Dictionary(grouping: engine.letters, by: \.letter).mapValues(\.count)
         #expect((letterCounts["c"] ?? 0) >= 1)
@@ -47,13 +48,11 @@ struct PitMinigameEngineTests {
         #expect((letterCounts["t"] ?? 0) >= 1)
     }
 
-    @Test func decoyCountIsBetweenOneAndUniqueSetSize() {
-        let engine = makeEngine(words: ["book"], seed: 11)
-        #expect(engine.targetWord == "book")
+    @Test func letterBagSizeUsesConfiguredPadding() {
+        let engine = makeEngine(numPaddingLetters: 2, words: ["star"], seed: 3)
+        #expect(engine.targetWord == "star")
+        #expect(engine.letters.count == 6)
         #expect(engine.wordLetterIDs.count == 4)
-        let decoyCount = engine.letters.count - engine.wordLetterIDs.count
-        #expect(decoyCount >= 1)
-        #expect(decoyCount <= 3) // unique set {b,o,k}
     }
 
     @Test func beginIsDeterministicForSeed() {

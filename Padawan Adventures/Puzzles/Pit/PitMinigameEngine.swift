@@ -22,18 +22,22 @@ nonisolated enum PitLetterTapResult: Equatable, Sendable {
 nonisolated struct PitMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var timerSeconds: Double
+        var numPaddingLetters: Int
         var words: [GateWord]
 
         init(from puzzle: PitPuzzleConfig) {
             timerSeconds = puzzle.timerSeconds
+            numPaddingLetters = puzzle.numPaddingLetters
             words = puzzle.words
         }
 
         init(
             timerSeconds: Double,
+            numPaddingLetters: Int = 6,
             words: [GateWord]
         ) {
             self.timerSeconds = timerSeconds
+            self.numPaddingLetters = max(0, numPaddingLetters)
             self.words = words.map {
                 GateWord(
                     word: $0.word.lowercased(),
@@ -172,7 +176,7 @@ nonisolated struct PitMinigameEngine {
         return words[index]
     }
 
-    /// One sprite per word occurrence, plus `1...uniqueCount` decoys not in the word set.
+    /// One sprite per word occurrence, plus `numPaddingLetters` random letters.
     private mutating func buildLetterBag(for word: String) -> [LetterToken] {
         let wordTokens: [LetterToken] = word.map { character in
             LetterToken(id: UUID(), letter: String(character).lowercased())
@@ -180,15 +184,10 @@ nonisolated struct PitMinigameEngine {
         wordLetterIDs = wordTokens.map(\.id)
 
         var bag = wordTokens
-        let uniqueLetters = Set(bag.map(\.letter))
-        let uniqueCount = max(uniqueLetters.count, 1)
-        let decoyCount = Int.random(in: 1...uniqueCount, using: &rng)
-        let decoyPool = Self.alphabet.filter { !uniqueLetters.contains($0) }
-        if !decoyPool.isEmpty {
-            for _ in 0..<decoyCount {
-                let index = Int.random(in: 0..<decoyPool.count, using: &rng)
-                bag.append(LetterToken(id: UUID(), letter: decoyPool[index]))
-            }
+        let targetCount = word.count + config.numPaddingLetters
+        while bag.count < targetCount {
+            let index = Int.random(in: 0..<Self.alphabet.count, using: &rng)
+            bag.append(LetterToken(id: UUID(), letter: Self.alphabet[index]))
         }
 
         bag.shuffle(using: &rng)

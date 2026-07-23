@@ -346,12 +346,10 @@ struct LevelConfigTests {
           gate_chance: 0
         gate:
           timer_seconds: 15
-          word_sound_repeat_seconds: 8
           words: [CAT, Dog]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.gate.timerSeconds == 15)
-        #expect(level.gate.wordSoundRepeatSeconds == 8)
         #expect(level.gate.wordIDs == ["cat", "dog"])
         #expect(level.gate.words.map(\.word) == ["cat", "dog"])
         #expect(level.gate.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
@@ -379,7 +377,6 @@ struct LevelConfigTests {
 
         gate:
           timer_seconds: 22
-          word_sound_repeat_seconds: 6
           words: [moon, sun]
         """
         let child = """
@@ -392,7 +389,6 @@ struct LevelConfigTests {
             wordCatalog: catalog
         )
         #expect(level.gate.timerSeconds == 22)
-        #expect(level.gate.wordSoundRepeatSeconds == 6)
         #expect(level.gate.words.map(\.word) == ["moon", "sun"])
     }
 
@@ -425,14 +421,12 @@ struct LevelConfigTests {
 
         gate:
           timer_seconds: 22
-          word_sound_repeat_seconds: 6
           words: [moon]
         """
         let child = """
         inherits: base_level
         name: Level 1
         gate:
-          word_sound_repeat_seconds: 12
           words: [nova, beam]
         """
         let level = try LevelConfig.decode(
@@ -441,7 +435,6 @@ struct LevelConfigTests {
             wordCatalog: catalog
         )
         #expect(level.gate.timerSeconds == 22)
-        #expect(level.gate.wordSoundRepeatSeconds == 12)
         // Word id lists replace (not deep-merge) on inherit.
         #expect(level.gate.words.map(\.word) == ["beam", "nova"])
         #expect(level.gate.words.map(\.spelling) == [
@@ -469,29 +462,6 @@ struct LevelConfigTests {
           words: [cat]
         """
         #expect(throws: WorldSeedError.invalidGateTimer(0)) {
-            try LevelConfig.decode(from: yaml)
-        }
-    }
-
-    @Test func rejectsInvalidGateWordSoundRepeat() {
-        let yaml = """
-        name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        corridor_width: 2
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        gate:
-          word_sound_repeat_seconds: 0
-          words: [cat]
-        """
-        #expect(throws: WorldSeedError.invalidGateWordSoundRepeat(0)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -546,7 +516,6 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(level1.gate.timerSeconds == 30)
-        #expect(level1.gate.wordSoundRepeatSeconds == 10)
         #expect(level1.gate.winSound == nil)
         #expect(level1.gate.numPaddingLetters == 6)
         #expect(level1.gate.words.map(\.word).contains("gate"))
@@ -565,6 +534,7 @@ struct LevelConfigTests {
         #expect(level1.pit.timerSeconds == 30)
         #expect(level1.pit.winSound == "sfx_pit_yay")
         #expect(level1.pit.failSound == "sfx_pit_fall")
+        #expect(level1.pit.numPaddingLetters == 6)
         #expect(level1.pit.words.map(\.word) == ["cat", "dog", "star"])
         #expect(level1.pit.words.contains {
             $0.word == "star"
@@ -731,14 +701,16 @@ struct LevelConfigTests {
           timer_seconds: 15
           letter_sound_repeat_seconds: 8
           incorrect_replay_delay_seconds: 2
-          letter_count_mean: 3
+          letter_count_min: 2
+          letter_count_max: 3
           letters: [B, a]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.destructibleWall.timerSeconds == 15)
         #expect(level.destructibleWall.letterSoundRepeatSeconds == 8)
         #expect(level.destructibleWall.incorrectReplayDelaySeconds == 2)
-        #expect(level.destructibleWall.letterCountMean == 3)
+        #expect(level.destructibleWall.letterCountMin == 2)
+        #expect(level.destructibleWall.letterCountMax == 3)
         #expect(level.destructibleWall.letterIDs == ["b", "a"])
         #expect(level.destructibleWall.letters.map(\.letter) == ["a", "b"])
         #expect(level.destructibleWall.letters.map(\.pronunciation) == [
@@ -753,7 +725,8 @@ struct LevelConfigTests {
         destructible_wall:
           timer_seconds: 22
           letter_sound_repeat_seconds: 6
-          letter_count_mean: 2
+          letter_count_min: 1
+          letter_count_max: 2
           letters: [a, c]
         """
         let child = """
@@ -766,7 +739,8 @@ struct LevelConfigTests {
         )
         #expect(level.destructibleWall.timerSeconds == 22)
         #expect(level.destructibleWall.letterSoundRepeatSeconds == 6)
-        #expect(level.destructibleWall.letterCountMean == 2)
+        #expect(level.destructibleWall.letterCountMin == 1)
+        #expect(level.destructibleWall.letterCountMax == 2)
         #expect(level.destructibleWall.letters.map(\.letter) == ["a", "c"])
     }
 
@@ -814,6 +788,30 @@ struct LevelConfigTests {
           letters: [a]
         """
         #expect(throws: WorldSeedError.invalidDestructibleWallTimer(0)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsInvalidDestructibleWallLetterCountRange() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        destructible_wall:
+          letter_count_min: 4
+          letter_count_max: 2
+          letters: [a]
+        """
+        #expect(throws: WorldSeedError.invalidDestructibleWallLetterCountRange(min: 4, max: 2)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -871,7 +869,8 @@ struct LevelConfigTests {
         #expect(level1.letterSoundRepeatSeconds == 3)
         #expect(level1.destructibleWall.letterSoundRepeatSeconds == 3)
         #expect(level1.destructibleWall.incorrectReplayDelaySeconds == 1)
-        #expect(level1.destructibleWall.letterCountMean == 3)
+        #expect(level1.destructibleWall.letterCountMin == 2)
+        #expect(level1.destructibleWall.letterCountMax == 4)
         #expect(level1.destructibleWall.correctSound == nil)
         #expect(level1.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
     }

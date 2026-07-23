@@ -9,7 +9,6 @@ struct GateMinigameEngineTests {
 
     private func makeEngine(
         timer: Double = 30,
-        wordSoundRepeatSeconds: Double = 10,
         numPaddingLetters: Int = 6,
         words: [String] = ["cat", "dog"],
         seed: UInt64 = 42
@@ -17,7 +16,6 @@ struct GateMinigameEngineTests {
         var engine = GateMinigameEngine(
             config: .init(
                 timerSeconds: timer,
-                wordSoundRepeatSeconds: wordSoundRepeatSeconds,
                 numPaddingLetters: numPaddingLetters,
                 words: self.words(words)
             ),
@@ -143,38 +141,15 @@ struct GateMinigameEngineTests {
         #expect(!won)
     }
 
-    @Test func autoPlaysWordSoundAfterRepeatInterval() {
-        var engine = makeEngine(
-            timer: 30,
-            wordSoundRepeatSeconds: 10,
-            words: ["cat"],
-            seed: 1
-        )
-        engine.markWordSoundPlayed()
-
-        let early = engine.tick(dt: 9.0)
-        #expect(!early.contains(.playWordSound))
-
-        let due = engine.tick(dt: 1.1)
-        #expect(due.contains(.playWordSound))
-    }
-
-    @Test func markWordSoundPlayedDelaysNextAutoPlay() {
-        var engine = makeEngine(
-            timer: 30,
-            wordSoundRepeatSeconds: 5,
-            words: ["cat"],
-            seed: 1
-        )
-        engine.markWordSoundPlayed()
-        _ = engine.tick(dt: 4.0)
-        engine.markWordSoundPlayed()
-
-        let stillEarly = engine.tick(dt: 4.0)
-        #expect(!stillEarly.contains(.playWordSound))
-
-        let due = engine.tick(dt: 1.5)
-        #expect(due.contains(.playWordSound))
+    @Test func tickOnlyEmitsTimerAndOutcomeEvents() {
+        var engine = makeEngine(timer: 30, words: ["cat"], seed: 1)
+        let events = engine.tick(dt: 15.0)
+        #expect(events.allSatisfy { event in
+            switch event {
+            case .timerTick, .lost, .won:
+                true
+            }
+        })
     }
 }
 
