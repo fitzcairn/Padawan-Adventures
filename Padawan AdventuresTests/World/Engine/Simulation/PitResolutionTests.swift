@@ -69,4 +69,49 @@ struct PitResolutionTests {
         #expect(!relocated)
         #expect(world.playerPosition == floor)
     }
+
+    @Test func fillPitConvertsContiguousPitBlobToOrdinaryFloor() {
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
+        let pitA = GridCoord(x: 1, y: 1, story: 0)
+        let pitB = GridCoord(x: 2, y: 1, story: 0)
+        let otherPit = GridCoord(x: 4, y: 1, story: 0)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pitA)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pitB)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: otherPit)
+
+        let filled = world.fillPit(at: pitA)
+        #expect(filled)
+        #expect(world.tile(at: pitA)?.isPit == false)
+        #expect(world.tile(at: pitB)?.isPit == false)
+        // Disjoint pit blob is left alone.
+        #expect(world.tile(at: otherPit)?.isPit == true)
+    }
+
+    @Test func fillPitNoopsOnNonPit() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let floor = GridCoord(x: 1, y: 1, story: 0)
+        let filled = world.fillPit(at: floor)
+        #expect(!filled)
+        #expect(world.tile(at: floor)?.isPit == false)
+    }
+
+    @Test func filledPitNoLongerEmitsPitHazardOnEntry() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let pit = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
+        world.setPlayerPosition(start)
+        let filled = world.fillPit(at: pit)
+        #expect(filled)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, pit])
+        let events = movement.update(deltaTime: 10, world: &world)
+        let triggeredPit = events.contains { event in
+            if case .pit = event { return true }
+            return false
+        }
+        #expect(!triggeredPit)
+        #expect(world.playerPosition == pit)
+    }
 }

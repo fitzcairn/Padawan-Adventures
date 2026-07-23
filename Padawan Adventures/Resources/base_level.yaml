@@ -42,6 +42,8 @@ room:
 # Optional `win_sound` / `fail_sound` override shared `sound.yaml` (`fx.win` / `fx.lose`).
 pit:
   timer_seconds: 30
+  win_sound: sfx_pit_yay
+  fail_sound: sfx_pit_fall
   # Selectable pit words for this level (keys into shared `Vocab/words.yaml`).
   words: [cat, dog, star]
 

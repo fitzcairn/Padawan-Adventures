@@ -145,6 +145,28 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         return true
     }
 
+    /// Fills a pit cell and every orthogonally contiguous pit in its blob into ordinary floor.
+    @discardableResult
+    mutating func fillPit(at coord: GridCoord) -> Bool {
+        guard tile(at: coord)?.isPit == true else { return false }
+        var queue = [coord]
+        var visited: Set<GridCoord> = [coord]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            setTile(Tile(kind: .floor(isPit: false)), at: current)
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard isInBounds(next), !visited.contains(next) else { continue }
+                guard tile(at: next)?.isPit == true else { continue }
+                visited.insert(next)
+                queue.append(next)
+            }
+        }
+        return true
+    }
+
     func isEnterable(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {

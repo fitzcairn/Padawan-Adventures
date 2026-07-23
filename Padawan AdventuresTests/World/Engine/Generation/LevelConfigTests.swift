@@ -563,8 +563,8 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(level1.pit.timerSeconds == 30)
-        #expect(level1.pit.winSound == nil)
-        #expect(level1.pit.failSound == nil)
+        #expect(level1.pit.winSound == "sfx_pit_yay")
+        #expect(level1.pit.failSound == "sfx_pit_fall")
         #expect(level1.pit.words.map(\.word) == ["cat", "dog", "star"])
         #expect(level1.pit.words.contains {
             $0.word == "star"

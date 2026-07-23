@@ -97,8 +97,12 @@ final class PitScene: SKScene {
         min(size.width, size.height) * 0.055
     }
 
+    /// Jump reach: at least enough to clear one equal-width word band plus vertical slack.
     private var maxJumpDistance: CGFloat {
-        letterRadius * 5.5
+        let bands = max(engine.wordLetterIDs.count, 1)
+        let bandWidth = playFieldRect.width / CGFloat(bands)
+        let bandReach = hypot(bandWidth * 1.2, playFieldRect.height * 0.55)
+        return max(letterRadius * 5.5, bandReach)
     }
 
     private var minPadding: CGFloat {
@@ -137,12 +141,15 @@ final class PitScene: SKScene {
         let radius = letterRadius
         var placedCenters: [CGPoint] = []
 
-        // Place word letters first so each hop is within jump range of the previous.
+        // Place word letters in equal-width horizontal bands across the play field.
         let startAnchor = CGPoint(x: leftPadRect.midX, y: leftPadRect.midY)
         var previous = startAnchor
-        for id in engine.wordLetterIDs {
+        let wordCount = engine.wordLetterIDs.count
+        for (index, id) in engine.wordLetterIDs.enumerated() {
             guard let token = engine.letter(id: id) else { continue }
             let position = placeWordLetter(
+                index: index,
+                count: wordCount,
                 near: previous,
                 radius: radius,
                 avoiding: placedCenters
@@ -238,20 +245,42 @@ final class PitScene: SKScene {
         radius * 2 + minPadding
     }
 
+    /// Samples a word-letter center inside the `index`-th equal-width horizontal band
+    /// spanning the play field between the side pads (`count` = word length).
     private func placeWordLetter(
+        index: Int,
+        count: Int,
         near previous: CGPoint,
         radius: CGFloat,
         avoiding occupied: [CGPoint]
     ) -> CGPoint {
+        let bands = max(count, 1)
+        let bandWidth = playFieldRect.width / CGFloat(bands)
+        let bandMinX = playFieldRect.minX + CGFloat(index) * bandWidth
+        let bandMaxX = bandMinX + bandWidth
+
+        let minY = playFieldRect.minY + radius
+        let maxY = playFieldRect.maxY - radius
+        guard minY <= maxY else {
+            return CGPoint(x: (bandMinX + bandMaxX) * 0.5, y: playFieldRect.midY)
+        }
+
+        let insetMinX = bandMinX + radius
+        let insetMaxX = bandMaxX - radius
+        let xRange: ClosedRange<CGFloat>
+        if insetMinX <= insetMaxX {
+            xRange = insetMinX...insetMaxX
+        } else {
+            let midX = (bandMinX + bandMaxX) * 0.5
+            xRange = midX...midX
+        }
+        let yRange = minY...maxY
         let maxDist = maxJumpDistance
-        let minDist = minCenterDistance(for: radius)
 
         for _ in 0..<160 {
-            let angle = CGFloat.random(in: 0...(2 * .pi), using: &placementRNG)
-            let distance = CGFloat.random(in: minDist...maxDist, using: &placementRNG)
             let point = CGPoint(
-                x: previous.x + cos(angle) * distance,
-                y: previous.y + sin(angle) * distance
+                x: CGFloat.random(in: xRange, using: &placementRNG),
+                y: CGFloat.random(in: yRange, using: &placementRNG)
             )
             if isValidLetterPosition(point, radius: radius, avoiding: occupied),
                hypot(point.x - previous.x, point.y - previous.y) <= maxDist + 0.5 {
@@ -259,18 +288,18 @@ final class PitScene: SKScene {
             }
         }
 
-        // Bias toward the right into the play field for solvability.
-        for factor in stride(from: 0.35, through: 0.95, by: 0.1) {
+        // Prefer band center; still require non-overlap when possible.
+        for _ in 0..<40 {
             let point = CGPoint(
-                x: previous.x + maxJumpDistance * CGFloat(factor),
-                y: playFieldRect.midY + CGFloat.random(in: -playFieldRect.height * 0.25...playFieldRect.height * 0.25, using: &placementRNG)
+                x: (bandMinX + bandMaxX) * 0.5,
+                y: CGFloat.random(in: yRange, using: &placementRNG)
             )
             if isValidLetterPosition(point, radius: radius, avoiding: occupied) {
                 return point
             }
         }
 
-        return placeDecoy(radius: radius, avoiding: occupied)
+        return CGPoint(x: (bandMinX + bandMaxX) * 0.5, y: playFieldRect.midY)
     }
 
     private func placeDecoy(radius: CGFloat, avoiding occupied: [CGPoint]) -> CGPoint {
@@ -351,6 +380,7 @@ final class PitScene: SKScene {
         SoundEffectsController.shared.play(trackID: trackID)
     }
 
+    /// Progressive prefix cue only — word sound is reserved for incorrect jumps / open / win.
     private func playConnectedPrefixSound(_ prefix: String, then completion: (() -> Void)? = nil) {
         removeAction(forKey: Self.connectedSoundActionKey)
         guard !prefix.isEmpty else {
@@ -359,20 +389,12 @@ final class PitScene: SKScene {
         }
 
         let progressiveID = engine.targetEntry.progressiveTrack(forPrefix: prefix)
-        let spellingID = engine.targetSoundTrackID
-
         var actions: [SKAction] = []
         if let progressiveID, !progressiveID.isEmpty {
             actions.append(SKAction.run {
                 SoundEffectsController.shared.play(trackID: progressiveID)
             })
             actions.append(SKAction.wait(forDuration: audioDuration(for: progressiveID)))
-        }
-        if !spellingID.isEmpty {
-            actions.append(SKAction.run {
-                SoundEffectsController.shared.play(trackID: spellingID)
-            })
-            actions.append(SKAction.wait(forDuration: audioDuration(for: spellingID)))
         }
         if let completion {
             actions.append(SKAction.run(completion))
@@ -461,9 +483,14 @@ final class PitScene: SKScene {
                 self.circleNodes[id]?.fillColor = self.circleCorrectFill
                 self.pitDelegate?.pitSceneDidUpdateSolvedCount(prefix.count)
                 self.playConnectedPrefixSound(prefix) {
-                    self.isJumping = false
                     if won {
-                        self.finishWon()
+                        let exit = CGPoint(x: self.rightPadRect.midX, y: self.rightPadRect.midY)
+                        self.jumpPlayer(to: exit) {
+                            self.isJumping = false
+                            self.finishWon()
+                        }
+                    } else {
+                        self.isJumping = false
                     }
                 }
             }
@@ -472,6 +499,7 @@ final class PitScene: SKScene {
                 guard let self else { return }
                 self.flashWrong(id: id) {
                     self.jumpPlayer(to: origin) {
+                        self.playWordSound()
                         self.isJumping = false
                     }
                 }

@@ -211,10 +211,13 @@ final class GameScene: SKScene {
         }
     }
 
-    /// Relocates off the pit after a successful escape, then resumes simulation.
+    /// Fills the pit blob into ordinary floor after a successful escape, then resumes.
     func resolvePitWin(completion: (() -> Void)? = nil) {
-        world.relocatePlayerOffPit()
+        if let pit = world.playerPosition {
+            _ = world.fillPit(at: pit)
+        }
         pendingInput = PendingInput()
+        renderer.render(world: world, focus: viewportFocus)
         showFixedZoomView()
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in

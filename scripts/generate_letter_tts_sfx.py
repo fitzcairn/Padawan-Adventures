@@ -83,6 +83,8 @@ def main() -> int:
     generate("yay!", out_dir / "sfx_correct.m4a")
     generate("ta-da!", out_dir / "sfx_win.m4a")
     generate("you're falling!", out_dir / "sfx_lose.m4a")
+    generate("ta-da!", out_dir / "sfx_pit_yay.m4a")
+    generate("you're falling!", out_dir / "sfx_pit_fall.m4a")
     return 0
 
 
