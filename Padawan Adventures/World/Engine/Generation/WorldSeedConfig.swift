@@ -85,7 +85,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         guard token == "time" else {
-            throw WorldSeedError.decodeFailed
+            throw WorldSeedError.decodeFailed("seed must be an integer or \"time\"")
         }
         return nil
     }
@@ -397,9 +397,24 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidRoomPitSize(mean: Double, max: Int)
     case invalidRoomWallDestructibleChance(Double)
     case invalidRoomGateChance(Double)
+    case invalidGateTimer(Double)
+    case invalidGateWordSoundRepeat(Double)
+    case invalidGatePaddingLetters(Int)
+    case invalidGateWords
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)
+    /// Generated map is missing one or more required interactables after retries.
+    case missingRequiredInteractables([RequiredInteractable])
     case missingResource
-    case decodeFailed
+    /// YAML/config decode failed; associated value carries the underlying reason.
+    case decodeFailed(String)
+}
+
+/// Interactable kinds every valid map must include at least once.
+nonisolated enum RequiredInteractable: String, Equatable, Sendable, CaseIterable {
+    case gate
+    case pit
+    case destructibleWall
+    case enemy
 }

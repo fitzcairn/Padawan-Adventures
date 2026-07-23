@@ -8,6 +8,8 @@ final class AppSession {
     private(set) var selectedLevelResourceName: String?
     /// Raw level `music:` value for the selected level.
     private(set) var selectedLevelMusic: String?
+    /// Gate puzzle knobs for the selected level.
+    private(set) var selectedGateConfig: GatePuzzleConfig
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let playerStore: PlayerStateStore
@@ -22,6 +24,7 @@ final class AppSession {
         selectedLevelName: String = LevelConfig.fallback.name,
         selectedLevelResourceName: String? = nil,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
+        selectedGateConfig: GatePuzzleConfig = .fallback,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         playerStore: PlayerStateStore,
@@ -35,6 +38,7 @@ final class AppSession {
         self.selectedLevelName = selectedLevelName
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelMusic = selectedLevelMusic
+        self.selectedGateConfig = selectedGateConfig
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -69,16 +73,19 @@ final class AppSession {
         let seedConfig: WorldSeedConfig
         let selectedLevelName: String
         let selectedLevelMusic: String?
+        let selectedGateConfig: GatePuzzleConfig
         do {
             let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
             try loaded.config.validate()
             seedConfig = loaded.config
             selectedLevelName = loaded.level.name
             selectedLevelMusic = loaded.level.music
+            selectedGateConfig = loaded.level.gate
         } catch {
             seedConfig = fallbackConfig()
             selectedLevelName = LevelConfig.fallback.name
             selectedLevelMusic = LevelConfig.fallback.music
+            selectedGateConfig = LevelConfig.fallback.gate
         }
 
         let musicSettings: MusicSettings
@@ -131,6 +138,7 @@ final class AppSession {
             seedConfig: seedConfig,
             selectedLevelName: selectedLevelName,
             selectedLevelMusic: selectedLevelMusic,
+            selectedGateConfig: selectedGateConfig,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             playerStore: playerStore,
@@ -149,6 +157,7 @@ final class AppSession {
         selectedLevelName = loaded.level.name
         selectedLevelResourceName = resourceName
         selectedLevelMusic = loaded.level.music
+        selectedGateConfig = loaded.level.gate
     }
 
     func bindPlayer(name: String) async throws {

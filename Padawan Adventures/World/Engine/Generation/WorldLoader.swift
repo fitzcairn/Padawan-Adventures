@@ -93,8 +93,10 @@ nonisolated enum WorldLoader {
         let decoder = YAMLDecoder()
         do {
             return try decoder.decode(WorldSeedConfig.self, from: data)
+        } catch let error as WorldSeedError {
+            throw error
         } catch {
-            throw WorldSeedError.decodeFailed
+            throw WorldSeedError.decodeFailed(String(describing: error))
         }
     }
 

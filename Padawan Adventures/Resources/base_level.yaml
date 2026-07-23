@@ -30,6 +30,21 @@ room:
   # Probability that a door opening becomes a gate strip.
   gate_chance: 0.5
 
+# Gate letter-puzzle minigame (triggered on gate tile contact).
+# Stars awarded on win = number of letters in the solved word.
+gate:
+  timer_seconds: 30
+  word_sound_repeat_seconds: 10
+  win_sound: sfx_gate_win
+  # Extra random letters beyond the chosen word (total sprites = word length + this).
+  num_padding_letters: 6
+  words:
+    cat: sfx_word_cat
+    dog: sfx_word_dog
+    star: sfx_word_star
+    gate: sfx_word_gate
+    open: sfx_word_open
+
 pickups:
   health:
     spawn_chance_per_room: 0.8

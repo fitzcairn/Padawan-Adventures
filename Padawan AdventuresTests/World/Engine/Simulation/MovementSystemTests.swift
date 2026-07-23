@@ -199,6 +199,22 @@ struct MovementSystemTests {
         #expect(movement.interpolatedScreenPosition(in: world) == before)
     }
 
+    @Test func enteringGateEmitsApproachTileAndStopsMovement() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let gate = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .gate), at: gate)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, gate])
+
+        let events = movement.update(deltaTime: 10, world: &world)
+        #expect(events.contains(.gate(gate: gate, approach: start)))
+        #expect(world.playerPosition == gate)
+        #expect(movement.isMoving == false)
+    }
+
     private func screenDistance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
         let dx = a.x - b.x
         let dy = a.y - b.y

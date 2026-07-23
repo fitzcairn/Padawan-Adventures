@@ -25,6 +25,8 @@ nonisolated struct SimulationTickResult: Sendable {
     var boomCoord: GridCoord?
     /// Gate cell the player walked onto this tick, if any.
     var gateCoord: GridCoord?
+    /// Floor tile the player approached the gate from (for timeout retreat).
+    var gateApproachCoord: GridCoord?
 }
 
 struct SimulationLoop: Sendable {
@@ -133,8 +135,9 @@ struct SimulationLoop: Sendable {
             if case .boom(let coord) = event {
                 result.boomCoord = coord
             }
-            if case .gate(let coord) = event {
-                result.gateCoord = coord
+            if case .gate(let gate, let approach) = event {
+                result.gateCoord = gate
+                result.gateApproachCoord = approach
             }
             if case .reached(let coord) = event {
                 result.cameraCoord = coord

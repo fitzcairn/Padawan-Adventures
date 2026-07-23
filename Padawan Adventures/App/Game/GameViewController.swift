@@ -75,9 +75,9 @@ final class GameViewController: LandscapeHostingController {
             self?.playPlayerFx("boom")
             self?.presentDestructibleWall(at: coord)
         }
-        scene.onGateEntered = { [weak self] coord in
+        scene.onGateEntered = { [weak self] gate, approach in
             self?.playPlayerFx("gate")
-            self?.presentGate(at: coord)
+            self?.presentGate(at: gate, approach: approach)
         }
         scene.onPickupCollected = { [weak self] kind in
             self?.handlePickupCollected(kind)
@@ -333,12 +333,25 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
-    private func presentGate(at coord: GridCoord) {
+    private func presentGate(at coord: GridCoord, approach: GridCoord) {
+        let puzzleConfig = session.selectedGateConfig
+        let playerFx = session.playerConfig.fx
+        let hudConfig = loadHudConfig()
+        let outcomeBox = GateOutcomeBox()
+
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
                 FullscreenOverlayHost { finish in
-                    GateMinigameView(onFinished: finish)
+                    GateMinigameView(
+                        puzzleConfig: puzzleConfig,
+                        playerFx: playerFx,
+                        hudConfig: hudConfig,
+                        onFinished: { outcome in
+                            outcomeBox.outcome = outcome
+                            finish()
+                        }
+                    )
                 }
             },
             onResolved: { [weak self] done in
@@ -346,11 +359,16 @@ final class GameViewController: LandscapeHostingController {
                     done()
                     return
                 }
-                Task {
-                    await self.session.recordStat { $0.gatesOpened += 1 }
-                    await self.awardLevelStar()
+                switch outcomeBox.outcome {
+                case let .won(starsAwarded):
+                    Task {
+                        await self.session.recordStat { $0.gatesOpened += 1 }
+                        await self.awardLevelStars(count: starsAwarded)
+                    }
+                    scene.resolveGateEncounter(at: coord, completion: done)
+                case .lost, .none:
+                    scene.resolveGateTimeout(approach: approach, completion: done)
                 }
-                scene.resolveGateEncounter(at: coord, completion: done)
             }
         )
     }
@@ -435,4 +453,9 @@ final class GameViewController: LandscapeHostingController {
 /// Captures combat result across the overlay finish callback.
 private final class CombatOutcomeBox {
     var outcome: CombatOutcome?
+}
+
+/// Captures gate puzzle result across the overlay finish callback.
+private final class GateOutcomeBox {
+    var outcome: GateOutcome?
 }

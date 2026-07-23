@@ -30,8 +30,8 @@ final class GameScene: SKScene {
     var onPitEntered: (() -> Void)?
     /// Called when the player walks onto a destructible wall.
     var onBoomEntered: ((GridCoord) -> Void)?
-    /// Called when the player walks onto a gate.
-    var onGateEntered: ((GridCoord) -> Void)?
+    /// Called when the player walks onto a gate (`gate` tile, `approach` retreat tile).
+    var onGateEntered: ((_ gate: GridCoord, _ approach: GridCoord) -> Void)?
     /// Called after a health/energy pickup finishes its collect animation.
     var onPickupCollected: ((PickupKind) -> Void)?
     /// Called after treasure shake + fade completes.
@@ -174,7 +174,8 @@ final class GameScene: SKScene {
 
             if let gateCoord = result.gateCoord {
                 isPausedForEncounter = true
-                onGateEntered?(gateCoord)
+                let approach = result.gateApproachCoord ?? gateCoord
+                onGateEntered?(gateCoord, approach)
                 break
             }
 
@@ -234,7 +235,7 @@ final class GameScene: SKScene {
         }
     }
 
-    /// Opens a gate strip after GATE ENCOUNTERED!!, then fades the world back in.
+    /// De-spawns a gate strip after a successful puzzle, then fades the world back in.
     func resolveGateEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
         if world.openGate(at: coord) {
             SoundEffectsController.shared.play(event: "gate_opened", from: worldFx)
@@ -242,6 +243,19 @@ final class GameScene: SKScene {
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
         captureContinueAndSave()
+        renderer.fadeWorldIn { [weak self] in
+            self?.isPausedForEncounter = false
+            completion?()
+        }
+    }
+
+    /// Retreats the player off the gate after a timeout (gate stays closed).
+    func resolveGateTimeout(approach: GridCoord, completion: (() -> Void)? = nil) {
+        world.setPlayerPosition(approach)
+        pendingInput = PendingInput()
+        renderer.syncEntities(world.entities)
+        renderer.render(world: world, focus: viewportFocus)
+        // Do not overwrite Continue — the last safe world remains before the failed attempt.
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
             completion?()

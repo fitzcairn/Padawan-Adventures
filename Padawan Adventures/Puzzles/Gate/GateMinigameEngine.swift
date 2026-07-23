@@ -1,0 +1,164 @@
+import Foundation
+
+nonisolated enum GateOutcome: Equatable, Sendable {
+    case won(starsAwarded: Int)
+    case lost
+}
+
+nonisolated enum GateEngineEvent: Equatable, Sendable {
+    case timerTick
+    case playWordSound
+    case won
+    case lost
+}
+
+/// Pure gate puzzle session rules (word pick, letter bag, timer, staging win check).
+nonisolated struct GateMinigameEngine {
+    nonisolated struct Config: Equatable, Sendable {
+        var timerSeconds: Double
+        var wordSoundRepeatSeconds: Double
+        var numPaddingLetters: Int
+        var words: [GateWord]
+
+        init(from puzzle: GatePuzzleConfig) {
+            timerSeconds = puzzle.timerSeconds
+            wordSoundRepeatSeconds = puzzle.wordSoundRepeatSeconds
+            numPaddingLetters = puzzle.numPaddingLetters
+            words = puzzle.words
+        }
+
+        init(
+            timerSeconds: Double,
+            wordSoundRepeatSeconds: Double = 10,
+            numPaddingLetters: Int = 6,
+            words: [GateWord]
+        ) {
+            self.timerSeconds = timerSeconds
+            self.wordSoundRepeatSeconds = wordSoundRepeatSeconds
+            self.numPaddingLetters = max(0, numPaddingLetters)
+            self.words = words.map {
+                GateWord(word: $0.word.lowercased(), sound: $0.sound)
+            }
+        }
+    }
+
+    nonisolated struct LetterToken: Equatable, Sendable, Identifiable {
+        let id: UUID
+        /// Single lowercase letter.
+        let letter: String
+    }
+
+    let config: Config
+    private(set) var isActive = false
+    private(set) var elapsed: Double = 0
+    private(set) var remainingTime: Double
+    private(set) var targetWord: String = ""
+    private(set) var targetSoundTrackID: String = ""
+    private(set) var letters: [LetterToken] = []
+    private(set) var outcome: GateOutcome?
+    private(set) var isFrozen = false
+
+    private var lastDisplayedSecond: Int
+    private var lastWordSoundElapsed: Double = 0
+    private var rng: any RandomNumberGenerator
+
+    private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
+
+    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+        self.config = config
+        self.remainingTime = config.timerSeconds
+        self.lastDisplayedSecond = Int(ceil(config.timerSeconds))
+        self.rng = rng
+    }
+
+    mutating func begin() {
+        isActive = true
+        isFrozen = false
+        elapsed = 0
+        remainingTime = config.timerSeconds
+        outcome = nil
+        lastDisplayedSecond = Int(ceil(config.timerSeconds))
+        lastWordSoundElapsed = 0
+        let picked = pickTargetEntry()
+        targetWord = picked.word
+        targetSoundTrackID = picked.sound
+        letters = buildLetterBag(for: targetWord)
+    }
+
+    mutating func end() {
+        isActive = false
+        isFrozen = true
+    }
+
+    var hasLost: Bool { remainingTime <= 0 }
+
+    /// Resets the auto-replay clock after the scene plays the word sound (open / drag).
+    mutating func markWordSoundPlayed() {
+        lastWordSoundElapsed = elapsed
+    }
+
+    /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
+    mutating func tick(dt: Double) -> [GateEngineEvent] {
+        guard isActive, !isFrozen, outcome == nil else { return [] }
+
+        var events: [GateEngineEvent] = []
+        elapsed += dt
+        remainingTime = max(0, config.timerSeconds - elapsed)
+
+        let displayedSecond = max(0, Int(ceil(remainingTime - 1e-9)))
+        if displayedSecond < lastDisplayedSecond {
+            if displayedSecond <= 5, lastDisplayedSecond > 0 {
+                events.append(.timerTick)
+            }
+            lastDisplayedSecond = displayedSecond
+        }
+
+        if elapsed - lastWordSoundElapsed >= config.wordSoundRepeatSeconds {
+            lastWordSoundElapsed = elapsed
+            events.append(.playWordSound)
+        }
+
+        if hasLost {
+            isFrozen = true
+            outcome = .lost
+            events.append(.lost)
+        }
+
+        return events
+    }
+
+    /// Letters currently inside the staging area, already sorted left→right by center X.
+    /// Returns `true` when the puzzle is solved.
+    @discardableResult
+    mutating func evaluateStaging(orderedLetters: [String]) -> Bool {
+        guard isActive, !isFrozen, outcome == nil else { return false }
+        let normalized = orderedLetters.map { $0.lowercased() }.joined()
+        guard normalized == targetWord else { return false }
+
+        isFrozen = true
+        outcome = .won(starsAwarded: targetWord.count)
+        return true
+    }
+
+    private mutating func pickTargetEntry() -> GateWord {
+        let words = config.words
+        guard !words.isEmpty else {
+            return GateWord(word: "gate", sound: "sfx_word_gate")
+        }
+        let index = Int.random(in: 0..<words.count, using: &rng)
+        return words[index]
+    }
+
+    private mutating func buildLetterBag(for word: String) -> [LetterToken] {
+        let targetCount = word.count + config.numPaddingLetters
+        var bag: [LetterToken] = word.map { character in
+            LetterToken(id: UUID(), letter: String(character).lowercased())
+        }
+        while bag.count < targetCount {
+            let index = Int.random(in: 0..<Self.alphabet.count, using: &rng)
+            bag.append(LetterToken(id: UUID(), letter: Self.alphabet[index]))
+        }
+        bag.shuffle(using: &rng)
+        return bag
+    }
+}

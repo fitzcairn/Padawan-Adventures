@@ -175,8 +175,14 @@ struct LevelConfigTests {
         name: Level 1
         room_count: 10
         """
-        #expect(throws: WorldSeedError.decodeFailed) {
+        #expect {
             try LevelConfig.decode(from: yaml)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed = error else {
+                return false
+            }
+            return true
         }
     }
 
@@ -230,7 +236,192 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(level1.name == "Level 1")
-        #expect(level1.width == 100)
-        #expect(level1.roomCount == 100)
+        #expect(level1.width == 20)
+        #expect(level1.roomCount == 5)
+    }
+
+    @Test func decodesGatePuzzleConfigWithDefaultsWhenOmitted() throws {
+        let level = try LevelConfig.decode(from: """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        """)
+        #expect(level.gate == GatePuzzleConfig.fallback)
+    }
+
+    @Test func decodesGatePuzzleConfigFromYAML() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        gate:
+          timer_seconds: 15
+          word_sound_repeat_seconds: 8
+          words:
+            CAT: sfx_word_cat
+            Dog: sfx_word_dog
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.gate.timerSeconds == 15)
+        #expect(level.gate.wordSoundRepeatSeconds == 8)
+        #expect(level.gate.words.map(\.word) == ["cat", "dog"])
+        #expect(level.gate.words.map(\.sound) == ["sfx_word_cat", "sfx_word_dog"])
+    }
+
+    @Test func inheritsGateConfigFromBase() throws {
+        let base = Self.baseLevelYAML + """
+
+        gate:
+          timer_seconds: 22
+          word_sound_repeat_seconds: 6
+          words:
+            moon: sfx_word_moon
+            sun: sfx_word_sun
+        """
+        let child = """
+        inherits: base_level
+        name: Level 1
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.gate.timerSeconds == 22)
+        #expect(level.gate.wordSoundRepeatSeconds == 6)
+        #expect(level.gate.words.map(\.word) == ["moon", "sun"])
+    }
+
+    @Test func childCanOverrideInheritedGateFields() throws {
+        let base = Self.baseLevelYAML + """
+
+        gate:
+          timer_seconds: 22
+          word_sound_repeat_seconds: 6
+          words:
+            moon: sfx_word_moon
+        """
+        let child = """
+        inherits: base_level
+        name: Level 1
+        gate:
+          word_sound_repeat_seconds: 12
+          words:
+            nova: sfx_word_nova
+            beam: sfx_word_beam
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.gate.timerSeconds == 22)
+        #expect(level.gate.wordSoundRepeatSeconds == 12)
+        // Word maps deep-merge like `fx:` — child keys overwrite/add, parent keys remain.
+        #expect(level.gate.words.map(\.word) == ["beam", "moon", "nova"])
+        #expect(level.gate.words.map(\.sound) == [
+            "sfx_word_beam",
+            "sfx_word_moon",
+            "sfx_word_nova",
+        ])
+    }
+
+    @Test func rejectsInvalidGateTimer() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        gate:
+          timer_seconds: 0
+          words:
+            cat: sfx_word_cat
+        """
+        #expect(throws: WorldSeedError.invalidGateTimer(0)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsInvalidGateWordSoundRepeat() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        gate:
+          word_sound_repeat_seconds: 0
+          words:
+            cat: sfx_word_cat
+        """
+        #expect(throws: WorldSeedError.invalidGateWordSoundRepeat(0)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsEmptyGateWords() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          wall_destructible_chance: 0
+          gate_chance: 0
+        gate:
+          words: {}
+        """
+        #expect(throws: WorldSeedError.invalidGateWords) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func bundleBaseLevelProvidesGateDefaults() throws {
+        let level1 = try LevelConfig.loadFromBundle(
+            named: "level_1",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        #expect(level1.gate.timerSeconds == 30)
+        #expect(level1.gate.wordSoundRepeatSeconds == 10)
+        #expect(level1.gate.winSound == "sfx_gate_win")
+        #expect(level1.gate.numPaddingLetters == 6)
+        #expect(level1.gate.words.map(\.word).contains("gate"))
+        #expect(level1.gate.words.contains { $0.word == "cat" && $0.sound == "sfx_word_cat" })
     }
 }

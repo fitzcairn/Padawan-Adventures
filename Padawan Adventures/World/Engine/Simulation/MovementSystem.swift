@@ -264,7 +264,8 @@ struct MovementSystem: Sendable {
             return
         }
         if tile.isGate {
-            events.append(.gate(end))
+            let approach = segmentStart ?? end
+            events.append(.gate(gate: end, approach: approach))
             reset()
         }
     }
@@ -317,5 +318,6 @@ enum MovementEvent: Equatable, Sendable {
     case reached(GridCoord)
     case pit(PitResolution)
     case boom(GridCoord)
-    case gate(GridCoord)
+    /// `gate` is the occupied gate tile; `approach` is the floor tile the player walked from.
+    case gate(gate: GridCoord, approach: GridCoord)
 }

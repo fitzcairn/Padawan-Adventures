@@ -473,15 +473,16 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func zeroGateChanceProducesNoGates() throws {
+    @Test func zeroGateChanceStillGuaranteesOneGate() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 12)
         config.generation.room.gateChance = 0
         let world = try ProceduralGenerator().generate(from: config)
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                #expect(world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate != true)
-            }
+        let gates = (0..<world.height).reduce(0) { count, y in
+            count + (0..<world.width).filter { x in
+                world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate == true
+            }.count
         }
+        #expect(gates >= 2, "guaranteed gate is a 2-tile strip, found \(gates)")
     }
 
     @Test func softBlockersNeverPartitionHallwayConnectedRooms() throws {
@@ -730,11 +731,11 @@ struct ProceduralGeneratorTests {
         #expect(firstEnemies.count > 0)
     }
 
-    @Test func zeroSpawnChanceProducesNoEnemies() throws {
+    @Test func zeroSpawnChanceStillGuaranteesOneEnemy() throws {
         var config = roomsDoorsConfig(seed: 7, roomCount: 10)
         config.enemies = .init(type: "grunt", spawnChancePerRoom: 0)
         let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
-        #expect(world.entities.filter(\.isEnemy).isEmpty)
+        #expect(world.entities.filter(\.isEnemy).count == 1)
     }
 
     @Test func pickupSpawnsSkipSpawnRoomAndAvoidOverlap() throws {
@@ -833,35 +834,43 @@ struct ProceduralGeneratorTests {
     }
 
     @Test func generatesDestructibleWallsAndGates() throws {
-        // Gates are placed first and claim shared walls, so enabling both at 1.0 can
-        // legitimately yield zero destructible walls. Exercise each soft-blocker alone.
-        var gateConfig = roomsDoorsConfig(seed: 42, roomCount: 20)
-        gateConfig.generation.room.wallDestructibleChance = 0
-        gateConfig.generation.room.gateChance = 1.0
-        let gated = try ProceduralGenerator().generateDetailed(from: gateConfig)
+        var config = roomsDoorsConfig(seed: 42, roomCount: 20)
+        config.generation.room.wallDestructibleChance = 0
+        config.generation.room.gateChance = 0
+        config.generation.room.pitChance = 0
+        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0)
 
-        var wallConfig = roomsDoorsConfig(seed: 42, roomCount: 20)
-        wallConfig.generation.room.wallDestructibleChance = 1.0
-        wallConfig.generation.room.gateChance = 0
-        let walled = try ProceduralGenerator().generateDetailed(from: wallConfig)
+        let result = try ProceduralGenerator().generateDetailed(
+            from: config,
+            enemyConfig: .fallback
+        )
+        #expect(ProceduralGenerator.missingRequiredInteractables(in: result.world).isEmpty)
 
         var gates = 0
-        for y in 0..<gated.world.height {
-            for x in 0..<gated.world.width {
-                if gated.world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate == true {
-                    gates += 1
-                }
-            }
-        }
         var destructible = 0
-        for y in 0..<walled.world.height {
-            for x in 0..<walled.world.width {
-                if walled.world.tile(at: GridCoord(x: x, y: y, story: 0))?.isDestructibleWall == true {
-                    destructible += 1
-                }
+        var pits = 0
+        for y in 0..<result.world.height {
+            for x in 0..<result.world.width {
+                let tile = result.world.tile(at: GridCoord(x: x, y: y, story: 0))
+                if tile?.isGate == true { gates += 1 }
+                if tile?.isDestructibleWall == true { destructible += 1 }
+                if tile?.isPit == true { pits += 1 }
             }
         }
-        #expect(gates > 0, "expected gates, found \(gates)")
-        #expect(destructible > 0, "expected destructible walls, found \(destructible)")
+        #expect(gates >= 2, "expected gates, found \(gates)")
+        #expect(destructible >= 2, "expected destructible walls, found \(destructible)")
+        #expect(pits >= 1, "expected pits, found \(pits)")
+        let hasEnemy = result.world.entities.contains(where: \.isEnemy)
+        #expect(hasEnemy)
+    }
+
+    @Test func everyGeneratedMapIncludesRequiredInteractables() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.enemies = .init(type: "grunt", spawnChancePerRoom: 0.3)
+            let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
+            let missing = ProceduralGenerator.missingRequiredInteractables(in: world)
+            #expect(missing.isEmpty, "seed \(seed) missing \(missing)")
+        }
     }
 }

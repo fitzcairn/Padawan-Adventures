@@ -17,6 +17,9 @@ nonisolated struct GenerationResult: Sendable {
 }
 
 nonisolated struct ProceduralGenerator: Sendable {
+    /// How many seed offsets to try when a layout cannot host every required interactable.
+    private static let maxValidityAttempts = 48
+
     func generate(
         from config: WorldSeedConfig,
         playerConfig: PlayerConfig = .fallback,
@@ -33,7 +36,65 @@ nonisolated struct ProceduralGenerator: Sendable {
         try config.validate()
         try playerConfig.validate()
 
-        var rng = SeededGenerator(seed: config.resolvedSeed())
+        let baseSeed = config.resolvedSeed()
+        var lastMissing: [RequiredInteractable] = RequiredInteractable.allCases
+
+        for attempt in 0..<Self.maxValidityAttempts {
+            let seed = baseSeed &+ UInt64(attempt)
+            let result = try generateAttempt(
+                seed: seed,
+                config: config,
+                playerConfig: playerConfig,
+                enemyConfig: enemyConfig
+            )
+            let missing = Self.missingRequiredInteractables(in: result.world)
+            if missing.isEmpty {
+                return result
+            }
+            lastMissing = missing
+        }
+
+        throw WorldSeedError.missingRequiredInteractables(lastMissing)
+    }
+
+    /// Returns which required interactables are absent from a finished world.
+    static func missingRequiredInteractables(in world: GameWorld) -> [RequiredInteractable] {
+        missingRequiredInteractables(tiles: world.tiles, entities: world.entities)
+    }
+
+    private static func missingRequiredInteractables(
+        tiles: [[[Tile]]],
+        entities: [GameEntity]
+    ) -> [RequiredInteractable] {
+        var missing: [RequiredInteractable] = []
+        var hasGate = false
+        var hasPit = false
+        var hasDestructible = false
+
+        for story in tiles {
+            for row in story {
+                for tile in row {
+                    if tile.isGate { hasGate = true }
+                    if tile.isPit { hasPit = true }
+                    if tile.isDestructibleWall { hasDestructible = true }
+                }
+            }
+        }
+
+        if !hasGate { missing.append(.gate) }
+        if !hasPit { missing.append(.pit) }
+        if !hasDestructible { missing.append(.destructibleWall) }
+        if !entities.contains(where: \.isEnemy) { missing.append(.enemy) }
+        return missing
+    }
+
+    private func generateAttempt(
+        seed: UInt64,
+        config: WorldSeedConfig,
+        playerConfig: PlayerConfig,
+        enemyConfig: EnemyConfig
+    ) throws -> GenerationResult {
+        var rng = SeededGenerator(seed: seed)
         let width = config.world.width
         let height = config.world.height
         let stories = config.world.stories
@@ -146,6 +207,20 @@ nonisolated struct ProceduralGenerator: Sendable {
             entities.append(treasure)
         }
 
+        // Guarantee at least one of each interactable when the rolls/layout allow it.
+        ensureRequiredInteractables(
+            doorOpenings: doorOpenings,
+            rooms: rooms,
+            excludingRoomID: topRight.id,
+            spawn: spawn,
+            tiles: &tiles,
+            entities: &entities,
+            occupied: &occupied,
+            config: config,
+            enemyConfig: enemyConfig,
+            rng: &rng
+        )
+
         let world = GameWorld(
             width: width,
             height: height,
@@ -163,6 +238,246 @@ nonisolated struct ProceduralGenerator: Sendable {
             topRightRoomID: topRight.id,
             joinPairs: mstEdges
         )
+    }
+
+    /// Force-places any missing required interactables (chance rolls already applied).
+    private func ensureRequiredInteractables(
+        doorOpenings: [DoorOpening],
+        rooms: [GeneratedRoom],
+        excludingRoomID: Int,
+        spawn: GridCoord,
+        tiles: inout [[[Tile]]],
+        entities: inout [GameEntity],
+        occupied: inout Set<GridCoord>,
+        config: WorldSeedConfig,
+        enemyConfig: EnemyConfig,
+        rng: inout SeededGenerator
+    ) {
+        let missing = Self.missingRequiredInteractables(tiles: tiles, entities: entities)
+        guard !missing.isEmpty else { return }
+
+        if missing.contains(.gate) {
+            forceOneGate(
+                doorOpenings: doorOpenings,
+                rooms: rooms,
+                tiles: &tiles,
+                story: 0
+            )
+        }
+
+        if missing.contains(.destructibleWall) {
+            forceOneDestructibleWall(rooms: rooms, in: &tiles[0])
+        }
+
+        if missing.contains(.pit) {
+            forceOnePit(
+                rooms: rooms,
+                into: &tiles[0],
+                meanSize: config.generation.room.pitMeanSize,
+                maxSize: config.generation.room.pitMaxSize,
+                excludingRoomID: excludingRoomID,
+                excluding: spawn,
+                rng: &rng
+            )
+            clearPits(around: spawn, tiles: &tiles, story: 0)
+        }
+
+        if missing.contains(.enemy) {
+            if let enemy = forceOneEnemy(
+                in: rooms,
+                excludingRoomID: excludingRoomID,
+                tiles: tiles,
+                config: config,
+                enemyConfig: enemyConfig,
+                occupied: &occupied,
+                rng: &rng
+            ) {
+                entities.append(enemy)
+            }
+        }
+    }
+
+    /// Places exactly one 2-tile gate on the first valid door opening.
+    @discardableResult
+    private func forceOneGate(
+        doorOpenings: [DoorOpening],
+        rooms: [GeneratedRoom],
+        tiles: inout [[[Tile]]],
+        story: Int
+    ) -> Bool {
+        let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
+            for cell in room.cells {
+                map[cell] = room.id
+            }
+        }
+        let roomsByID = Dictionary(uniqueKeysWithValues: rooms.map { ($0.id, $0) })
+        let roomCells = rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+        let ordered = doorOpenings.sorted { lhs, rhs in
+            let a = lhs.cells.first ?? GridCoord(x: 0, y: 0, story: story)
+            let b = rhs.cells.first ?? GridCoord(x: 0, y: 0, story: story)
+            if a.x != b.x { return a.x < b.x }
+            if a.y != b.y { return a.y < b.y }
+            return lhs.cells.count < rhs.cells.count
+        }
+        let gatedPairs = roomPairsSeparatedByGate(in: tiles[story], roomByCell: roomByCell)
+
+        for opening in ordered {
+            let openCells = opening.cells.filter { cell in
+                guard cell.y >= 0, cell.y < tiles[story].count else { return false }
+                guard cell.x >= 0, cell.x < tiles[story][cell.y].count else { return false }
+                return isFloor(tiles[story][cell.y][cell.x]) || tiles[story][cell.y][cell.x].isGate
+            }
+            guard let gateCells = contiguousRoomPartitionPair(
+                from: openCells,
+                roomByCell: roomByCell
+            ) else { continue }
+            guard let pair = roomPartitionInfo(gateCells[0], roomByCell: roomByCell)?.pair else { continue }
+            guard !gatedPairs.contains(pair) else { continue }
+            guard !roomsConnectedViaHallway(
+                pair: pair,
+                roomsByID: roomsByID,
+                roomByCell: roomByCell,
+                roomCells: roomCells,
+                tiles: tiles[story],
+                treatingAsBlocked: Set(gateCells)
+            ) else { continue }
+
+            for cell in gateCells {
+                tiles[story][cell.y][cell.x] = Tile(kind: .gate)
+            }
+            return true
+        }
+        return false
+    }
+
+    /// Places exactly one 2-tile destructible wall on the first valid sealed segment.
+    @discardableResult
+    private func forceOneDestructibleWall(
+        rooms: [GeneratedRoom],
+        in story: inout [[Tile]]
+    ) -> Bool {
+        let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
+            for cell in room.cells {
+                map[cell] = room.id
+            }
+        }
+        let roomsByID = Dictionary(uniqueKeysWithValues: rooms.map { ($0.id, $0) })
+        let roomCells = rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+        let occupiedPairs = roomPairsSeparatedByGate(in: story, roomByCell: roomByCell)
+
+        for segment in destructibleWallSegments(in: story, roomByCell: roomByCell) {
+            guard segment.count == 2 else { continue }
+            guard let first = segment.first,
+                  let info = roomPartitionInfo(first, roomByCell: roomByCell),
+                  !occupiedPairs.contains(info.pair)
+            else { continue }
+            guard !segmentAbutsGate(segment, in: story) else { continue }
+            guard isSealedPathSegment(segment, in: story, roomByCell: roomByCell) else { continue }
+            guard segmentHasSolidWallFlanks(
+                segment,
+                alongDX: info.alongDX,
+                alongDY: info.alongDY,
+                in: story
+            ) else { continue }
+            guard !roomsConnectedViaHallway(
+                pair: info.pair,
+                roomsByID: roomsByID,
+                roomByCell: roomByCell,
+                roomCells: roomCells,
+                tiles: story
+            ) else { continue }
+
+            for cell in segment {
+                story[cell.y][cell.x] = Tile(kind: .wall(destructible: true))
+            }
+            return true
+        }
+        return false
+    }
+
+    /// Places a single pit blob in the first eligible non-spawn room.
+    @discardableResult
+    private func forceOnePit(
+        rooms: [GeneratedRoom],
+        into story: inout [[Tile]],
+        meanSize: Double,
+        maxSize: Int,
+        excludingRoomID: Int,
+        excluding spawn: GridCoord,
+        rng: inout SeededGenerator
+    ) -> Bool {
+        let ordered = rooms.sorted { $0.id < $1.id }
+        for room in ordered where room.id != excludingRoomID {
+            let candidates = room.cells
+                .filter { cell in
+                    guard cell != spawn else { return false }
+                    guard case .floor(let isPit) = story[cell.y][cell.x].kind else { return false }
+                    return !isPit
+                }
+                .sorted { lhs, rhs in
+                    if lhs.x != rhs.x { return lhs.x < rhs.x }
+                    return lhs.y < rhs.y
+                }
+            guard let seed = rng.pick(candidates) else { continue }
+
+            let target = samplePitTileCount(mean: meanSize, maxSize: maxSize, rng: &rng)
+            let area = growContiguousPit(
+                from: seed,
+                targetCount: target,
+                roomCells: room.cells,
+                excluding: spawn,
+                in: story,
+                rng: &rng
+            )
+            for cell in area {
+                story[cell.y][cell.x] = Tile(kind: .floor(isPit: true))
+            }
+            return !area.isEmpty
+        }
+        return false
+    }
+
+    /// Places a single enemy when the probabilistic pass produced none.
+    private func forceOneEnemy(
+        in rooms: [GeneratedRoom],
+        excludingRoomID: Int,
+        tiles: [[[Tile]]],
+        config: WorldSeedConfig,
+        enemyConfig: EnemyConfig,
+        occupied: inout Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> GameEntity? {
+        let typeID: String
+        let typeConfig: EnemyTypeConfig
+        if let spawnConfig = config.enemies,
+           let configured = enemyConfig.type(named: spawnConfig.type) {
+            typeID = spawnConfig.type
+            typeConfig = configured
+        } else if let first = enemyConfig.types.sorted(by: { $0.key < $1.key }).first {
+            typeID = first.key
+            typeConfig = first.value
+        } else {
+            return nil
+        }
+
+        let ordered = rooms.sorted { $0.id < $1.id }
+        for room in ordered where room.id != excludingRoomID {
+            guard let position = pickRoomFloorCell(
+                in: room,
+                tiles: tiles,
+                occupied: occupied,
+                rng: &rng
+            ) else { continue }
+
+            occupied.insert(position)
+            return GameEntity(
+                letter: typeConfig.letterCharacter,
+                position: position,
+                isPlayer: false,
+                enemyTypeID: typeID
+            )
+        }
+        return nil
     }
 
     /// One roll per room (except the spawn room); place on a room floor cell only.

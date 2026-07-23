@@ -172,7 +172,7 @@ struct CombatMinigameEngineTests {
         #expect(engine.shots[wrongID!] == nil)
     }
 
-    @Test func onScreenShotBecomesCorrectWhenCueChangesToItsLetter() {
+    @Test func onScreenShotBecomesCorrectWhenCueChangesToItsLetter() throws {
         var engine = makeEngine(
             starsToWin: 99,
             shotLetters: ["A", "B"],
@@ -348,7 +348,7 @@ struct CombatMinigameEngineTests {
         #expect(tickCount >= 5)
     }
 
-    @Test func impactRemovesShotWithoutStar() {
+    @Test func impactRemovesShotWithoutStar() throws {
         var engine = makeEngine(timer: 10, travel: 1.5, starsToWin: 10, meanInterval: 0.01, seed: 7)
         var matchingID: UUID?
         var mismatchID: UUID?
@@ -367,8 +367,10 @@ struct CombatMinigameEngineTests {
         let match = try #require(matchingID)
         let mismatch = try #require(mismatchID)
 
-        #expect(engine.registerImpact(shotID: match))
-        #expect(!engine.registerImpact(shotID: mismatch))
+        let matchDamaged = engine.registerImpact(shotID: match)
+        let mismatchDamaged = engine.registerImpact(shotID: mismatch)
+        #expect(matchDamaged)
+        #expect(!mismatchDamaged)
         #expect(engine.combatStars == 0)
         #expect(engine.shots[match] == nil)
         #expect(engine.shots[mismatch] == nil)

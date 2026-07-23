@@ -1,8 +1,127 @@
 import Foundation
+import os
 import Yams
 
+private let levelCatalogLogger = Logger(subsystem: "PadawanAdventures", category: "LevelCatalog")
+
+/// A gate puzzle vocabulary entry: spelled word + pronunciation track basename.
+nonisolated struct GateWord: Equatable, Sendable {
+    var word: String
+    var sound: String
+}
+
+/// Per-level gate letter-puzzle settings from `gate:` in level YAML.
+nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
+    var timerSeconds: Double
+    /// Max seconds between word-sound plays before auto-replay.
+    var wordSoundRepeatSeconds: Double
+    /// Track basename played when the puzzle is solved.
+    var winSound: String
+    /// Extra random letters beyond the chosen word (total sprites = word length + this).
+    var numPaddingLetters: Int
+    /// Sorted by word for deterministic RNG over map-decoded YAML.
+    var words: [GateWord]
+
+    enum CodingKeys: String, CodingKey {
+        case timerSeconds = "timer_seconds"
+        case wordSoundRepeatSeconds = "word_sound_repeat_seconds"
+        case winSound = "win_sound"
+        case numPaddingLetters = "num_padding_letters"
+        case words
+    }
+
+    nonisolated static let fallback = GatePuzzleConfig(
+        timerSeconds: 30,
+        wordSoundRepeatSeconds: 10,
+        winSound: "sfx_gate_win",
+        numPaddingLetters: 6,
+        words: [
+            .init(word: "cat", sound: "sfx_word_cat"),
+            .init(word: "dog", sound: "sfx_word_dog"),
+            .init(word: "gate", sound: "sfx_word_gate"),
+            .init(word: "open", sound: "sfx_word_open"),
+            .init(word: "star", sound: "sfx_word_star"),
+        ]
+    )
+
+    nonisolated init(
+        timerSeconds: Double,
+        wordSoundRepeatSeconds: Double = 10,
+        winSound: String = "sfx_gate_win",
+        numPaddingLetters: Int = 6,
+        words: [GateWord]
+    ) {
+        self.timerSeconds = timerSeconds
+        self.wordSoundRepeatSeconds = wordSoundRepeatSeconds
+        self.winSound = winSound.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.numPaddingLetters = numPaddingLetters
+        self.words = Self.normalizedWords(words)
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        timerSeconds = try container.decodeIfPresent(Double.self, forKey: .timerSeconds)
+            ?? Self.fallback.timerSeconds
+        wordSoundRepeatSeconds = try container.decodeIfPresent(
+            Double.self,
+            forKey: .wordSoundRepeatSeconds
+        ) ?? Self.fallback.wordSoundRepeatSeconds
+        winSound = (
+            try container.decodeIfPresent(String.self, forKey: .winSound)
+                ?? Self.fallback.winSound
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        numPaddingLetters = try container.decodeIfPresent(Int.self, forKey: .numPaddingLetters)
+            ?? Self.fallback.numPaddingLetters
+
+        if let map = try container.decodeIfPresent([String: String].self, forKey: .words) {
+            words = Self.normalizedWords(
+                map.map { GateWord(word: $0.key, sound: $0.value) }
+            )
+        } else {
+            words = Self.fallback.words
+        }
+    }
+
+    func validate() throws {
+        guard timerSeconds > 0 else {
+            throw WorldSeedError.invalidGateTimer(timerSeconds)
+        }
+        guard wordSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidGateWordSoundRepeat(wordSoundRepeatSeconds)
+        }
+        guard numPaddingLetters >= 0 else {
+            throw WorldSeedError.invalidGatePaddingLetters(numPaddingLetters)
+        }
+        guard !winSound.isEmpty else {
+            throw WorldSeedError.invalidGateWords
+        }
+        guard !words.isEmpty else {
+            throw WorldSeedError.invalidGateWords
+        }
+        let letterSet = CharacterSet.letters
+        for entry in words {
+            guard !entry.word.isEmpty,
+                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
+                  !entry.sound.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw WorldSeedError.invalidGateWords
+            }
+        }
+    }
+
+    private static func normalizedWords(_ words: [GateWord]) -> [GateWord] {
+        words
+            .map {
+                GateWord(
+                    word: $0.word.lowercased(),
+                    sound: $0.sound.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            }
+            .sorted { $0.word < $1.word }
+    }
+}
+
 /// Per-level map size and generation settings loaded from `base_level.yaml` / `Levels/*.yaml`.
-nonisolated struct LevelConfig: Codable, Equatable, Sendable {
+nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var name: String
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
@@ -15,6 +134,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
     var pickups: WorldSeedConfig.PickupsSpawnConfig?
     /// Optional per-level overrides for `world.yaml` `fx:` (merged per event key).
     var fx: SoundEffectTable?
+    var gate: GatePuzzleConfig
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -27,6 +147,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         case room
         case pickups
         case fx
+        case gate
     }
 
     nonisolated static let fallback = LevelConfig(
@@ -50,7 +171,8 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
             health: .init(spawnChancePerRoom: 0.8),
             energy: .init(spawnChancePerRoom: 0.8)
         ),
-        fx: nil
+        fx: nil,
+        gate: .fallback
     )
 
     nonisolated init(
@@ -63,7 +185,8 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         corridorWidth: Int,
         room: WorldSeedConfig.RoomParams,
         pickups: WorldSeedConfig.PickupsSpawnConfig? = nil,
-        fx: SoundEffectTable? = nil
+        fx: SoundEffectTable? = nil,
+        gate: GatePuzzleConfig = .fallback
     ) {
         self.name = name
         self.music = music
@@ -75,6 +198,26 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         self.room = room
         self.pickups = pickups
         self.fx = fx
+        self.gate = gate
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        music = try container.decodeIfPresent(String.self, forKey: .music)
+        width = try container.decode(Int.self, forKey: .width)
+        height = try container.decode(Int.self, forKey: .height)
+        algorithm = try container.decode(String.self, forKey: .algorithm)
+        roomCount = try container.decode(Int.self, forKey: .roomCount)
+        corridorWidth = try container.decode(Int.self, forKey: .corridorWidth)
+        room = try container.decode(WorldSeedConfig.RoomParams.self, forKey: .room)
+        pickups = try container.decodeIfPresent(WorldSeedConfig.PickupsSpawnConfig.self, forKey: .pickups)
+        fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx)
+        gate = try container.decodeIfPresent(GatePuzzleConfig.self, forKey: .gate) ?? .fallback
+    }
+
+    func validate() throws {
+        try gate.validate()
     }
 
     var musicCue: MusicCue {
@@ -117,11 +260,13 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
                 visited: []
             )
             let yaml = try Yams.dump(object: merged)
-            return try YAMLDecoder().decode(LevelConfig.self, from: yaml)
+            let level = try YAMLDecoder().decode(LevelConfig.self, from: yaml)
+            try level.validate()
+            return level
         } catch let error as WorldSeedError {
             throw error
         } catch {
-            throw WorldSeedError.decodeFailed
+            throw WorldSeedError.decodeFailed(String(describing: error))
         }
     }
 
@@ -166,10 +311,12 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
         parentDataNamed: ((String) throws -> Data)?,
         visited: Set<String>
     ) throws -> [String: Any] {
-        guard let text = String(data: data, encoding: .utf8),
-              let loaded = try Yams.load(yaml: text),
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw WorldSeedError.decodeFailed("level YAML is not valid UTF-8")
+        }
+        guard let loaded = try Yams.load(yaml: text),
               let dict = asStringKeyedDictionary(loaded) else {
-            throw WorldSeedError.decodeFailed
+            throw WorldSeedError.decodeFailed("level YAML did not decode to a dictionary")
         }
 
         var working = dict
@@ -179,7 +326,7 @@ nonisolated struct LevelConfig: Codable, Equatable, Sendable {
 
         let parentName = (inherits as NSString).deletingPathExtension
         guard !visited.contains(parentName) else {
-            throw WorldSeedError.decodeFailed
+            throw WorldSeedError.decodeFailed("circular inherits involving '\(parentName)'")
         }
         guard let parentDataNamed else {
             throw WorldSeedError.missingResource
@@ -259,14 +406,19 @@ nonisolated enum LevelCatalog {
 
         return urls.compactMap { url -> LevelDescriptor? in
             let resourceName = url.deletingPathExtension().lastPathComponent
-            guard let level = try? LevelConfig.loadFromBundle(
-                named: resourceName,
-                withExtension: ext,
-                subdirectory: subdirectory
-            ) else {
+            do {
+                let level = try LevelConfig.loadFromBundle(
+                    named: resourceName,
+                    withExtension: ext,
+                    subdirectory: subdirectory
+                )
+                return LevelDescriptor(resourceName: resourceName, displayName: level.name)
+            } catch {
+                levelCatalogLogger.error(
+                    "Failed to load level '\(resourceName, privacy: .public)': \(String(describing: error), privacy: .public)"
+                )
                 return nil
             }
-            return LevelDescriptor(resourceName: resourceName, displayName: level.name)
         }
         .sorted { $0.resourceName < $1.resourceName }
     }
