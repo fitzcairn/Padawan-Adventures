@@ -45,6 +45,8 @@ struct AppTitleText: View {
 struct AppLargeButton: View {
     let title: String
     var accessibilityID: String? = nil
+    var backgroundColor: Color = AppChrome.buttonBackgroundColor
+    var opacity: Double = 1
     let action: () -> Void
 
     var body: some View {
@@ -55,9 +57,10 @@ struct AppLargeButton: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                .background(backgroundColor, in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+        .opacity(opacity)
         .frame(minHeight: 44)
         .accessibilityIdentifier(accessibilityID ?? title)
     }

@@ -39,6 +39,54 @@ struct WorldSeedConfigTests {
         try config.validate()
     }
 
+    @Test func decodesDadModePassword() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        dad_mode_password: "9876"
+        world:
+          width: 24
+          height: 24
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 4
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 8
+            pit_chance: 0
+            wall_destructible_chance: 0
+            gate_chance: 0
+        """
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.dadModePassword == "9876")
+        try config.validate()
+    }
+
+    @Test func dadModePasswordDefaultsWhenOmitted() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        world:
+          width: 24
+          height: 24
+          stories: 1
+        generation:
+          algorithm: rooms_doors
+          room_count: 4
+          corridor_width: 2
+          room:
+            min_room_size: 4
+            max_room_size: 8
+            pit_chance: 0
+            wall_destructible_chance: 0
+            gate_chance: 0
+        """
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.dadModePassword == WorldSeedConfig.defaultDadModePassword)
+    }
+
     @Test func decodesFxDictionary() throws {
         let yaml = """
         version: 1

@@ -170,6 +170,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var totalStars: Int
     /// Settings screen values for this player.
     var settings: PlayerSettings
+    /// One-shot Dad mode unlock; cleared after a level tap or new game.
+    var dadModeUnlocked: Bool
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -180,7 +182,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         inventory: PlayerInventory = PlayerInventory(),
         stats: PlayerStats = PlayerStats(),
         totalStars: Int = 0,
-        settings: PlayerSettings = .default
+        settings: PlayerSettings = .default,
+        dadModeUnlocked: Bool = false
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -191,6 +194,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.stats = stats
         self.totalStars = totalStars
         self.settings = settings
+        self.dadModeUnlocked = dadModeUnlocked
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -203,6 +207,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case stats
         case totalStars
         case settings
+        case dadModeUnlocked
     }
 
     init(from decoder: Decoder) throws {
@@ -216,6 +221,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         stats = try container.decodeIfPresent(PlayerStats.self, forKey: .stats) ?? PlayerStats()
         totalStars = try container.decodeIfPresent(Int.self, forKey: .totalStars) ?? 0
         settings = try container.decodeIfPresent(PlayerSettings.self, forKey: .settings) ?? .default
+        dadModeUnlocked = try container.decodeIfPresent(Bool.self, forKey: .dadModeUnlocked) ?? false
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -286,6 +292,24 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         levels = [:]
         inventory = PlayerInventory()
         totalStars = 0
+        dadModeUnlocked = false
         resetVitals(health: health, energy: energy)
+    }
+
+    /// Marks every catalog level strictly before `resourceName` complete and grants their artifacts.
+    /// Clears Dad mode (one-shot unlock).
+    mutating func applyProgressionJump(
+        upTo resourceName: String,
+        orderedLevels: [String],
+        artifactsByResource: [String: String]
+    ) {
+        guard let targetIndex = orderedLevels.firstIndex(of: resourceName) else {
+            dadModeUnlocked = false
+            return
+        }
+        for prior in orderedLevels.prefix(targetIndex) {
+            markLevelCompleted(prior, artifact: artifactsByResource[prior])
+        }
+        dadModeUnlocked = false
     }
 }

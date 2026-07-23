@@ -12,6 +12,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     var extensions: [String: String]?
     /// World-level event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
+    /// 4-digit password that unlocks Dad mode on the level select screen.
+    var dadModePassword: String
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -23,7 +25,11 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         case pickups
         case extensions
         case fx
+        case dadModePassword = "dad_mode_password"
     }
+
+    /// Default Dad mode password when omitted from YAML.
+    static let defaultDadModePassword = "1234"
 
     nonisolated init(
         version: Int,
@@ -34,7 +40,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         enemies: EnemiesSpawnConfig? = nil,
         pickups: PickupsSpawnConfig? = nil,
         extensions: [String: String]?,
-        fx: SoundEffectTable = .empty
+        fx: SoundEffectTable = .empty,
+        dadModePassword: String = WorldSeedConfig.defaultDadModePassword
     ) {
         self.version = version
         self.seed = seed
@@ -45,6 +52,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.pickups = pickups
         self.extensions = extensions
         self.fx = fx
+        self.dadModePassword = dadModePassword
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +69,22 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         extensions = try container.decodeIfPresent([String: String].self, forKey: .extensions)
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
+        dadModePassword = try Self.decodeDadModePassword(from: container)
+    }
+
+    private static func decodeDadModePassword(
+        from container: KeyedDecodingContainer<CodingKeys>
+    ) throws -> String {
+        guard container.contains(.dadModePassword) else {
+            return defaultDadModePassword
+        }
+        if let value = try? container.decode(String.self, forKey: .dadModePassword) {
+            return value
+        }
+        if let value = try? container.decode(Int.self, forKey: .dadModePassword) {
+            return String(value)
+        }
+        throw WorldSeedError.decodeFailed("dad_mode_password must be a string or integer")
     }
 
     /// Resolves a concrete RNG seed. Time-based seeds use milliseconds since epoch.

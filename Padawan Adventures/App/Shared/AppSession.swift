@@ -295,6 +295,39 @@ final class AppSession {
         await persistPlayerState()
     }
 
+    var isDadModeUnlocked: Bool {
+        playerState?.dadModeUnlocked ?? false
+    }
+
+    func unlockDadMode() async {
+        guard var state = playerState else { return }
+        state.dadModeUnlocked = true
+        playerState = state
+        await persistPlayerState()
+    }
+
+    /// Grants artifacts / completion for all catalog levels before `resourceName`, clears Dad mode, persists.
+    func applyDadModeProgression(to resourceName: String) async {
+        guard var state = playerState else { return }
+        let ordered = LevelCatalog.loadFromBundle().map(\.resourceName)
+        var artifactsByResource: [String: String] = [:]
+        for name in ordered {
+            if let level = try? LevelConfig.loadFromBundle(
+                named: name,
+                subdirectory: LevelCatalog.subdirectory
+            ) {
+                artifactsByResource[name] = level.artifact
+            }
+        }
+        state.applyProgressionJump(
+            upTo: resourceName,
+            orderedLevels: ordered,
+            artifactsByResource: artifactsByResource
+        )
+        playerState = state
+        await persistPlayerState()
+    }
+
     func resetLevelStarsCurrent(resourceName: String) async {
         guard playerState != nil else { return }
         playerState?.resetLevelStarsCurrent(resourceName)

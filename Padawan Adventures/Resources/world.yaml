@@ -6,6 +6,9 @@
 version: 1
 seed: time
 
+# 4-digit Dad mode unlock on the level select screen.
+dad_mode_password: "1234"
+
 world:
   stories: 1
 
