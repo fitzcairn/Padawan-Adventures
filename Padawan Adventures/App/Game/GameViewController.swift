@@ -180,7 +180,7 @@ final class GameViewController: LandscapeHostingController {
 
         let typeID = scene.currentWorld.entity(id: enemyID)?.enemyTypeID
         let enemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
-            ?? EnemyConfig.fallback.type(named: "grunt")
+            ?? EnemyConfig.fallback.type(named: "horranth")
             ?? EnemyTypeConfig(
                 letter: "E",
                 color: "#FF0000",

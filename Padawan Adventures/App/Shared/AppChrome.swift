@@ -66,6 +66,28 @@ struct AppLargeButton: View {
     }
 }
 
+/// Circular chrome control (back, lock, etc.) — light fill, dark SF Symbol.
+struct AppCircularIconButton: View {
+    let systemName: String
+    var size: CGFloat = 52
+    var accessibilityID: String? = nil
+    var accessibilityLabel: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(AppChrome.buttonForegroundColor)
+                .frame(width: size, height: size)
+                .background(AppChrome.buttonBackgroundColor, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityID ?? systemName)
+        .accessibilityLabel(accessibilityLabel ?? systemName)
+    }
+}
+
 struct AppCheckbox: View {
     @Binding var isOn: Bool
     var label: String

@@ -1,0 +1,12 @@
+# Terrain: A rocky, arid desert planet known for its tall, spire-like natural formations and a massive ring of asteroid debris.
+# Monsters:
+# - geonosian: Native Geonosian warriors.
+# - battle_droid: Advanced Battle Droid armies.
+inherits: base_level
+name: Geonosis
+order: 8
+color: "#A1887F"
+artifact: circle.hexagongrid.fill
+enemies:
+  types: [geonosian, battle_droid]
+  spawn_chance_per_room: 0.8

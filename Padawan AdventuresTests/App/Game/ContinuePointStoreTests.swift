@@ -191,7 +191,7 @@ struct ContinuePointStoreTests {
             letter: "E",
             position: enemyAt,
             isPlayer: false,
-            enemyTypeID: "grunt"
+            enemyTypeID: "horranth"
         )
         return GameWorld(
             width: world.width,

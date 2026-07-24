@@ -17,7 +17,7 @@ struct EnemyAITests {
             letter: "E",
             position: enemyAt,
             isPlayer: false,
-            enemyTypeID: "grunt"
+            enemyTypeID: "horranth"
         )
         world = GameWorld(
             width: world.width,

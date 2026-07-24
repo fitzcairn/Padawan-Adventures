@@ -1,0 +1,12 @@
+# Terrain: A harsh desert world dominated by massive sand dunes, rocky canyons, and scattered mesa formations.
+# Monsters:
+# - krayt_dragon: Krayt Dragons lurking in the desert wastes.
+# - tusken_raider: Tusken Raiders (Sand People).
+inherits: base_level
+name: Tatooine
+order: 2
+color: "#D4A017"
+artifact: sun.max.fill
+enemies:
+  types: [krayt_dragon, tusken_raider]
+  spawn_chance_per_room: 0.8

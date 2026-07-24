@@ -1,0 +1,12 @@
+# Terrain: Entirely vertical, dominated by massive, kilometers-tall wroshyr trees. The planet has no visible surface from space, just a canopy of endless green.
+# Monsters:
+# - katarn: Ferocious, quadrupedal mammalian predators with sharp horns and claws.
+# - kinrath: Aggressive, venomous arachnids that weave traps in the lower branches.
+inherits: base_level
+name: Kashyyyk
+order: 4
+color: "#1B5E20"
+artifact: tree.fill
+enemies:
+  types: [katarn, kinrath]
+  spawn_chance_per_room: 0.8

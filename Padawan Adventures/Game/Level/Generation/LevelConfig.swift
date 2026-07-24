@@ -481,8 +481,14 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
     static let fallbackArtifact = "star.fill"
+    /// Default map-sprite fill when a level omits `color:`.
+    static let fallbackColor = "#888888"
 
     var name: String
+    /// Sort key for level-select progression (lower first).
+    var order: Int
+    /// Hex fill for the level-select planet sprite (`#RRGGBB`).
+    var color: String
     /// SF Symbol name awarded to inventory on first level completion.
     var artifact: String
     /// Raw `music:` value; interpret with `MusicCue.parse`.
@@ -505,6 +511,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case name
+        case order
+        case color
         case artifact
         case music
         case gameMusic = "game_music"
@@ -524,6 +532,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
+        order: 0,
+        color: fallbackColor,
         artifact: fallbackArtifact,
         music: "level_theme",
         gameMusic: .fallback,
@@ -542,7 +552,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             wallDestructibleChance: 0.8,
             gateChance: 0.5
         ),
-        enemies: .init(type: "grunt", spawnChancePerRoom: 0.8),
+        enemies: .init(types: ["horranth"], spawnChancePerRoom: 0.8),
         pickups: .init(
             health: .init(spawnChancePerRoom: 0.8),
             energy: .init(spawnChancePerRoom: 0.8)
@@ -562,6 +572,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     nonisolated init(
         name: String,
+        order: Int = 0,
+        color: String = LevelConfig.fallbackColor,
         artifact: String = LevelConfig.fallbackArtifact,
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
@@ -579,6 +591,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         destructibleWall: DestructibleWallPuzzleConfig = .fallback
     ) {
         self.name = name
+        self.order = order
+        self.color = color
         self.artifact = artifact
         self.music = music
         self.gameMusic = gameMusic
@@ -599,6 +613,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decode(String.self, forKey: .name)
+        order = try container.decodeIfPresent(Int.self, forKey: .order) ?? 0
+        color = (
+            try container.decodeIfPresent(String.self, forKey: .color) ?? Self.fallbackColor
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
         artifact = try container.decodeIfPresent(String.self, forKey: .artifact) ?? Self.fallbackArtifact
         music = try container.decodeIfPresent(String.self, forKey: .music)
         gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
@@ -862,10 +880,23 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 nonisolated struct LevelDescriptor: Equatable, Sendable {
     let resourceName: String
     let displayName: String
+    let order: Int
+    /// Hex fill for the level-select planet sprite.
+    let color: String
 }
 
 nonisolated enum LevelCatalog {
     static let subdirectory = "Levels"
+
+    /// Resource basenames that are shared config, not playable levels.
+    private static let excludedResourceNames: Set<String> = [
+        "base_level",
+        "combat",
+        "world",
+        "sound",
+        "player",
+        "hud",
+    ]
 
     static func loadFromBundle(
         withExtension ext: String = "yaml"
@@ -874,13 +905,19 @@ nonisolated enum LevelCatalog {
 
         return urls.compactMap { url -> LevelDescriptor? in
             let resourceName = url.deletingPathExtension().lastPathComponent
+            guard !excludedResourceNames.contains(resourceName) else { return nil }
             do {
                 let level = try LevelConfig.loadFromBundle(
                     named: resourceName,
                     withExtension: ext,
                     subdirectory: subdirectory
                 )
-                return LevelDescriptor(resourceName: resourceName, displayName: level.name)
+                return LevelDescriptor(
+                    resourceName: resourceName,
+                    displayName: level.name,
+                    order: level.order,
+                    color: level.color
+                )
             } catch {
                 levelCatalogLogger.error(
                     "Failed to load level '\(resourceName, privacy: .public)': \(String(describing: error), privacy: .public)"
@@ -888,7 +925,10 @@ nonisolated enum LevelCatalog {
                 return nil
             }
         }
-        .sorted { $0.resourceName < $1.resourceName }
+        .sorted {
+            if $0.order != $1.order { return $0.order < $1.order }
+            return $0.resourceName < $1.resourceName
+        }
     }
 
     private static func levelResourceURLs(withExtension ext: String) -> [URL] {
@@ -899,10 +939,15 @@ nonisolated enum LevelCatalog {
             return nested
         }
 
-        // Flattened bundle layout: keep only playable `level_*.yaml` files at the root.
+        // Flattened bundle layout: playable levels at root (exclude shared config YAML).
         let root = Bundle.main.urls(forResourcesWithExtension: ext, subdirectory: nil) ?? []
         return root.filter { url in
-            url.deletingPathExtension().lastPathComponent.hasPrefix("level_")
+            let name = url.deletingPathExtension().lastPathComponent
+            return !excludedResourceNames.contains(name)
+                && !name.hasPrefix("sfx_")
+                && name != "level_select"
+                && name != "menu"
+                && name != "settings"
         }
     }
 }

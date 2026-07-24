@@ -5,7 +5,7 @@
 slash_max_seconds: 0.5
 
 enemies:
-  grunt:
+  horranth:
     letter: E
     color: "#FF0000"
     tiles_per_second: 0.5
@@ -14,6 +14,204 @@ enemies:
     shot_travel_seconds: 8
     stars_to_win: 5
     # Shot letters; cue SFX use shared letter-name tracks (sfx_letter_*_name).
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  krayt_dragon:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  tusken_raider:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  ice_spider:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  katarn:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  kinrath:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  dragonsnake:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  security_droid:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  armored_rat:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  lava_flea:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  geonosian:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
+    shot_types:
+      A:
+        fx: sfx_letter_a_name
+      B:
+        fx: sfx_letter_b_name
+      C:
+        fx: sfx_letter_c_name
+    fx:
+      contact: sfx_enemy_contact
+
+  battle_droid:
+    letter: E
+    color: "#FF0000"
+    tiles_per_second: 0.5
+    forget_seconds: 3.0
+    combat_timer_seconds: 30
+    shot_travel_seconds: 8
+    stars_to_win: 5
     shot_types:
       A:
         fx: sfx_letter_a_name

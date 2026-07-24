@@ -187,7 +187,7 @@ struct WorldSeedConfigTests {
         WorldLoader.applyLevel(level, to: &config)
         #expect(config.fx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed")
         #expect(config.fx.trackID(for: "gate_opened") == "sfx_gate_opened")
-        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.type == "horranth")
         #expect(config.enemies?.spawnChancePerRoom == 0.8)
     }
 
@@ -331,12 +331,13 @@ struct WorldSeedConfigTests {
         player:
           letter: P
         enemies:
-          type: grunt
+          types: [horranth, ice_spider]
           spawn_chance_per_room: 0.8
         """
 
         let config = try WorldLoader.decodeConfig(from: yaml)
-        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.types == ["horranth", "ice_spider"])
+        #expect(config.enemies?.type == "horranth")
         #expect(config.enemies?.spawnChancePerRoom == 0.8)
         try config.validate()
     }
@@ -362,7 +363,7 @@ struct WorldSeedConfigTests {
         player:
           letter: P
         enemies:
-          type: grunt
+          type: horranth
           spawn_chance_per_room: 1.5
         """
 

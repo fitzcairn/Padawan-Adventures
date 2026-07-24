@@ -1,0 +1,11 @@
+# Terrain: Heavy primordial forest
+# Monsters:
+# - horranth: Quadrupedal reptilian carnivores with short, stubby legs and an array of horns across their backs.
+inherits: base_level
+name: Tython
+order: 1
+color: "#2E7D32"
+artifact: leaf.fill
+enemies:
+  types: [horranth]
+  spawn_chance_per_room: 0.8

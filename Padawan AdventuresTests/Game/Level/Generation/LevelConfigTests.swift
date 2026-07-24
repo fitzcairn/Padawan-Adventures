@@ -28,7 +28,7 @@ struct LevelConfigTests {
         destructible_wall:
           wall_destroyed: sfx_wall_destroyed
         enemies:
-          type: grunt
+          type: horranth
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -60,7 +60,7 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.8
           gate_chance: 0.5
         enemies:
-          type: grunt
+          type: horranth
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -86,7 +86,7 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.8
           gate_chance: 0.5
         enemies:
-          type: grunt
+          type: horranth
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -108,7 +108,7 @@ struct LevelConfigTests {
         #expect(level.room.pitMaxSize == 5)
         #expect(level.room.wallDestructibleChance == 0.8)
         #expect(level.room.gateChance == 0.5)
-        #expect(level.enemies?.type == "grunt")
+        #expect(level.enemies?.type == "horranth")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
@@ -254,7 +254,7 @@ struct LevelConfigTests {
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
         #expect(level.room.wallDestructibleChance == 0.8)
-        #expect(level.enemies?.type == "grunt")
+        #expect(level.enemies?.type == "horranth")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
     }
@@ -324,16 +324,70 @@ struct LevelConfigTests {
 
     @Test func catalogLoadsPlayableLevelsFromBundle() throws {
         let levels = LevelCatalog.loadFromBundle()
-        #expect(levels.map(\.resourceName) == ["level_1", "level_2", "level_3"])
-        #expect(levels.map(\.displayName) == ["Level 1", "Level 2", "Level 3"])
+        #expect(levels.map(\.resourceName) == [
+            "1-tython", "2-tatooine", "3-ilum", "4-kashyyyk",
+            "5-dagobah", "6-coruscant", "7-mustafar", "8-geonosis",
+        ])
+        #expect(levels.map(\.displayName) == [
+            "Tython", "Tatooine", "Ilum", "Kashyyyk",
+            "Dagobah", "Coruscant", "Mustafar", "Geonosis",
+        ])
+        #expect(levels.map(\.order) == [1, 2, 3, 4, 5, 6, 7, 8])
+        #expect(levels.allSatisfy { !$0.color.isEmpty })
 
-        let level1 = try LevelConfig.loadFromBundle(
-            named: "level_1",
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(level1.name == "Level 1")
-        #expect(level1.width == 20)
-        #expect(level1.roomCount == 5)
+        #expect(tython.name == "Tython")
+        #expect(tython.order == 1)
+        #expect(tython.color == "#2E7D32")
+        #expect(tython.enemies?.types == ["horranth"])
+        #expect(tython.width == 20)
+        #expect(tython.roomCount == 5)
+    }
+
+    @Test func decodesEnemyTypesListAndLegacyType() throws {
+        let withTypes = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Tatooine
+            enemies:
+              types: [krayt_dragon, tusken_raider]
+              spawn_chance_per_room: 0.5
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(withTypes.enemies?.types == ["krayt_dragon", "tusken_raider"])
+        #expect(withTypes.enemies?.type == "krayt_dragon")
+        #expect(withTypes.enemies?.spawnChancePerRoom == 0.5)
+
+        let withLegacy = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Tython
+            enemies:
+              type: ice_spider
+              spawn_chance_per_room: 0.25
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(withLegacy.enemies?.types == ["ice_spider"])
+        #expect(withLegacy.enemies?.type == "ice_spider")
+    }
+
+    @Test func decodesOrderAndColor() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Ilum
+            order: 3
+            color: "#81D4FA"
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.order == 3)
+        #expect(level.color == "#81D4FA")
     }
 
     @Test func decodesGatePuzzleConfigWithDefaultsWhenOmitted() throws {
@@ -535,15 +589,15 @@ struct LevelConfigTests {
     }
 
     @Test func bundleBaseLevelProvidesGateDefaults() throws {
-        let level1 = try LevelConfig.loadFromBundle(
-            named: "level_1",
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(level1.gate.timerSeconds == 30)
-        #expect(level1.gate.winSound == nil)
-        #expect(level1.gate.numPaddingLetters == 6)
-        #expect(level1.gate.words.map(\.word).contains("gate"))
-        #expect(level1.gate.words.contains {
+        #expect(tython.gate.timerSeconds == 30)
+        #expect(tython.gate.winSound == nil)
+        #expect(tython.gate.numPaddingLetters == 6)
+        #expect(tython.gate.words.map(\.word).contains("gate"))
+        #expect(tython.gate.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
                 && $0.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca"
@@ -551,16 +605,16 @@ struct LevelConfigTests {
     }
 
     @Test func bundleBaseLevelProvidesPitDefaults() throws {
-        let level1 = try LevelConfig.loadFromBundle(
-            named: "level_1",
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(level1.pit.timerSeconds == 30)
-        #expect(level1.pit.winSound == "sfx_pit_yay")
-        #expect(level1.pit.failSound == "sfx_pit_fall")
-        #expect(level1.pit.numPaddingLetters == 6)
-        #expect(level1.pit.words.map(\.word) == ["cat", "dog", "star"])
-        #expect(level1.pit.words.contains {
+        #expect(tython.pit.timerSeconds == 30)
+        #expect(tython.pit.winSound == "sfx_pit_yay")
+        #expect(tython.pit.failSound == "sfx_pit_fall")
+        #expect(tython.pit.numPaddingLetters == 6)
+        #expect(tython.pit.words.map(\.word) == ["cat", "dog", "star"])
+        #expect(tython.pit.words.contains {
             $0.word == "star"
                 && $0.spelling == "sfx_word_star"
                 && $0.progressiveTrack(forPrefix: "sta") == "sfx_word_star_sta"
@@ -885,19 +939,19 @@ struct LevelConfigTests {
     }
 
     @Test func bundleBaseLevelProvidesDestructibleWallDefaults() throws {
-        let level1 = try LevelConfig.loadFromBundle(
-            named: "level_1",
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(level1.destructibleWall.timerSeconds == 30)
-        #expect(level1.letterSoundRepeatSeconds == 3)
-        #expect(level1.destructibleWall.letterSoundRepeatSeconds == 3)
-        #expect(level1.destructibleWall.incorrectReplayDelaySeconds == 1)
-        #expect(level1.destructibleWall.letterCountMin == 4)
-        #expect(level1.destructibleWall.letterCountMax == 8)
-        #expect(level1.destructibleWall.correctSound == nil)
-        #expect(level1.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
-        #expect(level1.artifact == "key.fill")
+        #expect(tython.destructibleWall.timerSeconds == 30)
+        #expect(tython.letterSoundRepeatSeconds == 3)
+        #expect(tython.destructibleWall.letterSoundRepeatSeconds == 3)
+        #expect(tython.destructibleWall.incorrectReplayDelaySeconds == 1)
+        #expect(tython.destructibleWall.letterCountMin == 4)
+        #expect(tython.destructibleWall.letterCountMax == 8)
+        #expect(tython.destructibleWall.correctSound == nil)
+        #expect(tython.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+        #expect(tython.artifact == "leaf.fill")
     }
 
     @Test func topLevelLetterSoundRepeatOverridesWallNestedValue() throws {

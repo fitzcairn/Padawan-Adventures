@@ -709,7 +709,7 @@ struct ProceduralGeneratorTests {
 
     @Test func enemySpawnsAreDeterministicAndSkipSpawnRoom() throws {
         var config = roomsDoorsConfig(seed: 123, roomCount: 12)
-        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0.8)
+        config.enemies = .init(type: "horranth", spawnChancePerRoom: 0.8)
         let enemyConfig = EnemyConfig.fallback
 
         let first = try ProceduralGenerator().generateDetailed(from: config, enemyConfig: enemyConfig)
@@ -719,7 +719,7 @@ struct ProceduralGeneratorTests {
         let secondEnemies = second.world.entities.filter(\.isEnemy)
         #expect(firstEnemies.count == secondEnemies.count)
         #expect(firstEnemies.map(\.position) == secondEnemies.map(\.position))
-        #expect(firstEnemies.allSatisfy { $0.letter == "E" && $0.enemyTypeID == "grunt" })
+        #expect(firstEnemies.allSatisfy { $0.letter == "E" && $0.enemyTypeID == "horranth" })
 
         let spawnRoom = first.rooms.first { $0.id == first.topRightRoomID }!
         for enemy in firstEnemies {
@@ -731,9 +731,38 @@ struct ProceduralGeneratorTests {
         #expect(firstEnemies.count > 0)
     }
 
+    @Test func multiTypeEnemySpawnPicksOnlyConfiguredTypes() throws {
+        var config = roomsDoorsConfig(seed: 999, roomCount: 16)
+        config.enemies = .init(types: ["horranth", "ice_spider"], spawnChancePerRoom: 1.0)
+        let enemyConfig = EnemyConfig(
+            enemies: [
+                "horranth": EnemyTypeConfig(
+                    letter: "E",
+                    color: "#FF0000",
+                    tilesPerSecond: 1,
+                    forgetSeconds: 3
+                ),
+                "ice_spider": EnemyTypeConfig(
+                    letter: "I",
+                    color: "#00FFFF",
+                    tilesPerSecond: 1,
+                    forgetSeconds: 3
+                ),
+            ]
+        )
+
+        let result = try ProceduralGenerator().generateDetailed(from: config, enemyConfig: enemyConfig)
+        let enemies = result.world.entities.filter(\.isEnemy)
+        #expect(enemies.count > 0)
+        #expect(enemies.allSatisfy {
+            $0.enemyTypeID == "horranth" || $0.enemyTypeID == "ice_spider"
+        })
+        #expect(Set(enemies.compactMap(\.enemyTypeID)).count >= 1)
+    }
+
     @Test func zeroSpawnChanceStillGuaranteesOneEnemy() throws {
         var config = roomsDoorsConfig(seed: 7, roomCount: 10)
-        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0)
+        config.enemies = .init(type: "horranth", spawnChancePerRoom: 0)
         let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
         #expect(world.entities.filter(\.isEnemy).count == 1)
     }
@@ -771,7 +800,7 @@ struct ProceduralGeneratorTests {
                 health: .init(spawnChancePerRoom: 1.0),
                 energy: .init(spawnChancePerRoom: 1.0)
             )
-            config.enemies = .init(type: "grunt", spawnChancePerRoom: 1.0)
+            config.enemies = .init(type: "horranth", spawnChancePerRoom: 1.0)
             let result = try ProceduralGenerator().generateDetailed(
                 from: config,
                 enemyConfig: .fallback
@@ -867,7 +896,7 @@ struct ProceduralGeneratorTests {
         config.generation.room.wallDestructibleChance = 0
         config.generation.room.gateChance = 0
         config.generation.room.pitChance = 0
-        config.enemies = .init(type: "grunt", spawnChancePerRoom: 0)
+        config.enemies = .init(type: "horranth", spawnChancePerRoom: 0)
 
         let result = try ProceduralGenerator().generateDetailed(
             from: config,
@@ -896,7 +925,7 @@ struct ProceduralGeneratorTests {
     @Test func everyGeneratedMapIncludesRequiredInteractables() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.enemies = .init(type: "grunt", spawnChancePerRoom: 0.3)
+            config.enemies = .init(type: "horranth", spawnChancePerRoom: 0.3)
             let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
             let missing = ProceduralGenerator.missingRequiredInteractables(in: world)
             #expect(missing.isEmpty, "seed \(seed) missing \(missing)")

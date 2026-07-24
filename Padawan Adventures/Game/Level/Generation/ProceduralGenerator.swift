@@ -170,19 +170,23 @@ nonisolated struct ProceduralGenerator: Sendable {
         var entities = [player]
         var occupied: Set<GridCoord> = [spawn]
 
-        if let spawnConfig = config.enemies,
-           let typeConfig = enemyConfig.type(named: spawnConfig.type) {
-            let enemies = spawnEnemies(
-                in: rooms,
-                excludingRoomID: topRight.id,
-                tiles: tiles,
-                typeID: spawnConfig.type,
-                typeConfig: typeConfig,
-                chance: spawnConfig.spawnChancePerRoom,
-                occupied: &occupied,
-                rng: &rng
-            )
-            entities.append(contentsOf: enemies)
+        if let spawnConfig = config.enemies {
+            let resolvedTypes: [(id: String, config: EnemyTypeConfig)] = spawnConfig.types.compactMap { id in
+                guard let typeConfig = enemyConfig.type(named: id) else { return nil }
+                return (id, typeConfig)
+            }
+            if !resolvedTypes.isEmpty {
+                let enemies = spawnEnemies(
+                    in: rooms,
+                    excludingRoomID: topRight.id,
+                    tiles: tiles,
+                    types: resolvedTypes,
+                    chance: spawnConfig.spawnChancePerRoom,
+                    occupied: &occupied,
+                    rng: &rng
+                )
+                entities.append(contentsOf: enemies)
+            }
         }
 
         if let pickups = config.pickups {
@@ -447,15 +451,21 @@ nonisolated struct ProceduralGenerator: Sendable {
         occupied: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> GameEntity? {
-        let typeID: String
-        let typeConfig: EnemyTypeConfig
-        if let spawnConfig = config.enemies,
-           let configured = enemyConfig.type(named: spawnConfig.type) {
-            typeID = spawnConfig.type
-            typeConfig = configured
+        let resolvedTypes: [(id: String, config: EnemyTypeConfig)]
+        if let spawnConfig = config.enemies {
+            let fromConfig: [(id: String, config: EnemyTypeConfig)] = spawnConfig.types.compactMap { id in
+                guard let configured = enemyConfig.type(named: id) else { return nil }
+                return (id, configured)
+            }
+            if !fromConfig.isEmpty {
+                resolvedTypes = fromConfig
+            } else if let first = enemyConfig.enemies.sorted(by: { $0.key < $1.key }).first {
+                resolvedTypes = [(first.key, first.value)]
+            } else {
+                return nil
+            }
         } else if let first = enemyConfig.enemies.sorted(by: { $0.key < $1.key }).first {
-            typeID = first.key
-            typeConfig = first.value
+            resolvedTypes = [(first.key, first.value)]
         } else {
             return nil
         }
@@ -469,29 +479,31 @@ nonisolated struct ProceduralGenerator: Sendable {
                 rng: &rng
             ) else { continue }
 
+            let pick = Self.pickEnemyType(from: resolvedTypes, rng: &rng)
             occupied.insert(position)
             return GameEntity(
-                letter: typeConfig.letterCharacter,
+                letter: pick.config.letterCharacter,
                 position: position,
                 isPlayer: false,
-                enemyTypeID: typeID
+                enemyTypeID: pick.id
             )
         }
         return nil
     }
 
     /// One roll per room (except the spawn room); place on a room floor cell only.
+    /// When multiple types are configured, each spawn picks uniformly among them.
     private func spawnEnemies(
         in rooms: [GeneratedRoom],
         excludingRoomID: Int,
         tiles: [[[Tile]]],
-        typeID: String,
-        typeConfig: EnemyTypeConfig,
+        types: [(id: String, config: EnemyTypeConfig)],
         chance: Double,
         occupied: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> [GameEntity] {
         var enemies: [GameEntity] = []
+        guard !types.isEmpty else { return enemies }
 
         for room in rooms where room.id != excludingRoomID {
             guard rng.nextBool(probability: chance) else { continue }
@@ -502,18 +514,30 @@ nonisolated struct ProceduralGenerator: Sendable {
                 rng: &rng
             ) else { continue }
 
+            let pick = Self.pickEnemyType(from: types, rng: &rng)
             occupied.insert(position)
             enemies.append(
                 GameEntity(
-                    letter: typeConfig.letterCharacter,
+                    letter: pick.config.letterCharacter,
                     position: position,
                     isPlayer: false,
-                    enemyTypeID: typeID
+                    enemyTypeID: pick.id
                 )
             )
         }
 
         return enemies
+    }
+
+    /// Single-type lists skip the RNG draw so spawn streams stay stable vs legacy `type:`.
+    private static func pickEnemyType(
+        from types: [(id: String, config: EnemyTypeConfig)],
+        rng: inout SeededGenerator
+    ) -> (id: String, config: EnemyTypeConfig) {
+        if types.count == 1 {
+            return types[0]
+        }
+        return types[rng.nextInt(upperBound: types.count)]
     }
 
     /// One roll per room per kind (except the spawn room); visible room floor only.

@@ -75,7 +75,7 @@ destructible_wall:
   letters: [a, b, c, d, e, f, g, h]
 
 enemies:
-  type: grunt
+  types: [horranth]
   spawn_chance_per_room: 0.8
 
 pickups:

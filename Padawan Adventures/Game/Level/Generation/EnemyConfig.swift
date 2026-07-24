@@ -170,7 +170,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     nonisolated static let fallback = EnemyConfig(
         slashMaxSeconds: fallbackSlashMaxSeconds,
         enemies: [
-            "grunt": EnemyTypeConfig(
+            "horranth": EnemyTypeConfig(
                 letter: "E",
                 color: "#FF0000",
                 tilesPerSecond: 1.0,

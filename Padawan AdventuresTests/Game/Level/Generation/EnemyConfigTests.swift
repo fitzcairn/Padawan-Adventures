@@ -7,7 +7,7 @@ struct EnemyConfigTests {
     @Test func decodesNamedTypes() throws {
         let yaml = """
         enemies:
-          grunt:
+          horranth:
             letter: E
             color: "#FF0000"
             tiles_per_second: 1.0
@@ -37,17 +37,17 @@ struct EnemyConfigTests {
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == EnemyConfig.fallbackSlashMaxSeconds)
         #expect(config.enemies.count == 2)
-        #expect(config.type(named: "grunt")?.letter == "E")
-        #expect(config.type(named: "grunt")?.color == "#FF0000")
-        #expect(config.type(named: "grunt")?.tilesPerSecond == 1.0)
-        #expect(config.type(named: "grunt")?.forgetSeconds == 3.0)
-        #expect(config.type(named: "grunt")?.combatTimerSeconds == 10)
-        #expect(config.type(named: "grunt")?.shotTravelSeconds == 1.5)
-        #expect(config.type(named: "grunt")?.starsToWin == 10)
-        #expect(config.type(named: "grunt")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
-        #expect(config.type(named: "grunt")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
-        #expect(config.type(named: "grunt")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
-        #expect(config.type(named: "grunt")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
+        #expect(config.type(named: "horranth")?.letter == "E")
+        #expect(config.type(named: "horranth")?.color == "#FF0000")
+        #expect(config.type(named: "horranth")?.tilesPerSecond == 1.0)
+        #expect(config.type(named: "horranth")?.forgetSeconds == 3.0)
+        #expect(config.type(named: "horranth")?.combatTimerSeconds == 10)
+        #expect(config.type(named: "horranth")?.shotTravelSeconds == 1.5)
+        #expect(config.type(named: "horranth")?.starsToWin == 10)
+        #expect(config.type(named: "horranth")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
+        #expect(config.type(named: "horranth")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "horranth")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
+        #expect(config.type(named: "horranth")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.combatTimerSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
@@ -56,25 +56,25 @@ struct EnemyConfigTests {
         try config.validate()
     }
 
-    @Test func fallbackMatchesGruntDefaults() {
+    @Test func fallbackMatchesHorranthDefaults() {
         let config = EnemyConfig.fallback
         #expect(config.slashMaxSeconds == 0.5)
-        let grunt = config.type(named: "grunt")
-        #expect(grunt?.letter == "E")
-        #expect(grunt?.color == "#FF0000")
-        #expect(grunt?.tilesPerSecond == 1.0)
-        #expect(grunt?.forgetSeconds == 3.0)
-        #expect(grunt?.combatTimerSeconds == 10)
-        #expect(grunt?.shotTravelSeconds == 3.2)
-        #expect(grunt?.starsToWin == 10)
-        #expect(grunt?.shotLetters == ["A", "B", "C"])
+        let horranth = config.type(named: "horranth")
+        #expect(horranth?.letter == "E")
+        #expect(horranth?.color == "#FF0000")
+        #expect(horranth?.tilesPerSecond == 1.0)
+        #expect(horranth?.forgetSeconds == 3.0)
+        #expect(horranth?.combatTimerSeconds == 10)
+        #expect(horranth?.shotTravelSeconds == 3.2)
+        #expect(horranth?.starsToWin == 10)
+        #expect(horranth?.shotLetters == ["A", "B", "C"])
     }
 
     @Test func decodesSlashMaxSeconds() throws {
         let yaml = """
         slash_max_seconds: 0.75
         enemies:
-          grunt:
+          horranth:
             letter: E
             color: "#FF0000"
             tiles_per_second: 1.0
@@ -98,36 +98,39 @@ struct EnemyConfigTests {
     @Test func loadsSlashMaxSecondsFromBundle() throws {
         let config = try EnemyConfig.loadFromBundle()
         #expect(config.slashMaxSeconds == 0.5)
+        #expect(config.type(named: "grunt") == nil)
+        #expect(config.type(named: "horranth") != nil)
+        #expect(config.enemies.count == 12)
     }
 
     @Test func validateRejectsEmptyShotTypes() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.shotTypes = [:]
-        #expect(throws: EnemyConfigError.invalid("grunt.shot_types must not be empty")) {
+        config.enemies["horranth"]?.shotTypes = [:]
+        #expect(throws: EnemyConfigError.invalid("horranth.shot_types must not be empty")) {
             try config.validate()
         }
     }
 
     @Test func validateRejectsShotTypeMissingFx() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.shotTypes["A"] = EnemyShotTypeConfig(fx: .empty)
-        #expect(throws: EnemyConfigError.invalid("grunt.shot_types.A.fx must name a shoot track")) {
+        config.enemies["horranth"]?.shotTypes["A"] = EnemyShotTypeConfig(fx: .empty)
+        #expect(throws: EnemyConfigError.invalid("horranth.shot_types.A.fx must name a shoot track")) {
             try config.validate()
         }
     }
 
     @Test func validateRejectsNonPositiveCombatTimer() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.combatTimerSeconds = 0
-        #expect(throws: EnemyConfigError.invalid("grunt.combat_timer_seconds must be > 0")) {
+        config.enemies["horranth"]?.combatTimerSeconds = 0
+        #expect(throws: EnemyConfigError.invalid("horranth.combat_timer_seconds must be > 0")) {
             try config.validate()
         }
     }
 
     @Test func validateRejectsInvalidStarsToWin() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.starsToWin = 0
-        #expect(throws: EnemyConfigError.invalid("grunt.stars_to_win must be >= 1")) {
+        config.enemies["horranth"]?.starsToWin = 0
+        #expect(throws: EnemyConfigError.invalid("horranth.stars_to_win must be >= 1")) {
             try config.validate()
         }
     }
@@ -141,16 +144,16 @@ struct EnemyConfigTests {
 
     @Test func validateRejectsBadColor() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.color = "red"
-        #expect(throws: EnemyConfigError.invalid("grunt.color must be a hex color like #RRGGBB")) {
+        config.enemies["horranth"]?.color = "red"
+        #expect(throws: EnemyConfigError.invalid("horranth.color must be a hex color like #RRGGBB")) {
             try config.validate()
         }
     }
 
     @Test func validateRejectsNonPositiveSpeed() {
         var config = EnemyConfig.fallback
-        config.enemies["grunt"]?.tilesPerSecond = 0
-        #expect(throws: EnemyConfigError.invalid("grunt.tiles_per_second must be > 0")) {
+        config.enemies["horranth"]?.tilesPerSecond = 0
+        #expect(throws: EnemyConfigError.invalid("horranth.tiles_per_second must be > 0")) {
             try config.validate()
         }
     }

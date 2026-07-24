@@ -73,13 +73,13 @@ struct GameWorldPreparerTests {
     @Test func newGameResetsLevelStarsCurrent() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Cody")
-        try session.selectLevel(resourceName: "level_1")
-        await session.addLevelStar(resourceName: "level_1")
-        await session.addLevelStar(resourceName: "level_1")
-        #expect(session.playerState?.levels["level_1"]?.starsCurrent == 2)
+        try session.selectLevel(resourceName: "1-tython")
+        await session.addLevelStar(resourceName: "1-tython")
+        await session.addLevelStar(resourceName: "1-tython")
+        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 2)
 
         _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
-        #expect(session.playerState?.levels["level_1"]?.starsCurrent == 0)
-        #expect(session.playerState?.levels["level_1"]?.started == true)
+        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 0)
+        #expect(session.playerState?.levels["1-tython"]?.started == true)
     }
 }

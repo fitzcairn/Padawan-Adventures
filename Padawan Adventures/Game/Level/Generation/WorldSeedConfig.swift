@@ -316,17 +316,45 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     }
 
     nonisolated struct EnemiesSpawnConfig: Codable, Equatable, Sendable {
-        var type: String
+        /// Enemy type ids from `combat.yaml` (one or more; spawn picks uniformly).
+        var types: [String]
         var spawnChancePerRoom: Double
+
+        /// First configured type id (legacy single-type callers / tests).
+        var type: String { types.first ?? "" }
 
         enum CodingKeys: String, CodingKey {
             case type
+            case types
             case spawnChancePerRoom = "spawn_chance_per_room"
         }
 
         nonisolated init(type: String, spawnChancePerRoom: Double) {
-            self.type = type
+            self.types = [type]
             self.spawnChancePerRoom = spawnChancePerRoom
+        }
+
+        nonisolated init(types: [String], spawnChancePerRoom: Double) {
+            self.types = types
+            self.spawnChancePerRoom = spawnChancePerRoom
+        }
+
+        nonisolated init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            spawnChancePerRoom = try container.decode(Double.self, forKey: .spawnChancePerRoom)
+            if let list = try container.decodeIfPresent([String].self, forKey: .types), !list.isEmpty {
+                types = list
+            } else if let single = try container.decodeIfPresent(String.self, forKey: .type) {
+                types = [single]
+            } else {
+                types = []
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(types, forKey: .types)
+            try container.encode(spawnChancePerRoom, forKey: .spawnChancePerRoom)
         }
     }
 
@@ -401,7 +429,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
             throw WorldSeedError.invalidRoomGateChance(generation.room.gateChance)
         }
         if let enemies {
-            guard !enemies.type.isEmpty else {
+            guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {
                 throw WorldSeedError.invalidEnemyType
             }
             guard enemies.spawnChancePerRoom >= 0, enemies.spawnChancePerRoom <= 1 else {

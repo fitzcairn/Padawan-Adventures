@@ -28,7 +28,7 @@ struct AppSessionTests {
     @Test func fallbackConfigIsSingleStory() {
         let config = AppSession.fallbackConfig()
         #expect(config.world.stories == 1)
-        #expect(config.enemies?.type == "grunt")
+        #expect(config.enemies?.type == "horranth")
         #expect(config.enemies?.spawnChancePerRoom == 0.8)
     }
 
