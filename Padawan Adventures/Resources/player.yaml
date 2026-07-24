@@ -16,3 +16,28 @@ fx:
   enemy_contact: sfx_enemy_contact
   damage: sfx_player_damage
   timer_tick: sfx_timer_tick
+
+# Animated sprite sheets under Resources/Sprites/Player/<name>/.
+# Cardinals: up / down / left / right. Diagonals keep compass names.
+# left / northwest / southwest reuse right / northeast / southeast via flip.
+sprite:
+  root: Sprites/Player
+  chroma_key: "#000000"
+  size_multiplier: 1.2
+  animations:
+    idle_up: { sheet: idle_up-spritesheet, atlas: idle_up-atlas }
+    idle_northeast: { sheet: idle_northeast-spritesheet, atlas: idle_northeast-atlas }
+    idle_northwest: { flip_of: idle_northeast }
+    idle_right: { sheet: idle_right-spritesheet, atlas: idle_right-atlas }
+    idle_left: { flip_of: idle_right }
+    idle_southeast: { sheet: idle_southeast-spritesheet, atlas: idle_southeast-atlas }
+    idle_southwest: { flip_of: idle_southeast }
+    idle_down: { sheet: idle_down-spritesheet, atlas: idle_down-atlas }
+    walk_up: { sheet: walk_up-spritesheet, atlas: walk_up-atlas }
+    walk_northeast: { sheet: walk_northeast-spritesheet, atlas: walk_northeast-atlas }
+    walk_northwest: { flip_of: walk_northeast }
+    walk_right: { sheet: walk_right-spritesheet, atlas: walk_right-atlas }
+    walk_left: { flip_of: walk_right }
+    walk_southeast: { sheet: walk_southeast-spritesheet, atlas: walk_southeast-atlas }
+    walk_southwest: { flip_of: walk_southeast }
+    walk_down: { sheet: walk_down-spritesheet, atlas: walk_down-atlas }

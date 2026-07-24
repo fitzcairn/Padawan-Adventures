@@ -8,6 +8,8 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
     var spawn: SpawnCoord?
     /// Event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
+    /// Optional animated sprite definition (`Resources/Sprites/...`).
+    var sprite: SpriteConfig?
 
     struct SpawnCoord: Codable, Equatable, Sendable {
         var x: Int
@@ -21,6 +23,7 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         case startingEnergy = "starting_energy"
         case spawn
         case fx
+        case sprite
     }
 
     init(
@@ -28,13 +31,15 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         startingHealth: Int = 0,
         startingEnergy: Int = 0,
         spawn: SpawnCoord? = nil,
-        fx: SoundEffectTable = .empty
+        fx: SoundEffectTable = .empty,
+        sprite: SpriteConfig? = nil
     ) {
         self.letter = letter
         self.startingHealth = startingHealth
         self.startingEnergy = startingEnergy
         self.spawn = spawn
         self.fx = fx
+        self.sprite = sprite
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +49,7 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         startingEnergy = try container.decode(Int.self, forKey: .startingEnergy)
         spawn = try container.decodeIfPresent(SpawnCoord.self, forKey: .spawn)
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
+        sprite = try container.decodeIfPresent(SpriteConfig.self, forKey: .sprite)
     }
 
     nonisolated static let fallback = PlayerConfig(
@@ -51,7 +57,8 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         startingHealth: 3,
         startingEnergy: 2,
         spawn: nil,
-        fx: .empty
+        fx: .empty,
+        sprite: nil
     )
 
     func validate() throws {

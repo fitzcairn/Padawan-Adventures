@@ -14,6 +14,9 @@ enum GameWorldPreparer {
             await session.markLevelStarted(resourceName: resourceName)
         }
 
+        // Warm sprite cache once per session before the world is presented.
+        session.ensurePlayerSpritesLoaded()
+
         return await loadWorld(session: session, mode: mode)
     }
 

@@ -28,6 +28,8 @@ final class AppSession {
     private(set) var currentPlayerName: String?
     private(set) var playerState: PlayerGameState?
     let audioPreferences: AudioPreferences
+    /// Session-scoped sprite animation cache (sheets sliced once per process).
+    let spriteLibrary: SpriteLibrary
 
     init(
         seedConfig: WorldSeedConfig,
@@ -47,7 +49,8 @@ final class AppSession {
         hasCompatibleSave: Bool = false,
         currentPlayerName: String? = nil,
         playerState: PlayerGameState? = nil,
-        audioPreferences: AudioPreferences? = nil
+        audioPreferences: AudioPreferences? = nil,
+        spriteLibrary: SpriteLibrary? = nil
     ) {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
@@ -68,6 +71,13 @@ final class AppSession {
         self.currentPlayerName = currentPlayerName
         self.playerState = playerState
         self.audioPreferences = audioPreferences ?? .shared
+        self.spriteLibrary = spriteLibrary ?? SpriteLibrary()
+    }
+
+    /// Ensures player sprite animations are loaded for this session.
+    func ensurePlayerSpritesLoaded() {
+        guard let sprite = playerConfig.sprite else { return }
+        spriteLibrary.ensureLoaded(sprite, id: "player")
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {

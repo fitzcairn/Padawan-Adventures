@@ -162,13 +162,23 @@ enum PlaceholderFactory {
     static let playerFillColor = UIColor(red: 0.15, green: 0.55, blue: 1.0, alpha: 1)
     static let defaultEntityFillColor = UIColor(white: 0.9, alpha: 1)
 
+    @MainActor
     static func entityNode(
         for entity: GameEntity,
         config: IsometricConfig,
-        fillColor: UIColor? = nil
+        fillColor: UIColor? = nil,
+        spriteLibrary: SpriteLibrary? = nil,
+        spriteConfig: SpriteConfig? = nil
     ) -> SKNode {
         if let kind = entity.pickupKind {
             return pickupNode(kind: kind, entityID: entity.id, config: config)
+        }
+
+        if entity.isPlayer,
+           let library = spriteLibrary,
+           let spriteConfig,
+           library.animation(named: CompassDirection.down.animationName(locomotion: .idle)) != nil {
+            return playerSpriteNode(config: config, library: library, spriteConfig: spriteConfig)
         }
 
         let container = SKNode()
@@ -197,6 +207,51 @@ enum PlaceholderFactory {
         container.addChild(rect)
         container.addChild(label)
         return container
+    }
+
+    /// Player container hosting an `AnimatedSpriteNode` (name `"player"`).
+    @MainActor
+    static func playerSpriteNode(
+        config: IsometricConfig,
+        library: SpriteLibrary,
+        spriteConfig: SpriteConfig
+    ) -> SKNode {
+        let container = SKNode()
+        container.name = "player"
+        container.userData = NSMutableDictionary(dictionary: ["usesSpriteAnimation": true])
+
+        let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
+        let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
+        sprite.targetHeight = height
+        sprite.zPosition = entityBodyZ
+        // Feet sit on the entity screen point (anchor is near the bottom of the frame).
+        sprite.position = .zero
+        container.addChild(sprite)
+
+        let idleName = CompassDirection.down.animationName(locomotion: .idle)
+        sprite.play(name: idleName, library: library)
+        return container
+    }
+
+    static func usesSpriteAnimation(_ node: SKNode) -> Bool {
+        (node.userData?["usesSpriteAnimation"] as? Bool) == true
+    }
+
+    /// Display height = `wall_height` × `size_multiplier`. Width follows texture aspect at play time.
+    static func spriteDisplayHeight(
+        isoConfig: IsometricConfig,
+        spriteConfig: SpriteConfig
+    ) -> CGFloat {
+        isoConfig.wallHeight * CGFloat(spriteConfig.sizeMultiplier)
+    }
+
+    /// Provisional square size from wall height (width refined when the texture is known).
+    static func spriteDisplaySize(
+        isoConfig: IsometricConfig,
+        spriteConfig: SpriteConfig
+    ) -> CGSize {
+        let height = spriteDisplayHeight(isoConfig: isoConfig, spriteConfig: spriteConfig)
+        return CGSize(width: height, height: height)
     }
 
     static let pickupIconSize: CGFloat = 30

@@ -3,6 +3,8 @@ import SpriteKit
 final class IsometricRenderer {
     private let config: IsometricConfig
     private let enemyConfig: EnemyConfig
+    private let spriteLibrary: SpriteLibrary?
+    private let playerSpriteConfig: SpriteConfig?
     private let worldRoot = SKNode()
     /// Floor tiles — always beneath sprites.
     private let floorLayer = SKNode()
@@ -17,9 +19,16 @@ final class IsometricRenderer {
     /// Uniform scale applied to `worldRoot` (fit-to-view).
     private(set) var worldScale: CGFloat = 1
 
-    init(config: IsometricConfig = IsometricConfig(), enemyConfig: EnemyConfig = .fallback) {
+    init(
+        config: IsometricConfig = IsometricConfig(),
+        enemyConfig: EnemyConfig = .fallback,
+        spriteLibrary: SpriteLibrary? = nil,
+        playerSpriteConfig: SpriteConfig? = nil
+    ) {
         self.config = config
         self.enemyConfig = enemyConfig
+        self.spriteLibrary = spriteLibrary
+        self.playerSpriteConfig = playerSpriteConfig
     }
 
     func attach(to scene: SKScene) {
@@ -153,7 +162,9 @@ final class IsometricRenderer {
                 let node = PlaceholderFactory.entityNode(
                     for: entity,
                     config: config,
-                    fillColor: fillColor(for: entity)
+                    fillColor: fillColor(for: entity),
+                    spriteLibrary: spriteLibrary,
+                    spriteConfig: entity.isPlayer ? playerSpriteConfig : nil
                 )
                 entityNodes[entity.id] = node
                 occlusionLayer.addChild(node)
@@ -254,8 +265,17 @@ final class IsometricRenderer {
     func applyAnimation(to entities: [GameEntity], frame: Int) {
         for entity in entities where !entity.isPickup {
             guard let node = entityNodes[entity.id] else { continue }
+            // Real sprite sheets drive their own looping actions.
+            if PlaceholderFactory.usesSpriteAnimation(node) { continue }
             PlaceholderFactory.applyAnimationFrame(frame, to: node)
         }
+    }
+
+    func playerAnimatedSprite() -> AnimatedSpriteNode? {
+        guard let player = entityNodes.values.first(where: { $0.name == "player" }) else {
+            return nil
+        }
+        return player.childNode(withName: AnimatedSpriteNode.nodeName) as? AnimatedSpriteNode
     }
 
     var sceneViewCenter: CGPoint {

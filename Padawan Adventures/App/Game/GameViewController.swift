@@ -60,6 +60,8 @@ final class GameViewController: LandscapeHostingController {
             enemyConfig: session.enemyConfig,
             playerFx: session.playerConfig.fx,
             worldFx: session.seedConfig.fx,
+            spriteLibrary: session.spriteLibrary,
+            playerSpriteConfig: session.playerConfig.sprite,
             saveService: session.saveService
         )
         scene.scaleMode = .aspectFill

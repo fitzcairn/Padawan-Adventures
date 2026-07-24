@@ -13,6 +13,7 @@ final class GameScene: SKScene {
     private let enemyConfig: EnemyConfig
     private let playerFx: SoundEffectTable
     private let worldFx: SoundEffectTable
+    private let spriteLibrary: SpriteLibrary?
     private var simulationLoop: SimulationLoop
     private var pendingInput = PendingInput()
     private var renderer: IsometricRenderer
@@ -23,6 +24,8 @@ final class GameScene: SKScene {
     private var isPausedForEncounter = false
     private var isResolvingPickup = false
     private var continuePoint: ContinuePointStore
+    /// Last movement facing; drives idle when the player stops.
+    private var playerFacing: CompassDirection = .down
 
     /// Called when the player contacts an enemy (same occupancy tile).
     var onEnemyContact: ((UUID) -> Void)?
@@ -57,6 +60,8 @@ final class GameScene: SKScene {
         enemyConfig: EnemyConfig = .fallback,
         playerFx: SoundEffectTable = .empty,
         worldFx: SoundEffectTable = .empty,
+        spriteLibrary: SpriteLibrary? = nil,
+        playerSpriteConfig: SpriteConfig? = nil,
         saveService: GameSaveService?
     ) {
         self.world = world
@@ -64,10 +69,16 @@ final class GameScene: SKScene {
         self.enemyConfig = enemyConfig
         self.playerFx = playerFx
         self.worldFx = worldFx
+        self.spriteLibrary = spriteLibrary
         self.saveService = saveService
         self.continuePoint = ContinuePointStore(world: world)
         self.simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
-        self.renderer = IsometricRenderer(config: isoConfig, enemyConfig: enemyConfig)
+        self.renderer = IsometricRenderer(
+            config: isoConfig,
+            enemyConfig: enemyConfig,
+            spriteLibrary: spriteLibrary,
+            playerSpriteConfig: playerSpriteConfig
+        )
         super.init(size: size)
     }
 
@@ -334,6 +345,7 @@ final class GameScene: SKScene {
         viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
         renderer.lockWorldScale(1)
         renderer.render(world: world, focus: viewportFocus)
+        updatePlayerSpriteAnimation()
     }
 
     /// Returns `true` when simulation should pause (treasure only).
@@ -436,6 +448,34 @@ final class GameScene: SKScene {
         }
 
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
+        updatePlayerSpriteAnimation()
+    }
+
+    private func updatePlayerSpriteAnimation() {
+        guard let library = spriteLibrary,
+              let sprite = renderer.playerAnimatedSprite() else { return }
+
+        let locomotion: SpriteLocomotion
+        if movement.isMoving,
+           let start = movement.segmentStart,
+           let end = movement.segmentEnd {
+            let dx = end.x - start.x
+            let dy = end.y - start.y
+            if let facing = CompassDirection(dx: dx, dy: dy) {
+                playerFacing = facing
+            }
+            locomotion = .walk
+        } else {
+            locomotion = .idle
+        }
+
+        let name = playerFacing.animationName(locomotion: locomotion)
+        sprite.play(name: name, library: library)
+        // Fall back to idle for the same facing when a walk sheet is not loaded yet.
+        if sprite.currentAnimationName != name {
+            let idleName = playerFacing.animationName(locomotion: .idle)
+            sprite.play(name: idleName, library: library)
+        }
     }
 
     private func captureContinueAndSave() {
