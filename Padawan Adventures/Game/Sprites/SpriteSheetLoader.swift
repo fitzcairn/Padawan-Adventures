@@ -47,48 +47,56 @@ enum SpriteSheetLoader {
             throw SpriteLoadError.invalidImage(sheet)
         }
 
+        // Prefer atlas meta size when present so frame rects match the sheet the atlas describes.
+        if let metaSize = atlasDoc.meta.size,
+           metaSize.w > 0, metaSize.h > 0,
+           (sheetWidth != metaSize.w || sheetHeight != metaSize.h) {
+            // Still allow load (assets may be resized), but frame rects are in atlas space.
+        }
+
         let durations = atlasDoc.frameDurationsSeconds()
         let ordered = atlasDoc.orderedFrames
+        guard !ordered.isEmpty else {
+            throw SpriteLoadError.noFrames(atlas)
+        }
+        guard durations.count == ordered.count else {
+            throw SpriteLoadError.noFrames(atlas)
+        }
 
         var croppedFrames: [CGImage] = []
         croppedFrames.reserveCapacity(ordered.count)
 
         for entry in ordered {
             let rect = entry.frame
-            let crop = CGRect(
-                x: rect.x,
-                y: rect.y,
-                width: rect.w,
-                height: rect.h
-            )
+            // Exact atlas pixel rect first (row-major order preserved).
+            let crop = CGRect(x: rect.x, y: rect.y, width: rect.w, height: rect.h)
             guard crop.minX >= 0, crop.minY >= 0,
                   crop.maxX <= CGFloat(sheetWidth) + 0.5,
                   crop.maxY <= CGFloat(sheetHeight) + 0.5,
-                  let cropped = keyedImage.cropping(to: crop.integral) else {
-                continue
+                  let cropped = keyedImage.cropping(to: crop) else {
+                throw SpriteLoadError.frameOutOfBounds(
+                    atlas: atlas,
+                    frame: entry.key,
+                    rect: "(\(rect.x),\(rect.y),\(rect.w),\(rect.h))"
+                )
             }
             croppedFrames.append(cropped)
         }
 
-        guard !croppedFrames.isEmpty else {
-            throw SpriteLoadError.noFrames(atlas)
-        }
-
-        // Trim shared transparent padding so the bottommost opaque pixel sits on the
-        // texture edge (and thus on the tile with the node's feet anchor).
+        // Shared opaque trim: feet sit on the texture edge (anchor) and fitHeight
+        // sizes the character, not the padded 256×256 atlas cell.
         let trimmedFrames = trimToSharedOpaqueBounds(croppedFrames)
 
         var frames: [SpriteFrame] = []
         frames.reserveCapacity(trimmedFrames.count)
-
         for (index, image) in trimmedFrames.enumerated() {
-            let texture = uprightTexture(from: image)
-            let duration = index < durations.count
-                ? durations[index]
-                : (1.0 / SpriteAtlas.fallbackFramesPerSecond)
-            frames.append(SpriteFrame(texture: texture, duration: max(duration, 0.000_001)))
+            frames.append(
+                SpriteFrame(
+                    texture: makeFrameTexture(from: image),
+                    duration: max(durations[index], 0.000_001)
+                )
+            )
         }
-
         return SpriteAnimation(frames: frames)
     }
 
@@ -176,23 +184,15 @@ enum SpriteSheetLoader {
         )
     }
 
-    /// Linear filtering + mipmaps so downscaled billboards stay smooth.
+    /// Linear filtering for scaled display. Mipmaps off — they shimmer when swapping anim frames.
     static func prepareTextureForScaledDisplay(_ texture: SKTexture) {
         texture.filteringMode = .linear
-        texture.usesMipmaps = true
+        texture.usesMipmaps = false
     }
 
-    /// Redraws a cropped frame through UIKit so SpriteKit samples it right-side up.
-    static func uprightTexture(from image: CGImage) -> SKTexture {
-        let size = CGSize(width: image.width, height: image.height)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = false
-        let rendered = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            UIImage(cgImage: image, scale: 1, orientation: .up)
-                .draw(in: CGRect(origin: .zero, size: size))
-        }
-        let texture = SKTexture(image: rendered)
+    /// Builds a frame texture from an atlas crop (exact pixels, no extra redraw pass).
+    static func makeFrameTexture(from image: CGImage) -> SKTexture {
+        let texture = SKTexture(image: UIImage(cgImage: image, scale: 1, orientation: .up))
         prepareTextureForScaledDisplay(texture)
         return texture
     }
@@ -300,4 +300,5 @@ enum SpriteLoadError: Error, Equatable {
     case missingResource(String)
     case invalidImage(String)
     case noFrames(String)
+    case frameOutOfBounds(atlas: String, frame: String, rect: String)
 }

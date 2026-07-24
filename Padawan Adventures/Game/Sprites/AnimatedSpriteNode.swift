@@ -42,27 +42,39 @@ final class AnimatedSpriteNode: SKSpriteNode {
         currentAnimationName = name
         removeAction(forKey: Self.animationActionKey)
 
-        let first = animation.frames[0].texture
-        SpriteSheetLoader.prepareTextureForScaledDisplay(first)
-        texture = first
+        let textures = animation.frames.map(\.texture)
+        let durations = animation.frames.map(\.duration)
+
+        texture = textures[0]
         if let targetHeight {
             fitHeight(targetHeight)
         } else if size == .zero {
-            size = first.size()
+            size = textures[0].size()
         }
 
         applyScale(flipsHorizontally: animation.flipsHorizontally)
 
-        let actions: [SKAction] = animation.frames.flatMap { frame in
-            [
-                SKAction.run { [weak self] in
-                    SpriteSheetLoader.prepareTextureForScaledDisplay(frame.texture)
-                    self?.texture = frame.texture
-                },
-                SKAction.wait(forDuration: frame.duration),
-            ]
+        let animAction: SKAction
+        if let timePerFrame = Self.uniformFrameDuration(durations) {
+            // Exact atlas timing when all frame weights are equal.
+            animAction = .repeatForever(
+                .animate(
+                    with: textures,
+                    timePerFrame: timePerFrame,
+                    resize: false,
+                    restore: false
+                )
+            )
+        } else {
+            let steps: [SKAction] = zip(textures, durations).flatMap { texture, duration in
+                [
+                    SKAction.setTexture(texture, resize: false),
+                    SKAction.wait(forDuration: duration),
+                ]
+            }
+            animAction = .repeatForever(.sequence(steps))
         }
-        run(.repeatForever(.sequence(actions)), withKey: Self.animationActionKey)
+        run(animAction, withKey: Self.animationActionKey)
     }
 
     /// Uniform display scale (absolute); horizontal flip is reapplied from the active clip.
@@ -77,5 +89,11 @@ final class AnimatedSpriteNode: SKSpriteNode {
         xScale = baseScale * flipX
         // Correct UIImage/SKTexture V-inversion; feet stay on tile via anchor y = 1.
         yScale = -baseScale
+    }
+
+    private static func uniformFrameDuration(_ durations: [TimeInterval]) -> TimeInterval? {
+        guard let first = durations.first else { return nil }
+        let uniform = durations.allSatisfy { abs($0 - first) < 0.000_001 }
+        return uniform ? first : nil
     }
 }

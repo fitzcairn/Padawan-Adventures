@@ -219,12 +219,114 @@ struct SpriteSystemTests {
         let library = SpriteLibrary()
         library.ensureLoaded(sprite, id: "player")
         let idle = try #require(library.animation(named: "idle_down"))
-        #expect(!idle.frames.isEmpty)
+        #expect(idle.frames.count == 25)
         #expect(idle.flipsHorizontally == false)
+        // Shared opaque trim: frames are smaller than the 256×256 atlas cell and equal-sized.
+        let firstSize = idle.frames[0].texture.size()
+        #expect(firstSize.width > 0 && firstSize.width <= 256)
+        #expect(firstSize.height > 0 && firstSize.height <= 256)
+        #expect(firstSize.width < 256 || firstSize.height < 256)
+        for frame in idle.frames {
+            #expect(abs(frame.texture.size().width - firstSize.width) < 0.5)
+            #expect(abs(frame.texture.size().height - firstSize.height) < 0.5)
+        }
+        let expectedDuration = 2.042 / 25
+        for frame in idle.frames {
+            #expect(abs(frame.duration - expectedDuration) < 0.000_1)
+        }
         let northwest = try #require(library.animation(named: "idle_northwest"))
         #expect(northwest.flipsHorizontally == true)
-        #expect(northwest.frames.count == idle.frames.count || library.animation(named: "idle_northeast") != nil)
+        #expect(northwest.frames.count == idle.frames.count)
         #expect(library.animationCount(for: "player") >= 10)
+    }
+
+    @Test @MainActor func idleNortheastLoopMatchesAtlasDuration() throws {
+        let config = try PlayerConfig.loadFromBundle()
+        let sprite = try #require(config.sprite)
+        let library = SpriteLibrary()
+        library.ensureLoaded(sprite, id: "player")
+
+        let idle = try #require(library.animation(named: "idle_northeast"))
+        #expect(idle.frames.count == 25)
+
+        let expectedLoop: TimeInterval = 2.042
+        let expectedFrame = expectedLoop / 25
+        let loopSum = idle.frames.reduce(0.0) { $0 + $1.duration }
+        #expect(abs(loopSum - expectedLoop) < 0.000_1)
+        for frame in idle.frames {
+            #expect(abs(frame.duration - expectedFrame) < 0.000_1)
+        }
+
+        // Playback uses SKAction.animate when durations are uniform.
+        let durations = idle.frames.map(\.duration)
+        #expect(durations.allSatisfy { abs($0 - expectedFrame) < 0.000_001 })
+    }
+
+    @Test @MainActor func idleNortheastPlaysSpritesheetTopLeftToBottomRight() throws {
+        let atlasURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        )
+        let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
+        let ordered = atlas.orderedFrames
+        #expect(ordered.map(\.key) == (0..<25).map(String.init))
+
+        let frameW = 256
+        let frameH = 256
+        let columns = 5
+        for (index, entry) in ordered.enumerated() {
+            let expectedX = (index % columns) * frameW
+            let expectedY = (index / columns) * frameH
+            #expect(entry.frame.x == expectedX)
+            #expect(entry.frame.y == expectedY)
+            #expect(entry.frame.w == frameW)
+            #expect(entry.frame.h == frameH)
+        }
+
+        let sheetURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        )
+        let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
+        let keyed = SpriteSheetLoader.applyChromaKey(
+            to: sheetImage,
+            key: (r: 0, g: 0, b: 0)
+        )
+
+        var atlasCrops: [CGImage] = []
+        for entry in ordered {
+            let crop = CGRect(
+                x: entry.frame.x,
+                y: entry.frame.y,
+                width: entry.frame.w,
+                height: entry.frame.h
+            )
+            atlasCrops.append(try #require(keyed.cropping(to: crop)))
+        }
+        let expectedTrimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(atlasCrops)
+
+        // Production load path (same as SpriteLibrary / AnimatedSpriteNode).
+        let idle = try SpriteSheetLoader.loadAnimation(
+            sheet: "idle_northeast-spritesheet",
+            atlas: "idle_northeast-atlas",
+            root: "Sprites/Player",
+            chromaKey: "#000000"
+        )
+        #expect(idle.frames.count == expectedTrimmed.count)
+
+        // Each playable frame must be the trimmed atlas crop at that index (row-major order).
+        // SKTexture.cgImage() may V-invert relative to the source crop — accept either.
+        for (index, expectedCrop) in expectedTrimmed.enumerated() {
+            let expected = try #require(rgbaBytes(of: expectedCrop))
+            let expectedFlipped = try #require(rgbaBytes(of: expectedCrop, flipVertically: true))
+
+            let textureImage = idle.frames[index].texture.cgImage()
+            let actual = try #require(rgbaBytes(of: textureImage))
+            #expect(actual == expected || actual == expectedFlipped)
+
+            if index + 1 < expectedTrimmed.count {
+                let nextPixels = try #require(rgbaBytes(of: expectedTrimmed[index + 1]))
+                #expect(actual != nextPixels)
+            }
+        }
     }
 
     @Test func playerConfigDecodesSpriteSection() throws {
@@ -254,5 +356,35 @@ struct SpriteSystemTests {
         #expect(sprite.animations["idle_down"] == .sheet(sheet: "idle_down", atlas: "idle_down"))
         #expect(sprite.animations["idle_northwest"] == .flipOf("idle_northeast"))
         #expect(sprite.animations["idle_up"] == .sheet(sheet: "idle_up", atlas: "idle_up"))
+    }
+
+    /// Normalized RGBA8 top-left pixel buffer for exact image comparisons.
+    private func rgbaBytes(of image: CGImage, flipVertically: Bool = false) -> [UInt8]? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return nil }
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var data = [UInt8](repeating: 0, count: height * bytesPerRow)
+        guard let context = CGContext(
+            data: &data,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+        if flipVertically {
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        } else {
+            // Match SpriteSheetLoader / CGImage.cropping top-left space.
+            context.translateBy(x: 0, y: CGFloat(height))
+            context.scaleBy(x: 1, y: -1)
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        return data
     }
 }
