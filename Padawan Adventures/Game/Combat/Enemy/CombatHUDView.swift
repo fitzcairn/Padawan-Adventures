@@ -7,6 +7,7 @@ final class CombatHUDView: UIView {
     private let heartImage: UIImage?
     private let scoreLabel = UILabel()
     private let timerLabel = UILabel()
+    private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
     init(config: HudConfig, healthCount: Int, starsCount: Int = 0, timerSeconds: Int) {
         self.config = config
@@ -27,6 +28,16 @@ final class CombatHUDView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        edgeInsets.update()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        edgeInsets.update()
     }
 
     func setStars(_ count: Int) {
@@ -75,18 +86,32 @@ final class CombatHUDView: UIView {
         addSubview(timerLabel)
         addSubview(score)
 
-        let margin = CGFloat(config.edgeMargin)
-        NSLayoutConstraint.activate([
-            heartsStack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            heartsStack.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
+        let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
+        let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let timerTop = timerLabel.topAnchor.constraint(equalTo: topAnchor)
+        let timerTrailing = timerLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let scoreBottom = score.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let scoreLeading = score.leadingAnchor.constraint(equalTo: leadingAnchor)
 
-            timerLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            timerLabel.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+        edgeInsets.addTop(heartsTop)
+        edgeInsets.addLeading(heartsLeading)
+        edgeInsets.addTop(timerTop)
+        edgeInsets.addTrailing(timerTrailing)
+        edgeInsets.addBottom(scoreBottom)
+        edgeInsets.addLeading(scoreLeading)
+
+        NSLayoutConstraint.activate([
+            heartsTop,
+            heartsLeading,
+
+            timerTop,
+            timerTrailing,
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
 
-            score.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
-            score.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
+            scoreBottom,
+            scoreLeading,
         ])
+        edgeInsets.update()
     }
 
     private func addIcon(image: UIImage?, to stack: UIStackView) {

@@ -4,27 +4,23 @@ import Yams
 struct HudConfig: Codable, Equatable, Sendable {
     var iconSize: Int
     var iconSpacing: Int
-    var edgeMargin: Int
     var scoreTextGap: Int
 
     enum CodingKeys: String, CodingKey {
         case iconSize = "icon_size"
         case iconSpacing = "icon_spacing"
-        case edgeMargin = "edge_margin"
         case scoreTextGap = "score_text_gap"
     }
 
     static let fallback = HudConfig(
         iconSize: 40,
         iconSpacing: 10,
-        edgeMargin: 16,
         scoreTextGap: 10
     )
 
     func validate() throws {
         guard iconSize > 0 else { throw HudConfigError.invalid("icon_size must be > 0") }
         guard iconSpacing > 0 else { throw HudConfigError.invalid("icon_spacing must be > 0") }
-        guard edgeMargin > 0 else { throw HudConfigError.invalid("edge_margin must be > 0") }
         guard scoreTextGap > 0 else { throw HudConfigError.invalid("score_text_gap must be > 0") }
     }
 

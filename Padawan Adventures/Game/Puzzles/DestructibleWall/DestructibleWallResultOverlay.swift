@@ -16,7 +16,6 @@ struct DestructibleWallResultOverlay: View {
                     .font(.system(size: 36, weight: .bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
                     .accessibilityIdentifier(titleAccessibilityID)
 
                 if case let .destroyed(starsAwarded) = kind {

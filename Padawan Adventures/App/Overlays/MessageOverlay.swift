@@ -16,7 +16,6 @@ struct MessageOverlay: View {
                 .font(.system(size: 32, weight: .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
                 .accessibilityIdentifier(accessibilityTitleID)
         }
     }

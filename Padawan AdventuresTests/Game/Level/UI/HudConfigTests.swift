@@ -6,14 +6,12 @@ struct HudConfigTests {
         let yaml = """
         icon_size: 40
         icon_spacing: 10
-        edge_margin: 16
         score_text_gap: 10
         """
 
         let config = try HudConfig.decode(from: yaml)
         #expect(config.iconSize == 40)
         #expect(config.iconSpacing == 10)
-        #expect(config.edgeMargin == 16)
         #expect(config.scoreTextGap == 10)
         try config.validate()
     }
@@ -22,14 +20,12 @@ struct HudConfigTests {
         let yaml = """
         icon_size: 48
         icon_spacing: 12
-        edge_margin: 20
         score_text_gap: 8
         """
 
         let config = try HudConfig.decode(from: yaml)
         #expect(config.iconSize == 48)
         #expect(config.iconSpacing == 12)
-        #expect(config.edgeMargin == 20)
         #expect(config.scoreTextGap == 8)
         try config.validate()
     }
@@ -38,7 +34,6 @@ struct HudConfigTests {
         let config = HudConfig.fallback
         #expect(config.iconSize == 40)
         #expect(config.iconSpacing == 10)
-        #expect(config.edgeMargin == 16)
         #expect(config.scoreTextGap == 10)
     }
 

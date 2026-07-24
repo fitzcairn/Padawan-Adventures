@@ -120,41 +120,39 @@ struct PlayerSelectView: View {
 
     var body: some View {
         @Bindable var model = model
-        VStack(spacing: 16) {
-            AppTitleText(text: "Select Player", size: 28, weight: .semibold)
-                .padding(.top, 24)
-                .accessibilityIdentifier("playerSelect.title")
+        AppScreen {
+            VStack(spacing: 16) {
+                AppTitleText(text: "Select Player", size: 28, weight: .semibold)
+                    .accessibilityIdentifier("playerSelect.title")
 
-            ScrollView {
-                VStack(spacing: 12) {
-                    if model.playerNames.isEmpty {
-                        AppTitleText(
-                            text: "No players yet. Tap New to create one.",
-                            size: 16,
-                            weight: .regular,
-                            color: AppChrome.secondaryTextColor
-                        )
-                        .accessibilityIdentifier("playerSelect.empty")
-                    } else {
-                        ForEach(model.playerNames, id: \.self) { name in
-                            playerRow(name: name)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        if model.playerNames.isEmpty {
+                            AppTitleText(
+                                text: "No players yet. Tap New to create one.",
+                                size: 16,
+                                weight: .regular,
+                                color: AppChrome.secondaryTextColor
+                            )
+                            .accessibilityIdentifier("playerSelect.empty")
+                        } else {
+                            ForEach(model.playerNames, id: \.self) { name in
+                                playerRow(name: name)
+                            }
                         }
                     }
+                    .padding(.vertical, 8)
                 }
-                .padding(.vertical, 8)
-            }
-            .appReadableWidth()
-            .frame(maxHeight: .infinity)
+                .appReadableWidth()
+                .frame(maxHeight: .infinity)
 
-            AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
-                model.beginCreatePlayer()
+                AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
+                    model.beginCreatePlayer()
+                }
+                .disabled(model.isCreatingAvatar)
+                .appReadableWidth()
             }
-            .disabled(model.isCreatingAvatar)
-            .appReadableWidth()
-            .padding(.bottom, 24)
         }
-        .padding(.horizontal)
-        .appScreenBackground()
         .playScreenMusic("player_select")
         .task {
             await model.reloadPlayers()

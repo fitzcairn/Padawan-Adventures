@@ -48,6 +48,7 @@ struct DismissibleOverlay<Background: View, Content: View>: View {
                 .onTapGesture { finish() }
 
             content
+                .appScreenContentPadding()
         }
         .accessibilityIdentifier(accessibilityRootID)
         .task {

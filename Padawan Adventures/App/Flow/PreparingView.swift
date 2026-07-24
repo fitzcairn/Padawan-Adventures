@@ -6,16 +6,16 @@ struct PreparingView: View {
     @State private var didStartLoad = false
 
     var body: some View {
-        AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
-            .padding(.horizontal)
-            .appScreenBackground()
-            .playScreenMusic("preparing")
-            .accessibilityIdentifier("preparing.status")
-            .task {
-                guard !didStartLoad else { return }
-                didStartLoad = true
-                await prepareAndPresentGame()
-            }
+        AppScreen {
+            AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
+                .accessibilityIdentifier("preparing.status")
+        }
+        .playScreenMusic("preparing")
+        .task {
+            guard !didStartLoad else { return }
+            didStartLoad = true
+            await prepareAndPresentGame()
+        }
     }
 
     @MainActor

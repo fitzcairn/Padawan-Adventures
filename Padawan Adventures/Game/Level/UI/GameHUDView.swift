@@ -11,6 +11,7 @@ final class GameHUDView: UIView {
     private let heartImage: UIImage?
     private let boltImage: UIImage?
     private let scoreLabel = UILabel()
+    private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
     private static let hudIconFadeDuration: TimeInterval = 0.2
 
@@ -53,6 +54,16 @@ final class GameHUDView: UIView {
             return hit
         }
         return nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        edgeInsets.update()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        edgeInsets.update()
     }
 
     func addHeart() {
@@ -108,20 +119,38 @@ final class GameHUDView: UIView {
         addSubview(levelLabel)
         addSubview(fleeButton)
 
-        let margin = CGFloat(config.edgeMargin)
+        let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
+        let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let boltsTop = boltsStack.topAnchor.constraint(equalTo: topAnchor)
+        let boltsTrailing = boltsStack.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let scoreBottom = score.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let scoreLeading = score.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let levelBottom = levelLabel.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let fleeBottom = fleeButton.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let fleeTrailing = fleeButton.trailingAnchor.constraint(equalTo: trailingAnchor)
+
+        edgeInsets.addTop(heartsTop)
+        edgeInsets.addLeading(heartsLeading)
+        edgeInsets.addTop(boltsTop)
+        edgeInsets.addTrailing(boltsTrailing)
+        edgeInsets.addBottom(scoreBottom)
+        edgeInsets.addLeading(scoreLeading)
+        edgeInsets.addBottom(levelBottom)
+        edgeInsets.addBottom(fleeBottom)
+        edgeInsets.addTrailing(fleeTrailing)
 
         NSLayoutConstraint.activate([
-            heartsStack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            heartsStack.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
+            heartsTop,
+            heartsLeading,
 
-            boltsStack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            boltsStack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            boltsTop,
+            boltsTrailing,
 
-            score.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
-            score.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: margin),
+            scoreBottom,
+            scoreLeading,
 
-            levelLabel.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
-            levelLabel.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
+            levelLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            levelBottom,
             levelLabel.leadingAnchor.constraint(
                 greaterThanOrEqualTo: score.trailingAnchor,
                 constant: 8
@@ -131,9 +160,10 @@ final class GameHUDView: UIView {
                 constant: -8
             ),
 
-            fleeButton.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -margin),
-            fleeButton.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            fleeBottom,
+            fleeTrailing,
         ])
+        edgeInsets.update()
     }
 
     private func addIcon(image: UIImage?, to stack: UIStackView, animated: Bool) {

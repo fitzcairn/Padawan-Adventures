@@ -112,8 +112,7 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         let created = GateScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx,
-            hudConfig: hudConfig
+            playerFx: playerFx
         )
         created.gateDelegate = self
         scene = created

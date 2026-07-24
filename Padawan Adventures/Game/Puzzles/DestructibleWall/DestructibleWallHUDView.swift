@@ -2,12 +2,12 @@ import UIKit
 
 /// Destructible-wall HUD: countdown timer in the upper-trailing corner.
 final class DestructibleWallHUDView: UIView {
-    private let config: HudConfig
     private let timerLabel = UILabel()
+    private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
     init(config: HudConfig, timerSeconds: Int) {
-        self.config = config
         super.init(frame: .zero)
+        _ = config
         setup(timerSeconds: timerSeconds)
     }
 
@@ -18,6 +18,16 @@ final class DestructibleWallHUDView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        edgeInsets.update()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        edgeInsets.update()
     }
 
     func setTimer(seconds: Int, urgent: Bool) {
@@ -41,11 +51,16 @@ final class DestructibleWallHUDView: UIView {
 
         addSubview(timerLabel)
 
-        let margin = CGFloat(config.edgeMargin)
+        let timerTop = timerLabel.topAnchor.constraint(equalTo: topAnchor)
+        let timerTrailing = timerLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        edgeInsets.addTop(timerTop)
+        edgeInsets.addTrailing(timerTrailing)
+
         NSLayoutConstraint.activate([
-            timerLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            timerLabel.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            timerTop,
+            timerTrailing,
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
         ])
+        edgeInsets.update()
     }
 }

@@ -51,44 +51,61 @@ struct LevelSelectView: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                starCountHeader
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
+            AppScreen {
+                VStack(spacing: 0) {
+                    starCountHeader
+                        .padding(.bottom, 8)
 
-                planetStrip
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.vertical, 12)
+                    planetStrip
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.vertical, 12)
 
-                // Inventory + chrome buttons share one bottom band (bottoms aligned).
-                HStack(alignment: .bottom, spacing: 16) {
-                    AppCircularIconButton(
-                        systemName: "chevron.backward",
-                        accessibilityID: "levelSelect.back",
-                        accessibilityLabel: "Back"
-                    ) {
-                        if router.path.isEmpty {
-                            router.showMenu()
-                        } else {
-                            router.pop()
+                    // Inventory + chrome buttons share one bottom band (bottoms aligned).
+                    HStack(alignment: .bottom, spacing: 16) {
+                        AppCircularIconButton(
+                            systemName: "chevron.backward",
+                            accessibilityID: "levelSelect.back",
+                            accessibilityLabel: "Back"
+                        ) {
+                            if router.path.isEmpty {
+                                router.showMenu()
+                            } else {
+                                router.pop()
+                            }
+                        }
+
+                        inventorySection
+                            .frame(maxWidth: AppChrome.maxContentWidth)
+                            .frame(maxWidth: .infinity)
+
+                        AppCircularIconButton(
+                            systemName: "lock.fill",
+                            accessibilityID: "levelSelect.dadModeLock",
+                            accessibilityLabel: "Dad mode"
+                        ) {
+                            showPassword = true
                         }
                     }
-
-                    inventorySection
-                        .frame(maxWidth: AppChrome.maxContentWidth)
-                        .frame(maxWidth: .infinity)
-
-                    AppCircularIconButton(
-                        systemName: "lock.fill",
-                        accessibilityID: "levelSelect.dadModeLock",
-                        accessibilityLabel: "Dad mode"
-                    ) {
-                        showPassword = true
-                    }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
             }
+
+            // Measure full-screen safe areas (AppScreen zeroes child insets) so arrows
+            // sit clear of the Dynamic Island in landscape.
+            GeometryReader { geo in
+                let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
+                HStack {
+                    scrollHintArrow(systemName: "chevron.left", visible: canScrollLeft)
+                        .accessibilityIdentifier("levelSelect.scrollLeftHint")
+                    Spacer()
+                    scrollHintArrow(systemName: "chevron.right", visible: canScrollRight)
+                        .accessibilityIdentifier("levelSelect.scrollRightHint")
+                }
+                .padding(.leading, insets.leading + 8)
+                .padding(.trailing, insets.trailing + 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             if let messageOverlay {
                 MessageOverlay(
@@ -119,7 +136,6 @@ struct LevelSelectView: View {
                 )
             }
         }
-        .appScreenBackground()
         .playScreenMusic("level_select")
         .fullScreenCover(isPresented: $showPassword) {
             DadModePasswordView(
@@ -162,7 +178,8 @@ struct LevelSelectView: View {
                             .offset(y: verticalOffset(for: level.resourceName))
                     }
                 }
-                .padding(.horizontal, 36)
+                // Internal scroll content inset (planet-to-edge breathing room), not screen margin.
+                .padding(.horizontal, planetSpacing)
                 .frame(maxHeight: .infinity)
             }
             .onScrollGeometryChange(for: ScrollOverflow.self) { geometry in
@@ -176,16 +193,6 @@ struct LevelSelectView: View {
                 canScrollLeft = newValue.canScrollLeft
                 canScrollRight = newValue.canScrollRight
             }
-
-            HStack {
-                scrollHintArrow(systemName: "chevron.left", visible: canScrollLeft)
-                    .accessibilityIdentifier("levelSelect.scrollLeftHint")
-                Spacer()
-                scrollHintArrow(systemName: "chevron.right", visible: canScrollRight)
-                    .accessibilityIdentifier("levelSelect.scrollRightHint")
-            }
-            .padding(.horizontal, 8)
-            .allowsHitTesting(false)
         }
     }
 

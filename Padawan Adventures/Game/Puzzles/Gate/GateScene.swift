@@ -22,7 +22,6 @@ final class GateScene: SKScene {
 
     private let puzzleConfig: GatePuzzleConfig
     private let playerFx: SoundEffectTable
-    private let hudConfig: HudConfig
 
     private var engine: GateMinigameEngine
     private var stagingNode: SKShapeNode!
@@ -52,12 +51,10 @@ final class GateScene: SKScene {
     init(
         size: CGSize,
         puzzleConfig: GatePuzzleConfig,
-        playerFx: SoundEffectTable,
-        hudConfig: HudConfig
+        playerFx: SoundEffectTable
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.hudConfig = hudConfig
         self.engine = GateMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -128,14 +125,16 @@ final class GateScene: SKScene {
         min(size.width, size.height) * 0.07
     }
 
-    /// Top band reserved for the HUD word/timer (safe area + margin + label height).
+    /// Top band reserved for the HUD word/timer (shared screen inset + label height).
     /// SpriteKit Y grows upward, so playable content must stay below `size.height - this`.
     private var topHUDReservedHeight: CGFloat {
-        let safeTop = view?.safeAreaInsets.top ?? 54
-        let margin = CGFloat(hudConfig.edgeMargin)
+        let host = view
+        let hostSize = host?.bounds.size ?? size
+        let safeArea = host?.safeAreaInsets ?? .zero
+        let topInset = ScreenLayout.uiInsets(size: hostSize, safeArea: safeArea).top
         // Matches GateHUDView's 44pt bold word, plus a little breathing room under the label.
         let wordBand: CGFloat = 56
-        return safeTop + margin + wordBand
+        return topInset + wordBand
     }
 
     /// Highest Y a letter/endpoint center may use without overlapping the HUD word band.

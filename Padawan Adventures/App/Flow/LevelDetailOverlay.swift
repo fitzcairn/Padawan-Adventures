@@ -51,7 +51,8 @@ struct LevelDetailOverlay: View {
             }
             .padding(28)
             .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity)
+            .appScreenContentPadding()
         }
         .accessibilityIdentifier("levelSelect.detail.root")
     }

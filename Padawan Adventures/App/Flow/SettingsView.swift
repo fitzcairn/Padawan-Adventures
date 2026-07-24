@@ -14,51 +14,49 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var preferences = preferences
 
-        VStack(spacing: 24) {
-            AppTitleText(text: "Settings", size: 28, weight: .semibold)
-                .padding(.top, 24)
-                .accessibilityIdentifier("settings.title")
+        AppScreen {
+            VStack(spacing: 24) {
+                AppTitleText(text: "Settings", size: 28, weight: .semibold)
+                    .accessibilityIdentifier("settings.title")
 
-            Spacer()
+                Spacer()
 
-            VStack(spacing: 28) {
-                volumeRow(
-                    label: "Sound Effects",
-                    labelID: "settings.soundEffects.label",
-                    sliderValue: Binding(
-                        get: { Double(preferences.soundEffectsVolume) },
-                        set: { preferences.soundEffectsVolume = Float($0) }
-                    ),
-                    sliderID: "settings.soundEffects.volume"
-                )
+                VStack(spacing: 28) {
+                    volumeRow(
+                        label: "Sound Effects",
+                        labelID: "settings.soundEffects.label",
+                        sliderValue: Binding(
+                            get: { Double(preferences.soundEffectsVolume) },
+                            set: { preferences.soundEffectsVolume = Float($0) }
+                        ),
+                        sliderID: "settings.soundEffects.volume"
+                    )
 
-                settingsRow(
-                    checkboxLabel: "Music",
-                    checkboxID: "settings.music.enabled",
-                    isOn: $preferences.musicEnabled,
-                    sliderValue: Binding(
-                        get: { Double(preferences.musicVolume) },
-                        set: { preferences.musicVolume = Float($0) }
-                    ),
-                    sliderID: "settings.music.volume"
-                )
-            }
-            .appReadableWidth()
-            .padding(.horizontal)
-
-            Spacer()
-
-            AppLargeButton(title: "Back", accessibilityID: "settings.back") {
-                if router.path.isEmpty {
-                    router.showMenu()
-                } else {
-                    router.pop()
+                    settingsRow(
+                        checkboxLabel: "Music",
+                        checkboxID: "settings.music.enabled",
+                        isOn: $preferences.musicEnabled,
+                        sliderValue: Binding(
+                            get: { Double(preferences.musicVolume) },
+                            set: { preferences.musicVolume = Float($0) }
+                        ),
+                        sliderID: "settings.music.volume"
+                    )
                 }
+                .appReadableWidth()
+
+                Spacer()
+
+                AppLargeButton(title: "Back", accessibilityID: "settings.back") {
+                    if router.path.isEmpty {
+                        router.showMenu()
+                    } else {
+                        router.pop()
+                    }
+                }
+                .frame(maxWidth: 280)
             }
-            .frame(maxWidth: 280)
-            .padding(.bottom, 24)
         }
-        .appScreenBackground()
         .playScreenMusic("settings")
         .onDisappear {
             Task {

@@ -6,59 +6,56 @@ struct MenuView: View {
     @State private var showContinue = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            AppTitleText(
-                text: session.currentPlayerName.map { "Welcome, \($0)" } ?? "Welcome",
-                size: 24,
-                weight: .semibold
-            )
-            .padding(.top, 24)
-            .padding(.horizontal)
-            .accessibilityIdentifier("menu.welcome")
+        AppScreen {
+            VStack(spacing: 0) {
+                AppTitleText(
+                    text: session.currentPlayerName.map { "Welcome, \($0)" } ?? "Welcome",
+                    size: 24,
+                    weight: .semibold
+                )
+                .accessibilityIdentifier("menu.welcome")
 
-            Spacer()
+                Spacer()
 
-            VStack(spacing: 16) {
-                if showContinue {
-                    AppLargeButton(title: "CONTINUE", accessibilityID: "menu.continue") {
-                        router.navigate(to: .preparing(.continueSave))
+                VStack(spacing: 16) {
+                    if showContinue {
+                        AppLargeButton(title: "CONTINUE", accessibilityID: "menu.continue") {
+                            router.navigate(to: .preparing(.continueSave))
+                        }
+                    }
+
+                    AppLargeButton(title: "NEW GAME", accessibilityID: "menu.newGame") {
+                        Task {
+                            await session.beginNewGame()
+                            router.navigate(to: .levelSelect)
+                        }
+                    }
+
+                    AppLargeButton(title: "LEADERBOARD", accessibilityID: "menu.leaderboard") {
+                        // Intentionally no-op for now.
+                    }
+
+                    AppLargeButton(title: "SETTINGS", accessibilityID: "menu.settings") {
+                        router.navigate(to: .settings)
+                    }
+
+                    AppLargeButton(title: "QUIT", accessibilityID: "menu.quit") {
+                        exit(0)
                     }
                 }
+                .appReadableWidth()
 
-                AppLargeButton(title: "NEW GAME", accessibilityID: "menu.newGame") {
-                    Task {
-                        await session.beginNewGame()
-                        router.navigate(to: .levelSelect)
-                    }
-                }
+                Spacer()
 
-                AppLargeButton(title: "LEADERBOARD", accessibilityID: "menu.leaderboard") {
-                    // Intentionally no-op for now.
-                }
-
-                AppLargeButton(title: "SETTINGS", accessibilityID: "menu.settings") {
-                    router.navigate(to: .settings)
-                }
-
-                AppLargeButton(title: "QUIT", accessibilityID: "menu.quit") {
-                    exit(0)
-                }
+                AppTitleText(
+                    text: AppChrome.versionBuildString,
+                    size: 13,
+                    weight: .regular,
+                    color: AppChrome.secondaryTextColor
+                )
+                .accessibilityIdentifier("menu.version")
             }
-            .appReadableWidth()
-            .padding(.horizontal)
-
-            Spacer()
-
-            AppTitleText(
-                text: AppChrome.versionBuildString,
-                size: 13,
-                weight: .regular,
-                color: AppChrome.secondaryTextColor
-            )
-            .padding(.bottom, 12)
-            .accessibilityIdentifier("menu.version")
         }
-        .appScreenBackground()
         .playScreenMusic("menu")
         .task {
             await session.refreshContinueEligibility()

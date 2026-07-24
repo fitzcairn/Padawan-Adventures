@@ -72,49 +72,47 @@ struct PlayerSelfieView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            AppTitleText(
-                text: "Smile, \(model.playerName)!",
-                size: 28,
-                weight: .semibold
-            )
-            .padding(.top, 24)
-            .accessibilityIdentifier("playerSelfie.title")
-
-            Spacer(minLength: 0)
-
-            cameraPreview
-                .frame(maxWidth: 420, maxHeight: 420)
-                .aspectRatio(1, contentMode: .fit)
-                .appReadableWidth()
-
-            if let errorMessage = model.errorMessage {
+        AppScreen {
+            VStack(spacing: 16) {
                 AppTitleText(
-                    text: errorMessage,
-                    size: 14,
-                    weight: .regular,
-                    color: AppChrome.secondaryTextColor
+                    text: "Smile, \(model.playerName)!",
+                    size: 28,
+                    weight: .semibold
                 )
-            }
+                .accessibilityIdentifier("playerSelfie.title")
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            AppLargeButton(
-                title: "Click!",
-                accessibilityID: "playerSelfie.click"
-            ) {
-                Task {
-                    if await model.click() {
-                        router.showMenu()
+                cameraPreview
+                    .frame(maxWidth: 420, maxHeight: 420)
+                    .aspectRatio(1, contentMode: .fit)
+                    .appReadableWidth()
+
+                if let errorMessage = model.errorMessage {
+                    AppTitleText(
+                        text: errorMessage,
+                        size: 14,
+                        weight: .regular,
+                        color: AppChrome.secondaryTextColor
+                    )
+                }
+
+                Spacer(minLength: 0)
+
+                AppLargeButton(
+                    title: "Click!",
+                    accessibilityID: "playerSelfie.click"
+                ) {
+                    Task {
+                        if await model.click() {
+                            router.showMenu()
+                        }
                     }
                 }
+                .disabled(model.isBusy)
+                .appReadableWidth()
             }
-            .disabled(model.isBusy)
-            .appReadableWidth()
-            .padding(.bottom, 24)
         }
-        .padding(.horizontal)
-        .appScreenBackground()
         .playScreenMusic("player_selfie")
         .task {
             await model.startCamera()

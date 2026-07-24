@@ -11,42 +11,42 @@ struct DadModePasswordView: View {
     @FocusState private var focusedSlot: Int?
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        AppScreen {
+            VStack(spacing: 24) {
+                Spacer()
 
-            Text("Enter password")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(AppChrome.primaryTextColor)
-                .accessibilityIdentifier("dadModePassword.title")
+                Text("Enter password")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(AppChrome.primaryTextColor)
+                    .accessibilityIdentifier("dadModePassword.title")
 
-            HStack(spacing: 16) {
-                ForEach(0..<4, id: \.self) { index in
-                    TextField("", text: binding(for: index))
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(AppChrome.buttonForegroundColor)
-                        .frame(width: 56, height: 64)
-                        .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
-                        .focused($focusedSlot, equals: index)
-                        .accessibilityIdentifier("dadModePassword.slot.\(index)")
+                HStack(spacing: 16) {
+                    ForEach(0..<4, id: \.self) { index in
+                        TextField("", text: binding(for: index))
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(AppChrome.buttonForegroundColor)
+                            .frame(width: 56, height: 64)
+                            .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                            .focused($focusedSlot, equals: index)
+                            .accessibilityIdentifier("dadModePassword.slot.\(index)")
+                    }
                 }
+
+                if showIncorrect {
+                    Text("incorrect")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("dadModePassword.incorrect")
+                }
+
+                Spacer()
+
+                AppLargeButton(title: "Cancel", accessibilityID: "dadModePassword.cancel", action: onCancel)
+                    .frame(maxWidth: 280)
             }
-
-            if showIncorrect {
-                Text("incorrect")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier("dadModePassword.incorrect")
-            }
-
-            Spacer()
-
-            AppLargeButton(title: "Cancel", accessibilityID: "dadModePassword.cancel", action: onCancel)
-                .frame(maxWidth: 280)
-                .padding(.bottom, 24)
         }
-        .appScreenBackground()
         .onAppear {
             focusedSlot = 0
         }

@@ -3,17 +3,20 @@ import UIKit
 /// Pit-only HUD: large target word (top-center) + countdown timer (upper-trailing).
 /// Solved prefix letters render red; remaining letters stay white.
 final class PitHUDView: UIView {
-    private let config: HudConfig
     private let wordLabel = UILabel()
     private let timerLabel = UILabel()
     private let wordFont = UIFont.systemFont(ofSize: 44, weight: .bold)
+    private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
+    /// Extra clearance so the word does not collide with the timer.
+    private var wordLeadingConstraint: NSLayoutConstraint?
+    private let wordLeadingExtra: CGFloat = 48
 
     private var currentWord = ""
     private var solvedCount = 0
 
     init(config: HudConfig, timerSeconds: Int, word: String = "", solvedCount: Int = 0) {
-        self.config = config
         super.init(frame: .zero)
+        _ = config
         setup(timerSeconds: timerSeconds, word: word, solvedCount: solvedCount)
     }
 
@@ -24,6 +27,16 @@ final class PitHUDView: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateEdgeInsets()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        updateEdgeInsets()
     }
 
     func setTimer(seconds: Int, urgent: Bool) {
@@ -70,23 +83,36 @@ final class PitHUDView: UIView {
         addSubview(wordLabel)
         addSubview(timerLabel)
 
-        let margin = CGFloat(config.edgeMargin)
+        let wordTop = wordLabel.topAnchor.constraint(equalTo: topAnchor)
+        let wordLeading = wordLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor)
+        let timerTop = timerLabel.topAnchor.constraint(equalTo: topAnchor)
+        let timerTrailing = timerLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        wordLeadingConstraint = wordLeading
+
+        edgeInsets.addTop(wordTop)
+        edgeInsets.addTop(timerTop)
+        edgeInsets.addTrailing(timerTrailing)
+
         NSLayoutConstraint.activate([
-            wordLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
+            wordTop,
             wordLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            wordLabel.leadingAnchor.constraint(
-                greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor,
-                constant: margin + 48
-            ),
+            wordLeading,
             wordLabel.trailingAnchor.constraint(
                 lessThanOrEqualTo: timerLabel.leadingAnchor,
                 constant: -12
             ),
 
-            timerLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: margin),
-            timerLabel.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -margin),
+            timerTop,
+            timerTrailing,
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
         ])
+        updateEdgeInsets()
+    }
+
+    private func updateEdgeInsets() {
+        edgeInsets.update()
+        let insets = ScreenLayout.padding(for: self)
+        wordLeadingConstraint?.constant = insets.left + wordLeadingExtra
     }
 
     private static func attributedWord(

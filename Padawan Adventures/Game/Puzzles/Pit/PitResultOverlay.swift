@@ -13,7 +13,6 @@ struct PitResultOverlay: View {
         DismissibleOverlay(accessibilityRootID: rootAccessibilityID, onFinished: onFinished) {
             VStack(spacing: 28) {
                 titleView
-                    .padding(.horizontal, 24)
                     .accessibilityIdentifier(titleAccessibilityID)
 
                 if case let .escaped(_, starsAwarded) = kind {
