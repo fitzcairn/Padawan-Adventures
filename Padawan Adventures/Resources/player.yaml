@@ -24,6 +24,8 @@ sprite:
   root: Sprites/Player
   chroma_key: "#000000"
   size_multiplier: 1.2
+  # Percent of scaled height; nudges sprite toward bottom of screen (feet into tile).
+  anchor_correction: 7
   animations:
     idle_up: { sheet: idle_up-spritesheet, atlas: idle_up-atlas }
     idle_northeast: { sheet: idle_northeast-spritesheet, atlas: idle_northeast-atlas }

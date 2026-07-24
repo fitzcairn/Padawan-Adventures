@@ -236,6 +236,7 @@ struct SpriteSystemTests {
           root: Sprites/Player
           chroma_key: "#000000"
           size_multiplier: 1.2
+          anchor_correction: 2
           animations:
             idle_down:
               sheet: idle_down
@@ -249,6 +250,7 @@ struct SpriteSystemTests {
         #expect(sprite.root == "Sprites/Player")
         #expect(sprite.chromaKey == "#000000")
         #expect(sprite.sizeMultiplier == 1.2)
+        #expect(sprite.anchorCorrection == 2)
         #expect(sprite.animations["idle_down"] == .sheet(sheet: "idle_down", atlas: "idle_down"))
         #expect(sprite.animations["idle_northwest"] == .flipOf("idle_northeast"))
         #expect(sprite.animations["idle_up"] == .sheet(sheet: "idle_up", atlas: "idle_up"))

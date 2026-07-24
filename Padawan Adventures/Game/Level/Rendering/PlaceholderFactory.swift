@@ -224,8 +224,9 @@ enum PlaceholderFactory {
         let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
         sprite.targetHeight = height
         sprite.zPosition = entityBodyZ
-        // Feet sit on the entity screen point (anchor is near the bottom of the frame).
-        sprite.position = .zero
+        // Shift toward bottom of screen by anchor_correction % of scaled height.
+        let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
+        sprite.position = CGPoint(x: 0, y: -correction)
         container.addChild(sprite)
 
         let idleName = CompassDirection.down.animationName(locomotion: .idle)

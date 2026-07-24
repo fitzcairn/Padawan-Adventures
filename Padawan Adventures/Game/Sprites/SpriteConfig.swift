@@ -8,6 +8,8 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     var chromaKey: String?
     /// Scales displayed height (`wall_height` × multiplier); width follows texture aspect.
     var sizeMultiplier: Double
+    /// Percent of scaled sprite height; shifts the sprite toward the bottom of the screen.
+    var anchorCorrection: Double
     /// Animation name → sheet source or horizontal flip of another animation.
     var animations: [String: SpriteAnimationSource]
 
@@ -15,6 +17,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         case root
         case chromaKey = "chroma_key"
         case sizeMultiplier = "size_multiplier"
+        case anchorCorrection = "anchor_correction"
         case animations
     }
 
@@ -22,11 +25,13 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         root: String,
         chromaKey: String? = nil,
         sizeMultiplier: Double = 1,
+        anchorCorrection: Double = 0,
         animations: [String: SpriteAnimationSource] = [:]
     ) {
         self.root = root
         self.chromaKey = chromaKey
         self.sizeMultiplier = sizeMultiplier
+        self.anchorCorrection = anchorCorrection
         self.animations = animations
     }
 
@@ -35,6 +40,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         root = try container.decode(String.self, forKey: .root)
         chromaKey = try container.decodeIfPresent(String.self, forKey: .chromaKey)
         sizeMultiplier = try container.decodeIfPresent(Double.self, forKey: .sizeMultiplier) ?? 1
+        anchorCorrection = try container.decodeIfPresent(Double.self, forKey: .anchorCorrection) ?? 0
         animations = try container.decodeIfPresent([String: SpriteAnimationSource].self, forKey: .animations) ?? [:]
     }
 }
