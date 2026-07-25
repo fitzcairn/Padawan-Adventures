@@ -32,12 +32,28 @@ struct IsometricMathTests {
 
     @Test func entityAlwaysAboveAnyFloorTile() {
         let config = IsometricConfig()
-        // Far sprite vs near floor — floor local depth is much higher, but bands separate them.
         let entity = GridCoord(x: 0, y: 0, story: 0)
-        let frontFloor = GridCoord(x: 99, y: 99, story: 1)
+        let frontFloor = GridCoord(x: 99, y: 99, story: 0)
         #expect(
             IsometricMath.effectiveEntityZ(for: entity, config: config)
                 > IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
+        )
+    }
+
+    @Test func higherGridYWallDrawsOverLowerGridYEntity() {
+        let config = IsometricConfig()
+        let entity = GridCoord(x: 0, y: 100, story: 0)
+        let wallFront = GridCoord(x: 0, y: 300, story: 0)
+        #expect(IsometricMath.wallOccludesEntity(wallCoord: wallFront, entityCoord: entity, config: config))
+    }
+
+    @Test func higherGridYDrawsOverLowerGridYAmongWalls() {
+        let config = IsometricConfig()
+        let back = GridCoord(x: 0, y: 100, story: 0)
+        let front = GridCoord(x: 0, y: 300, story: 0)
+        #expect(
+            IsometricMath.wallSortValue(for: front, config: config)
+                > IsometricMath.wallSortValue(for: back, config: config)
         )
     }
 

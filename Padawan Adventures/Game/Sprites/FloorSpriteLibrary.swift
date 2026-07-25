@@ -19,6 +19,7 @@ final class FloorSpriteLibrary {
             isLoaded = true
         } catch {
             // Missing assets leave the library empty; floors fall back to shape placeholders.
+            print("FloorSpriteLibrary: failed to load terrains — \(error)")
             animations = [:]
             isLoaded = true
         }

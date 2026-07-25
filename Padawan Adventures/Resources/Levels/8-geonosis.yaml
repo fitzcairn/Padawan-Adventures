@@ -8,15 +8,15 @@ order: 8
 color: "#A1887F"
 artifact: circle.hexagongrid.fill
 floor_sprites:
-  - dirt-dry
-  - earth-cracked
-  - dirt-light
+  - sand
+  - sand-dusty
+  - dirt-arid
+  - dirt-cracked
+  - canyon
+  - canyon-ridge
   - boulder
-  - stone-jagged
   - rocks-pile
-  - stone-rough
-  - boulder-large
-  - earth-barren
+  - meteorite
 enemies:
   types: [geonosian, battle_droid]
   spawn_chance_per_room: 0.8

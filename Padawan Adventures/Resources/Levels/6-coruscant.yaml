@@ -8,14 +8,15 @@ order: 6
 color: "#607D8B"
 artifact: building.2.fill
 floor_sprites:
-  - stone-paver
-  - stone-cut
-  - stone-slab
-  - stone-block
-  - stone-flat
-  - stone-smooth
-  - dirt-hard
-  - stone-rough
+  - grate
+  - grate-vent
+  - grate-panel
+  - metal-floor
+  - metal-worn
+  - metal-panel
+  - metal-rust
+  - reflect
+  - plank
 enemies:
   types: [security_droid, armored_rat]
   spawn_chance_per_room: 0.8

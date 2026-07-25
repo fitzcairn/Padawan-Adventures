@@ -533,16 +533,16 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case floorSprites = "floor_sprites"
     }
 
-    /// Default forest-leaning palette when a level omits `floor_sprites:`.
+    /// Default mixed palette when a level omits `floor_sprites:`.
     static let fallbackFloorSprites = [
-        "dirt",
         "grass",
         "grass-lush",
-        "hedge",
-        "bush",
+        "dirt-arid",
+        "dirt-dry",
         "foliage",
-        "earth-sprout",
-        "undergrowth",
+        "sand",
+        "plank",
+        "water",
     ]
 
     nonisolated static let fallback = LevelConfig(

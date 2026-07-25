@@ -7,16 +7,15 @@ order: 1
 color: "#2E7D32"
 artifact: leaf.fill
 floor_sprites:
-  - dirt
   - grass
   - grass-lush
-  - hedge
-  - bush
+  - grass-thick
   - foliage
-  - tall-grass
-  - undergrowth
-  - earth-sprout
   - foliage-lush
+  - dirt-weed
+  - dirt-sprout
+  - plank
+  - flowers
 enemies:
   types: [horranth]
   spawn_chance_per_room: 0.8

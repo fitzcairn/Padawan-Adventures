@@ -23,14 +23,14 @@ height: 20
 
 # Default floor terrain palette (overridden per level). Ids from terrain.yaml.
 floor_sprites:
-  - dirt
   - grass
   - grass-lush
-  - hedge
-  - bush
+  - dirt-arid
+  - dirt-dry
   - foliage
-  - earth-sprout
-  - undergrowth
+  - sand
+  - plank
+  - water
 
 algorithm: rooms_doors
 # How many rooms to place on the map.

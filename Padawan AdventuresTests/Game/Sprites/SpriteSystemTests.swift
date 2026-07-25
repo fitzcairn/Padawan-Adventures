@@ -119,6 +119,39 @@ struct SpriteSystemTests {
         #expect(bottom[0] == 255) // red now on bottom
     }
 
+    @Test func flipAroundYAxisSwapsLeftAndRight() throws {
+        let width = 2
+        let height = 1
+        var pixels: [UInt8] = [
+            255, 0, 0, 255, // left: red
+            0, 0, 255, 255, // right: blue
+        ]
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let image = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: space,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            Issue.record("Failed to build fixture CGImage")
+            return
+        }
+
+        let flipped = SpriteSheetLoader.flipAroundYAxis(image)
+        let left = try #require(rgbaBytes(of: flipped, crop: CGRect(x: 0, y: 0, width: 1, height: 1)))
+        let right = try #require(rgbaBytes(of: flipped, crop: CGRect(x: 1, y: 0, width: 1, height: 1)))
+        #expect(left[2] == 255) // blue now on left
+        #expect(right[0] == 255) // red now on right
+    }
+
     @Test func opaqueContentBoundsUsesTopLeftOrigin() throws {
         // 3x2: only the top-right pixel is opaque — catches Y flips in bounds math.
         let width = 3

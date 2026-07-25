@@ -260,7 +260,8 @@ nonisolated struct ProceduralGenerator: Sendable {
         )
     }
 
-    /// Paints floor cells with terrain ids using scan-order nearby affinity.
+    /// Paints every floor cell with a random terrain id from `palette`.
+    /// (Nearby affinity temporarily disabled for floor-sprite visibility testing.)
     private func assignFloorTerrains(
         tiles: inout [[[Tile]]],
         palette: [String],
@@ -268,26 +269,14 @@ nonisolated struct ProceduralGenerator: Sendable {
         rng: inout SeededGenerator
     ) {
         guard !palette.isEmpty else { return }
-        let paletteSet = Set(palette)
+        _ = nearbyByID
 
         for storyIndex in tiles.indices {
-            var previousID: String?
             for y in tiles[storyIndex].indices {
                 for x in tiles[storyIndex][y].indices {
                     guard case .floor = tiles[storyIndex][y][x].kind else { continue }
-
-                    let candidates: [String]
-                    if let previousID,
-                       let nearby = nearbyByID[previousID] {
-                        let intersection = nearby.filter { paletteSet.contains($0) }
-                        candidates = intersection.isEmpty ? palette : intersection
-                    } else {
-                        candidates = palette
-                    }
-
-                    let pick = candidates[Int.random(in: 0..<candidates.count, using: &rng)]
+                    let pick = palette[Int.random(in: 0..<palette.count, using: &rng)]
                     tiles[storyIndex][y][x].terrainID = pick
-                    previousID = pick
                 }
             }
         }

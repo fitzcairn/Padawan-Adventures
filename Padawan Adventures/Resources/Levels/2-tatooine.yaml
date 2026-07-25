@@ -8,16 +8,16 @@ order: 2
 color: "#D4A017"
 artifact: sun.max.fill
 floor_sprites:
-  - dirt
-  - dirt-dry
-  - dirt-light
-  - earth-cracked
-  - earth-barren
+  - sand
+  - sand-dune
+  - sand-ripple
+  - dirt-arid
+  - dirt-cracked
+  - dirt-barren
+  - canyon
+  - canyon-mesa
   - boulder
-  - boulder-large
-  - rocks-brown
-  - stone-slab
-  - stone-rough
+  - rocks-small
 enemies:
   types: [krayt_dragon, tusken_raider]
   spawn_chance_per_room: 0.8

@@ -35,6 +35,9 @@ final class SpriteLibrary {
                     atlas: entry.atlas,
                     root: config.root,
                     chromaKey: config.chromaKey,
+                    chromaKeyTolerance: config.chromaKeyTolerance,
+                    chromaKeyFeather: config.chromaKeyFeather,
+                    chromaKeySmooth: config.chromaKeySmooth,
                     bundle: bundle
                 )
             } catch {

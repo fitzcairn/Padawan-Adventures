@@ -1,4 +1,4 @@
-# Floor terrain catalog — single-frame tiles from floor-spritesheet (352×352, 11×11 × 32px).
+# Floor terrain catalog — single-frame tiles from floor-spritesheet (2048×2048, 11×11).
 # Sheet PNG + atlas JSON under Resources/Sprites/Floor/.
 
 sprite:
@@ -6,673 +6,701 @@ sprite:
   sheet: floor-spritesheet
   atlas_root: Sprites/Floor
   atlas: atlas
-  chroma_key: "#000000"
-  chroma_key_tolerance: 0
+  # Near-white sheet background (often #FEFEFE); key pure white with a soft feather
+  # band, then smooth the alpha matte so fringe doesn't leave a white halo.
+  chroma_key: "#FFFFFF"
+  chroma_key_tolerance: 18
+  chroma_key_feather: 48
+  chroma_key_smooth: 2
 
 terrains:
-  # Flat dark brown dirt
-  dirt:
+  # Sandy desert dune
+  sand:
     row: 0
     col: 0
-    nearby: [dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Smooth packed dirt
-  dirt-smooth:
+  # Soft sand dune
+  sand-dune:
     row: 0
     col: 1
-    nearby: [dirt, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Soft brown soil
-  dirt-soft:
+  # Rippled sand
+  sand-ripple:
     row: 0
     col: 2
-    nearby: [dirt, dirt-smooth, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Shadowed dirt patch
-  dirt-shadow:
+  # Flat desert sand
+  sand-flat:
     row: 0
     col: 3
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Firm packed earth
-  dirt-firm:
+  # Warm sand tile
+  sand-warm:
     row: 0
     col: 4
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Plain brown dirt
-  dirt-plain:
+  # Smooth sand
+  sand-smooth:
     row: 0
     col: 5
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-worn, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-drift, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Worn dirt surface
-  dirt-worn:
+  # Drifting sand
+  sand-drift:
     row: 0
     col: 6
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-dry, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-shadow, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Dry brown dirt
-  dirt-dry:
+  # Shadowed sand
+  sand-shadow:
     row: 0
     col: 7
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-hard, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-soft, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Hard packed dirt
-  dirt-hard:
+  # Soft pale sand
+  sand-soft:
     row: 0
     col: 8
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-light, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-pale, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Lighter brown dirt
-  dirt-light:
+  # Pale desert sand
+  sand-pale:
     row: 0
     col: 9
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-rich, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-dusty, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Rich dark soil
-  dirt-rich:
+  # Dusty sand
+  sand-dusty:
     row: 0
     col: 10
-    nearby: [dirt, dirt-smooth, dirt-soft, dirt-shadow, dirt-firm, dirt-plain, dirt-worn, dirt-dry, dirt-hard, dirt-light, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [sand, sand-dune, sand-ripple, sand-flat, sand-warm, sand-smooth, sand-drift, sand-shadow, sand-soft, sand-pale, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Rocky dirt mound
-  earth-rocky:
+  # Arid brown dirt
+  dirt-arid:
     row: 1
     col: 0
-    nearby: [earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Rough earth texture
-  earth-rough:
+  # Dry packed dirt
+  dirt-dry:
     row: 1
     col: 1
-    nearby: [earth-rocky, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
-
-  # Cloddy earth
-  earth-clod:
-    row: 1
-    col: 2
-    nearby: [earth-rocky, earth-rough, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
   # Cracked dry earth
-  earth-cracked:
+  dirt-cracked:
+    row: 1
+    col: 2
+    nearby: [dirt-arid, dirt-dry, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
+
+  # Hard arid dirt
+  dirt-hard:
     row: 1
     col: 3
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Furrowed plowed earth
-  earth-furrow:
+  # Barren dry dirt
+  dirt-barren:
     row: 1
     col: 4
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Tilled brown earth
-  earth-tilled:
+  # Rough arid dirt
+  dirt-rough:
     row: 1
     col: 5
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-dark, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Dark compacted earth
-  earth-dark:
+  # Dark dry dirt
+  dirt-dark:
     row: 1
     col: 6
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-barren, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-scorched, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Barren dark earth
-  earth-barren:
+  # Scorched dry dirt
+  dirt-scorched:
     row: 1
     col: 7
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-sprout, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-weed, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Dirt with tiny sprouts
-  earth-sprout:
+  # Dirt with sparse weeds
+  dirt-weed:
     row: 1
     col: 8
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-seedling, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-sprout, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Dirt with seedlings
-  earth-seedling:
+  # Dirt with tiny sprouts
+  dirt-sprout:
     row: 1
     col: 9
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-patchy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-patchy, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Patchy earth and grit
-  earth-patchy:
+  # Patchy arid dirt
+  dirt-patchy:
     row: 1
     col: 10
-    nearby: [earth-rocky, earth-rough, earth-clod, earth-cracked, earth-furrow, earth-tilled, earth-dark, earth-barren, earth-sprout, earth-seedling, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [dirt-arid, dirt-dry, dirt-cracked, dirt-hard, dirt-barren, dirt-rough, dirt-dark, dirt-scorched, dirt-weed, dirt-sprout, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Bright green grass
+  # Green grass tile
   grass:
     row: 2
     col: 0
-    nearby: [grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass-lush, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
   # Lush green grass
   grass-lush:
     row: 2
     col: 1
-    nearby: [grass, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
   # Thick meadow grass
   grass-thick:
     row: 2
     col: 2
-    nearby: [grass, grass-lush, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, plank, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Grass mixed with dirt
-  grass-dirt:
+  # Wooden plank floor
+  plank:
     row: 2
     col: 3
-    nearby: [grass, grass-lush, grass-thick, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Sparse grass on dirt
-  grass-sparse:
+  # Worn wooden planks
+  plank-worn:
     row: 2
     col: 4
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, grass-tuft, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Green grass tufts
+  # Tufted grass
   grass-tuft:
     row: 2
     col: 5
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, hedge, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-soft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Blocky green hedge
-  hedge:
+  # Soft green grass
+  grass-soft:
     row: 2
     col: 6
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge-dense, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-tuft, grate, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Dense green hedge
-  hedge-dense:
+  # Metal grate floor
+  grate:
     row: 2
     col: 7
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-tall, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate-vent, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Tall hedge block
-  hedge-tall:
+  # Metal vent grate
+  grate-vent:
     row: 2
     col: 8
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-leafy, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate, grate-panel, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Leafy hedge block
-  hedge-leafy:
+  # Metal floor panel
+  grate-panel:
     row: 2
     col: 9
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-dark, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-mesh, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Dark green hedge
-  hedge-dark:
+  # Metal mesh floor
+  grate-mesh:
     row: 2
     col: 10
-    nearby: [grass, grass-lush, grass-thick, grass-dirt, grass-sparse, grass-tuft, hedge, hedge-dense, hedge-tall, hedge-leafy, dirt, dirt-smooth, dirt-soft, dirt-shadow]
+    nearby: [grass, grass-lush, grass-thick, plank, plank-worn, grass-tuft, grass-soft, grate, grate-vent, grate-panel, dirt-arid, dirt-dry, dirt-cracked, dirt-hard]
 
-  # Low green bush
-  bush:
-    row: 3
-    col: 0
-    nearby: [bush-round, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
-
-  # Round leafy bush
-  bush-round:
-    row: 3
-    col: 1
-    nearby: [bush, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
-
-  # Dark green bush
-  bush-dark:
-    row: 3
-    col: 2
-    nearby: [bush, bush-round, bush-wild, foliage-bright, foliage, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
-
-  # Wild tangled bush
-  bush-wild:
-    row: 3
-    col: 3
-    nearby: [bush, bush-round, bush-dark, foliage-bright, foliage, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
-
-  # Bright leafy foliage
-  foliage-bright:
-    row: 3
-    col: 4
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
-
-  # Green foliage cluster
+  # Dense leafy foliage
   foliage:
     row: 3
-    col: 5
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage-lush, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
+    col: 0
+    nearby: [foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
 
   # Lush foliage mound
   foliage-lush:
     row: 3
-    col: 6
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage, shrub, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
+    col: 1
+    nearby: [foliage, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
 
-  # Small green shrub
-  shrub:
+  # Dark green foliage
+  foliage-dark:
+    row: 3
+    col: 2
+    nearby: [foliage, foliage-lush, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
+
+  # Cluster of mushrooms
+  mushroom:
+    row: 3
+    col: 3
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
+
+  # Glowing blue mushrooms
+  mushroom-blue:
+    row: 3
+    col: 4
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
+
+  # Bright glowing fungi
+  mushroom-glow:
+    row: 3
+    col: 5
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, flora-mixed, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
+
+  # Mixed alien flora
+  flora-mixed:
+    row: 3
+    col: 6
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, metal-rust, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
+
+  # Rusted metal tile
+  metal-rust:
     row: 3
     col: 7
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, tall-grass, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, flora-teal, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
 
-  # Clump of tall grass
-  tall-grass:
+  # Teal alien flora
+  flora-teal:
     row: 3
     col: 8
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, shrub, reed-clump, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-sparse, flora-odd, grass, grass-lush, grass-thick, plank]
 
-  # Sparse reed clump
-  reed-clump:
+  # Sparse plant cluster
+  flora-sparse:
     row: 3
     col: 9
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, shrub, tall-grass, undergrowth, grass, grass-lush, grass-thick, grass-dirt]
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-odd, grass, grass-lush, grass-thick, plank]
 
-  # Forest undergrowth
-  undergrowth:
+  # Odd teal flora
+  flora-odd:
     row: 3
     col: 10
-    nearby: [bush, bush-round, bush-dark, bush-wild, foliage-bright, foliage, foliage-lush, shrub, tall-grass, reed-clump, grass, grass-lush, grass-thick, grass-dirt]
+    nearby: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed, metal-rust, flora-teal, flora-sparse, grass, grass-lush, grass-thick, plank]
 
-  # Purple flower cluster
-  flowers-purple:
+  # Small flowering plant
+  flowers:
     row: 4
     col: 0
-    nearby: [flowers-green, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
   # Leafy flower patch
   flowers-green:
     row: 4
     col: 1
-    nearby: [flowers-purple, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [flowers, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
   # Yellow flower cluster
   flowers-yellow:
     row: 4
     col: 2
-    nearby: [flowers-purple, flowers-green, log, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [flowers, flowers-green, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Fallen horizontal log
+  # Hollow fallen log
   log:
     row: 4
     col: 3
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [flowers, flowers-green, flowers-yellow, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Mossy fallen log
+  # Mossy hollow log
   log-mossy:
     row: 4
     col: 4
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    nearby: [flowers, flowers-green, flowers-yellow, log, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Hollow tree stump
-  stump:
-    row: 4
-    col: 5
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
-
-  # Small loose rocks
+  # Small rock cluster
   rocks-small:
     row: 4
-    col: 6
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, stump, rocks-pile, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    col: 5
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
   # Small rock pile
   rocks-pile:
     row: 4
-    col: 7
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-scatter, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    col: 6
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Scattered pebbles
+  # Scattered stones
   rocks-scatter:
     row: 4
-    col: 8
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-pile, rocks-brown, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    col: 7
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-gray, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Small brown rocks
-  rocks-brown:
+  # Gray pebble cluster
+  rocks-gray:
     row: 4
-    col: 9
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-dark, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    col: 8
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-dark, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
   # Dark small rocks
   rocks-dark:
     row: 4
-    col: 10
-    nearby: [flowers-purple, flowers-green, flowers-yellow, log, log-mossy, stump, rocks-small, rocks-pile, rocks-scatter, rocks-brown, earth-rocky, earth-rough, earth-clod, earth-cracked]
+    col: 9
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-mixed, foliage, foliage-lush, foliage-dark, mushroom]
 
-  # Rounded brown boulder
-  boulder:
+  # Mixed small rocks
+  rocks-mixed:
+    row: 4
+    col: 10
+    nearby: [flowers, flowers-green, flowers-yellow, log, log-mossy, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, foliage, foliage-lush, foliage-dark, mushroom]
+
+  # Tree stump
+  stump:
     row: 5
     col: 0
-    nearby: [boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
+
+  # Mossy tree stump
+  stump-mossy:
+    row: 5
+    col: 1
+    nearby: [stump, stump-carved, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
+
+  # Carved tree stump
+  stump-carved:
+    row: 5
+    col: 2
+    nearby: [stump, stump-mossy, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
+
+  # Small tree stump
+  stump-small:
+    row: 5
+    col: 3
+    nearby: [stump, stump-mossy, stump-carved, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
+
+  # Reddish rock formation
+  boulder-red:
+    row: 5
+    col: 4
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
   # Large brown boulder
-  boulder-large:
+  boulder:
     row: 5
-    col: 1
-    nearby: [boulder, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    col: 5
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder-wide, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
-  # Rough brown boulder
-  boulder-rough:
-    row: 5
-    col: 2
-    nearby: [boulder, boulder-large, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
-
-  # Small brown boulder
-  boulder-small:
-    row: 5
-    col: 3
-    nearby: [boulder, boulder-large, boulder-rough, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
-
-  # Flat brown boulder
-  boulder-flat:
-    row: 5
-    col: 4
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
-
-  # Wide brown boulder
+  # Wide rock formation
   boulder-wide:
     row: 5
-    col: 5
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, stone-slab, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
-
-  # Grey stone slab
-  stone-slab:
-    row: 5
     col: 6
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-block, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-gray, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
-  # Grey stone block
-  stone-block:
+  # Gray boulder
+  boulder-gray:
     row: 5
     col: 7
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-paver, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-wide, ice-block, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
-  # Grey paving stone
-  stone-paver:
+  # Block of ice
+  ice-block:
     row: 5
     col: 8
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-rough, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, rock-volcanic, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
-  # Rough grey stone
-  stone-rough:
+  # Dark volcanic rock
+  rock-volcanic:
     row: 5
     col: 9
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-cut, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-lava, flowers, flowers-green, flowers-yellow, log]
 
-  # Cut grey stone
-  stone-cut:
+  # Volcanic rock with lava
+  rock-lava:
     row: 5
     col: 10
-    nearby: [boulder, boulder-large, boulder-rough, boulder-small, boulder-flat, boulder-wide, stone-slab, stone-block, stone-paver, stone-rough, flowers-purple, flowers-green, flowers-yellow, log]
+    nearby: [stump, stump-mossy, stump-carved, stump-small, boulder-red, boulder, boulder-wide, boulder-gray, ice-block, rock-volcanic, flowers, flowers-green, flowers-yellow, log]
 
-  # Flat grey stone
-  stone-flat:
+  # Ice cave arch
+  ice-cave:
     row: 6
     col: 0
-    nearby: [stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Smooth grey stone
-  stone-smooth:
+  # Jagged ice arch
+  ice-arch:
     row: 6
     col: 1
-    nearby: [stone-flat, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Jagged grey rock
-  stone-jagged:
+  # Ice shard formation
+  ice-shard:
     row: 6
     col: 2
-    nearby: [stone-flat, stone-smooth, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Peaked grey rock
-  stone-peak:
+  # Ice crystal cluster
+  ice-crystal:
     row: 6
     col: 3
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Wet grey rock
-  stone-wet:
+  # Ice spire
+  ice-spire:
     row: 6
     col: 4
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Shoreline rock
-  stone-shore:
+  # Icy ridge
+  ice-ridge:
     row: 6
     col: 5
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, rock-water, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Rock with water at base
-  rock-water:
+  # Desert canyon mesa
+  canyon:
     row: 6
     col: 6
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-ripple, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Rock with water ripples
-  rock-ripple:
+  # Sandstone mesa
+  canyon-mesa:
     row: 6
     col: 7
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-tide, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-ridge, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Tide-washed rock
-  rock-tide:
+  # Canyon ridge
+  canyon-ridge:
     row: 6
     col: 8
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-pool, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, meteorite, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Rock beside dark pool
-  rock-pool:
+  # Dark meteorite
+  meteorite:
     row: 6
     col: 9
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-deep, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite-cracked, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Rock over deep water
-  rock-deep:
+  # Cracked meteorite
+  meteorite-cracked:
     row: 6
     col: 10
-    nearby: [stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, stone-shore, rock-water, rock-ripple, rock-tide, rock-pool, boulder, boulder-large, boulder-rough, boulder-small]
+    nearby: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, canyon, canyon-mesa, canyon-ridge, meteorite, sand, sand-dune, sand-ripple, sand-flat]
 
-  # Cliff rock in water
-  cliff-water:
+  # Large iceberg
+  iceberg:
     row: 7
     col: 0
-    nearby: [cliff-wave, cliff-jagged, cliff-spray, cliff-dark, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark]
+    nearby: [iceberg-tall, glacier, glacier-wall, iceberg-wide, sparkle, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
 
-  # Wave-washed cliff rock
-  cliff-wave:
+  # Tall iceberg
+  iceberg-tall:
     row: 7
     col: 1
-    nearby: [cliff-water, cliff-jagged, cliff-spray, cliff-dark, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark]
+    nearby: [iceberg, glacier, glacier-wall, iceberg-wide, sparkle, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
 
-  # Jagged rock in water
-  cliff-jagged:
+  # Glacier formation
+  glacier:
     row: 7
     col: 2
-    nearby: [cliff-water, cliff-wave, cliff-spray, cliff-dark, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark]
+    nearby: [iceberg, iceberg-tall, glacier-wall, iceberg-wide, sparkle, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
 
-  # Rocky spray edge
-  cliff-spray:
+  # Glacier wall
+  glacier-wall:
     row: 7
     col: 3
-    nearby: [cliff-water, cliff-wave, cliff-jagged, cliff-dark, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark]
+    nearby: [iceberg, iceberg-tall, glacier, iceberg-wide, sparkle, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
 
-  # Dark rock in water
-  cliff-dark:
+  # Wide iceberg
+  iceberg-wide:
     row: 7
     col: 4
-    nearby: [cliff-water, cliff-wave, cliff-jagged, cliff-spray, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark]
+    nearby: [iceberg, iceberg-tall, glacier, glacier-wall, sparkle, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
 
-  # Deep blue water
-  water-deep:
+  # Sparkle particle
+  sparkle:
+    row: 7
+    col: 5
+    nearby: [iceberg, iceberg-tall, glacier, glacier-wall, iceberg-wide, sparkle-soft, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
+
+  # Soft sparkle particle
+  sparkle-soft:
+    row: 7
+    col: 6
+    nearby: [iceberg, iceberg-tall, glacier, glacier-wall, iceberg-wide, sparkle, ember-spark, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
+
+  # Ember spark particle
+  ember-spark:
+    row: 7
+    col: 7
+    nearby: [iceberg, iceberg-tall, glacier, glacier-wall, iceberg-wide, sparkle, sparkle-soft, whirlpool, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
+
+  # Blue whirlpool
+  whirlpool:
+    row: 7
+    col: 8
+    nearby: [iceberg, iceberg-tall, glacier, glacier-wall, iceberg-wide, sparkle, sparkle-soft, ember-spark, stump, stump-mossy, stump-carved, stump-small, boulder-red, ice-cave]
+
+  # Murky swamp water
+  swamp:
     row: 8
     col: 0
-    nearby: [water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp-roots, swamp-dark, swamp-murky, swamp-deep, swamp-reed, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Calm deep water
-  water-deep-calm:
+  # Swamp with mangrove roots
+  swamp-roots:
     row: 8
     col: 1
-    nearby: [water-deep, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-dark, swamp-murky, swamp-deep, swamp-reed, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Deep water with ripple
-  water-deep-wave:
+  # Dark swamp water
+  swamp-dark:
     row: 8
     col: 2
-    nearby: [water-deep, water-deep-calm, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-murky, swamp-deep, swamp-reed, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Deep water ring ripple
-  water-deep-ring:
+  # Murky bog water
+  swamp-murky:
     row: 8
     col: 3
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-deep, swamp-reed, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Darker deep water
-  water-deep-dark:
+  # Deep swamp water
+  swamp-deep:
     row: 8
     col: 4
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-shade, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-murky, swamp-reed, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Shaded deep water
-  water-deep-shade:
+  # Swamp with reeds
+  swamp-reed:
     row: 8
     col: 5
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-dim, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, metal-floor, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Dim deep water
-  water-deep-dim:
+  # Dark metal floor
+  metal-floor:
     row: 8
     col: 6
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-still, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, swamp-reed, metal-worn, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Still deep water
-  water-deep-still:
+  # Worn metal floor
+  metal-worn:
     row: 8
     col: 7
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-night, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, swamp-reed, metal-floor, metal-panel, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Night-dark deep water
-  water-deep-night:
+  # Weathered metal panel
+  metal-panel:
     row: 8
     col: 8
-    nearby: [water-deep, water-deep-calm, water-deep-wave, water-deep-ring, water-deep-dark, water-deep-shade, water-deep-dim, water-deep-still, stone-flat, stone-smooth, stone-jagged, stone-peak, stone-wet, cliff-water]
+    nearby: [swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, swamp-reed, metal-floor, metal-worn, swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, water-green]
 
-  # Blue water with ripple
+  # Swamp pool
+  swamp-pool:
+    row: 9
+    col: 0
+    nearby: [swamp-still, swamp-algae, swamp-green, swamp-shade, swamp-glow, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Still swamp water
+  swamp-still:
+    row: 9
+    col: 1
+    nearby: [swamp-pool, swamp-algae, swamp-green, swamp-shade, swamp-glow, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Algae swamp water
+  swamp-algae:
+    row: 9
+    col: 2
+    nearby: [swamp-pool, swamp-still, swamp-green, swamp-shade, swamp-glow, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Green swamp water
+  swamp-green:
+    row: 9
+    col: 3
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-shade, swamp-glow, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Shaded swamp water
+  swamp-shade:
+    row: 9
+    col: 4
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-glow, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Glowing swamp water
+  swamp-glow:
+    row: 9
+    col: 5
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, pit, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Dark recessed pit
+  pit:
+    row: 9
+    col: 6
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, swamp-glow, pit-blue, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Blue glowing pit
+  pit-blue:
+    row: 9
+    col: 7
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, swamp-glow, pit, pit-deep, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Deep glowing pit
+  pit-deep:
+    row: 9
+    col: 8
+    nearby: [swamp-pool, swamp-still, swamp-algae, swamp-green, swamp-shade, swamp-glow, pit, pit-blue, swamp, swamp-roots, swamp-dark, swamp-murky, swamp-deep, water-green]
+
+  # Green water tile
+  water-green:
+    row: 10
+    col: 0
+    nearby: [water, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
+
+  # Blue water
   water:
-    row: 9
-    col: 0
-    nearby: [water-calm, water-ripple, water-wave, water-shade, water-dim, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
-
-  # Calm blue water
-  water-calm:
-    row: 9
+    row: 10
     col: 1
-    nearby: [water, water-ripple, water-wave, water-shade, water-dim, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
+    nearby: [water-green, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Rippled blue water
-  water-ripple:
-    row: 9
+  # Clear blue water
+  water-clear:
+    row: 10
     col: 2
-    nearby: [water, water-calm, water-wave, water-shade, water-dim, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
+    nearby: [water-green, water, water-bright, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Wavy blue water
-  water-wave:
-    row: 9
+  # Bright blue water
+  water-bright:
+    row: 10
     col: 3
-    nearby: [water, water-calm, water-ripple, water-shade, water-dim, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
+    nearby: [water-green, water, water-clear, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Shaded blue water
-  water-shade:
-    row: 9
+  # Water with ice
+  water-ice:
+    row: 10
     col: 4
-    nearby: [water, water-calm, water-ripple, water-wave, water-dim, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
+    nearby: [water-green, water, water-clear, water-bright, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Dim blue water
-  water-dim:
-    row: 9
-    col: 5
-    nearby: [water, water-calm, water-ripple, water-wave, water-shade, water-dark, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
-
-  # Dark blue water
-  water-dark:
-    row: 9
-    col: 6
-    nearby: [water, water-calm, water-ripple, water-wave, water-shade, water-dim, water-murky, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
-
-  # Murky blue water
-  water-murky:
-    row: 9
-    col: 7
-    nearby: [water, water-calm, water-ripple, water-wave, water-shade, water-dim, water-dark, water-still, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
-
-  # Still blue water
-  water-still:
-    row: 9
-    col: 8
-    nearby: [water, water-calm, water-ripple, water-wave, water-shade, water-dim, water-dark, water-murky, cliff-water, cliff-wave, cliff-jagged, cliff-spray, cliff-dark, water-deep]
-
-  # Light shallow water
+  # Shallow blue water
   water-shallow:
     row: 10
-    col: 0
-    nearby: [water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
-
-  # Calm shallow water
-  water-shallow-calm:
-    row: 10
-    col: 1
-    nearby: [water-shallow, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
-
-  # Clear shallow water
-  water-shallow-clear:
-    row: 10
-    col: 2
-    nearby: [water-shallow, water-shallow-calm, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
-
-  # Bright shallow water
-  water-shallow-bright:
-    row: 10
-    col: 3
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
-
-  # Glowing shallow water
-  water-shallow-glow:
-    row: 10
-    col: 4
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
-
-  # Soft shallow water
-  water-shallow-soft:
-    row: 10
     col: 5
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, reflect, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Pale shallow water
-  water-shallow-pale:
+  # Reflective metal tile
+  reflect:
     row: 10
     col: 6
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, water-shallow, reflect-cool, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Sunlit shallow water
-  water-shallow-lit:
+  # Cool reflective tile
+  reflect-cool:
     row: 10
     col: 7
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-cool, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-panel, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Cool shallow water
-  water-shallow-cool:
+  # Reflective panel
+  reflect-panel:
     row: 10
     col: 8
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-ice, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-cool, water-glass, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Icy-light shallow water
-  water-shallow-ice:
+  # Glass-like water
+  water-glass:
     row: 10
     col: 9
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-deep, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-mirror, swamp, swamp-roots, swamp-dark, swamp-murky]
 
-  # Deeper shallow water
-  water-shallow-deep:
+  # Mirror-like water
+  water-mirror:
     row: 10
     col: 10
-    nearby: [water-shallow, water-shallow-calm, water-shallow-clear, water-shallow-bright, water-shallow-glow, water-shallow-soft, water-shallow-pale, water-shallow-lit, water-shallow-cool, water-shallow-ice, water-deep, water-deep-calm, water-deep-wave, water-deep-ring]
+    nearby: [water-green, water, water-clear, water-bright, water-ice, water-shallow, reflect, reflect-cool, reflect-panel, water-glass, swamp, swamp-roots, swamp-dark, swamp-murky]
 

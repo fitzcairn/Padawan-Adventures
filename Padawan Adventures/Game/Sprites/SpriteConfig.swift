@@ -6,6 +6,12 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     var root: String
     /// Hex RGB color removed from sheets when slicing frames (e.g. `#000000`).
     var chromaKey: String?
+    /// Per-channel chroma tolerance (0 = exact). Near-white sheets often need a small fuzz.
+    var chromaKeyTolerance: UInt8
+    /// Extra soft band beyond tolerance where alpha fades (kills key-color edge halos).
+    var chromaKeyFeather: UInt8
+    /// Box-blur radius (pixels) applied to the alpha matte after feathering.
+    var chromaKeySmooth: Int
     /// Display height as a fraction of wall height (`wall_height` × `scale`); width follows texture aspect.
     var scale: Double
     /// Percent of scaled sprite height; shifts the sprite toward the bottom of the screen.
@@ -16,6 +22,9 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case root
         case chromaKey = "chroma_key"
+        case chromaKeyTolerance = "chroma_key_tolerance"
+        case chromaKeyFeather = "chroma_key_feather"
+        case chromaKeySmooth = "chroma_key_smooth"
         case scale
         case anchorCorrection = "anchor_correction"
         case animations
@@ -24,12 +33,18 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     init(
         root: String,
         chromaKey: String? = nil,
+        chromaKeyTolerance: UInt8 = 0,
+        chromaKeyFeather: UInt8 = 0,
+        chromaKeySmooth: Int = 0,
         scale: Double = 1,
         anchorCorrection: Double = 0,
         animations: [String: SpriteAnimationSource] = [:]
     ) {
         self.root = root
         self.chromaKey = chromaKey
+        self.chromaKeyTolerance = chromaKeyTolerance
+        self.chromaKeyFeather = chromaKeyFeather
+        self.chromaKeySmooth = chromaKeySmooth
         self.scale = scale
         self.anchorCorrection = anchorCorrection
         self.animations = animations
@@ -39,6 +54,11 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         root = try container.decode(String.self, forKey: .root)
         chromaKey = try container.decodeIfPresent(String.self, forKey: .chromaKey)
+        let decodedTolerance = try container.decodeIfPresent(Int.self, forKey: .chromaKeyTolerance) ?? 0
+        chromaKeyTolerance = UInt8(clamping: max(0, decodedTolerance))
+        let decodedFeather = try container.decodeIfPresent(Int.self, forKey: .chromaKeyFeather) ?? 0
+        chromaKeyFeather = UInt8(clamping: max(0, decodedFeather))
+        chromaKeySmooth = max(0, try container.decodeIfPresent(Int.self, forKey: .chromaKeySmooth) ?? 0)
         scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1
         anchorCorrection = try container.decodeIfPresent(Double.self, forKey: .anchorCorrection) ?? 0
         animations = try container.decodeIfPresent([String: SpriteAnimationSource].self, forKey: .animations) ?? [:]

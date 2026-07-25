@@ -38,21 +38,25 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .floor(let isPit):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            if let terrainID = tile.terrainID,
-               let library = floorSpriteLibrary,
-               let animation = library.animation(id: terrainID) {
-                container.addChild(
-                    floorSpriteNode(
+            // Geometric diamond under sprites so missing/transparent art is still visible.
+            let underlay = horizontalFloorNode(
+                config: config,
+                fillColor: isPit ? pitColor : floorColor
+            )
+            underlay.strokeColor = .clear
+            container.addChild(underlay)
+            if let library = floorSpriteLibrary, library.animationCount > 0 {
+                let terrainID = resolvedTerrainID(for: tile, library: library, at: coord)
+                if let animation = library.animation(id: terrainID) {
+                    let sprite = floorSpriteNode(
                         animation: animation,
                         terrainID: terrainID,
                         isPit: isPit,
                         config: config
                     )
-                )
-            } else {
-                container.addChild(
-                    horizontalFloorNode(config: config, fillColor: isPit ? pitColor : floorColor)
-                )
+                    sprite.zPosition = 0.02
+                    container.addChild(sprite)
+                }
             }
 
         case .wall(let destructible):
@@ -127,12 +131,12 @@ enum PlaceholderFactory {
         let sprite = AnimatedSpriteNode(
             size: CGSize(width: config.tileWidth, height: config.tileHeight)
         )
-        // Floor art is pre-flipped in the loader; keep positive yScale so the sprite
-        // grows upward from the floor plane instead of flipping above the origin.
+        // Floor art is pre-flipped in the loader; keep positive yScale so content
+        // hangs down from the diamond's north tip (not flipped above the origin).
         sprite.correctsUIImageVInversion = false
-        // Bottom-center anchor → bottom pixel aligns with floor level (south tip).
-        sprite.anchorPoint = CGPoint(x: 0.5, y: 0)
-        sprite.position = CGPoint(x: 0, y: -config.tileHeight)
+        // Top-center near the diamond north tip, nudged 30% of tile height screen-up.
+        sprite.anchorPoint = CGPoint(x: 0.5, y: 1)
+        sprite.position = CGPoint(x: 0, y: config.tileHeight * 0.30)
         sprite.zPosition = 0
         sprite.fitWidth(config.tileWidth)
         sprite.play(animation: animation, name: terrainID)
@@ -140,13 +144,31 @@ enum PlaceholderFactory {
         container.addChild(sprite)
 
         if isPit {
-            let overlay = horizontalFloorNode(config: config, fillColor: pitColor.withAlphaComponent(0.45))
+            let overlay = horizontalFloorNode(
+                config: config,
+                fillColor: pitColor.withAlphaComponent(0.45)
+            )
             overlay.zPosition = 0.01
             overlay.strokeColor = UIColor(white: 0.05, alpha: 0.8)
             container.addChild(overlay)
         }
 
         return container
+    }
+
+    /// Prefers the tile's terrain id; falls back to a stable random pick from the library.
+    static func resolvedTerrainID(
+        for tile: Tile,
+        library: FloorSpriteLibrary,
+        at coord: GridCoord
+    ) -> String {
+        if let id = tile.terrainID, library.animation(id: id) != nil {
+            return id
+        }
+        let ids = library.terrainIDs
+        guard !ids.isEmpty else { return tile.terrainID ?? "" }
+        let index = abs(coord.x * 738_560_93 ^ coord.y * 193_496_63 ^ coord.story * 83_492_791) % ids.count
+        return ids[index]
     }
 
     /// Identity key for reusing floor nodes across renderer rebuilds.

@@ -87,8 +87,10 @@ final class AppSession {
                 sheet: "floor-spritesheet",
                 atlasRoot: "Sprites/Floor",
                 atlas: "atlas",
-                chromaKey: "#000000",
-                chromaKeyTolerance: 0
+                chromaKey: "#FFFFFF",
+                chromaKeyTolerance: 18,
+                chromaKeyFeather: 48,
+                chromaKeySmooth: 2
             ),
             terrains: [:]
         )
@@ -228,8 +230,10 @@ final class AppSession {
                     sheet: "floor-spritesheet",
                     atlasRoot: "Sprites/Floor",
                     atlas: "atlas",
-                    chromaKey: "#000000",
-                    chromaKeyTolerance: 0
+                    chromaKey: "#FFFFFF",
+                    chromaKeyTolerance: 18,
+                    chromaKeyFeather: 48,
+                    chromaKeySmooth: 2
                 ),
                 terrains: [:]
             )

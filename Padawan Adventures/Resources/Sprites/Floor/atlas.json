@@ -1,8 +1,8 @@
 {
   "meta": {
-    "size": { "w": 352, "h": 352 },
+    "size": { "w": 2048, "h": 2048 },
     "duration_s": 1.0,
-    "blocks": { "cols": 1, "rows": 1, "width": 352, "height": 352 },
+    "blocks": { "cols": 1, "rows": 1, "width": 2048, "height": 2048 },
     "grid": { "cols": 11, "rows": 11 }
   }
 }

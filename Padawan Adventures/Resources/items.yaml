@@ -19,3 +19,17 @@ health:
       idle:
         sheet: health-spritesheet
         atlas: health-atlas
+
+treasure:
+  sprite:
+    root: Sprites/Effects/Explosion
+    # Near-white sheet background (often #FBFBFB–#FEFEFE), not pure #FFFFFF.
+    chroma_key: "#FFFFFF"
+    chroma_key_tolerance: 12
+    chroma_key_feather: 20
+    chroma_key_smooth: 2
+    scale: 0.4
+    animations:
+      idle:
+        sheet: explosion-spritesheet
+        atlas: explosion-atlas

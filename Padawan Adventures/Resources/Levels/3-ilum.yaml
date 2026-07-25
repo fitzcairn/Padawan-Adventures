@@ -7,15 +7,15 @@ order: 3
 color: "#81D4FA"
 artifact: snowflake
 floor_sprites:
-  - water-shallow
-  - water-shallow-ice
-  - water-shallow-bright
-  - water-shallow-pale
-  - stone-paver
-  - stone-flat
-  - stone-smooth
+  - ice-block
+  - ice-cave
+  - ice-shard
+  - iceberg
+  - glacier
+  - water-ice
   - water
-  - water-calm
+  - water-bright
+  - reflect
 enemies:
   types: [ice_spider]
   spawn_chance_per_room: 0.8

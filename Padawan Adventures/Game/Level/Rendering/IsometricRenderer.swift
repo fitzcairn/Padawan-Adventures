@@ -8,9 +8,11 @@ final class IsometricRenderer {
     private let itemsConfig: ItemsConfig?
     private let floorSpriteLibrary: FloorSpriteLibrary?
     private let worldRoot = SKNode()
-    /// Floor tiles — always beneath sprites.
+    /// Floor terrain — always beneath the occlusion band.
     private let floorLayer = SKNode()
-    /// Walls and entities share this layer so walls can occlude sprites by depth.
+    /// Walls / ceilings — share the occlusion band with entities (Y-sorted).
+    private let wallLayer = SKNode()
+    /// Players, enemies, pickups, effects — above floors; occluded by front walls.
     private let occlusionLayer = SKNode()
     private var entityNodes: [UUID: SKNode] = [:]
     /// Stable floor nodes keyed by grid coord so animations are not restarted each render.
@@ -44,6 +46,7 @@ final class IsometricRenderer {
         worldRoot.removeFromParent()
         worldRoot.removeAllChildren()
         floorLayer.removeAllChildren()
+        wallLayer.removeAllChildren()
         occlusionLayer.removeAllChildren()
         entityNodes.removeAll()
         floorNodes.removeAll()
@@ -57,12 +60,13 @@ final class IsometricRenderer {
             y: scene.size.height * (0.5 - scene.anchorPoint.y)
         )
 
-        // SpriteKit adds parent+child zPositions: keep floors in a band that can never
-        // overtake sprites even when a front floor has a large local sort value.
+        // Floors beneath; walls + entities share a higher band and Y-sort for occlusion.
         floorLayer.zPosition = IsometricMath.floorBandBase
+        wallLayer.zPosition = IsometricMath.occlusionBandBase
         occlusionLayer.zPosition = IsometricMath.occlusionBandBase
 
         worldRoot.addChild(floorLayer)
+        worldRoot.addChild(wallLayer)
         worldRoot.addChild(occlusionLayer)
         scene.addChild(worldRoot)
     }
@@ -76,7 +80,7 @@ final class IsometricRenderer {
             node.removeFromParent()
         }
 
-        occlusionLayer.removeAllChildren()
+        wallLayer.removeAllChildren()
         entityNodes = preservedEntities
 
         let story = visibleStory
@@ -102,7 +106,7 @@ final class IsometricRenderer {
                         config: config
                     )
                     node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                    occlusionLayer.addChild(node)
+                    wallLayer.addChild(node)
                 case .floor:
                     break
                 }
@@ -117,7 +121,7 @@ final class IsometricRenderer {
                 let ceiling = PlaceholderFactory.ceilingNode(config: config)
                 ceiling.position = IsometricMath.gridToScreen(coord, config: config)
                 ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                occlusionLayer.addChild(ceiling)
+                wallLayer.addChild(ceiling)
             }
         }
 

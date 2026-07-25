@@ -8,16 +8,16 @@ order: 4
 color: "#1B5E20"
 artifact: tree.fill
 floor_sprites:
-  - dirt
   - grass
   - grass-lush
-  - hedge-dense
-  - bush
   - foliage
   - foliage-lush
-  - tall-grass
-  - undergrowth
-  - earth-sprout
+  - foliage-dark
+  - stump
+  - stump-mossy
+  - log-mossy
+  - dirt-sprout
+  - flowers-green
 enemies:
   types: [katarn, kinrath]
   spawn_chance_per_room: 0.8

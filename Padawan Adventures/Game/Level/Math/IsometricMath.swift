@@ -88,30 +88,33 @@ enum IsometricMath {
         return entityScreenPosition(x: focusX, y: focusY, story: story, config: config)
     }
 
-    /// Parent `zPosition` for the floor layer. Floors never share a band with sprites.
+    /// Floor terrain only — always beneath walls and entity sprites.
     static let floorBandBase: CGFloat = 0
-    /// Parent `zPosition` for walls + entities. Must exceed any floor depth sort value.
+    /// Walls + entities. Must exceed any floor depth so sprites never sink under floors,
+    /// while still Y-sorting against walls for occlusion.
     static let occlusionBandBase: CGFloat = 1_000_000
 
-    /// Base isometric depth (far → near as `x + y` increases).
-    /// Story is a minor key so the same cell's upper story draws above the lower,
-    /// but an upper-story wall in the back does not bury a lower-story sprite in front.
+    /// Painter order: increasing grid **Y** draws on top (X, then story, break ties).
+    /// Used for floors among themselves, and for walls/entities in the occlusion band.
     static func depthSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
-        CGFloat(coord.x + coord.y) * CGFloat(config.maxStories) + CGFloat(coord.story)
+        let stories = max(config.maxStories, 1)
+        // Stride large enough that any x/story at y+1 beats every tile at y.
+        let xStride = CGFloat(stories)
+        let yStride = CGFloat(10_000 * stories)
+        return CGFloat(coord.y) * yStride
+            + CGFloat(coord.x) * xStride
+            + CGFloat(coord.story)
     }
 
-    /// Floors sort among themselves only inside the floor band.
     static func floorSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config)
     }
 
-    /// Walls in the occlusion band — in front of a sprite when depth is greater.
     static func wallSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config)
     }
 
-    /// Sprites sit slightly above walls at the same cell (e.g. doorways),
-    /// but behind walls with greater isometric depth.
+    /// Sprites sit slightly above walls at the same cell (e.g. doorways).
     static func entitySortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config) + 0.5
     }

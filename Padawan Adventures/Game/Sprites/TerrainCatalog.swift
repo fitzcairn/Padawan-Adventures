@@ -10,8 +10,12 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
     var atlasRoot: String
     var atlas: String
     var chromaKey: String?
-    /// Per-channel chroma tolerance (0 = exact). Floor sheets use near-black, not pure `#000000`.
+    /// Per-channel chroma tolerance (0 = exact). Floor sheets use near-white, not pure `#FFFFFF`.
     var chromaKeyTolerance: UInt8
+    /// Extra soft band beyond tolerance where alpha fades (kills white/black edge halos).
+    var chromaKeyFeather: UInt8
+    /// Box-blur radius (pixels) applied to the alpha matte after feathering.
+    var chromaKeySmooth: Int
 
     enum CodingKeys: String, CodingKey {
         case root
@@ -20,6 +24,8 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
         case atlas
         case chromaKey = "chroma_key"
         case chromaKeyTolerance = "chroma_key_tolerance"
+        case chromaKeyFeather = "chroma_key_feather"
+        case chromaKeySmooth = "chroma_key_smooth"
     }
 
     init(
@@ -28,7 +34,9 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
         atlasRoot: String,
         atlas: String,
         chromaKey: String? = nil,
-        chromaKeyTolerance: UInt8 = 0
+        chromaKeyTolerance: UInt8 = 0,
+        chromaKeyFeather: UInt8 = 0,
+        chromaKeySmooth: Int = 0
     ) {
         self.root = root
         self.sheet = sheet
@@ -36,6 +44,8 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
         self.atlas = atlas
         self.chromaKey = chromaKey
         self.chromaKeyTolerance = chromaKeyTolerance
+        self.chromaKeyFeather = chromaKeyFeather
+        self.chromaKeySmooth = chromaKeySmooth
     }
 
     init(from decoder: Decoder) throws {
@@ -47,6 +57,9 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
         chromaKey = try container.decodeIfPresent(String.self, forKey: .chromaKey)
         let decodedTolerance = try container.decodeIfPresent(Int.self, forKey: .chromaKeyTolerance) ?? 0
         chromaKeyTolerance = UInt8(clamping: max(0, decodedTolerance))
+        let decodedFeather = try container.decodeIfPresent(Int.self, forKey: .chromaKeyFeather) ?? 0
+        chromaKeyFeather = UInt8(clamping: max(0, decodedFeather))
+        chromaKeySmooth = max(0, try container.decodeIfPresent(Int.self, forKey: .chromaKeySmooth) ?? 0)
     }
 }
 

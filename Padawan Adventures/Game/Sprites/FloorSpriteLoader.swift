@@ -35,7 +35,9 @@ enum FloorSpriteLoader {
             keyedImage = SpriteSheetLoader.applyChromaKey(
                 to: cgImage,
                 key: rgb,
-                tolerance: sprite.chromaKeyTolerance
+                tolerance: sprite.chromaKeyTolerance,
+                feather: sprite.chromaKeyFeather,
+                smoothRadius: sprite.chromaKeySmooth
             )
         } else {
             keyedImage = cgImage
@@ -82,10 +84,12 @@ enum FloorSpriteLoader {
             }
 
             let trimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(cropped)
-            // Flip for SpriteKit display. Floor nodes skip AnimatedSpriteNode's yScale=-1
-            // correction so the diamond stays below the tile origin.
+            // Floor nodes skip AnimatedSpriteNode's yScale=-1 correction (so the
+            // diamond stays below the tile origin), so do NOT flipAroundXAxis here —
+            // that pair is only for player/item sprites. Mirror horizontally so
+            // isometric faces match the sheet.
             let frames: [SpriteFrame] = trimmed.map { image in
-                let displayImage = SpriteSheetLoader.flipAroundXAxis(image)
+                let displayImage = SpriteSheetLoader.flipAroundYAxis(image)
                 return SpriteFrame(
                     texture: SpriteSheetLoader.makeFrameTexture(from: displayImage),
                     duration: max(duration, 0.000_001)

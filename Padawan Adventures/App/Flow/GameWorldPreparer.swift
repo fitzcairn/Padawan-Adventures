@@ -18,7 +18,10 @@ enum GameWorldPreparer {
         session.ensurePlayerSpritesLoaded()
         session.ensureItemSpritesLoaded()
 
-        return await loadWorld(session: session, mode: mode)
+        var world = await loadWorld(session: session, mode: mode)
+        // TEST: stamp sand onto every floor tile.
+        paintUniformFloorSprites(on: &world, terrainID: "sand", library: session.floorSpriteLibrary)
+        return world
     }
 
     @MainActor
@@ -38,13 +41,38 @@ enum GameWorldPreparer {
         }
     }
 
+    /// Assigns a single terrain id to every floor cell (visibility / layout testing).
+    @MainActor
+    static func paintUniformFloorSprites(
+        on world: inout GameWorld,
+        terrainID: String,
+        library: FloorSpriteLibrary
+    ) {
+        guard library.animation(id: terrainID) != nil else {
+            print("FloorSpriteLibrary missing \"\(terrainID)\" — cannot paint uniform floor sprites")
+            return
+        }
+        for story in 0..<world.storyCount {
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    let coord = GridCoord(x: x, y: y, story: story)
+                    guard case .floor(let isPit) = world.tile(at: coord)?.kind else { continue }
+                    world.setTile(Tile(kind: .floor(isPit: isPit), terrainID: terrainID), at: coord)
+                }
+            }
+        }
+    }
+
     @MainActor
     private static func generateWorld(session: AppSession) async -> GameWorld {
-        let config = session.seedConfig
+        var config = session.seedConfig
         let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
         let health = session.playerState?.health ?? playerConfig.startingHealth
         let energy = session.playerState?.energy ?? playerConfig.startingEnergy
+
+        // TEST: every floor uses sand.
+        config.floorSprites = ["sand"]
 
         let terrainNearby = session.terrainCatalog.nearbyByID
         do {
