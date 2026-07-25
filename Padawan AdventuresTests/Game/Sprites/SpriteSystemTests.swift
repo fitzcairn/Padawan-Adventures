@@ -274,8 +274,8 @@ struct SpriteSystemTests {
         #expect(loaded["idle_northeast"]?.flipsHorizontally == false)
     }
 
-    @Test func spriteDisplayHeightMatchesWallHeightTimesMultiplier() {
-        let sprite = SpriteConfig(root: "Sprites/Player", sizeMultiplier: 1.2)
+    @Test func spriteDisplayHeightMatchesWallHeightTimesScale() {
+        let sprite = SpriteConfig(root: "Sprites/Player", scale: 1.2)
         let iso = IsometricConfig(tileWidth: 80, tileHeight: 40, wallHeight: 80)
         let height = PlaceholderFactory.spriteDisplayHeight(isoConfig: iso, spriteConfig: sprite)
         #expect(abs(height - 96) < 0.001) // 80 * 1.2
@@ -459,7 +459,7 @@ struct SpriteSystemTests {
         sprite:
           root: Sprites/Player
           chroma_key: "#000000"
-          size_multiplier: 1.2
+          scale: 1.2
           anchor_correction: 2
           animations:
             idle_down:
@@ -473,7 +473,7 @@ struct SpriteSystemTests {
         let sprite = try #require(config.sprite)
         #expect(sprite.root == "Sprites/Player")
         #expect(sprite.chromaKey == "#000000")
-        #expect(sprite.sizeMultiplier == 1.2)
+        #expect(sprite.scale == 1.2)
         #expect(sprite.anchorCorrection == 2)
         #expect(sprite.animations["idle_down"] == .sheet(sheet: "idle_down", atlas: "idle_down"))
         #expect(sprite.animations["idle_northwest"] == .flipOf("idle_northeast"))

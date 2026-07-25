@@ -62,6 +62,7 @@ final class GameScene: SKScene {
         worldFx: SoundEffectTable = .empty,
         spriteLibrary: SpriteLibrary? = nil,
         playerSpriteConfig: SpriteConfig? = nil,
+        itemsConfig: ItemsConfig? = nil,
         saveService: GameSaveService?
     ) {
         self.world = world
@@ -77,7 +78,8 @@ final class GameScene: SKScene {
             config: isoConfig,
             enemyConfig: enemyConfig,
             spriteLibrary: spriteLibrary,
-            playerSpriteConfig: playerSpriteConfig
+            playerSpriteConfig: playerSpriteConfig,
+            itemsConfig: itemsConfig
         )
         super.init(size: size)
     }

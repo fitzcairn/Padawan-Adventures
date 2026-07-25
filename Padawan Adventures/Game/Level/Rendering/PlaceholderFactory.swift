@@ -168,10 +168,17 @@ enum PlaceholderFactory {
         config: IsometricConfig,
         fillColor: UIColor? = nil,
         spriteLibrary: SpriteLibrary? = nil,
-        spriteConfig: SpriteConfig? = nil
+        spriteConfig: SpriteConfig? = nil,
+        itemsConfig: ItemsConfig? = nil
     ) -> SKNode {
         if let kind = entity.pickupKind {
-            return pickupNode(kind: kind, entityID: entity.id, config: config)
+            return pickupNode(
+                kind: kind,
+                entityID: entity.id,
+                config: config,
+                spriteLibrary: spriteLibrary,
+                itemsConfig: itemsConfig
+            )
         }
 
         if entity.isPlayer,
@@ -238,12 +245,12 @@ enum PlaceholderFactory {
         (node.userData?["usesSpriteAnimation"] as? Bool) == true
     }
 
-    /// Display height = `wall_height` × `size_multiplier`. Width follows texture aspect at play time.
+    /// Display height = `wall_height` × `scale`. Width follows texture aspect at play time.
     static func spriteDisplayHeight(
         isoConfig: IsometricConfig,
         spriteConfig: SpriteConfig
     ) -> CGFloat {
-        isoConfig.wallHeight * CGFloat(spriteConfig.sizeMultiplier)
+        isoConfig.wallHeight * CGFloat(spriteConfig.scale)
     }
 
     /// Provisional square size from wall height (width refined when the texture is known).
@@ -261,13 +268,31 @@ enum PlaceholderFactory {
     static let energyPickupColor = UIColor.systemYellow
     static let treasurePickupColor = UIColor(red: 0.2, green: 0.75, blue: 0.35, alpha: 1)
 
+    @MainActor
     static func pickupNode(
         kind: PickupKind,
         entityID: UUID,
-        config: IsometricConfig
+        config: IsometricConfig,
+        spriteLibrary: SpriteLibrary? = nil,
+        itemsConfig: ItemsConfig? = nil
     ) -> SKNode {
         let container = SKNode()
         container.name = "pickup-\(entityID.uuidString)"
+
+        if let library = spriteLibrary,
+           let spriteConfig = itemsConfig?.spriteConfig(for: kind),
+           library.animation(id: kind.rawValue, named: "idle") != nil {
+            let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
+            let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
+            sprite.targetHeight = height
+            sprite.zPosition = entityBodyZ
+            let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
+            // Feet (bottom-middle) on the tile center; optional anchor_correction nudge.
+            sprite.position = CGPoint(x: 0, y: -correction)
+            container.addChild(sprite)
+            sprite.play(name: "idle", library: library, libraryID: kind.rawValue)
+            return container
+        }
 
         let sprite = SKSpriteNode(texture: pickupTexture(kind: kind))
         sprite.size = CGSize(width: pickupIconSize, height: pickupIconSize)

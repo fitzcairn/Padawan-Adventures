@@ -1,0 +1,11 @@
+# Item sprite definitions. Top-level keys match pickup ids in level YAML (`pickups:`).
+
+energy:
+  sprite:
+    root: Sprites/Items/Energy
+    chroma_key: "#000000"
+    scale: 0.6
+    animations:
+      idle:
+        sheet: energy-spritesheet
+        atlas: energy-atlas

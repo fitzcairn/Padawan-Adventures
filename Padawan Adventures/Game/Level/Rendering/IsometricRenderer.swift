@@ -5,6 +5,7 @@ final class IsometricRenderer {
     private let enemyConfig: EnemyConfig
     private let spriteLibrary: SpriteLibrary?
     private let playerSpriteConfig: SpriteConfig?
+    private let itemsConfig: ItemsConfig?
     private let worldRoot = SKNode()
     /// Floor tiles — always beneath sprites.
     private let floorLayer = SKNode()
@@ -23,12 +24,14 @@ final class IsometricRenderer {
         config: IsometricConfig = IsometricConfig(),
         enemyConfig: EnemyConfig = .fallback,
         spriteLibrary: SpriteLibrary? = nil,
-        playerSpriteConfig: SpriteConfig? = nil
+        playerSpriteConfig: SpriteConfig? = nil,
+        itemsConfig: ItemsConfig? = nil
     ) {
         self.config = config
         self.enemyConfig = enemyConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
+        self.itemsConfig = itemsConfig
     }
 
     func attach(to scene: SKScene) {
@@ -164,7 +167,8 @@ final class IsometricRenderer {
                     config: config,
                     fillColor: fillColor(for: entity),
                     spriteLibrary: spriteLibrary,
-                    spriteConfig: entity.isPlayer ? playerSpriteConfig : nil
+                    spriteConfig: entity.isPlayer ? playerSpriteConfig : nil,
+                    itemsConfig: itemsConfig
                 )
                 entityNodes[entity.id] = node
                 occlusionLayer.addChild(node)

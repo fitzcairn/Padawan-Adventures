@@ -22,6 +22,7 @@ final class AppSession {
     private(set) var selectedLetterSoundRepeatSeconds: Double
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
+    let itemsConfig: ItemsConfig
     let playerStore: PlayerStateStore
     private(set) var saveService: GameSaveService
     private(set) var hasCompatibleSave: Bool
@@ -44,6 +45,7 @@ final class AppSession {
         selectedLetterSoundRepeatSeconds: Double = LevelConfig.fallback.letterSoundRepeatSeconds,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
+        itemsConfig: ItemsConfig? = nil,
         playerStore: PlayerStateStore,
         saveService: GameSaveService,
         hasCompatibleSave: Bool = false,
@@ -65,6 +67,7 @@ final class AppSession {
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
+        self.itemsConfig = itemsConfig ?? .fallback
         self.playerStore = playerStore
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
@@ -78,6 +81,14 @@ final class AppSession {
     func ensurePlayerSpritesLoaded() {
         guard let sprite = playerConfig.sprite else { return }
         spriteLibrary.ensureLoaded(sprite, id: "player")
+    }
+
+    /// Ensures item pickup sprite animations are loaded for this session.
+    func ensureItemSpritesLoaded() {
+        for (id, item) in itemsConfig.items {
+            guard let sprite = item.sprite else { continue }
+            spriteLibrary.ensureLoaded(sprite, id: id)
+        }
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
@@ -163,6 +174,15 @@ final class AppSession {
             enemyConfig = .fallback
         }
 
+        let itemsConfig: ItemsConfig
+        do {
+            let loaded = try ItemsConfig.loadFromBundle()
+            try loaded.validate()
+            itemsConfig = loaded
+        } catch {
+            itemsConfig = .fallback
+        }
+
         let playerStore: PlayerStateStore
         let saveService: GameSaveService
         if let store = try? PlayerStateStore() {
@@ -192,6 +212,7 @@ final class AppSession {
             selectedLetterSoundRepeatSeconds: selectedLetterSoundRepeatSeconds,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
+            itemsConfig: itemsConfig,
             playerStore: playerStore,
             saveService: saveService,
             hasCompatibleSave: false
