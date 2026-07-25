@@ -226,13 +226,18 @@ enum SpriteSheetLoader {
         return texture
     }
 
-    /// Makes pixels whose RGB exactly matches `key` transparent (no tolerance).
+    /// Makes pixels whose RGB matches `key` transparent.
+    ///
+    /// When `tolerance` is 0, channels must match exactly. Otherwise each channel
+    /// may differ by up to `tolerance` (needed for near-black sheet backgrounds
+    /// that are not pure `#000000`).
     ///
     /// Preserves the source image's top-left origin so atlas frame rects
     /// (`y: 0` = top row of the spritesheet) stay correct after keying.
     static func applyChromaKey(
         to image: CGImage,
-        key: (r: UInt8, g: UInt8, b: UInt8)
+        key: (r: UInt8, g: UInt8, b: UInt8),
+        tolerance: UInt8 = 0
     ) -> CGImage {
         let width = image.width
         let height = image.height
@@ -257,12 +262,21 @@ enum SpriteSheetLoader {
         context.interpolationQuality = .none
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 
-        let kr = key.r
-        let kg = key.g
-        let kb = key.b
+        let kr = Int(key.r)
+        let kg = Int(key.g)
+        let kb = Int(key.b)
+        let tol = Int(tolerance)
 
         for i in stride(from: 0, to: data.count, by: bytesPerPixel) {
-            if data[i] == kr, data[i + 1] == kg, data[i + 2] == kb {
+            let match: Bool
+            if tol == 0 {
+                match = data[i] == key.r && data[i + 1] == key.g && data[i + 2] == key.b
+            } else {
+                match = abs(Int(data[i]) - kr) <= tol
+                    && abs(Int(data[i + 1]) - kg) <= tol
+                    && abs(Int(data[i + 2]) - kb) <= tol
+            }
+            if match {
                 data[i] = 0
                 data[i + 1] = 0
                 data[i + 2] = 0

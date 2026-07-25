@@ -508,6 +508,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var pit: PitPuzzleConfig
     var gate: GatePuzzleConfig
     var destructibleWall: DestructibleWallPuzzleConfig
+    /// Terrain ids from `terrain.yaml` used when painting floor tiles for this level.
+    var floorSprites: [String]
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -528,7 +530,20 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case pit
         case gate
         case destructibleWall = "destructible_wall"
+        case floorSprites = "floor_sprites"
     }
+
+    /// Default forest-leaning palette when a level omits `floor_sprites:`.
+    static let fallbackFloorSprites = [
+        "dirt",
+        "grass",
+        "grass-lush",
+        "hedge",
+        "bush",
+        "foliage",
+        "earth-sprout",
+        "undergrowth",
+    ]
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
@@ -559,7 +574,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         ),
         pit: .fallback,
         gate: .fallback,
-        destructibleWall: .fallback
+        destructibleWall: .fallback,
+        floorSprites: fallbackFloorSprites
     )
 
     /// World interaction FX synthesized from puzzle configs (`wall_destroyed`, `gate_opened`).
@@ -588,7 +604,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pickups: WorldSeedConfig.PickupsSpawnConfig? = nil,
         pit: PitPuzzleConfig = .fallback,
         gate: GatePuzzleConfig = .fallback,
-        destructibleWall: DestructibleWallPuzzleConfig = .fallback
+        destructibleWall: DestructibleWallPuzzleConfig = .fallback,
+        floorSprites: [String] = LevelConfig.fallbackFloorSprites
     ) {
         self.name = name
         self.order = order
@@ -608,6 +625,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.pit = pit
         self.gate = gate
         self.destructibleWall = destructibleWall
+        self.floorSprites = floorSprites
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -655,11 +673,16 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         } else {
             destructibleWall = decodedWall
         }
+        floorSprites = try container.decodeIfPresent([String].self, forKey: .floorSprites)
+            ?? Self.fallbackFloorSprites
     }
 
     func validate() throws {
         guard letterSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidDestructibleWallLetterSoundRepeat(letterSoundRepeatSeconds)
+        }
+        guard !floorSprites.isEmpty else {
+            throw WorldSeedError.emptyFloorSprites
         }
         try pit.validate()
         try gate.validate()

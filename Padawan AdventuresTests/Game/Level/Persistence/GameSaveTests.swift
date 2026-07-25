@@ -83,6 +83,11 @@ struct GameSaveTests {
             let decoded = try decoder.decode(Tile.self, from: data)
             #expect(decoded == tile)
         }
+
+        let withTerrain = Tile(kind: .floor(isPit: false), terrainID: "water")
+        let terrainData = try encoder.encode(withTerrain)
+        let decodedTerrain = try decoder.decode(Tile.self, from: terrainData)
+        #expect(decodedTerrain == withTerrain)
     }
 
     @Test func legacyDoorWallDecodesAsFloor() throws {

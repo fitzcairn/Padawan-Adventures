@@ -7,6 +7,15 @@ name: Coruscant
 order: 6
 color: "#607D8B"
 artifact: building.2.fill
+floor_sprites:
+  - stone-paver
+  - stone-cut
+  - stone-slab
+  - stone-block
+  - stone-flat
+  - stone-smooth
+  - dirt-hard
+  - stone-rough
 enemies:
   types: [security_droid, armored_rat]
   spawn_chance_per_room: 0.8

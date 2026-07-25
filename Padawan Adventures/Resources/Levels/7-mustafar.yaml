@@ -6,6 +6,16 @@ name: Mustafar
 order: 7
 color: "#E65100"
 artifact: flame.fill
+floor_sprites:
+  - earth-barren
+  - earth-dark
+  - dirt-hard
+  - boulder-rough
+  - rocks-dark
+  - stone-jagged
+  - earth-cracked
+  - boulder
+  - stone-peak
 enemies:
   types: [lava_flea]
   spawn_chance_per_room: 0.8

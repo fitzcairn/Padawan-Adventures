@@ -31,6 +31,10 @@ final class AppSession {
     let audioPreferences: AudioPreferences
     /// Session-scoped sprite animation cache (sheets sliced once per process).
     let spriteLibrary: SpriteLibrary
+    /// Floor terrain definitions from `terrain.yaml`.
+    let terrainCatalog: TerrainCatalog
+    /// Session-scoped floor tile animation cache (all terrains sliced at game open).
+    let floorSpriteLibrary: FloorSpriteLibrary
 
     init(
         seedConfig: WorldSeedConfig,
@@ -52,7 +56,9 @@ final class AppSession {
         currentPlayerName: String? = nil,
         playerState: PlayerGameState? = nil,
         audioPreferences: AudioPreferences? = nil,
-        spriteLibrary: SpriteLibrary? = nil
+        spriteLibrary: SpriteLibrary? = nil,
+        terrainCatalog: TerrainCatalog? = nil,
+        floorSpriteLibrary: FloorSpriteLibrary? = nil
     ) {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
@@ -75,6 +81,18 @@ final class AppSession {
         self.playerState = playerState
         self.audioPreferences = audioPreferences ?? .shared
         self.spriteLibrary = spriteLibrary ?? SpriteLibrary()
+        self.terrainCatalog = terrainCatalog ?? TerrainCatalog(
+            sprite: FloorSpriteConfig(
+                root: "Sprites/Floor",
+                sheet: "floor-spritesheet",
+                atlasRoot: "Sprites/Floor",
+                atlas: "atlas",
+                chromaKey: "#000000",
+                chromaKeyTolerance: 0
+            ),
+            terrains: [:]
+        )
+        self.floorSpriteLibrary = floorSpriteLibrary ?? FloorSpriteLibrary()
     }
 
     /// Ensures player sprite animations are loaded for this session.
@@ -200,6 +218,26 @@ final class AppSession {
 
         try? await playerStore.purgeOrphans()
 
+        let terrainCatalog: TerrainCatalog
+        if let loaded = try? TerrainCatalog.loadFromBundle() {
+            terrainCatalog = loaded
+        } else {
+            terrainCatalog = TerrainCatalog(
+                sprite: FloorSpriteConfig(
+                    root: "Sprites/Floor",
+                    sheet: "floor-spritesheet",
+                    atlasRoot: "Sprites/Floor",
+                    atlas: "atlas",
+                    chromaKey: "#000000",
+                    chromaKeyTolerance: 0
+                ),
+                terrains: [:]
+            )
+        }
+        let floorSpriteLibrary = FloorSpriteLibrary()
+        // Slice all floor terrains once at game open so every level can reuse them.
+        floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog)
+
         return AppSession(
             seedConfig: seedConfig,
             selectedLevelName: selectedLevelName,
@@ -215,7 +253,9 @@ final class AppSession {
             itemsConfig: itemsConfig,
             playerStore: playerStore,
             saveService: saveService,
-            hasCompatibleSave: false
+            hasCompatibleSave: false,
+            terrainCatalog: terrainCatalog,
+            floorSpriteLibrary: floorSpriteLibrary
         )
     }
 

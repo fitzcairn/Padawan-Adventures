@@ -6,6 +6,17 @@ name: Dagobah
 order: 5
 color: "#556B2F"
 artifact: drop.fill
+floor_sprites:
+  - dirt-rich
+  - earth-dark
+  - bush-dark
+  - undergrowth
+  - reed-clump
+  - water-murky
+  - water-dark
+  - water-deep
+  - water-deep-shade
+  - stump
 enemies:
   types: [dragonsnake]
   spawn_chance_per_room: 0.8

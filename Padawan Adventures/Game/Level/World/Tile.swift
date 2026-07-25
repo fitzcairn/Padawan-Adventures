@@ -66,9 +66,12 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
 
 nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     var kind: TileKind
+    /// Terrain sprite id from `terrain.yaml` (floors only; nil for walls/gates or legacy saves).
+    var terrainID: String?
 
-    init(kind: TileKind) {
+    init(kind: TileKind, terrainID: String? = nil) {
         self.kind = kind
+        self.terrainID = terrainID
     }
 
     var isPit: Bool {
@@ -93,15 +96,18 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
 
     private enum CodingKeys: String, CodingKey {
         case kind
+        case terrainID
     }
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         kind = try container.decode(TileKind.self, forKey: .kind)
+        terrainID = try container.decodeIfPresent(String.self, forKey: .terrainID)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kind, forKey: .kind)
+        try container.encodeIfPresent(terrainID, forKey: .terrainID)
     }
 }

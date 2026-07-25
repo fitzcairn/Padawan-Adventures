@@ -29,7 +29,8 @@ enum PlaceholderFactory {
         for tile: Tile,
         at coord: GridCoord,
         in world: GameWorld? = nil,
-        config: IsometricConfig
+        config: IsometricConfig,
+        floorSpriteLibrary: FloorSpriteLibrary? = nil
     ) -> SKNode {
         let container = SKNode()
         container.position = IsometricMath.gridToScreen(coord, config: config)
@@ -37,9 +38,22 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .floor(let isPit):
             container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-            container.addChild(
-                horizontalFloorNode(config: config, fillColor: isPit ? pitColor : floorColor)
-            )
+            if let terrainID = tile.terrainID,
+               let library = floorSpriteLibrary,
+               let animation = library.animation(id: terrainID) {
+                container.addChild(
+                    floorSpriteNode(
+                        animation: animation,
+                        terrainID: terrainID,
+                        isPit: isPit,
+                        config: config
+                    )
+                )
+            } else {
+                container.addChild(
+                    horizontalFloorNode(config: config, fillColor: isPit ? pitColor : floorColor)
+                )
+            }
 
         case .wall(let destructible):
             container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
@@ -94,6 +108,52 @@ enum PlaceholderFactory {
             node.strokeColor = UIColor(white: 0.2, alpha: 1)
         }
         return node
+    }
+
+    /// Animated floor terrain sprite. Bottom pixel sits on the floor diamond's south tip.
+    static func floorSpriteNode(
+        animation: SpriteAnimation,
+        terrainID: String,
+        isPit: Bool,
+        config: IsometricConfig
+    ) -> SKNode {
+        let container = SKNode()
+        container.name = "floor-sprite"
+        container.userData = NSMutableDictionary(dictionary: [
+            "terrainID": terrainID,
+            "isPit": isPit,
+        ])
+
+        let sprite = AnimatedSpriteNode(
+            size: CGSize(width: config.tileWidth, height: config.tileHeight)
+        )
+        // Floor art is pre-flipped in the loader; keep positive yScale so the sprite
+        // grows upward from the floor plane instead of flipping above the origin.
+        sprite.correctsUIImageVInversion = false
+        // Bottom-center anchor → bottom pixel aligns with floor level (south tip).
+        sprite.anchorPoint = CGPoint(x: 0.5, y: 0)
+        sprite.position = CGPoint(x: 0, y: -config.tileHeight)
+        sprite.zPosition = 0
+        sprite.fitWidth(config.tileWidth)
+        sprite.play(animation: animation, name: terrainID)
+        sprite.fitWidth(config.tileWidth)
+        container.addChild(sprite)
+
+        if isPit {
+            let overlay = horizontalFloorNode(config: config, fillColor: pitColor.withAlphaComponent(0.45))
+            overlay.zPosition = 0.01
+            overlay.strokeColor = UIColor(white: 0.05, alpha: 0.8)
+            container.addChild(overlay)
+        }
+
+        return container
+    }
+
+    /// Identity key for reusing floor nodes across renderer rebuilds.
+    static func floorIdentity(for tile: Tile) -> String? {
+        guard case .floor(let isPit) = tile.kind else { return nil }
+        let terrain = tile.terrainID ?? ""
+        return "\(terrain)|\(isPit ? 1 : 0)"
     }
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.

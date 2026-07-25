@@ -7,6 +7,16 @@ name: Geonosis
 order: 8
 color: "#A1887F"
 artifact: circle.hexagongrid.fill
+floor_sprites:
+  - dirt-dry
+  - earth-cracked
+  - dirt-light
+  - boulder
+  - stone-jagged
+  - rocks-pile
+  - stone-rough
+  - boulder-large
+  - earth-barren
 enemies:
   types: [geonosian, battle_droid]
   spawn_chance_per_room: 0.8

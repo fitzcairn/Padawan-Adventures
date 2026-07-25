@@ -23,15 +23,22 @@ nonisolated struct ProceduralGenerator: Sendable {
     func generate(
         from config: WorldSeedConfig,
         playerConfig: PlayerConfig = .fallback,
-        enemyConfig: EnemyConfig = .fallback
+        enemyConfig: EnemyConfig = .fallback,
+        terrainNearby: [String: [String]] = [:]
     ) throws -> GameWorld {
-        try generateDetailed(from: config, playerConfig: playerConfig, enemyConfig: enemyConfig).world
+        try generateDetailed(
+            from: config,
+            playerConfig: playerConfig,
+            enemyConfig: enemyConfig,
+            terrainNearby: terrainNearby
+        ).world
     }
 
     func generateDetailed(
         from config: WorldSeedConfig,
         playerConfig: PlayerConfig = .fallback,
-        enemyConfig: EnemyConfig = .fallback
+        enemyConfig: EnemyConfig = .fallback,
+        terrainNearby: [String: [String]] = [:]
     ) throws -> GenerationResult {
         try config.validate()
         try playerConfig.validate()
@@ -45,7 +52,8 @@ nonisolated struct ProceduralGenerator: Sendable {
                 seed: seed,
                 config: config,
                 playerConfig: playerConfig,
-                enemyConfig: enemyConfig
+                enemyConfig: enemyConfig,
+                terrainNearby: terrainNearby
             )
             let missing = Self.missingRequiredInteractables(in: result.world)
             if missing.isEmpty {
@@ -92,7 +100,8 @@ nonisolated struct ProceduralGenerator: Sendable {
         seed: UInt64,
         config: WorldSeedConfig,
         playerConfig: PlayerConfig,
-        enemyConfig: EnemyConfig
+        enemyConfig: EnemyConfig,
+        terrainNearby: [String: [String]]
     ) throws -> GenerationResult {
         var rng = SeededGenerator(seed: seed)
         let width = config.world.width
@@ -225,6 +234,13 @@ nonisolated struct ProceduralGenerator: Sendable {
             rng: &rng
         )
 
+        assignFloorTerrains(
+            tiles: &tiles,
+            palette: config.floorSprites,
+            nearbyByID: terrainNearby,
+            rng: &rng
+        )
+
         let world = GameWorld(
             width: width,
             height: height,
@@ -242,6 +258,39 @@ nonisolated struct ProceduralGenerator: Sendable {
             topRightRoomID: topRight.id,
             joinPairs: mstEdges
         )
+    }
+
+    /// Paints floor cells with terrain ids using scan-order nearby affinity.
+    private func assignFloorTerrains(
+        tiles: inout [[[Tile]]],
+        palette: [String],
+        nearbyByID: [String: [String]],
+        rng: inout SeededGenerator
+    ) {
+        guard !palette.isEmpty else { return }
+        let paletteSet = Set(palette)
+
+        for storyIndex in tiles.indices {
+            var previousID: String?
+            for y in tiles[storyIndex].indices {
+                for x in tiles[storyIndex][y].indices {
+                    guard case .floor = tiles[storyIndex][y][x].kind else { continue }
+
+                    let candidates: [String]
+                    if let previousID,
+                       let nearby = nearbyByID[previousID] {
+                        let intersection = nearby.filter { paletteSet.contains($0) }
+                        candidates = intersection.isEmpty ? palette : intersection
+                    } else {
+                        candidates = palette
+                    }
+
+                    let pick = candidates[Int.random(in: 0..<candidates.count, using: &rng)]
+                    tiles[storyIndex][y][x].terrainID = pick
+                    previousID = pick
+                }
+            }
+        }
     }
 
     /// Force-places any missing required interactables (chance rolls already applied).

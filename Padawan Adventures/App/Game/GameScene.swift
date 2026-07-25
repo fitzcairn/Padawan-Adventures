@@ -63,6 +63,7 @@ final class GameScene: SKScene {
         spriteLibrary: SpriteLibrary? = nil,
         playerSpriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
+        floorSpriteLibrary: FloorSpriteLibrary? = nil,
         saveService: GameSaveService?
     ) {
         self.world = world
@@ -79,7 +80,8 @@ final class GameScene: SKScene {
             enemyConfig: enemyConfig,
             spriteLibrary: spriteLibrary,
             playerSpriteConfig: playerSpriteConfig,
-            itemsConfig: itemsConfig
+            itemsConfig: itemsConfig,
+            floorSpriteLibrary: floorSpriteLibrary
         )
         super.init(size: size)
     }

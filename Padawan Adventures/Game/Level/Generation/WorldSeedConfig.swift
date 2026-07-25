@@ -14,6 +14,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     var fx: SoundEffectTable
     /// 4-digit password that unlocks Dad mode on the level select screen.
     var dadModePassword: String
+    /// Terrain ids from `terrain.yaml` used to paint floors for this level.
+    var floorSprites: [String]
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -26,6 +28,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         case extensions
         case fx
         case dadModePassword = "dad_mode_password"
+        case floorSprites = "floor_sprites"
     }
 
     /// Default Dad mode password when omitted from YAML.
@@ -41,7 +44,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         pickups: PickupsSpawnConfig? = nil,
         extensions: [String: String]?,
         fx: SoundEffectTable = .empty,
-        dadModePassword: String = WorldSeedConfig.defaultDadModePassword
+        dadModePassword: String = WorldSeedConfig.defaultDadModePassword,
+        floorSprites: [String] = LevelConfig.fallback.floorSprites
     ) {
         self.version = version
         self.seed = seed
@@ -53,6 +57,7 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.extensions = extensions
         self.fx = fx
         self.dadModePassword = dadModePassword
+        self.floorSprites = floorSprites
     }
 
     init(from decoder: Decoder) throws {
@@ -70,6 +75,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         extensions = try container.decodeIfPresent([String: String].self, forKey: .extensions)
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
         dadModePassword = try Self.decodeDadModePassword(from: container)
+        floorSprites = try container.decodeIfPresent([String].self, forKey: .floorSprites)
+            ?? LevelConfig.fallback.floorSprites
     }
 
     private static func decodeDadModePassword(
@@ -387,6 +394,9 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard version == 1 else {
             throw WorldSeedError.unsupportedVersion(version)
         }
+        guard !floorSprites.isEmpty else {
+            throw WorldSeedError.emptyFloorSprites
+        }
         guard world.stories == 1 else {
             throw WorldSeedError.invalidStoryCount(world.stories)
         }
@@ -480,6 +490,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case missingResource
     /// YAML/config decode failed; associated value carries the underlying reason.
     case decodeFailed(String)
+    case emptyFloorSprites
 }
 
 /// Interactable kinds every valid map must include at least once.

@@ -6,12 +6,16 @@ final class IsometricRenderer {
     private let spriteLibrary: SpriteLibrary?
     private let playerSpriteConfig: SpriteConfig?
     private let itemsConfig: ItemsConfig?
+    private let floorSpriteLibrary: FloorSpriteLibrary?
     private let worldRoot = SKNode()
     /// Floor tiles — always beneath sprites.
     private let floorLayer = SKNode()
     /// Walls and entities share this layer so walls can occlude sprites by depth.
     private let occlusionLayer = SKNode()
     private var entityNodes: [UUID: SKNode] = [:]
+    /// Stable floor nodes keyed by grid coord so animations are not restarted each render.
+    private var floorNodes: [GridCoord: SKNode] = [:]
+    private var floorIdentities: [GridCoord: String] = [:]
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
     private var viewSize: CGSize = .zero
@@ -25,13 +29,15 @@ final class IsometricRenderer {
         enemyConfig: EnemyConfig = .fallback,
         spriteLibrary: SpriteLibrary? = nil,
         playerSpriteConfig: SpriteConfig? = nil,
-        itemsConfig: ItemsConfig? = nil
+        itemsConfig: ItemsConfig? = nil,
+        floorSpriteLibrary: FloorSpriteLibrary? = nil
     ) {
         self.config = config
         self.enemyConfig = enemyConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
         self.itemsConfig = itemsConfig
+        self.floorSpriteLibrary = floorSpriteLibrary
     }
 
     func attach(to scene: SKScene) {
@@ -40,6 +46,8 @@ final class IsometricRenderer {
         floorLayer.removeAllChildren()
         occlusionLayer.removeAllChildren()
         entityNodes.removeAll()
+        floorNodes.removeAll()
+        floorIdentities.removeAll()
         visibleStory = 0
         worldScale = 1
 
@@ -62,36 +70,41 @@ final class IsometricRenderer {
     func render(world: GameWorld, focus: CGPoint) {
         visibleStory = world.playerPosition?.story ?? world.spawn.story
 
-        // Keep entity nodes; only rebuild tiles.
+        // Keep entity nodes; only rebuild non-floor tiles. Floors reuse cached nodes.
         let preservedEntities = Dictionary(uniqueKeysWithValues: entityNodes.map { ($0.key, $0.value) })
         for node in preservedEntities.values {
             node.removeFromParent()
         }
 
-        floorLayer.removeAllChildren()
         occlusionLayer.removeAllChildren()
         entityNodes = preservedEntities
 
         let story = visibleStory
         guard story >= 0, story < world.storyCount else {
+            clearFloorNodes()
             syncEntities(world.entities)
             updateViewportFocus(focus)
             return
         }
 
+        syncFloorNodes(world: world, story: story)
+
         for y in 0..<world.height {
             for x in 0..<world.width {
                 let coord = GridCoord(x: x, y: y, story: story)
                 let tile = world.tiles[story][y][x]
-                let node = PlaceholderFactory.tileNode(for: tile, at: coord, in: world, config: config)
-
                 switch tile.kind {
                 case .wall, .gate:
+                    let node = PlaceholderFactory.tileNode(
+                        for: tile,
+                        at: coord,
+                        in: world,
+                        config: config
+                    )
                     node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
                     occlusionLayer.addChild(node)
                 case .floor:
-                    node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-                    floorLayer.addChild(node)
+                    break
                 }
             }
         }
@@ -110,6 +123,60 @@ final class IsometricRenderer {
 
         syncEntities(world.entities)
         updateViewportFocus(focus)
+    }
+
+    /// Reuses floor sprite nodes when terrain identity is unchanged.
+    private func syncFloorNodes(world: GameWorld, story: Int) {
+        var liveCoords = Set<GridCoord>()
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                let tile = world.tiles[story][y][x]
+                guard case .floor = tile.kind,
+                      let identity = PlaceholderFactory.floorIdentity(for: tile) else {
+                    continue
+                }
+                liveCoords.insert(coord)
+
+                if let existing = floorNodes[coord], floorIdentities[coord] == identity {
+                    if existing.parent !== floorLayer {
+                        existing.removeFromParent()
+                        floorLayer.addChild(existing)
+                    }
+                    existing.position = IsometricMath.gridToScreen(coord, config: config)
+                    existing.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+                    continue
+                }
+
+                floorNodes[coord]?.removeFromParent()
+                let node = PlaceholderFactory.tileNode(
+                    for: tile,
+                    at: coord,
+                    in: world,
+                    config: config,
+                    floorSpriteLibrary: floorSpriteLibrary
+                )
+                node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+                floorLayer.addChild(node)
+                floorNodes[coord] = node
+                floorIdentities[coord] = identity
+            }
+        }
+
+        for coord in floorNodes.keys where !liveCoords.contains(coord) {
+            floorNodes[coord]?.removeFromParent()
+            floorNodes[coord] = nil
+            floorIdentities[coord] = nil
+        }
+    }
+
+    private func clearFloorNodes() {
+        for node in floorNodes.values {
+            node.removeFromParent()
+        }
+        floorNodes.removeAll()
+        floorIdentities.removeAll()
     }
 
     /// Locks uniform world scale (1 = native `IsometricConfig` tile size).

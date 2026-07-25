@@ -65,6 +65,7 @@ nonisolated enum WorldLoader {
         config.enemies = level.enemies
         config.pickups = level.pickups
         config.fx = level.worldFx
+        config.floorSprites = level.floorSprites
     }
 
     static func loadFromBundle(

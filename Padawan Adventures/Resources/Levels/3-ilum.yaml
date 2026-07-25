@@ -6,6 +6,16 @@ name: Ilum
 order: 3
 color: "#81D4FA"
 artifact: snowflake
+floor_sprites:
+  - water-shallow
+  - water-shallow-ice
+  - water-shallow-bright
+  - water-shallow-pale
+  - stone-paver
+  - stone-flat
+  - stone-smooth
+  - water
+  - water-calm
 enemies:
   types: [ice_spider]
   spawn_chance_per_room: 0.8

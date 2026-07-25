@@ -9,3 +9,13 @@ energy:
       idle:
         sheet: energy-spritesheet
         atlas: energy-atlas
+
+health:
+  sprite:
+    root: Sprites/Items/Health
+    chroma_key: "#000000"
+    scale: 0.4
+    animations:
+      idle:
+        sheet: health-spritesheet
+        atlas: health-atlas

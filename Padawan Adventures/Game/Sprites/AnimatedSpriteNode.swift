@@ -9,6 +9,11 @@ final class AnimatedSpriteNode: SKSpriteNode {
     private var baseScale: CGFloat = 1
     /// When set, height is locked and width follows the texture aspect ratio.
     var targetHeight: CGFloat?
+    /// When set, width is locked and height follows the texture aspect ratio.
+    var targetWidth: CGFloat?
+    /// When true (default), applies `yScale = -1` to correct UIImage→SKTexture V-inversion.
+    /// Floor tiles sit under an isometric diamond and need `false` so content stays below the origin.
+    var correctsUIImageVInversion = true
 
     convenience init(size: CGSize) {
         self.init(texture: nil, color: .clear, size: size)
@@ -22,12 +27,25 @@ final class AnimatedSpriteNode: SKSpriteNode {
     /// Locks height and sets width from the current texture's aspect ratio.
     func fitHeight(_ height: CGFloat) {
         targetHeight = height
+        targetWidth = nil
         guard let texture, texture.size().height > 0 else {
             size = CGSize(width: height, height: height)
             return
         }
         let aspect = texture.size().width / texture.size().height
         size = CGSize(width: height * aspect, height: height)
+    }
+
+    /// Locks width and sets height from the current texture's aspect ratio.
+    func fitWidth(_ width: CGFloat) {
+        targetWidth = width
+        targetHeight = nil
+        guard let texture, texture.size().width > 0 else {
+            size = CGSize(width: width, height: width)
+            return
+        }
+        let aspect = texture.size().height / texture.size().width
+        size = CGSize(width: width, height: width * aspect)
     }
 
     /// Plays `name` from `library` if present. No-ops when already playing the same clip.
@@ -38,15 +56,27 @@ final class AnimatedSpriteNode: SKSpriteNode {
               !animation.frames.isEmpty else {
             return
         }
+        play(animation: animation, name: name)
+    }
 
-        currentAnimationName = name
+    /// Plays a concrete animation (e.g. floor terrains from `FloorSpriteLibrary`).
+    func play(animation: SpriteAnimation, name: String? = nil) {
+        let key = name ?? currentAnimationName ?? "animation"
+        if let name, currentAnimationName == name, action(forKey: Self.animationActionKey) != nil {
+            return
+        }
+        guard !animation.frames.isEmpty else { return }
+
+        currentAnimationName = key
         removeAction(forKey: Self.animationActionKey)
 
         let textures = animation.frames.map(\.texture)
         let durations = animation.frames.map(\.duration)
 
         texture = textures[0]
-        if let targetHeight {
+        if let targetWidth {
+            fitWidth(targetWidth)
+        } else if let targetHeight {
             fitHeight(targetHeight)
         } else if size == .zero {
             size = textures[0].size()
@@ -87,8 +117,8 @@ final class AnimatedSpriteNode: SKSpriteNode {
         // Left/right mirror for flip_of animations (NW/SW from NE/SE, etc.).
         let flipX: CGFloat = flipsHorizontally ? -1 : 1
         xScale = baseScale * flipX
-        // Correct UIImage/SKTexture V-inversion; feet stay on tile via anchor y = 1.
-        yScale = -baseScale
+        // Correct UIImage/SKTexture V-inversion when requested; feet stay on tile via anchor y = 1.
+        yScale = correctsUIImageVInversion ? -baseScale : baseScale
     }
 
     private static func uniformFrameDuration(_ durations: [TimeInterval]) -> TimeInterval? {

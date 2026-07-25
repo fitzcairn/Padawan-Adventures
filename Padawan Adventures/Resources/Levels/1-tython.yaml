@@ -6,6 +6,17 @@ name: Tython
 order: 1
 color: "#2E7D32"
 artifact: leaf.fill
+floor_sprites:
+  - dirt
+  - grass
+  - grass-lush
+  - hedge
+  - bush
+  - foliage
+  - tall-grass
+  - undergrowth
+  - earth-sprout
+  - foliage-lush
 enemies:
   types: [horranth]
   spawn_chance_per_room: 0.8

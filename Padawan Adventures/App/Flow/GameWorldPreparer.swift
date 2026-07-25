@@ -46,12 +46,14 @@ enum GameWorldPreparer {
         let health = session.playerState?.health ?? playerConfig.startingHealth
         let energy = session.playerState?.energy ?? playerConfig.startingEnergy
 
+        let terrainNearby = session.terrainCatalog.nearbyByID
         do {
             var world = try await Task.detached(priority: .userInitiated) {
                 try ProceduralGenerator().generate(
                     from: config,
                     playerConfig: playerConfig,
-                    enemyConfig: enemyConfig
+                    enemyConfig: enemyConfig,
+                    terrainNearby: terrainNearby
                 )
             }.value
             world.healthCount = health
@@ -64,7 +66,8 @@ enum GameWorldPreparer {
                     try ProceduralGenerator().generate(
                         from: fallback,
                         playerConfig: .fallback,
-                        enemyConfig: .fallback
+                        enemyConfig: .fallback,
+                        terrainNearby: terrainNearby
                     )
                 }.value
                 world.healthCount = health
