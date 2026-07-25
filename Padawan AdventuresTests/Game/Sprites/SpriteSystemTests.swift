@@ -86,6 +86,127 @@ struct SpriteSystemTests {
         #expect(trimmed[0].height == 1)
     }
 
+    @Test func flipAroundXAxisSwapsTopAndBottom() throws {
+        let width = 1
+        let height = 2
+        var pixels: [UInt8] = [
+            255, 0, 0, 255, // top: red
+            0, 0, 255, 255, // bottom: blue
+        ]
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let image = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: space,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            Issue.record("Failed to build fixture CGImage")
+            return
+        }
+
+        let flipped = SpriteSheetLoader.flipAroundXAxis(image)
+        let top = try #require(rgbaBytes(of: flipped, crop: CGRect(x: 0, y: 0, width: 1, height: 1)))
+        let bottom = try #require(rgbaBytes(of: flipped, crop: CGRect(x: 0, y: 1, width: 1, height: 1)))
+        #expect(top[2] == 255) // blue now on top
+        #expect(bottom[0] == 255) // red now on bottom
+    }
+
+    @Test func opaqueContentBoundsUsesTopLeftOrigin() throws {
+        // 3x2: only the top-right pixel is opaque — catches Y flips in bounds math.
+        let width = 3
+        let height = 2
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let topRight = (0 * width + 2) * 4
+        pixels[topRight] = 0
+        pixels[topRight + 1] = 255
+        pixels[topRight + 2] = 0
+        pixels[topRight + 3] = 255
+
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let image = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: space,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            Issue.record("Failed to build fixture CGImage")
+            return
+        }
+
+        let bounds = try #require(SpriteSheetLoader.opaqueContentBounds(of: image))
+        #expect(bounds == CGRect(x: 2, y: 0, width: 1, height: 1))
+    }
+
+    @Test func chromaKeyPreservesSpritesheetTopLeftOrigin() throws {
+        // Regression: a Y-flip inside chroma-key makes atlas (0,0) read the bottom row.
+        let sheetURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        )
+        let original = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
+        let keyed = SpriteSheetLoader.applyChromaKey(to: original, key: (0, 0, 0))
+
+        #expect(keyed.width == original.width)
+        #expect(keyed.height == original.height)
+
+        // Find a distinctive non-key pixel in the top-left atlas cell and require it
+        // still lives in that cell after chroma (not mirrored to the bottom row).
+        let cell = 256
+        var probe: (x: Int, y: Int, rgba: [UInt8])?
+        outer: for y in 0..<cell {
+            for x in 0..<cell {
+                let rgba = try #require(rgbaBytes(of: original, crop: CGRect(x: x, y: y, width: 1, height: 1)))
+                if rgba[3] > 0, !(rgba[0] == 0 && rgba[1] == 0 && rgba[2] == 0) {
+                    probe = (x, y, rgba)
+                    break outer
+                }
+            }
+        }
+        let found = try #require(probe)
+
+        let after = try #require(
+            rgbaBytes(of: keyed, crop: CGRect(x: found.x, y: found.y, width: 1, height: 1))
+        )
+        #expect(after[0] == found.rgba[0])
+        #expect(after[1] == found.rgba[1])
+        #expect(after[2] == found.rgba[2])
+
+        // If chroma vertically flipped the sheet, the same color would appear at mirrored Y.
+        let mirroredY = original.height - 1 - found.y
+        let mirrored = try #require(
+            rgbaBytes(of: keyed, crop: CGRect(x: found.x, y: mirroredY, width: 1, height: 1))
+        )
+        let mirroredMatches =
+            mirrored[0] == found.rgba[0]
+            && mirrored[1] == found.rgba[1]
+            && mirrored[2] == found.rgba[2]
+            && mirrored[3] > 0
+        let sameAsProbeLocation =
+            after[0] == found.rgba[0]
+            && after[1] == found.rgba[1]
+            && after[2] == found.rgba[2]
+        #expect(sameAsProbeLocation)
+        // Mirrored cell must not be the only place that color landed.
+        if mirroredMatches {
+            #expect(mirroredY == found.y)
+        }
+    }
+
     @Test func chromaKeyClearsExactBackgroundOnly() throws {
         let width = 3
         let height = 1
@@ -302,6 +423,7 @@ struct SpriteSystemTests {
             atlasCrops.append(try #require(keyed.cropping(to: crop)))
         }
         let expectedTrimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(atlasCrops)
+            .map(SpriteSheetLoader.flipAroundXAxis)
 
         // Production load path (same as SpriteLibrary / AnimatedSpriteNode).
         let idle = try SpriteSheetLoader.loadAnimation(
@@ -312,7 +434,7 @@ struct SpriteSystemTests {
         )
         #expect(idle.frames.count == expectedTrimmed.count)
 
-        // Each playable frame must be the trimmed atlas crop at that index (row-major order).
+        // Each playable frame must be the trimmed+X-flipped atlas crop at that index.
         // SKTexture.cgImage() may V-invert relative to the source crop — accept either.
         for (index, expectedCrop) in expectedTrimmed.enumerated() {
             let expected = try #require(rgbaBytes(of: expectedCrop))
@@ -359,9 +481,20 @@ struct SpriteSystemTests {
     }
 
     /// Normalized RGBA8 top-left pixel buffer for exact image comparisons.
-    private func rgbaBytes(of image: CGImage, flipVertically: Bool = false) -> [UInt8]? {
-        let width = image.width
-        let height = image.height
+    private func rgbaBytes(
+        of image: CGImage,
+        flipVertically: Bool = false,
+        crop: CGRect? = nil
+    ) -> [UInt8]? {
+        let source: CGImage
+        if let crop {
+            guard let cropped = image.cropping(to: crop) else { return nil }
+            source = cropped
+        } else {
+            source = image
+        }
+        let width = source.width
+        let height = source.height
         guard width > 0, height > 0 else { return nil }
         let bytesPerPixel = 4
         let bytesPerRow = width * bytesPerPixel
@@ -378,12 +511,12 @@ struct SpriteSystemTests {
             return nil
         }
         if flipVertically {
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
         } else {
             // Match SpriteSheetLoader / CGImage.cropping top-left space.
             context.translateBy(x: 0, y: CGFloat(height))
             context.scaleBy(x: 1, y: -1)
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         return data
     }

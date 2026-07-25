@@ -90,14 +90,43 @@ enum SpriteSheetLoader {
         var frames: [SpriteFrame] = []
         frames.reserveCapacity(trimmedFrames.count)
         for (index, image) in trimmedFrames.enumerated() {
+            // After atlas/chroma/trim are finalized, flip around X for SpriteKit display.
+            let displayImage = flipAroundXAxis(image)
             frames.append(
                 SpriteFrame(
-                    texture: makeFrameTexture(from: image),
+                    texture: makeFrameTexture(from: displayImage),
                     duration: max(durations[index], 0.000_001)
                 )
             )
         }
         return SpriteAnimation(frames: frames)
+    }
+
+    /// Mirrors the image around the X axis (top ↔ bottom). Applied after load/trim only.
+    static func flipAroundXAxis(_ image: CGImage) -> CGImage {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return image }
+
+        let bytesPerRow = width * 4
+        var data = [UInt8](repeating: 0, count: height * bytesPerRow)
+        guard let context = CGContext(
+            data: &data,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return image
+        }
+
+        context.translateBy(x: 0, y: CGFloat(height))
+        context.scaleBy(x: 1, y: -1)
+        context.interpolationQuality = .none
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? image
     }
 
     /// Crops every frame to the union of opaque bounds so feet align across the clip.
@@ -198,6 +227,9 @@ enum SpriteSheetLoader {
     }
 
     /// Makes pixels whose RGB exactly matches `key` transparent (no tolerance).
+    ///
+    /// Preserves the source image's top-left origin so atlas frame rects
+    /// (`y: 0` = top row of the spritesheet) stay correct after keying.
     static func applyChromaKey(
         to image: CGImage,
         key: (r: UInt8, g: UInt8, b: UInt8)
@@ -220,9 +252,9 @@ enum SpriteSheetLoader {
             return image
         }
 
-        // UIKit-style top-left draw into a Quartz bottom-left buffer.
-        context.translateBy(x: 0, y: CGFloat(height))
-        context.scaleBy(x: 1, y: -1)
+        // Identity draw — do not Y-flip. A flip here made atlas (0,0) crop the
+        // bottom row of the sheet while keys still looked "in order".
+        context.interpolationQuality = .none
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let kr = key.r
