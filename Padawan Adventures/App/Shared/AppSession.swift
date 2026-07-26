@@ -12,6 +12,10 @@ final class AppSession {
     private(set) var selectedLevelMusic: String?
     /// Per-minigame music for the selected level.
     private(set) var selectedGameMusic: GameMusicConfig
+    /// Still background basename for the selected level's main game scene.
+    private(set) var selectedLevelBackground: String?
+    /// Per-minigame still backgrounds for the selected level.
+    private(set) var selectedGameBackground: GameBackgroundConfig
     /// Pit puzzle knobs for the selected level.
     private(set) var selectedPitConfig: PitPuzzleConfig
     /// Gate puzzle knobs for the selected level.
@@ -36,6 +40,8 @@ final class AppSession {
     let terrainCatalog: TerrainCatalog
     /// Session-scoped floor tile animation cache (all terrains sliced at game open).
     let floorSpriteLibrary: FloorSpriteLibrary
+    /// Session-scoped still background cache (screen BGs at game open; engine BGs at level start).
+    let backgroundLibrary: BackgroundLibrary
 
     init(
         seedConfig: WorldSeedConfig,
@@ -44,6 +50,8 @@ final class AppSession {
         selectedLevelArtifact: String = LevelConfig.fallbackArtifact,
         selectedLevelMusic: String? = LevelConfig.fallback.music,
         selectedGameMusic: GameMusicConfig = .fallback,
+        selectedLevelBackground: String? = LevelConfig.fallback.background,
+        selectedGameBackground: GameBackgroundConfig = .fallback,
         selectedPitConfig: PitPuzzleConfig = .fallback,
         selectedGateConfig: GatePuzzleConfig = .fallback,
         selectedDestructibleWallConfig: DestructibleWallPuzzleConfig = .fallback,
@@ -60,7 +68,8 @@ final class AppSession {
         audioPreferences: AudioPreferences? = nil,
         spriteLibrary: SpriteLibrary? = nil,
         terrainCatalog: TerrainCatalog? = nil,
-        floorSpriteLibrary: FloorSpriteLibrary? = nil
+        floorSpriteLibrary: FloorSpriteLibrary? = nil,
+        backgroundLibrary: BackgroundLibrary? = nil
     ) {
         self.seedConfig = seedConfig
         self.selectedLevelName = selectedLevelName
@@ -68,6 +77,8 @@ final class AppSession {
         self.selectedLevelArtifact = selectedLevelArtifact
         self.selectedLevelMusic = selectedLevelMusic
         self.selectedGameMusic = selectedGameMusic
+        self.selectedLevelBackground = selectedLevelBackground
+        self.selectedGameBackground = selectedGameBackground
         self.selectedPitConfig = selectedPitConfig
         self.selectedGateConfig = selectedGateConfig
         self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
@@ -98,6 +109,7 @@ final class AppSession {
             terrains: [:]
         )
         self.floorSpriteLibrary = floorSpriteLibrary ?? FloorSpriteLibrary()
+        self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
     }
 
     /// Ensures player sprite animations are loaded for this session.
@@ -153,6 +165,16 @@ final class AppSession {
         onProgress?(1)
     }
 
+    /// Ensures engine backgrounds for the selected level are loaded into the session cache.
+    func ensureEngineBackgroundsLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        var names: [String] = []
+        if let selectedLevelBackground {
+            names.append(selectedLevelBackground)
+        }
+        names.append(contentsOf: selectedGameBackground.backgroundNames)
+        await backgroundLibrary.ensureLoaded(names: names, onProgress: onProgress)
+    }
+
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
         let level = LevelConfig.fallback
         return WorldSeedConfig(
@@ -190,6 +212,8 @@ final class AppSession {
         let selectedLevelArtifact: String
         let selectedLevelMusic: String?
         let selectedGameMusic: GameMusicConfig
+        let selectedLevelBackground: String?
+        let selectedGameBackground: GameBackgroundConfig
         let selectedPitConfig: PitPuzzleConfig
         let selectedGateConfig: GatePuzzleConfig
         let selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
@@ -202,6 +226,8 @@ final class AppSession {
             selectedLevelArtifact = loaded.level.artifact
             selectedLevelMusic = loaded.level.music
             selectedGameMusic = loaded.level.gameMusic
+            selectedLevelBackground = loaded.level.background
+            selectedGameBackground = loaded.level.gameBackground
             selectedPitConfig = loaded.level.pit
             selectedGateConfig = loaded.level.gate
             selectedDestructibleWallConfig = loaded.level.destructibleWall
@@ -212,6 +238,8 @@ final class AppSession {
             selectedLevelArtifact = LevelConfig.fallback.artifact
             selectedLevelMusic = LevelConfig.fallback.music
             selectedGameMusic = LevelConfig.fallback.gameMusic
+            selectedLevelBackground = LevelConfig.fallback.background
+            selectedGameBackground = LevelConfig.fallback.gameBackground
             selectedPitConfig = LevelConfig.fallback.pit
             selectedGateConfig = LevelConfig.fallback.gate
             selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
@@ -308,12 +336,13 @@ final class AppSession {
         await report(configEnd)
 
         let spriteLibrary = SpriteLibrary()
+        let backgroundLibrary = BackgroundLibrary()
         // Level-select planet art: load at game open so the picker has sprites ready.
         let uiEntries = uiSpritesConfig.sprites.compactMap { id, entry -> (String, SpriteConfig)? in
             guard let sprite = entry.sprite else { return nil }
             return (id, sprite)
         }
-        let uiEnd = uiEntries.isEmpty ? configEnd : 0.28
+        let uiEnd = uiEntries.isEmpty ? configEnd : 0.26
         if !uiEntries.isEmpty {
             let total = uiEntries.count
             for (index, entry) in uiEntries.enumerated() {
@@ -326,10 +355,18 @@ final class AppSession {
         }
         await report(uiEnd)
 
+        // All screen backgrounds referenced by Screens/*.yaml.
+        let screenBackgroundNames = BackgroundLibrary.screenBackgroundNames()
+        let backgroundsEnd = screenBackgroundNames.isEmpty ? uiEnd : 0.32
+        await backgroundLibrary.ensureLoaded(names: screenBackgroundNames) { local in
+            onProgress?(LoadProgress.map(local, from: uiEnd, to: backgroundsEnd))
+        }
+        await report(backgroundsEnd)
+
         let floorSpriteLibrary = FloorSpriteLibrary()
         // Slice all floor terrains once at game open so every level can reuse them.
         await floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog) { local in
-            onProgress?(LoadProgress.map(local, from: uiEnd, to: 1))
+            onProgress?(LoadProgress.map(local, from: backgroundsEnd, to: 1))
         }
         await report(1)
 
@@ -339,6 +376,8 @@ final class AppSession {
             selectedLevelArtifact: selectedLevelArtifact,
             selectedLevelMusic: selectedLevelMusic,
             selectedGameMusic: selectedGameMusic,
+            selectedLevelBackground: selectedLevelBackground,
+            selectedGameBackground: selectedGameBackground,
             selectedPitConfig: selectedPitConfig,
             selectedGateConfig: selectedGateConfig,
             selectedDestructibleWallConfig: selectedDestructibleWallConfig,
@@ -352,7 +391,8 @@ final class AppSession {
             hasCompatibleSave: false,
             spriteLibrary: spriteLibrary,
             terrainCatalog: terrainCatalog,
-            floorSpriteLibrary: floorSpriteLibrary
+            floorSpriteLibrary: floorSpriteLibrary,
+            backgroundLibrary: backgroundLibrary
         )
     }
 
@@ -368,6 +408,8 @@ final class AppSession {
         selectedLevelArtifact = loaded.level.artifact
         selectedLevelMusic = loaded.level.music
         selectedGameMusic = loaded.level.gameMusic
+        selectedLevelBackground = loaded.level.background
+        selectedGameBackground = loaded.level.gameBackground
         selectedPitConfig = loaded.level.pit
         selectedGateConfig = loaded.level.gate
         selectedDestructibleWallConfig = loaded.level.destructibleWall

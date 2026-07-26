@@ -477,6 +477,63 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
     var gateCue: MusicCue { MusicCue.parse(gate) }
 }
 
+/// Per-level minigame still backgrounds (`Resources/Backgrounds/<name>.png`).
+nonisolated struct GameBackgroundConfig: Codable, Equatable, Sendable {
+    var combat: String?
+    var pit: String?
+    var destructibleWall: String?
+    var gate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case combat
+        case pit
+        case destructibleWall = "destructible_wall"
+        case gate
+    }
+
+    nonisolated static let fallback = GameBackgroundConfig(
+        combat: nil,
+        pit: nil,
+        destructibleWall: nil,
+        gate: nil
+    )
+
+    nonisolated init(
+        combat: String? = nil,
+        pit: String? = nil,
+        destructibleWall: String? = nil,
+        gate: String? = nil
+    ) {
+        self.combat = Self.normalized(combat)
+        self.pit = Self.normalized(pit)
+        self.destructibleWall = Self.normalized(destructibleWall)
+        self.gate = Self.normalized(gate)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        combat = Self.normalized(try container.decodeIfPresent(String.self, forKey: .combat))
+        pit = Self.normalized(try container.decodeIfPresent(String.self, forKey: .pit))
+        destructibleWall = Self.normalized(
+            try container.decodeIfPresent(String.self, forKey: .destructibleWall)
+        )
+        gate = Self.normalized(try container.decodeIfPresent(String.self, forKey: .gate))
+    }
+
+    /// Unique non-empty background basenames from this minigame block.
+    var backgroundNames: [String] {
+        [combat, pit, destructibleWall, gate].compactMap { $0 }
+    }
+
+    private static func normalized(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+}
+
 /// Per-level map size and generation settings loaded from `base_level.yaml` / `Resources/Config/Levels/*.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
@@ -497,6 +554,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var music: String?
     /// Per-minigame music overrides for this level.
     var gameMusic: GameMusicConfig
+    /// Still image basename under `Resources/Backgrounds/` for the main game scene.
+    var background: String?
+    /// Per-minigame still backgrounds for this level.
+    var gameBackground: GameBackgroundConfig
     /// Shared letter-name prompt replay interval (combat cues, wall puzzle, etc.).
     var letterSoundRepeatSeconds: Double
     var width: Int
@@ -525,6 +586,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case artifact
         case music
         case gameMusic = "game_music"
+        case background
+        case gameBackground = "game_background"
         case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
         case width
         case height
@@ -564,6 +627,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         artifact: fallbackArtifact,
         music: "level_theme",
         gameMusic: .fallback,
+        background: nil,
+        gameBackground: .fallback,
         letterSoundRepeatSeconds: 3,
         width: 100,
         height: 100,
@@ -608,6 +673,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         artifact: String = LevelConfig.fallbackArtifact,
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
+        background: String? = nil,
+        gameBackground: GameBackgroundConfig = .fallback,
         letterSoundRepeatSeconds: Double = 3,
         width: Int,
         height: Int,
@@ -631,6 +698,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.artifact = artifact
         self.music = music
         self.gameMusic = gameMusic
+        self.background = Self.normalizedOptionalID(background)
+        self.gameBackground = gameBackground
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.width = width
         self.height = height
@@ -661,6 +730,13 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         artifact = try container.decodeIfPresent(String.self, forKey: .artifact) ?? Self.fallbackArtifact
         music = try container.decodeIfPresent(String.self, forKey: .music)
         gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
+        background = Self.normalizedOptionalID(
+            try container.decodeIfPresent(String.self, forKey: .background)
+        )
+        gameBackground = try container.decodeIfPresent(
+            GameBackgroundConfig.self,
+            forKey: .gameBackground
+        ) ?? .fallback
         width = try container.decode(Int.self, forKey: .width)
         height = try container.decode(Int.self, forKey: .height)
         algorithm = try container.decode(String.self, forKey: .algorithm)
@@ -724,6 +800,17 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     var musicCue: MusicCue {
         MusicCue.parse(music)
+    }
+
+    /// Unique engine background basenames for this level (main scene + minigames).
+    var engineBackgroundNames: [String] {
+        var names: [String] = []
+        if let background {
+            names.append(background)
+        }
+        names.append(contentsOf: gameBackground.backgroundNames)
+        var seen = Set<String>()
+        return names.filter { seen.insert($0).inserted }
     }
 
     private static func normalizedOptionalID(_ raw: String?) -> String? {

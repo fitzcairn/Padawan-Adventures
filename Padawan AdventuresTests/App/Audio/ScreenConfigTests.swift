@@ -48,5 +48,25 @@ struct ScreenConfigTests {
         #expect(config.musicCue == .track("menu_theme"))
     }
 
+    @Test func decodesBackgroundField() throws {
+        let config = try ScreenConfig.decode(from: """
+            music: menu_theme
+            background: level_screen_bg
+            """)
+        #expect(config.background == "level_screen_bg")
+    }
+
+    @Test func omittedBackgroundIsNil() throws {
+        let config = try ScreenConfig.decode(from: """
+            music: menu_theme
+            """)
+        #expect(config.background == nil)
+    }
+
+    @Test func loadsLevelSelectScreenBackground() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "level_select")
+        #expect(config.background == "level_screen_bg")
+    }
+
 }
 

@@ -15,6 +15,14 @@ game_music:
   destructible_wall: destructible_wall_theme
   gate: gate_theme
 
+# Optional still backgrounds (Resources/Backgrounds/<name>.png), loaded at level start.
+# background: some_level_bg
+# game_background:
+#   combat: some_combat_bg
+#   pit: some_pit_bg
+#   destructible_wall: some_wall_bg
+#   gate: some_gate_bg
+
 # How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
 letter_sound_repeat_seconds: 3
 

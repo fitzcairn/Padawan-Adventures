@@ -33,9 +33,17 @@ enum ScreenLayout {
 
 /// Full-bleed app screen with shared edge padding applied once at the root.
 struct AppScreen<Content: View>: View {
+    private let backgroundNamed: String?
+    private let backgroundLibrary: BackgroundLibrary?
     @ViewBuilder private let content: () -> Content
 
-    init(@ViewBuilder content: @escaping () -> Content) {
+    init(
+        backgroundNamed: String? = nil,
+        backgroundLibrary: BackgroundLibrary? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.backgroundNamed = backgroundNamed
+        self.backgroundLibrary = backgroundLibrary
         self.content = content
     }
 
@@ -47,7 +55,14 @@ struct AppScreen<Content: View>: View {
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
         }
         .ignoresSafeArea()
-        .background(AppChrome.backgroundColor.ignoresSafeArea())
+        .background {
+            if let backgroundNamed,
+               let image = backgroundLibrary?.uiImage(named: backgroundNamed) {
+                ScreenBackgroundView(image: image)
+            } else {
+                AppChrome.backgroundColor.ignoresSafeArea()
+            }
+        }
     }
 }
 

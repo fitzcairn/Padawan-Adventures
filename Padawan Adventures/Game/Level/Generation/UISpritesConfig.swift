@@ -28,7 +28,7 @@ nonisolated struct UISpriteDefinition: Codable, Equatable, Sendable {
 /// Sprite definitions for UI chrome (level-select planets, …).
 ///
 /// Loaded from `Resources/Config/Screens/level_select.yaml`. Top-level keys other
-/// than sprite entries (e.g. `music:`) are ignored.
+/// than sprite entries (e.g. `music:`, `background:`) are ignored.
 nonisolated struct UISpritesConfig: Codable, Equatable, Sendable {
     /// Sprite id → definition (`tython`, `tatooine`, …).
     var sprites: [String: UISpriteDefinition]

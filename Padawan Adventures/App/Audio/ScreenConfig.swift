@@ -5,8 +5,10 @@ import Yams
 nonisolated struct ScreenConfig: Codable, Equatable, Sendable {
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
+    /// Still image basename under `Resources/Backgrounds/` for this screen.
+    var background: String?
 
-    static let fallback = ScreenConfig(music: nil)
+    static let fallback = ScreenConfig(music: nil, background: nil)
 
     static let subdirectory = "Screens"
 

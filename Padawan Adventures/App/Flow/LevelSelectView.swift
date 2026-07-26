@@ -5,6 +5,7 @@ struct LevelSelectView: View {
     let session: AppSession
     let router: FlowRouter
     private let levels: [LevelDescriptor]
+    private let screenBackground: String?
 
     @State private var messageOverlay: MessageKind?
     @State private var selectedLevel: LevelDescriptor?
@@ -15,7 +16,8 @@ struct LevelSelectView: View {
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
 
-    private let planetDiameter: CGFloat = 96
+    /// Previous diameter was 96; +30% → 124.8.
+    private let planetDiameter: CGFloat = 124.8
     /// Previous spacing was 28; +40% → 39.2.
     private let planetSpacing: CGFloat = 39.2
 
@@ -27,6 +29,7 @@ struct LevelSelectView: View {
         self.session = session
         self.router = router
         self.levels = levels ?? LevelCatalog.loadFromBundle()
+        self.screenBackground = (try? ScreenConfig.loadFromBundle(named: "level_select"))?.background
     }
 
     private var inventoryArtifacts: [String] {
@@ -51,7 +54,10 @@ struct LevelSelectView: View {
 
     var body: some View {
         ZStack {
-            AppScreen {
+            AppScreen(
+                backgroundNamed: screenBackground,
+                backgroundLibrary: session.backgroundLibrary
+            ) {
                 VStack(spacing: 0) {
                     starCountHeader
                         .padding(.bottom, 8)

@@ -1,8 +1,8 @@
 import Foundation
 
 enum GameWorldPreparer {
-    /// Sprite warming occupies the first slice; world load/generation fills the rest.
-    private static let spritesEnd = 0.42
+    /// Sprite + engine-background warming occupies the first slice; world gen fills the rest.
+    private static let assetsEnd = 0.48
 
     @MainActor
     static func prepareLaunch(
@@ -28,15 +28,19 @@ enum GameWorldPreparer {
 
         // Warm sprite cache once per session before the world is presented.
         await session.ensurePlayerSpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.02, to: 0.24))
+            report(LoadProgress.map(local, from: 0.02, to: 0.22))
         }
         await session.ensureItemSpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.24, to: spritesEnd))
+            report(LoadProgress.map(local, from: 0.22, to: 0.38))
         }
-        report(spritesEnd)
+        // Level engine backgrounds (main scene + minigames) for the selected level.
+        await session.ensureEngineBackgroundsLoaded { local in
+            report(LoadProgress.map(local, from: 0.38, to: assetsEnd))
+        }
+        report(assetsEnd)
 
         return await loadWorld(session: session, mode: mode) { local in
-            report(LoadProgress.map(local, from: spritesEnd, to: 1))
+            report(LoadProgress.map(local, from: assetsEnd, to: 1))
         }
     }
 

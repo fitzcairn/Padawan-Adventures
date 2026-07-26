@@ -1,5 +1,6 @@
 # Level-select screen. Planet sprite ids are referenced by level YAML `level_sprite:`.
 music: menu_theme
+background: level_screen_bg
 
 tython:
   sprite:
