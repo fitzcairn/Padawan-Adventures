@@ -192,6 +192,8 @@ final class GameViewController: LandscapeHostingController {
                 tilesPerSecond: 1,
                 forgetSeconds: 3
             )
+        let enemySprite = typeID.flatMap { session.enemyConfig.spriteConfig(for: $0) }
+        let combatSprite = session.playerConfig.combatSprite
         let healthCount = scene.currentWorld.healthCount
         let hudConfig = loadHudConfig()
         let playerFx = session.playerConfig.fx
@@ -212,6 +214,11 @@ final class GameViewController: LandscapeHostingController {
                         hudConfig: hudConfig,
                         letterSoundRepeatSeconds: letterSoundRepeatSeconds,
                         slashMaxSeconds: slashMaxSeconds,
+                        spriteLibrary: self.session.spriteLibrary,
+                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
+                        combatSprite: combatSprite,
+                        enemySprite: enemySprite,
+                        wallHeight: self.isoConfig.wallHeight,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -294,6 +301,7 @@ final class GameViewController: LandscapeHostingController {
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
+                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -374,6 +382,7 @@ final class GameViewController: LandscapeHostingController {
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
+                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -420,6 +429,7 @@ final class GameViewController: LandscapeHostingController {
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
+                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()

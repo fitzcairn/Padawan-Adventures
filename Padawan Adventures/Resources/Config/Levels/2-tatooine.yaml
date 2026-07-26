@@ -16,6 +16,8 @@ artifact: sun.max.fill
 treasure: control-ring
 floor:
   set: 2-tatooine
+letters:
+  set: 2-tatooine
 enemies:
   types: [centipede]
   spawn_chance_per_room: 0.8

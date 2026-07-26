@@ -16,6 +16,8 @@ artifact: flame.fill
 treasure: connector
 floor:
   set: 7-mustafar
+letters:
+  set: 7-mustafar
 enemies:
   types: [lava_lizard]
   spawn_chance_per_room: 0.8

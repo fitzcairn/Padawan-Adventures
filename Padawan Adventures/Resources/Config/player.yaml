@@ -43,3 +43,10 @@ sprite:
     walk_southeast: { sheet: walk_southeast-spritesheet, atlas: walk_southeast-atlas }
     walk_southwest: { flip_of: walk_southeast }
     walk_down: { sheet: walk_down-spritesheet, atlas: walk_down-atlas }
+
+# Combat arena swing sheet under Resources/Sprites/Combat/.
+combat_sprite:
+  root: Sprites/Combat
+  chroma: black
+  animations:
+    swing: { sheet: player-combat-spritesheet, atlas: player-combat-atlas }

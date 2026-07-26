@@ -116,6 +116,29 @@ struct LevelConfigTests {
         #expect(level.musicCue == .unchanged)
         #expect(level.gameMusic == .fallback)
         #expect(level.artifact == LevelConfig.fallbackArtifact)
+        #expect(level.letters.set == LevelConfig.fallbackLetters.set)
+    }
+
+    @Test func decodesLetterSpriteSet() throws {
+        let level = try LevelConfig.decode(from: """
+        name: Tatooine
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 5
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.2
+          pit_mean_size: 2
+          pit_max_size: 5
+          wall_destructible_chance: 0.8
+          gate_chance: 0.5
+        letters:
+          set: 2-tatooine
+        """)
+        #expect(level.letters.set == "2-tatooine")
     }
 
     @Test func missingArtifactUsesFallback() throws {

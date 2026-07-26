@@ -32,8 +32,9 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + planets
+  python3 scripts/bake_sprites.py              # player + items + floors + letters + planets
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
+  python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -59,6 +60,7 @@ SPRITES = RESOURCES / "Sprites"
 CONFIG = RESOURCES / "Config"
 MANIFEST_PATH = SPRITES / "bake-manifest.json"
 FLOOR_SET_DIR = SPRITES / "Floor"
+LETTER_SET_DIR = SPRITES / "Letters"
 
 CHROMA_PRESETS: dict[str, tuple[str, int, int, int]] = {
     # name → (hex, tolerance, feather, smooth)
@@ -672,12 +674,50 @@ def collect_floor_job(plan: BakePlan) -> None:
             plan.input_paths.append(source)
 
 
+def collect_letter_job(plan: BakePlan) -> None:
+    """Register per-level letter glyph sets for baking via bake_letter_sets.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import bake_letter_sets as letter_sets
+    except ImportError as exc:
+        plan.errors.append(f"letter: cannot import bake_letter_sets: {exc}")
+        return
+
+    discovered = letter_sets.discover_source_sheets()
+    if not discovered:
+        plan.errors.append("letter: no per-level letter spritesheets found under Sprites/Letters/")
+        return
+
+    for set_name, source in discovered:
+        set_dir = LETTER_SET_DIR / set_name
+        atlas_placeholder = set_dir / "Baked" / f"{set_name}-letters-atlas.json"
+        plan.jobs.append(
+            BakeJob(
+                category=f"letter.{set_name}",
+                sheet_path=source,
+                atlas_path=atlas_placeholder,
+                chroma=ChromaSettings(),
+                trim=False,
+                bake_scale=1.0,
+                flip_vertical=False,
+                isolate_primary=False,
+                preserve_anchors=False,
+                label=f"letter.{set_name}",
+            )
+        )
+        if source not in plan.input_paths:
+            plan.input_paths.append(source)
+
+
 def collect_player(plan: BakePlan) -> None:
     path = CONFIG / "player.yaml"
     add_config_input(plan, path)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     sprite = data.get("sprite") or {}
     collect_animation_jobs(plan, category="player", sprite=sprite)
+    combat = data.get("combat_sprite") or {}
+    if combat:
+        collect_animation_jobs(plan, category="player.combat", sprite=combat)
 
 
 def collect_items(plan: BakePlan) -> None:
@@ -747,6 +787,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_player = args.all or args.default_set or args.player
     bake_items = args.all or args.default_set or args.items
     bake_floors = args.all or args.default_set or args.floors
+    bake_letters = args.all or args.default_set or args.letters
     bake_planets = args.all or args.default_set or args.planets
     bake_enemies = args.all or args.enemies or bool(args.enemy)
 
@@ -759,18 +800,28 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.player,
             args.items,
             args.floors,
+            args.letters,
             args.planets,
             args.verify,
         ]
     ):
-        bake_player = bake_items = bake_floors = bake_planets = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_planets = True
 
     if args.verify and not any(
-        [args.all, args.enemies, args.enemy, args.player, args.items, args.floors, args.planets]
+        [
+            args.all,
+            args.enemies,
+            args.enemy,
+            args.player,
+            args.items,
+            args.floors,
+            args.letters,
+            args.planets,
+        ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
-        bake_player = bake_items = bake_floors = bake_planets = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_planets = True
 
     if bake_player:
         collect_player(plan)
@@ -778,6 +829,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_items(plan)
     if bake_floors:
         collect_floor_job(plan)
+    if bake_letters:
+        collect_letter_job(plan)
     if bake_planets:
         collect_planets(plan)
     if bake_enemies:
@@ -820,6 +873,20 @@ def bake_floor_set_job(job: BakeJob) -> tuple[Path, Path]:
         set_name,
         job.sheet_path,
         grid_override=None,
+        contact_only=False,
+    )
+    return result["baked_sheet"], result["atlas"]
+
+
+def bake_letter_set_job(job: BakeJob) -> tuple[Path, Path]:
+    """Bake one per-level letter set via scripts/bake_letter_sets.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import bake_letter_sets as letter_sets
+
+    set_name = job.category.split(".", 1)[1]
+    result = letter_sets.bake_one(
+        set_name,
+        job.sheet_path,
         contact_only=False,
     )
     return result["baked_sheet"], result["atlas"]
@@ -1015,7 +1082,11 @@ def verify_manifest() -> int:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Offline sprite baker (T19)")
-    p.add_argument("--all", action="store_true", help="Bake player, items, floors, planets, enemies")
+    p.add_argument(
+        "--all",
+        action="store_true",
+        help="Bake player, items, floors, letters, planets, enemies",
+    )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument(
         "--enemy",
@@ -1026,6 +1097,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--player", action="store_true", help="Bake player sheets only (with other flags)")
     p.add_argument("--items", action="store_true", help="Bake item sheets")
     p.add_argument("--floors", action="store_true", help="Bake per-level floor tile sets")
+    p.add_argument("--letters", action="store_true", help="Bake per-level letter glyph sets")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
     p.add_argument(
         "--verify",
@@ -1039,7 +1111,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     args = p.parse_args(argv)
     args.verify_only = args.verify and not any(
-        [args.all, args.enemies, args.enemy, args.player, args.items, args.floors, args.planets]
+        [
+            args.all,
+            args.enemies,
+            args.enemy,
+            args.player,
+            args.items,
+            args.floors,
+            args.letters,
+            args.planets,
+        ]
     )
     return args
 
@@ -1070,6 +1151,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if job.category.startswith("floor."):
                 out_sheet, out_atlas = bake_floor_set_job(job)
+            elif job.category.startswith("letter."):
+                out_sheet, out_atlas = bake_letter_set_job(job)
             else:
                 out_sheet, out_atlas = bake_job(job)
             outputs.extend([out_sheet, out_atlas])

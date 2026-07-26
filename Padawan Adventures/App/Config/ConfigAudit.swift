@@ -38,6 +38,7 @@ nonisolated enum ConfigAudit {
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"
             problems.append(contentsOf: checkFloorSet(level: level, label: label, bundle: bundle))
+            problems.append(contentsOf: checkLetterSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkEnemyTypes(level: level, enemies: enemies, label: label))
             problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
             problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
@@ -80,6 +81,11 @@ nonisolated enum ConfigAudit {
             if let sprite = player.sprite {
                 problems.append(contentsOf: checkSpriteConfig(
                     sprite, label: "player.sprite", bundle: bundle
+                ))
+            }
+            if let combatSprite = player.combatSprite {
+                problems.append(contentsOf: checkSpriteConfig(
+                    combatSprite, label: "player.combat_sprite", bundle: bundle
                 ))
             }
         }
@@ -155,6 +161,34 @@ nonisolated enum ConfigAudit {
         }
         if level.floor.decorProb < 0 || level.floor.decorProb > 1 {
             return ["\(label).floor.decor_prob: \(level.floor.decorProb) out of 0...1"]
+        }
+        return []
+    }
+
+    private static func checkLetterSet(
+        level: LevelConfig,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        let setName = level.letters.set.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !setName.isEmpty else {
+            return ["\(label).letters.set: empty"]
+        }
+        do {
+            let letterSet = try LetterSpriteSet.loadFromBundle(set: setName, bundle: bundle)
+            if letterSet.frames.count != 52 {
+                return [
+                    "\(label).letters.set: '\(setName)' has \(letterSet.frames.count) frames, expected 52"
+                ]
+            }
+            let missing = letterSet.missingKeys
+            if !missing.isEmpty {
+                return [
+                    "\(label).letters.set: '\(setName)' missing glyphs \(missing.joined(separator: ","))"
+                ]
+            }
+        } catch {
+            return ["\(label).letters.set: missing or invalid atlas for '\(setName)' (\(error))"]
         }
         return []
     }

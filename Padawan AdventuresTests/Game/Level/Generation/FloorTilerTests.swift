@@ -30,6 +30,27 @@ struct FloorTilerTests {
         }
     }
 
+    @Test func nonPitCellsNeverReceivePitTiles() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "6-coruscant")
+        #expect(!set.pitTileIDs.isEmpty)
+        var tiles = makeFloorGrid(width: 8, height: 8, pitBlob: [(3, 3), (3, 4), (4, 3), (4, 4)])
+        var rng = SeededGenerator(seed: 11)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0.2),
+            rng: &rng
+        )
+        for row in tiles {
+            for tile in row {
+                guard case .floor(let isPit) = tile.kind, !isPit else { continue }
+                let id = try #require(tile.floorTileID)
+                #expect(set.frames[id]?.role != .pit, "non-pit cell got pit tile \(id)")
+            }
+        }
+    }
+
     @Test func adjacentPairsSatisfyMatches() throws {
         let set = try FloorTileSet.loadFromBundle(set: "6-coruscant")
         var tiles = makeFloorGrid(width: 6, height: 6, pitBlob: [(2, 2), (2, 3)])

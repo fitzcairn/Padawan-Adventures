@@ -77,20 +77,14 @@ enum PlaceholderFactory {
             }
 
         case .wall(let destructible):
+            // Solid walls are intentionally not drawn; only soft (destructible) walls render.
+            guard destructible else { break }
             container.position = IsometricMath.gridToScreen(coord, config: config)
             container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-            let color = destructible ? destructibleWallColor : wallColor
-            // Interior solid walls (not bordering walkable space) stay unrendered → black.
-            // Destructible walls always render so soft targets stay visible.
-            if destructible {
-                let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
-                container.addChild(perspectiveWallNode(color: color, faces: faces, config: config))
-            } else if let world, IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
-                let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-                container.addChild(perspectiveWallNode(color: color, faces: faces, config: config))
-            } else if world == nil {
-                container.addChild(perspectiveWallNode(color: color, faces: .all, config: config))
-            }
+            let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
+            container.addChild(
+                perspectiveWallNode(color: destructibleWallColor, faces: faces, config: config)
+            )
 
         case .gate:
             container.position = IsometricMath.gridToScreen(coord, config: config)
@@ -173,12 +167,10 @@ enum PlaceholderFactory {
     static func wallIdentity(for tile: Tile, at coord: GridCoord, in world: GameWorld) -> String? {
         switch tile.kind {
         case .wall(let destructible):
-            // Interior solid walls stay unrendered; destructibles always draw.
-            if !destructible && !IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
-                return nil
-            }
+            // Solid walls draw nothing; destructibles always draw.
+            guard destructible else { return nil }
             let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-            return "wall|\(destructible ? 1 : 0)|\(faces.rawValue)"
+            return "wall|1|\(faces.rawValue)"
         case .gate:
             let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
             return "gate|\(faces.rawValue)"
@@ -187,10 +179,9 @@ enum PlaceholderFactory {
         }
     }
 
-    /// Identity key for reusing ceiling diamonds (nil when the cell needs no ceiling).
-    static func ceilingIdentity(at coord: GridCoord, in world: GameWorld) -> String? {
-        guard IsometricTileGeometry.needsCeiling(at: coord, in: world) else { return nil }
-        return "ceiling"
+    /// Ceilings are disabled; keep the API so the renderer sync path no-ops cleanly.
+    static func ceilingIdentity(at _: GridCoord, in _: GameWorld) -> String? {
+        nil
     }
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.
@@ -524,6 +515,47 @@ enum PlaceholderFactory {
             fade,
             .run(completion),
         ]))
+    }
+
+    /// Red sparkles while the enemy art fades; calls `completion` when finished.
+    ///
+    /// Particles do not inherit parent alpha, so the sprite/shape children fade
+    /// separately and the emitter birth rate is stopped before removal.
+    @MainActor
+    static func playDefeatAnimation(on node: SKNode, completion: @escaping () -> Void) {
+        let highlight = HighlightConfig.enemyDefeat
+        let visuals = node.children.filter { !($0 is SKEmitterNode) }
+        let animated = visuals.compactMap { $0 as? AnimatedSpriteNode }.first
+        let referenceHeight = animated?.targetHeight
+            ?? animated?.size.height
+            ?? visuals.first?.frame.height
+            ?? 40
+        let baseY = animated?.position.y ?? visuals.first?.position.y ?? 0
+
+        let glow = SparkleEmitterFactory.makeNode(
+            config: highlight,
+            referenceHeight: referenceHeight
+        )
+        glow.position = CGPoint(
+            x: 0,
+            y: baseY + referenceHeight * CGFloat(highlight.yOffset)
+        )
+        node.insertChild(glow, at: 0)
+
+        let fadeDuration = max(highlight.lifetime * 0.9, 0.45)
+        let fade = SKAction.fadeOut(withDuration: fadeDuration)
+        fade.timingMode = .easeIn
+        node.run(.sequence([
+            .run {
+                for child in visuals {
+                    child.run(fade)
+                }
+            },
+            .wait(forDuration: fadeDuration * 0.7),
+            .run { SparkleEmitterFactory.stop(in: node) },
+            .wait(forDuration: highlight.lifetime),
+            .run(completion),
+        ]), withKey: "defeatFade")
     }
 
     static func applyAnimationFrame(_ frame: Int, to node: SKNode) {

@@ -47,6 +47,37 @@ enum SparkleEmitterFactory {
     ///   - referenceHeight: display height of the sprite the halo sits behind;
     ///     every size in `config` is a fraction of this.
     static func makeNode(config: HighlightConfig, referenceHeight: CGFloat) -> SKEmitterNode {
+        let emitter = configuredEmitter(config: config, referenceHeight: referenceHeight)
+        // Prefill so the halo is visible on the first frame.
+        emitter.advanceSimulationTime(config.lifetime)
+        return emitter
+    }
+
+    /// One-shot radial explode (projectile / impact). Removes itself after particles die.
+    static func makeBurstNode(
+        config: HighlightConfig,
+        referenceHeight: CGFloat,
+        particleCount: Int = 40
+    ) -> SKEmitterNode {
+        let count = max(particleCount, 1)
+        let emitter = configuredEmitter(config: config, referenceHeight: referenceHeight)
+        emitter.numParticlesToEmit = count
+        // Dump the whole burst in a short window so it reads as an explode.
+        emitter.particleBirthRate = CGFloat(count) / 0.06
+        emitter.particlePositionRange = CGVector(
+            dx: referenceHeight * CGFloat(config.radius) * 0.35,
+            dy: referenceHeight * CGFloat(config.radius) * 0.25
+        )
+        emitter.particleSpeed = referenceHeight * 0.95
+        emitter.particleSpeedRange = referenceHeight * 0.45
+        emitter.yAcceleration = -referenceHeight * 0.35
+        return emitter
+    }
+
+    private static func configuredEmitter(
+        config: HighlightConfig,
+        referenceHeight: CGFloat
+    ) -> SKEmitterNode {
         let emitter = SKEmitterNode()
         emitter.name = nodeName
         emitter.zPosition = 0
@@ -73,7 +104,6 @@ enum SparkleEmitterFactory {
         emitter.yAcceleration = referenceHeight * 0.2
         emitter.particleRotationRange = .pi * 2
         emitter.particleRotationSpeed = 1
-        emitter.advanceSimulationTime(config.lifetime)
         return emitter
     }
 

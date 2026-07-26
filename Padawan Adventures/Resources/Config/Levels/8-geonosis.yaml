@@ -18,6 +18,8 @@ artifact: circle.hexagongrid.fill
 treasure: pommel
 floor:
   set: 8-geonosis
+letters:
+  set: 8-geonosis
 enemies:
   types: [centipede, snake]
   spawn_chance_per_room: 0.8

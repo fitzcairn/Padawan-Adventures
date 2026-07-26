@@ -16,6 +16,8 @@ artifact: snowflake
 treasure: central-grip
 floor:
   set: 3-ilum
+letters:
+  set: 3-ilum
 enemies:
   types: [ice_monster]
   spawn_chance_per_room: 0.8

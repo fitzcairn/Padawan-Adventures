@@ -7,6 +7,7 @@ struct GateMinigameView: View {
     let puzzleConfig: GatePuzzleConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
+    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (GateOutcome) -> Void
 
     @StateObject private var session: GateSessionController
@@ -15,17 +16,20 @@ struct GateMinigameView: View {
         puzzleConfig: GatePuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (GateOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
                 hudConfig: hudConfig,
+                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -89,17 +93,20 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     private let puzzleConfig: GatePuzzleConfig
     private let playerFx: SoundEffectTable
     private let hudConfig: HudConfig
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: GatePuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -112,7 +119,8 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         let created = GateScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx
+            playerFx: playerFx,
+            letterSpriteSetLibrary: letterSpriteSetLibrary
         )
         created.gateDelegate = self
         scene = created

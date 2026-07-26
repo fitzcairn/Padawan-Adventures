@@ -96,6 +96,7 @@ enum GameWorldPreparer {
         let energy = session.playerState?.energy ?? playerConfig.startingEnergy
 
         await session.ensureFloorTileSetLoaded()
+        await session.ensureLetterSpriteSetLoaded()
         let floorTileSet: FloorTileSet
         if let loaded = session.floorTileSetLibrary.tileSet {
             floorTileSet = loaded
@@ -161,6 +162,7 @@ enum GameWorldPreparer {
     @MainActor
     private static func attachFloorSet(to world: inout GameWorld, session: AppSession) async {
         await session.ensureFloorTileSetLoaded()
+        await session.ensureLetterSpriteSetLoaded()
         if let set = session.floorTileSetLibrary.tileSet {
             world.floorSet = set
             world.floorSetName = set.meta.floorSet

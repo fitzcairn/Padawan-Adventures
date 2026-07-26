@@ -26,6 +26,10 @@ floor:
   set: 1-tython
   decor_prob: 0.06
 
+# Per-level baked letter glyph set under Resources/Sprites/Letters/{set}/.
+letters:
+  set: 1-tython
+
 algorithm: rooms_doors
 # How many rooms to place on the map.
 room_count: 5

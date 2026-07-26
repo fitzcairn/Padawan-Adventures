@@ -31,13 +31,17 @@ final class DestructibleWallScene: SKScene {
     private let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
     private let squareWrongFill = UIColor.systemRed
 
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
+
     init(
         size: CGSize,
         puzzleConfig: DestructibleWallPuzzleConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.engine = DestructibleWallMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -218,15 +222,25 @@ final class DestructibleWallScene: SKScene {
         root.addChild(square)
         squareNodes[token.id] = square
 
-        let label = SKLabelNode(text: token.letter)
-        label.fontName = "Helvetica-Bold"
-        label.fontSize = side * 0.62
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        label.isUserInteractionEnabled = false
-        root.addChild(label)
+        if let glyph = LetterSpriteFactory.sprite(
+            letter: token.letter,
+            side: side * 0.62,
+            library: letterSpriteSetLibrary
+        ) {
+            glyph.zPosition = 1
+            glyph.isUserInteractionEnabled = false
+            root.addChild(glyph)
+        } else {
+            let label = SKLabelNode(text: token.letter)
+            label.fontName = "Helvetica-Bold"
+            label.fontSize = side * 0.62
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            label.isUserInteractionEnabled = false
+            root.addChild(label)
+        }
 
         return root
     }

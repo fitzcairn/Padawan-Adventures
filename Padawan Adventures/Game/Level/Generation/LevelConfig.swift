@@ -468,6 +468,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var destructibleWall: DestructibleWallPuzzleConfig
     /// Per-level baked floor tile set (`Sprites/Floor/{set}/`).
     var floor: Floor
+    /// Per-level baked letter glyph set (`Sprites/Letters/{set}/`).
+    var letters: Letters
 
     /// Floor tile set reference and decor sprinkle probability.
     nonisolated struct Floor: Codable, Equatable, Sendable {
@@ -488,6 +490,24 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             set = try c.decodeIfPresent(String.self, forKey: .set) ?? "1-tython"
             decorProb = try c.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
+        }
+    }
+
+    /// Letter glyph set reference for combat / puzzle letter sprites.
+    nonisolated struct Letters: Codable, Equatable, Sendable {
+        var set: String
+
+        enum CodingKeys: String, CodingKey {
+            case set
+        }
+
+        nonisolated init(set: String = "1-tython") {
+            self.set = set
+        }
+
+        nonisolated init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            set = try c.decodeIfPresent(String.self, forKey: .set) ?? "1-tython"
         }
     }
 
@@ -513,9 +533,11 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case gate
         case destructibleWall = "destructible_wall"
         case floor
+        case letters
     }
 
     static let fallbackFloor = Floor()
+    static let fallbackLetters = Letters()
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
@@ -548,7 +570,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pit: .fallback,
         gate: .fallback,
         destructibleWall: .fallback,
-        floor: fallbackFloor
+        floor: fallbackFloor,
+        letters: fallbackLetters
     )
 
     /// World interaction FX synthesized from puzzle configs (`wall_destroyed`, `gate_opened`).
@@ -584,7 +607,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pit: PitPuzzleConfig = .fallback,
         gate: GatePuzzleConfig = .fallback,
         destructibleWall: DestructibleWallPuzzleConfig = .fallback,
-        floor: Floor = LevelConfig.fallbackFloor
+        floor: Floor = LevelConfig.fallbackFloor,
+        letters: Letters = LevelConfig.fallbackLetters
     ) {
         self.name = name
         self.order = order
@@ -607,6 +631,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.gate = gate
         self.destructibleWall = destructibleWall
         self.floor = floor
+        self.letters = letters
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -642,6 +667,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             forKey: .destructibleWall
         ) ?? .fallback
         floor = try container.decodeIfPresent(Floor.self, forKey: .floor) ?? Self.fallbackFloor
+        letters = try container.decodeIfPresent(Letters.self, forKey: .letters) ?? Self.fallbackLetters
     }
 
     func validate() throws {
@@ -680,6 +706,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
         guard floor.decorProb >= 0, floor.decorProb <= 1 else {
             throw WorldSeedError.invalidDecorProb(floor.decorProb)
+        }
+        guard !letters.set.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw WorldSeedError.emptyLetterSet
         }
         if let enemies {
             guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {

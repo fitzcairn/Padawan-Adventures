@@ -10,7 +10,7 @@ protocol CombatSceneDelegate: AnyObject {
     func combatSceneDidLose()
 }
 
-/// SpriteKit combat arena: player/enemy placeholders, curved shots, slash input, VFX.
+/// SpriteKit combat arena: player/enemy sprites, curved shots, slash input, VFX.
 final class CombatScene: SKScene {
     private struct ShotVisual {
         let start: CGPoint
@@ -20,7 +20,7 @@ final class CombatScene: SKScene {
         let travelSeconds: Double
         /// Only shots matching the sequence cue can impact the player.
         let canHitPlayer: Bool
-        let node: SKShapeNode
+        let node: SKNode
     }
 
     weak var combatDelegate: CombatSceneDelegate?
@@ -28,10 +28,15 @@ final class CombatScene: SKScene {
     private let enemyType: EnemyTypeConfig
     private let playerFx: SoundEffectTable
     private let slashMaxSeconds: Double
+    private let spriteLibrary: SpriteLibrary
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
+    private let combatSprite: SpriteConfig?
+    private let enemySprite: (id: String, config: SpriteConfig)?
+    private let wallHeight: CGFloat
 
     private var engine: CombatMinigameEngine
-    private var playerNode: SKShapeNode!
-    private var enemyNode: SKShapeNode!
+    private var playerNode: AnimatedSpriteNode!
+    private var enemyNode: AnimatedSpriteNode!
     private var shotVisuals: [UUID: ShotVisual] = [:]
     private var slashPoints: [CGPoint] = []
     private var slashLine: SKShapeNode?
@@ -42,8 +47,9 @@ final class CombatScene: SKScene {
     private var lastUpdateTime: TimeInterval?
 
     private let shotBaseSize: CGFloat = 72
-    private let playerBaseFill = UIColor(white: 0.35, alpha: 1)
     private let playerFlashActionKey = "playerFlash"
+    private let playerCombatLibraryID = "player_combat"
+    private let playerSwingAnimationName = "swing"
 
     init(
         size: CGSize,
@@ -51,11 +57,21 @@ final class CombatScene: SKScene {
         playerFx: SoundEffectTable,
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
-        slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds
+        slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
+        spriteLibrary: SpriteLibrary,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
+        combatSprite: SpriteConfig?,
+        enemySprite: (id: String, config: SpriteConfig)?,
+        wallHeight: CGFloat
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
         self.slashMaxSeconds = max(slashMaxSeconds, 0.05)
+        self.spriteLibrary = spriteLibrary
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
+        self.combatSprite = combatSprite
+        self.enemySprite = enemySprite
+        self.wallHeight = max(wallHeight, 1)
         self.engine = CombatMinigameEngine(
             config: .init(from: enemyType, letterSoundRepeatSeconds: letterSoundRepeatSeconds),
             startingHealth: startingHealth
@@ -87,7 +103,7 @@ final class CombatScene: SKScene {
         guard didSetup, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
-        // Keep the fight running; only re-layout placeholders. Live shots keep their paths.
+        // Keep the fight running; only re-layout sprites. Live shots keep their paths.
         repositionArenaNodes()
     }
 
@@ -112,56 +128,91 @@ final class CombatScene: SKScene {
 
     // MARK: - Layout
 
-    private var playerPosition: CGPoint {
-        CGPoint(x: size.width * 0.5, y: size.height * 0.18)
+    /// 40% screen height × 1.2 (20% larger).
+    private var playerSpriteHeight: CGFloat { size.height * 0.48 }
+
+    /// 2× world height, then −30% (`2 × 0.7 × wallHeight × scale`).
+    private var enemySpriteHeight: CGFloat {
+        guard let enemySprite else { return size.height * 0.084 }
+        return 1.4 * wallHeight * CGFloat(enemySprite.config.scale)
     }
 
-    private var enemyPosition: CGPoint {
-        CGPoint(x: size.width * 0.5, y: size.height * 0.82)
+    /// Feet (sprite bottom-middle) sit on the view's bottom-middle.
+    private var playerPosition: CGPoint {
+        CGPoint(x: size.width * 0.5, y: 0)
+    }
+
+
+    /// Body aim point (feet + half height). AnimatedSpriteNode extends upward from feet.
+    private func bodyCenter(of node: AnimatedSpriteNode, height: CGFloat) -> CGPoint {
+        CGPoint(x: node.position.x, y: node.position.y + height * 0.5)
     }
 
     private func buildArena() {
         playerNode?.removeFromParent()
         enemyNode?.removeFromParent()
 
-        let w = size.width
-        let h = size.height
+        let player = AnimatedSpriteNode(
+            size: CGSize(width: playerSpriteHeight, height: playerSpriteHeight)
+        )
+        player.fitHeight(playerSpriteHeight)
+        player.zPosition = 10
+        player.name = "player"
+        addChild(player)
+        playerNode = player
+        // `show` applies the V-inversion scale so feet stay at position and the
+        // body extends upward onto the screen (raw texture assignment does not).
+        if combatSprite != nil {
+            player.show(
+                name: playerSwingAnimationName,
+                library: spriteLibrary,
+                libraryID: playerCombatLibraryID
+            )
+            player.fitHeight(playerSpriteHeight)
+        }
+        player.position = playerPosition
 
-        let playerSize = CGSize(width: w * 0.50, height: h * 0.25)
-        playerNode = SKShapeNode(rectOf: playerSize, cornerRadius: 8)
-        playerNode.fillColor = playerBaseFill
-        playerNode.strokeColor = .white
-        playerNode.lineWidth = 2
-        playerNode.position = playerPosition
-        playerNode.zPosition = 10
-        playerNode.name = "player"
-        addChild(playerNode)
+        let enemy = AnimatedSpriteNode(
+            size: CGSize(width: enemySpriteHeight, height: enemySpriteHeight)
+        )
+        enemy.zPosition = 10
+        enemy.name = "enemy"
+        addChild(enemy)
+        enemyNode = enemy
+        if let enemySprite,
+           spriteLibrary.animation(id: enemySprite.id, named: "idle_down") != nil {
+            enemy.play(
+                name: "idle_down",
+                library: spriteLibrary,
+                libraryID: enemySprite.id
+            )
+        }
+        // Size + place after texture is known so the top-middle pixel sits on the view top.
+        placeEnemyAtTopOfView()
+    }
 
-        let playerLabel = SKLabelNode(text: "P")
-        playerLabel.fontName = "Helvetica-Bold"
-        playerLabel.fontSize = min(playerSize.height * 0.45, 64)
-        playerLabel.verticalAlignmentMode = .center
-        playerLabel.horizontalAlignmentMode = .center
-        playerLabel.fontColor = .white
-        playerNode.addChild(playerLabel)
+    /// Pins the sprite's top-most middle opaque pixel to the view's top-middle.
+    private func placeEnemyAtTopOfView() {
+        guard let enemyNode else { return }
+        enemyNode.fitHeight(enemySpriteHeight)
+        // Measure from a known position, then shift so content top == scene top.
+        enemyNode.position = CGPoint(x: size.width * 0.5, y: 0)
+        let frame = enemyNode.calculateAccumulatedFrame()
+        let topPadding = topOpaqueInsetPoints(for: enemyNode)
+        // Quad top → scene top, then nudge up by transparent padding above content.
+        let dy = size.height - frame.maxY + topPadding
+        enemyNode.position = CGPoint(x: size.width * 0.5, y: dy)
+    }
 
-        let enemySize = CGSize(width: w * 0.20, height: h * 0.10)
-        enemyNode = SKShapeNode(rectOf: enemySize, cornerRadius: 6)
-        enemyNode.fillColor = enemyType.fillColor
-        enemyNode.strokeColor = .white
-        enemyNode.lineWidth = 2
-        enemyNode.position = enemyPosition
-        enemyNode.zPosition = 10
-        enemyNode.name = "enemy"
-        addChild(enemyNode)
-
-        let enemyLabel = SKLabelNode(text: String(enemyType.letterCharacter))
-        enemyLabel.fontName = "Helvetica-Bold"
-        enemyLabel.fontSize = min(enemySize.height * 0.55, 36)
-        enemyLabel.verticalAlignmentMode = .center
-        enemyLabel.horizontalAlignmentMode = .center
-        enemyLabel.fontColor = .white
-        enemyNode.addChild(enemyLabel)
+    /// Transparent padding above the opaque content, in scene points.
+    private func topOpaqueInsetPoints(for node: AnimatedSpriteNode) -> CGFloat {
+        guard let texture = node.texture else { return 0 }
+        let image = texture.cgImage()
+        let imageHeight = CGFloat(image.height)
+        guard imageHeight > 0 else { return 0 }
+        guard let bounds = SpriteSheetLoader.opaqueContentBounds(of: image) else { return 0 }
+        let visualHeight = node.size.height * abs(node.yScale)
+        return CGFloat(bounds.minY) / imageHeight * visualHeight
     }
 
     private func repositionArenaNodes() {
@@ -169,23 +220,9 @@ final class CombatScene: SKScene {
             buildArena()
             return
         }
+        playerNode.fitHeight(playerSpriteHeight)
         playerNode.position = playerPosition
-        enemyNode.position = enemyPosition
-        // Resize placeholder shapes to the new scene size.
-        let playerSize = CGSize(width: size.width * 0.50, height: size.height * 0.25)
-        let enemySize = CGSize(width: size.width * 0.20, height: size.height * 0.10)
-        playerNode.path = CGPath(
-            roundedRect: CGRect(x: -playerSize.width / 2, y: -playerSize.height / 2, width: playerSize.width, height: playerSize.height),
-            cornerWidth: 8,
-            cornerHeight: 8,
-            transform: nil
-        )
-        enemyNode.path = CGPath(
-            roundedRect: CGRect(x: -enemySize.width / 2, y: -enemySize.height / 2, width: enemySize.width, height: enemySize.height),
-            cornerWidth: 6,
-            cornerHeight: 6,
-            transform: nil
-        )
+        placeEnemyAtTopOfView()
     }
 
     // MARK: - Engine events
@@ -223,34 +260,43 @@ final class CombatScene: SKScene {
         let requiredLetter = engine.shots[id]?.requiredLetter ?? visualLetter
         let canHitPlayer = visualLetter == requiredLetter
 
-        let start = enemyNode.position
+        let start = bodyCenter(of: enemyNode, height: enemySpriteHeight)
         let end = shotEndPoint(canHitPlayer: canHitPlayer)
-        // Matching shots curve mildly; misses swing wide to clear the player.
-        let lateralSpread = canHitPlayer ? size.width * 0.18 : size.width * 0.34
+        // Matching and miss shots fan across most of the screen width.
+        let lateralSpread = canHitPlayer ? size.width * 0.42 : size.width * 0.48
         let lateral = CGFloat.random(in: -lateralSpread...lateralSpread)
         let control = CGPoint(
             x: (start.x + end.x) * 0.5 + lateral,
             y: (start.y + end.y) * 0.5
         )
 
-        let shot = SKShapeNode(rectOf: CGSize(width: shotBaseSize, height: shotBaseSize), cornerRadius: 4)
-        shot.fillColor = enemyType.fillColor.withAlphaComponent(0.9)
-        shot.strokeColor = .white
-        shot.lineWidth = 1.5
+        let shot: SKNode
+        if let glyph = LetterSpriteFactory.sprite(
+            letter: visualLetter,
+            side: shotBaseSize,
+            library: letterSpriteSetLibrary
+        ) {
+            shot = glyph
+        } else {
+            let shape = SKShapeNode(rectOf: CGSize(width: shotBaseSize, height: shotBaseSize), cornerRadius: 4)
+            shape.fillColor = enemyType.fillColor.withAlphaComponent(0.9)
+            shape.strokeColor = .white
+            shape.lineWidth = 1.5
+            let label = SKLabelNode(text: visualLetter)
+            label.fontName = "Helvetica-Bold"
+            label.fontSize = shotBaseSize * 0.62
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.fontColor = .white
+            label.zPosition = 1
+            shape.addChild(label)
+            shot = shape
+        }
         shot.position = start
         shot.setScale(0.35)
         shot.zPosition = 20
         shot.name = "shot-\(id.uuidString)"
         addChild(shot)
-
-        let label = SKLabelNode(text: visualLetter)
-        label.fontName = "Helvetica-Bold"
-        label.fontSize = shotBaseSize * 0.62
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.fontColor = .white
-        label.zPosition = 1
-        shot.addChild(label)
 
         shotVisuals[id] = ShotVisual(
             start: start,
@@ -263,14 +309,17 @@ final class CombatScene: SKScene {
         )
     }
 
-    /// Matching shots aim at the player; mismatches fly past on a random side.
+    /// Matching shots aim at the player body; mismatches fly past near a screen edge.
     private func shotEndPoint(canHitPlayer: Bool) -> CGPoint {
-        let player = playerNode.position
+        let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
         guard !canHitPlayer else { return player }
 
         let side: CGFloat = Bool.random() ? -1 : 1
-        let missX = player.x + side * size.width * 0.42
-        let missY = max(player.y - size.height * 0.12, size.height * 0.02)
+        let missX = min(
+            max(player.x + side * size.width * 0.48, size.width * 0.05),
+            size.width * 0.95
+        )
+        let missY = max(playerNode.position.y - size.height * 0.02, size.height * 0.01)
         return CGPoint(x: missX, y: missY)
     }
 
@@ -296,11 +345,12 @@ final class CombatScene: SKScene {
 
     private func checkImpacts() {
         guard playerNode != nil else { return }
+        let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
         for (id, visual) in shotVisuals where visual.canHitPlayer {
             let hitRadius = max(shotBaseSize * visual.node.xScale * 0.5, 12)
-            let dx = visual.node.position.x - playerNode.position.x
-            let dy = visual.node.position.y - playerNode.position.y
-            let playerHitRadius = min(size.width, size.height) * 0.12
+            let dx = visual.node.position.x - aim.x
+            let dy = visual.node.position.y - aim.y
+            let playerHitRadius = playerSpriteHeight * 0.45
             if sqrt(dx * dx + dy * dy) <= hitRadius + playerHitRadius {
                 resolveImpactIfNeeded(shotID: id)
             }
@@ -341,31 +391,34 @@ final class CombatScene: SKScene {
         SoundEffectsController.shared.play(event: "damage", from: playerFx)
         flashPlayer(color: .orange)
 
-        let square = SKShapeNode(rectOf: CGSize(width: 48, height: 48))
-        square.fillColor = .red
-        square.strokeColor = .clear
-        square.position = position
-        square.zPosition = 40
-        addChild(square)
+        let highlight = HighlightConfig.combatImpact
+        let referenceHeight = max(shotBaseSize, playerSpriteHeight * 0.3)
+        let burst = SparkleEmitterFactory.makeBurstNode(
+            config: highlight,
+            referenceHeight: referenceHeight
+        )
+        burst.position = position
+        burst.zPosition = 40
+        addChild(burst)
 
-        let spin = SKAction.rotate(byAngle: .pi * 4, duration: 0.5)
-        let fade = SKAction.fadeOut(withDuration: 0.5)
-        square.run(SKAction.group([spin, fade])) {
-            square.removeFromParent()
-        }
+        let linger = max(highlight.lifetime * 1.6, 0.7)
+        burst.run(.sequence([
+            .wait(forDuration: linger),
+            .removeFromParent(),
+        ]))
     }
 
-    /// Temporary fill flash on the bottom player placeholder.
+    /// Temporary colorize pulse on the player sprite.
     private func flashPlayer(color: UIColor, hold: TimeInterval = 0.08, gap: TimeInterval = 0.05) {
         guard let playerNode else { return }
         playerNode.removeAction(forKey: playerFlashActionKey)
 
-        let paint = SKAction.run { [weak self] in
-            self?.playerNode.fillColor = color
+        let paint = SKAction.run { [weak playerNode] in
+            playerNode?.color = color
+            playerNode?.colorBlendFactor = 0.7
         }
-        let clear = SKAction.run { [weak self] in
-            guard let self else { return }
-            self.playerNode.fillColor = self.playerBaseFill
+        let clear = SKAction.run { [weak playerNode] in
+            playerNode?.colorBlendFactor = 0
         }
         let pulse = SKAction.sequence([
             paint,
@@ -470,7 +523,25 @@ final class CombatScene: SKScene {
         slashStartedAt = time
         slashPoints = [point]
         updateSlashLine()
-        flashPlayer(color: .yellow)
+        if combatSprite != nil {
+            playerNode.playOnce(
+                name: playerSwingAnimationName,
+                library: spriteLibrary,
+                libraryID: playerCombatLibraryID
+            )
+            // Left half of the screen → mirror horizontally so the padawan faces that way.
+            // (`playOnce` resets scale from the clip; re-apply facing after.)
+            setPlayerFacingLeft(point.x < size.width * 0.5)
+        }
+    }
+
+    /// Mirrors the player on X. Keeps the UIImage→SKTexture V-inversion on Y.
+    private func setPlayerFacingLeft(_ faceLeft: Bool) {
+        guard let playerNode else { return }
+        let magnitude = abs(playerNode.yScale)
+        let scale = magnitude > 0 ? magnitude : 1
+        playerNode.xScale = faceLeft ? -scale : scale
+        playerNode.yScale = playerNode.correctsUIImageVInversion ? -scale : scale
     }
 
     private func endSlash() {

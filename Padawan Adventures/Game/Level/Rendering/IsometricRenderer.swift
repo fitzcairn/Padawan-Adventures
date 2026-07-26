@@ -353,6 +353,18 @@ final class IsometricRenderer {
         }
     }
 
+    /// Detaches an enemy node and plays the red-sparkle defeat fade.
+    func playEnemyDefeatAnimation(id: UUID, completion: @escaping () -> Void) {
+        guard let node = detachEntityNode(id: id) else {
+            completion()
+            return
+        }
+        PlaceholderFactory.playDefeatAnimation(on: node) {
+            node.removeFromParent()
+            completion()
+        }
+    }
+
     func shakeWorld(duration: TimeInterval = 0.45, amplitude: CGFloat = 10, completion: @escaping () -> Void) {
         let base = worldRoot.position
         var steps: [SKAction] = []

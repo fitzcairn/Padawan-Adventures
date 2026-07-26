@@ -48,13 +48,17 @@ final class GateScene: SKScene {
     private let circleSolvedFill = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)
     private let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)
 
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
+
     init(
         size: CGSize,
         puzzleConfig: GatePuzzleConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.engine = GateMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -224,16 +228,27 @@ final class GateScene: SKScene {
         circle.zPosition = 0
         root.addChild(circle)
 
-        let label = SKLabelNode(text: token.letter)
-        label.fontName = "Helvetica-Bold"
-        label.fontSize = radius * 1.35
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        // Labels shouldn't steal the parent's hit testing for drag.
-        label.isUserInteractionEnabled = false
-        root.addChild(label)
+        if let glyph = LetterSpriteFactory.sprite(
+            letter: token.letter,
+            side: radius * 1.35,
+            library: letterSpriteSetLibrary
+        ) {
+            glyph.zPosition = 1
+            // Glyphs shouldn't steal the parent's hit testing for drag.
+            glyph.isUserInteractionEnabled = false
+            root.addChild(glyph)
+        } else {
+            let label = SKLabelNode(text: token.letter)
+            label.fontName = "Helvetica-Bold"
+            label.fontSize = radius * 1.35
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            // Labels shouldn't steal the parent's hit testing for drag.
+            label.isUserInteractionEnabled = false
+            root.addChild(label)
+        }
 
         return root
     }

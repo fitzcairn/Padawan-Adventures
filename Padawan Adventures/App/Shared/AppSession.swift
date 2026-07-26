@@ -42,6 +42,8 @@ final class AppSession {
     let spriteLibrary: SpriteLibrary
     /// Session-scoped cache of the active level's baked floor tile set.
     let floorTileSetLibrary: FloorTileSetLibrary
+    /// Session-scoped cache of the active level's baked letter glyph set.
+    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
@@ -70,6 +72,7 @@ final class AppSession {
         audioPreferences: AudioPreferences? = nil,
         spriteLibrary: SpriteLibrary? = nil,
         floorTileSetLibrary: FloorTileSetLibrary? = nil,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
         treasureIcons: SpriteIconLibrary? = nil
     ) {
@@ -98,17 +101,22 @@ final class AppSession {
         self.audioPreferences = audioPreferences ?? .shared
         self.spriteLibrary = spriteLibrary ?? SpriteLibrary()
         self.floorTileSetLibrary = floorTileSetLibrary ?? FloorTileSetLibrary()
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary ?? LetterSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
     }
 
     /// Ensures player sprite animations are loaded for this session.
     func ensurePlayerSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
-        guard let sprite = playerConfig.sprite else {
-            onProgress?(1)
-            return
+        if let sprite = playerConfig.sprite {
+            await spriteLibrary.ensureLoaded(sprite, id: "player", onProgress: onProgress)
         }
-        await spriteLibrary.ensureLoaded(sprite, id: "player", onProgress: onProgress)
+        if let combat = playerConfig.combatSprite {
+            await spriteLibrary.ensureLoaded(combat, id: "player_combat")
+        }
+        if playerConfig.sprite == nil {
+            onProgress?(1)
+        }
     }
 
     /// Ensures item pickup sprite animations are loaded for this session.
@@ -158,7 +166,7 @@ final class AppSession {
     /// Tier 0 + Tier 1 sprite ids: level-select planets, the player, and the
     /// pickups every level uses. Enemy and treasure sprites are level-scoped.
     private var persistentSpriteIDs: Set<String> {
-        var ids: Set<String> = ["player", "energy", "health"]
+        var ids: Set<String> = ["player", "player_combat", "energy", "health"]
         ids.formUnion(LevelCatalog.loadFromBundle().map(\.resourceName))
         return ids
     }
@@ -222,6 +230,12 @@ final class AppSession {
     func ensureFloorTileSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
         let setName = selectedLevel.floor.set
         await floorTileSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
+    }
+
+    /// Loads the baked letter glyph set for the currently selected level.
+    func ensureLetterSpriteSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let setName = selectedLevel.letters.set
+        await letterSpriteSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
     }
 
     /// Ensures level-select planet sprites are loaded for this session.
@@ -380,8 +394,9 @@ final class AppSession {
         }
         await report(backgroundsEnd)
 
-        // Floor sets are per-level; load when a level is selected / launched.
+        // Floor / letter sets are per-level; load when a level is selected / launched.
         let floorTileSetLibrary = FloorTileSetLibrary()
+        let letterSpriteSetLibrary = LetterSpriteSetLibrary()
         await report(1)
 
         do {
@@ -419,6 +434,7 @@ final class AppSession {
             hasCompatibleSave: false,
             spriteLibrary: spriteLibrary,
             floorTileSetLibrary: floorTileSetLibrary,
+            letterSpriteSetLibrary: letterSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary
         )
     }

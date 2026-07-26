@@ -7,6 +7,7 @@ struct PitMinigameView: View {
     let puzzleConfig: PitPuzzleConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
+    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (PitOutcome) -> Void
 
     @StateObject private var session: PitSessionController
@@ -15,16 +16,19 @@ struct PitMinigameView: View {
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (PitOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
+                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -89,11 +93,18 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
-    init(puzzleConfig: PitPuzzleConfig, playerFx: SoundEffectTable, initialTimerSeconds: Int) {
+    init(
+        puzzleConfig: PitPuzzleConfig,
+        playerFx: SoundEffectTable,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
+        initialTimerSeconds: Int
+    ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -103,7 +114,12 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
             return
         }
         let safeSize = Self.sanitizedSize(size)
-        let created = PitScene(size: safeSize, puzzleConfig: puzzleConfig, playerFx: playerFx)
+        let created = PitScene(
+            size: safeSize,
+            puzzleConfig: puzzleConfig,
+            playerFx: playerFx,
+            letterSpriteSetLibrary: letterSpriteSetLibrary
+        )
         created.pitDelegate = self
         scene = created
     }

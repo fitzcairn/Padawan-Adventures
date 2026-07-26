@@ -64,6 +64,19 @@ final class AnimatedSpriteNode: SKSpriteNode {
         }
     }
 
+    /// Shows frame 0 of `name` with correct scale/anchor; does not start a looping action.
+    @MainActor
+    func show(name: String, library: SpriteLibrary, libraryID: String = "player") {
+        guard let animation = library.animation(id: libraryID, named: name),
+              !animation.frames.isEmpty else {
+            return
+        }
+        preparePlayback(animation: animation, name: name)
+        // Freeze on the first frame (no forever / one-shot action).
+        removeAction(forKey: Self.animationActionKey)
+        currentAnimationName = nil
+    }
+
     /// Plays a concrete animation (e.g. item/enemy clips supplied directly).
     func play(animation: SpriteAnimation, name: String? = nil) {
         let key = name ?? currentAnimationName ?? "animation"
@@ -80,19 +93,48 @@ final class AnimatedSpriteNode: SKSpriteNode {
         run(Self.makeLoopingAction(for: animation), withKey: Self.animationActionKey)
     }
 
+    /// Plays `name` once from frame 0, then restores frame 0. Always restarts if already playing.
+    @MainActor
+    func playOnce(name: String, library: SpriteLibrary, libraryID: String = "player") {
+        guard let animation = library.animation(id: libraryID, named: name),
+              !animation.frames.isEmpty else {
+            return
+        }
+        preparePlayback(animation: animation, name: name)
+        guard animation.frames.count > 1 else {
+            currentAnimationName = nil
+            return
+        }
+        let onceAction = Self.makeOnceAction(for: animation)
+        let firstTexture = animation.frames[0].texture
+        run(
+            .sequence([
+                onceAction,
+                .run { [weak self] in
+                    guard let self else { return }
+                    self.texture = firstTexture
+                    self.currentAnimationName = nil
+                },
+            ]),
+            withKey: Self.animationActionKey
+        )
+    }
+
     /// Builds a forever-looping texture animation action (uncached; used by floors and cache fill).
     static func makeLoopingAction(for animation: SpriteAnimation) -> SKAction {
+        .repeatForever(makeOnceAction(for: animation))
+    }
+
+    /// Builds a single-pass texture animation action (no loop).
+    static func makeOnceAction(for animation: SpriteAnimation) -> SKAction {
         let textures = animation.frames.map(\.texture)
         let durations = animation.frames.map(\.duration)
         if let timePerFrame = uniformFrameDuration(durations) {
-            // Exact atlas timing when all frame weights are equal.
-            return .repeatForever(
-                .animate(
-                    with: textures,
-                    timePerFrame: timePerFrame,
-                    resize: false,
-                    restore: false
-                )
+            return .animate(
+                with: textures,
+                timePerFrame: timePerFrame,
+                resize: false,
+                restore: false
             )
         }
         let steps: [SKAction] = zip(textures, durations).flatMap { texture, duration in
@@ -101,7 +143,7 @@ final class AnimatedSpriteNode: SKSpriteNode {
                 SKAction.wait(forDuration: duration),
             ]
         }
-        return .repeatForever(.sequence(steps))
+        return .sequence(steps)
     }
 
     /// Uniform display scale (absolute); horizontal flip is reapplied from the active clip.

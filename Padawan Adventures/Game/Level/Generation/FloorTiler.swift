@@ -190,7 +190,7 @@ nonisolated struct FloorTiler: Sendable {
                 if domain.isEmpty { domain = nonPitIDs }
             }
 
-            let chosen = pickBestMatch(
+            var chosen = pickBestMatch(
                 ids: Array(domain),
                 at: coord,
                 tiles: tiles,
@@ -200,20 +200,12 @@ nonisolated struct FloorTiler: Sendable {
                 set: set,
                 rng: &rng
             ) ?? domain.sorted().first ?? fallbackFloor
+            // Final guard: never stamp a pit frame onto ordinary floor.
+            if !tiles[y][x].isPit, let id = chosen, set.frames[id]?.role == .pit {
+                chosen = fallbackFloor ?? nonPitIDs.sorted().first
+            }
             guard let chosen else {
                 undecided.remove(pickKey)
-                continue
-            }
-            // Final guard: never stamp a pit frame onto ordinary floor.
-            if !tiles[y][x].isPit, set.frames[chosen]?.role == .pit {
-                let safe = fallbackFloor ?? nonPitIDs.sorted().first
-                guard let safe else {
-                    undecided.remove(pickKey)
-                    continue
-                }
-                tiles[y][x].floorTileID = safe
-                undecided.remove(pickKey)
-                domains[pickKey] = [safe]
                 continue
             }
 
@@ -356,6 +348,7 @@ nonisolated struct FloorTiler: Sendable {
         set: FloorTileSet
     ) {
         guard var domain = domains[key] else { return }
+        let pitIDs = Set(set.pitTileIDs)
         for side in FloorTileSet.Side.allCases {
             let d = FloorTileSet.delta(side)
             let nx = coord.x + d.dx
@@ -368,11 +361,17 @@ nonisolated struct FloorTiler: Sendable {
                let nid = tiles[ny][nx].floorTileID,
                set.frames[nid] != nil {
                 let opp = FloorTileSet.opposite(side)
-                let allowed = Set(set.frames[nid]?.matches[opp.rawValue] ?? [])
+                var allowed = Set(set.frames[nid]?.matches[opp.rawValue] ?? [])
+                if !tiles[coord.y][coord.x].isPit {
+                    allowed.subtract(pitIDs)
+                }
                 if !allowed.isEmpty {
                     domain = domain.intersection(allowed)
                 }
             }
+        }
+        if !tiles[coord.y][coord.x].isPit {
+            domain.subtract(pitIDs)
         }
         domains[key] = domain
     }
@@ -383,14 +382,16 @@ nonisolated struct FloorTiler: Sendable {
         width: Int,
         height: Int,
         set: FloorTileSet,
-        floorIDs: [String]
+        floorIDs: [String],
+        nonPitIDs: Set<String>
     ) -> Set<String> {
         if tiles[coord.y][coord.x].isPit {
             let anyPit = Set(set.pitTileIDs)
             if !anyPit.isEmpty { return anyPit }
         }
+        if !nonPitIDs.isEmpty { return nonPitIDs }
         if !floorIDs.isEmpty { return Set(floorIDs) }
-        return Set(set.frames.keys)
+        return Set(set.frames.keys.filter { set.frames[$0]?.role != .pit })
     }
 
     private static func weightedPick(

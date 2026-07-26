@@ -7,6 +7,7 @@ struct DestructibleWallMinigameView: View {
     let puzzleConfig: DestructibleWallPuzzleConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
+    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (DestructibleWallOutcome) -> Void
 
     @StateObject private var session: DestructibleWallSessionController
@@ -15,16 +16,19 @@ struct DestructibleWallMinigameView: View {
         puzzleConfig: DestructibleWallPuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (DestructibleWallOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: DestructibleWallSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
+                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -85,15 +89,18 @@ final class DestructibleWallSessionController: ObservableObject, DestructibleWal
 
     private let puzzleConfig: DestructibleWallPuzzleConfig
     private let playerFx: SoundEffectTable
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: DestructibleWallPuzzleConfig,
         playerFx: SoundEffectTable,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -106,7 +113,8 @@ final class DestructibleWallSessionController: ObservableObject, DestructibleWal
         let created = DestructibleWallScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx
+            playerFx: playerFx,
+            letterSpriteSetLibrary: letterSpriteSetLibrary
         )
         created.wallDelegate = self
         scene = created

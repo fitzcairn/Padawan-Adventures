@@ -240,7 +240,7 @@ struct PlaceholderFactoryTests {
     @Test func wallIdentityTracksKindDestructibleAndFaces() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
+        world.setTile(Tile(kind: .wall(destructible: true)), at: a)
 
         let solid = PlaceholderFactory.wallIdentity(
             for: Tile(kind: .wall(destructible: false)),
@@ -257,20 +257,30 @@ struct PlaceholderFactoryTests {
             at: a,
             in: world
         )
-        #expect(solid == "wall|0|\(WallFaceSet.all.rawValue)")
+        #expect(solid == nil)
         #expect(soft == "wall|1|\(WallFaceSet.all.rawValue)")
         #expect(gate == "gate|\(WallFaceSet.all.rawValue)")
-        #expect(solid != soft)
-        #expect(solid != gate)
+        #expect(soft != gate)
 
+        // Face culling still applies to destructible walls (east opaque neighbor hides .right).
         world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
         let culled = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .wall(destructible: false)),
+            for: Tile(kind: .wall(destructible: true)),
             at: a,
             in: world
         )
-        #expect(culled != solid)
-        #expect(culled == "wall|0|\(WallFaceSet([.left, .top]).rawValue)")
+        #expect(culled != soft)
+        #expect(culled == "wall|1|\(WallFaceSet([.left, .top]).rawValue)")
+    }
+
+    @Test func solidWallTileNodeDrawsNothing() {
+        let config = IsometricConfig()
+        let node = PlaceholderFactory.tileNode(
+            for: Tile(kind: .wall(destructible: false)),
+            at: GridCoord(x: 0, y: 0, story: 0),
+            config: config
+        )
+        #expect(node.children.isEmpty)
     }
 
     @Test func wallIdentityNilForUnrenderedInteriorWall() {
@@ -291,7 +301,7 @@ struct PlaceholderFactoryTests {
                 in: world
             ) == nil
         )
-        #expect(PlaceholderFactory.ceilingIdentity(at: center, in: world) == "ceiling")
+        #expect(PlaceholderFactory.ceilingIdentity(at: center, in: world) == nil)
     }
 
     @Test func floorBehindFrontWallIsOccludedForPickups() {
@@ -411,5 +421,47 @@ struct PlaceholderFactoryTests {
         #expect(glow.particleBirthRate == 0)
         #expect(icon.action(forKey: "pickupBounce") == nil)
         #expect(!completed)
+    }
+
+    @Test @MainActor
+    func defeatAnimationAddsRedSparklesBehindBody() throws {
+        let entity = GameEntity(
+            letter: "S",
+            position: GridCoord(x: 0, y: 0, story: 0),
+            enemyTypeID: "spider"
+        )
+        let node = PlaceholderFactory.entityNode(
+            for: entity,
+            config: IsometricConfig(),
+            fillColor: .gray
+        )
+        #expect(node.childNode(withName: SparkleEmitterFactory.nodeName) == nil)
+
+        var completed = false
+        PlaceholderFactory.playDefeatAnimation(on: node) {
+            completed = true
+        }
+
+        let glow = try #require(
+            node.childNode(withName: SparkleEmitterFactory.nodeName) as? SKEmitterNode
+        )
+        #expect(glow.zPosition < PlaceholderFactory.entityBodyZ)
+        #expect(glow.particleBirthRate > 0)
+        #expect(HighlightConfig.enemyDefeat.color == "#FF3B30")
+        #expect(node.action(forKey: "defeatFade") != nil)
+        #expect(!completed)
+    }
+
+    @Test @MainActor
+    func combatImpactBurstEmitsFiniteOrangeParticles() {
+        #expect(HighlightConfig.combatImpact.color == "#FF9500")
+        let burst = SparkleEmitterFactory.makeBurstNode(
+            config: .combatImpact,
+            referenceHeight: 72,
+            particleCount: 24
+        )
+        #expect(burst.numParticlesToEmit == 24)
+        #expect(burst.particleBirthRate > 0)
+        #expect(burst.particleColorBlendFactor == 1)
     }
 }

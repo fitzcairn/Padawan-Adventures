@@ -57,6 +57,11 @@ struct ConfigAuditTests {
             #expect(!level.floor.set.isEmpty)
             let set = try FloorTileSet.loadFromBundle(set: level.floor.set)
             #expect(!set.floorTileIDs.isEmpty)
+
+            #expect(!level.letters.set.isEmpty)
+            let letterSet = try LetterSpriteSet.loadFromBundle(set: level.letters.set)
+            #expect(letterSet.frames.count == 52)
+            #expect(letterSet.missingKeys.isEmpty)
         }
 
         try ConfigAudit.run(
@@ -83,6 +88,32 @@ struct ConfigAuditTests {
             letterCatalog: letters
         )
         level.floor.set = "does-not-exist"
+        #expect(throws: ConfigAuditError.self) {
+            try ConfigAudit.run(
+                app: app,
+                levels: [level],
+                enemies: try EnemyConfig.loadFromBundle(),
+                items: try ItemsConfig.loadFromBundle(),
+                words: words,
+                letters: letters,
+                audio: try SoundSettings.loadFromBundle(),
+                screens: try ScreensConfig.loadFromBundle(),
+                player: try PlayerConfig.loadFromBundle()
+            )
+        }
+    }
+
+    @Test func badLetterSetFailsAudit() throws {
+        let app = try WorldLoader.loadConfigFromBundle()
+        let words = try WordCatalog.loadFromBundle()
+        let letters = try LetterCatalog.loadFromBundle()
+        var level = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory,
+            wordCatalog: words,
+            letterCatalog: letters
+        )
+        level.letters.set = "does-not-exist"
         #expect(throws: ConfigAuditError.self) {
             try ConfigAudit.run(
                 app: app,

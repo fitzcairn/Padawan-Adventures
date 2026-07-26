@@ -17,6 +17,8 @@ artifact: building.2.fill
 treasure: power-cell
 floor:
   set: 6-coruscant
+letters:
+  set: 6-coruscant
 enemies:
   types: [drone, robot]
   spawn_chance_per_room: 0.8

@@ -218,15 +218,27 @@ final class GameScene: SKScene {
         renderer.fadeWorldOut(duration: duration, completion: completion)
     }
 
-    /// Removes the enemy after a fight, fades the simulation back in, then resumes.
+    /// Removes the enemy after a fight, fades the world back in with the sprite
+    /// still visible, then plays the red-sparkle defeat fade before resuming.
     func resolveEnemyEncounter(enemyID: UUID, completion: (() -> Void)? = nil) {
         simulationLoop.removeEnemy(id: enemyID, from: &world)
         pendingInput = PendingInput()
+        // Detach before sync so the sprite stays on screen for the defeat fade.
+        let defeatNode = renderer.detachEntityNode(id: enemyID)
         renderer.syncEntities(world.entities)
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
-            self?.isPausedForEncounter = false
-            completion?()
+            guard let self else { return }
+            guard let defeatNode else {
+                self.isPausedForEncounter = false
+                completion?()
+                return
+            }
+            PlaceholderFactory.playDefeatAnimation(on: defeatNode) {
+                defeatNode.removeFromParent()
+                self.isPausedForEncounter = false
+                completion?()
+            }
         }
     }
 

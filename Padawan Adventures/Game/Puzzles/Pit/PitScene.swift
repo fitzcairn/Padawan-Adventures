@@ -40,13 +40,17 @@ final class PitScene: SKScene {
     private static let connectedSoundActionKey = "pitConnectedSound"
     private static let winSoundActionKey = "pitWinSound"
 
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
+
     init(
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.engine = PitMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -228,15 +232,25 @@ final class PitScene: SKScene {
         root.addChild(circle)
         circleNodes[token.id] = circle
 
-        let label = SKLabelNode(text: token.letter)
-        label.fontName = "Helvetica-Bold"
-        label.fontSize = radius * 1.35
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        label.isUserInteractionEnabled = false
-        root.addChild(label)
+        if let glyph = LetterSpriteFactory.sprite(
+            letter: token.letter,
+            side: radius * 1.35,
+            library: letterSpriteSetLibrary
+        ) {
+            glyph.zPosition = 1
+            glyph.isUserInteractionEnabled = false
+            root.addChild(glyph)
+        } else {
+            let label = SKLabelNode(text: token.letter)
+            label.fontName = "Helvetica-Bold"
+            label.fontSize = radius * 1.35
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            label.isUserInteractionEnabled = false
+            root.addChild(label)
+        }
 
         return root
     }

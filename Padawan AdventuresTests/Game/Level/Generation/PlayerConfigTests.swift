@@ -34,6 +34,22 @@ struct PlayerConfigTests {
         try config.validate()
     }
 
+    @Test func decodesCombatSprite() throws {
+        let yaml = """
+        letter: P
+        starting_health: 3
+        starting_energy: 2
+        combat_sprite:
+          root: Sprites/Combat
+          chroma: black
+          animations:
+            swing: { sheet: player-combat-spritesheet, atlas: player-combat-atlas }
+        """
+        let config = try PlayerConfig.decode(from: yaml)
+        #expect(config.combatSprite?.root == "Sprites/Combat")
+        #expect(config.combatSprite?.animations["swing"] != nil)
+    }
+
     @Test func validateRejectsNegativeStartingHealth() {
         var config = PlayerConfig.fallback
         config.startingHealth = -1

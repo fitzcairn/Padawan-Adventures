@@ -10,6 +10,11 @@ struct EnemyMinigameView: View {
     let hudConfig: HudConfig
     let letterSoundRepeatSeconds: Double
     let slashMaxSeconds: Double
+    let spriteLibrary: SpriteLibrary
+    let letterSpriteSetLibrary: LetterSpriteSetLibrary
+    let combatSprite: SpriteConfig?
+    let enemySprite: (id: String, config: SpriteConfig)?
+    let wallHeight: CGFloat
     let onFinished: (CombatOutcome) -> Void
 
     @StateObject private var session: CombatSessionController
@@ -21,6 +26,11 @@ struct EnemyMinigameView: View {
         hudConfig: HudConfig,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
+        spriteLibrary: SpriteLibrary,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
+        combatSprite: SpriteConfig?,
+        enemySprite: (id: String, config: SpriteConfig)?,
+        wallHeight: CGFloat,
         onFinished: @escaping (CombatOutcome) -> Void
     ) {
         self.enemyType = enemyType
@@ -29,6 +39,11 @@ struct EnemyMinigameView: View {
         self.hudConfig = hudConfig
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.slashMaxSeconds = slashMaxSeconds
+        self.spriteLibrary = spriteLibrary
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
+        self.combatSprite = combatSprite
+        self.enemySprite = enemySprite
+        self.wallHeight = wallHeight
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: CombatSessionController(
@@ -37,7 +52,12 @@ struct EnemyMinigameView: View {
                 startingHealth: healthCount,
                 letterSoundRepeatSeconds: letterSoundRepeatSeconds,
                 slashMaxSeconds: slashMaxSeconds,
-                initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds))
+                initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds)),
+                spriteLibrary: spriteLibrary,
+                letterSpriteSetLibrary: letterSpriteSetLibrary,
+                combatSprite: combatSprite,
+                enemySprite: enemySprite,
+                wallHeight: wallHeight
             )
         )
     }
@@ -99,6 +119,11 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let startingHealth: Int
     private let letterSoundRepeatSeconds: Double
     private let slashMaxSeconds: Double
+    private let spriteLibrary: SpriteLibrary
+    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
+    private let combatSprite: SpriteConfig?
+    private let enemySprite: (id: String, config: SpriteConfig)?
+    private let wallHeight: CGFloat
     private var starsAwarded = 0
     private var didFinish = false
 
@@ -108,13 +133,23 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
-        initialTimerSeconds: Int
+        initialTimerSeconds: Int,
+        spriteLibrary: SpriteLibrary,
+        letterSpriteSetLibrary: LetterSpriteSetLibrary,
+        combatSprite: SpriteConfig?,
+        enemySprite: (id: String, config: SpriteConfig)?,
+        wallHeight: CGFloat
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
         self.startingHealth = startingHealth
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.slashMaxSeconds = slashMaxSeconds
+        self.spriteLibrary = spriteLibrary
+        self.letterSpriteSetLibrary = letterSpriteSetLibrary
+        self.combatSprite = combatSprite
+        self.enemySprite = enemySprite
+        self.wallHeight = wallHeight
         self.health = startingHealth
         self.timerSeconds = initialTimerSeconds
     }
@@ -131,7 +166,12 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
             playerFx: playerFx,
             startingHealth: startingHealth,
             letterSoundRepeatSeconds: letterSoundRepeatSeconds,
-            slashMaxSeconds: slashMaxSeconds
+            slashMaxSeconds: slashMaxSeconds,
+            spriteLibrary: spriteLibrary,
+            letterSpriteSetLibrary: letterSpriteSetLibrary,
+            combatSprite: combatSprite,
+            enemySprite: enemySprite,
+            wallHeight: wallHeight
         )
         created.combatDelegate = self
         scene = created

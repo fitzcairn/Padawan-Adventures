@@ -338,6 +338,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     /// YAML/config decode failed; associated value carries the underlying reason.
     case decodeFailed(String)
     case emptyFloorSet
+    case emptyLetterSet
     case invalidDecorProb(Double)
 }
 

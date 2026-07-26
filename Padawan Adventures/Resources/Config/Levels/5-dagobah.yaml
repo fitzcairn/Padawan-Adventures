@@ -17,6 +17,8 @@ artifact: drop.fill
 treasure: lower-grip
 floor:
   set: 5-dagobah
+letters:
+  set: 5-dagobah
 enemies:
   types: [snake, treant]
   spawn_chance_per_room: 0.8

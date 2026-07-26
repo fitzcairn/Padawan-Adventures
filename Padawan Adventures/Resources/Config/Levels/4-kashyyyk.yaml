@@ -17,6 +17,8 @@ artifact: tree.fill
 treasure: activation-switch
 floor:
   set: 4-kashyyyk
+letters:
+  set: 4-kashyyyk
 enemies:
   types: [spider, moth]
   spawn_chance_per_room: 0.8

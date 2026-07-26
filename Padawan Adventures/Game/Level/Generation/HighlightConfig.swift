@@ -64,4 +64,26 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
 
     /// Parsed tint, or a fallback yellow when the hex string is malformed.
     var uiColor: UIColor { UIColor(hex: color) ?? .systemYellow }
+
+    /// Red burst used when a defeated enemy fades out of the world.
+    static let enemyDefeat = HighlightConfig(
+        color: "#FF3B30",
+        birthRate: 40,
+        lifetime: 0.75,
+        radius: 0.55,
+        particleSize: 0.14,
+        alpha: 0.9,
+        yOffset: 0.45
+    )
+
+    /// Orange burst when a combat projectile impacts the player.
+    static let combatImpact = HighlightConfig(
+        color: "#FF9500",
+        birthRate: 120,
+        lifetime: 0.55,
+        radius: 0.7,
+        particleSize: 0.18,
+        alpha: 0.95,
+        yOffset: 0
+    )
 }
