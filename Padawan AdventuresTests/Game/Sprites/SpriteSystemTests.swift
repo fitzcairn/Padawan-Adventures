@@ -336,7 +336,7 @@ struct SpriteSystemTests {
         #expect(CompassDirection.southeast.animationName(locomotion: .walk) == "walk_southeast")
     }
 
-    @Test @MainActor func spriteLibraryEnsureLoadedIsIdempotent() {
+    @Test @MainActor func spriteLibraryEnsureLoadedIsIdempotent() async {
         let library = SpriteLibrary()
         let config = SpriteConfig(
             root: "Sprites/Missing",
@@ -345,14 +345,14 @@ struct SpriteSystemTests {
                 "idle_down": .sheet(sheet: "missing", atlas: "missing"),
             ]
         )
-        library.ensureLoaded(config, id: "player")
+        await library.ensureLoaded(config, id: "player")
         #expect(library.isLoaded(id: "player"))
         let countAfterFirst = library.animationCount(for: "player")
-        library.ensureLoaded(config, id: "player")
+        await library.ensureLoaded(config, id: "player")
         #expect(library.animationCount(for: "player") == countAfterFirst)
     }
 
-    @Test @MainActor func spriteLibrarySeedPreservesAnimations() {
+    @Test @MainActor func spriteLibrarySeedPreservesAnimations() async {
         let library = SpriteLibrary()
         let anim = SpriteAnimation(
             frames: [SpriteFrame(texture: SKTexture(), duration: 0.2)],
@@ -363,15 +363,15 @@ struct SpriteSystemTests {
         #expect(library.animation(named: "idle_down") != nil)
 
         let config = SpriteConfig(root: "Sprites/Player", animations: [:])
-        library.ensureLoaded(config, id: "player")
+        await library.ensureLoaded(config, id: "player")
         #expect(library.animation(named: "idle_down") != nil)
     }
 
-    @Test @MainActor func loadsPlayerIdleDownFromBundle() throws {
+    @Test @MainActor func loadsPlayerIdleDownFromBundle() async throws {
         let config = try PlayerConfig.loadFromBundle()
         let sprite = try #require(config.sprite)
         let library = SpriteLibrary()
-        library.ensureLoaded(sprite, id: "player")
+        await library.ensureLoaded(sprite, id: "player")
         let idle = try #require(library.animation(named: "idle_down"))
         #expect(idle.frames.count == 25)
         #expect(idle.flipsHorizontally == false)
@@ -394,11 +394,11 @@ struct SpriteSystemTests {
         #expect(library.animationCount(for: "player") >= 10)
     }
 
-    @Test @MainActor func idleNortheastLoopMatchesAtlasDuration() throws {
+    @Test @MainActor func idleNortheastLoopMatchesAtlasDuration() async throws {
         let config = try PlayerConfig.loadFromBundle()
         let sprite = try #require(config.sprite)
         let library = SpriteLibrary()
-        library.ensureLoaded(sprite, id: "player")
+        await library.ensureLoaded(sprite, id: "player")
 
         let idle = try #require(library.animation(named: "idle_northeast"))
         #expect(idle.frames.count == 25)

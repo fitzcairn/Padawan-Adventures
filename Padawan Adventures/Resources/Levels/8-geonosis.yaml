@@ -12,11 +12,6 @@ floor_sprites:
   - sand-dusty
   - dirt-arid
   - dirt-cracked
-  - canyon
-  - canyon-ridge
-  - boulder
-  - rocks-pile
-  - meteorite
 enemies:
   types: [geonosian, battle_droid]
   spawn_chance_per_room: 0.8

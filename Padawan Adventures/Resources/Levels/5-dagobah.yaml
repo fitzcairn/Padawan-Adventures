@@ -8,15 +8,11 @@ color: "#556B2F"
 artifact: drop.fill
 floor_sprites:
   - swamp
-  - swamp-roots
   - swamp-murky
   - swamp-deep
   - swamp-algae
   - swamp-glow
   - water-green
-  - stump
-  - log
-  - foliage-dark
 enemies:
   types: [dragonsnake]
   spawn_chance_per_room: 0.8

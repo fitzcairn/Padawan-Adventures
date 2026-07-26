@@ -4,11 +4,18 @@ struct PreparingView: View {
     let session: AppSession
     let mode: GameLaunchMode
     @State private var didStartLoad = false
+    @State private var progress: Double = 0
 
     var body: some View {
         AppScreen {
-            AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
-                .accessibilityIdentifier("preparing.status")
+            VStack(spacing: 28) {
+                AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
+                    .accessibilityIdentifier("preparing.status")
+
+                AppProgressBar(progress: progress, accessibilityID: "preparing.progress")
+                    .frame(maxWidth: 280)
+                    .appReadableWidth()
+            }
         }
         .playScreenMusic("preparing")
         .task {
@@ -20,7 +27,10 @@ struct PreparingView: View {
 
     @MainActor
     private func prepareAndPresentGame() async {
-        let world = await GameWorldPreparer.prepareLaunch(session: session, mode: mode)
+        let world = await GameWorldPreparer.prepareLaunch(session: session, mode: mode) { value in
+            progress = value
+        }
+        progress = 1
         let isoConfig = session.seedConfig.display.makeIsometricConfig()
         let game = GameViewController(
             world: world,

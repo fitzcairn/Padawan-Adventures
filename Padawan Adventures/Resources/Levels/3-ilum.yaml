@@ -7,11 +7,6 @@ order: 3
 color: "#81D4FA"
 artifact: snowflake
 floor_sprites:
-  - ice-block
-  - ice-cave
-  - ice-shard
-  - iceberg
-  - glacier
   - water-ice
   - water
   - water-bright

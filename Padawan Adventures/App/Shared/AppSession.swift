@@ -98,17 +98,34 @@ final class AppSession {
     }
 
     /// Ensures player sprite animations are loaded for this session.
-    func ensurePlayerSpritesLoaded() {
-        guard let sprite = playerConfig.sprite else { return }
-        spriteLibrary.ensureLoaded(sprite, id: "player")
+    func ensurePlayerSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        guard let sprite = playerConfig.sprite else {
+            onProgress?(1)
+            return
+        }
+        await spriteLibrary.ensureLoaded(sprite, id: "player", onProgress: onProgress)
     }
 
     /// Ensures item pickup sprite animations are loaded for this session.
-    func ensureItemSpritesLoaded() {
-        for (id, item) in itemsConfig.items {
-            guard let sprite = item.sprite else { continue }
-            spriteLibrary.ensureLoaded(sprite, id: id)
+    func ensureItemSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let entries = itemsConfig.items.compactMap { id, item -> (String, SpriteConfig)? in
+            guard let sprite = item.sprite else { return nil }
+            return (id, sprite)
         }
+        guard !entries.isEmpty else {
+            onProgress?(1)
+            return
+        }
+
+        let total = entries.count
+        for (index, entry) in entries.enumerated() {
+            let start = Double(index) / Double(total)
+            let end = Double(index + 1) / Double(total)
+            await spriteLibrary.ensureLoaded(entry.1, id: entry.0) { local in
+                onProgress?(LoadProgress.map(local, from: start, to: end))
+            }
+        }
+        onProgress?(1)
     }
 
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
@@ -130,7 +147,19 @@ final class AppSession {
     }
 
     /// Loads seed config, player store, and an unbound save service.
-    static func loadResources() async -> AppSession {
+    ///
+    /// `onProgress` receives a monotonically useful 0...1 fraction across config + floor sheets.
+    static func loadResources(
+        onProgress: (@MainActor (Double) -> Void)? = nil
+    ) async -> AppSession {
+        func report(_ value: Double) async {
+            onProgress?(value)
+            await Task.yield()
+        }
+
+        // Config / store bootstrap occupies the first slice; floor sheets fill the rest.
+        let configEnd = 0.18
+
         let seedConfig: WorldSeedConfig
         let selectedLevelName: String
         let selectedLevelArtifact: String
@@ -163,6 +192,7 @@ final class AppSession {
             selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
             selectedLetterSoundRepeatSeconds = LevelConfig.fallback.letterSoundRepeatSeconds
         }
+        await report(0.03)
 
         let soundSettings: SoundSettings
         do {
@@ -175,6 +205,7 @@ final class AppSession {
         BackgroundMusicController.shared.configure(fadeSeconds: soundSettings.fadeSeconds)
         SoundEffectsController.shared.configure(commonFx: soundSettings.fx)
         AudioPreferences.shared.applyToControllers()
+        await report(0.06)
 
         let playerConfig: PlayerConfig
         do {
@@ -202,6 +233,7 @@ final class AppSession {
         } catch {
             itemsConfig = .fallback
         }
+        await report(0.10)
 
         let playerStore: PlayerStateStore
         let saveService: GameSaveService
@@ -219,6 +251,7 @@ final class AppSession {
         }
 
         try? await playerStore.purgeOrphans()
+        await report(0.14)
 
         let terrainCatalog: TerrainCatalog
         if let loaded = try? TerrainCatalog.loadFromBundle() {
@@ -238,9 +271,14 @@ final class AppSession {
                 terrains: [:]
             )
         }
+        await report(configEnd)
+
         let floorSpriteLibrary = FloorSpriteLibrary()
         // Slice all floor terrains once at game open so every level can reuse them.
-        floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog)
+        await floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog) { local in
+            onProgress?(LoadProgress.map(local, from: configEnd, to: 1))
+        }
+        await report(1)
 
         return AppSession(
             seedConfig: seedConfig,

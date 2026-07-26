@@ -7,14 +7,8 @@ order: 7
 color: "#E65100"
 artifact: flame.fill
 floor_sprites:
-  - rock-volcanic
-  - rock-lava
-  - boulder-red
   - dirt-scorched
   - dirt-dark
-  - meteorite
-  - meteorite-cracked
-  - rocks-dark
   - pit
 enemies:
   types: [lava_flea]

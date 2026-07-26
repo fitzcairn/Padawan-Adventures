@@ -21,16 +21,21 @@ letter_sound_repeat_seconds: 3
 width: 20
 height: 20
 
-# Default floor terrain palette (overridden per level). Ids from terrain.yaml.
+# Default base floor terrain palette (overridden per level). Ids from terrain.yaml.
+# Accents/specials are placed from each base's lists in terrain.yaml.
 floor_sprites:
   - grass
   - grass-lush
   - dirt-arid
   - dirt-dry
-  - foliage
   - sand
   - plank
   - water
+
+# Chance a floor gets an accent overlay (when not replaced by a corner special).
+floor_accent_prob: 0.15
+# Chance a corner floor (exactly 2 orthogonal floor neighbors) becomes a special.
+corner_special_prob: 0.15
 
 algorithm: rooms_doors
 # How many rooms to place on the map.

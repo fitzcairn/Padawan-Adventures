@@ -14,8 +14,12 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
     var fx: SoundEffectTable
     /// 4-digit password that unlocks Dad mode on the level select screen.
     var dadModePassword: String
-    /// Terrain ids from `terrain.yaml` used to paint floors for this level.
+    /// Base terrain ids from `terrain.yaml` used to paint floors for this level.
     var floorSprites: [String]
+    /// Probability that a non-corner floor gets an accent overlay (0...1).
+    var floorAccentProb: Double
+    /// Probability that a corner floor becomes a special (0...1).
+    var cornerSpecialProb: Double
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -29,6 +33,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         case fx
         case dadModePassword = "dad_mode_password"
         case floorSprites = "floor_sprites"
+        case floorAccentProb = "floor_accent_prob"
+        case cornerSpecialProb = "corner_special_prob"
     }
 
     /// Default Dad mode password when omitted from YAML.
@@ -45,7 +51,9 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         extensions: [String: String]?,
         fx: SoundEffectTable = .empty,
         dadModePassword: String = WorldSeedConfig.defaultDadModePassword,
-        floorSprites: [String] = LevelConfig.fallback.floorSprites
+        floorSprites: [String] = LevelConfig.fallback.floorSprites,
+        floorAccentProb: Double = LevelConfig.fallbackFloorAccentProb,
+        cornerSpecialProb: Double = LevelConfig.fallbackCornerSpecialProb
     ) {
         self.version = version
         self.seed = seed
@@ -58,6 +66,8 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         self.fx = fx
         self.dadModePassword = dadModePassword
         self.floorSprites = floorSprites
+        self.floorAccentProb = floorAccentProb
+        self.cornerSpecialProb = cornerSpecialProb
     }
 
     init(from decoder: Decoder) throws {
@@ -77,6 +87,10 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         dadModePassword = try Self.decodeDadModePassword(from: container)
         floorSprites = try container.decodeIfPresent([String].self, forKey: .floorSprites)
             ?? LevelConfig.fallback.floorSprites
+        floorAccentProb = try container.decodeIfPresent(Double.self, forKey: .floorAccentProb)
+            ?? LevelConfig.fallbackFloorAccentProb
+        cornerSpecialProb = try container.decodeIfPresent(Double.self, forKey: .cornerSpecialProb)
+            ?? LevelConfig.fallbackCornerSpecialProb
     }
 
     private static func decodeDadModePassword(
@@ -397,6 +411,12 @@ nonisolated struct WorldSeedConfig: Codable, Equatable, Sendable {
         guard !floorSprites.isEmpty else {
             throw WorldSeedError.emptyFloorSprites
         }
+        guard floorAccentProb >= 0, floorAccentProb <= 1 else {
+            throw WorldSeedError.invalidFloorAccentProb(floorAccentProb)
+        }
+        guard cornerSpecialProb >= 0, cornerSpecialProb <= 1 else {
+            throw WorldSeedError.invalidCornerSpecialProb(cornerSpecialProb)
+        }
         guard world.stories == 1 else {
             throw WorldSeedError.invalidStoryCount(world.stories)
         }
@@ -491,6 +511,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     /// YAML/config decode failed; associated value carries the underlying reason.
     case decodeFailed(String)
     case emptyFloorSprites
+    case invalidFloorAccentProb(Double)
+    case invalidCornerSpecialProb(Double)
 }
 
 /// Interactable kinds every valid map must include at least once.

@@ -38,7 +38,7 @@ struct FloorSpriteSystemTests {
         #expect(last.maxY == 2048)
     }
 
-    @Test func terrainCatalogDecodesSpriteBlockAndNearby() throws {
+    @Test func terrainCatalogDecodesTypeAccentsAndSpecials() throws {
         let yaml = """
         sprite:
           root: Sprites/Floor
@@ -50,14 +50,20 @@ struct FloorSpriteSystemTests {
           chroma_key_feather: 48
           chroma_key_smooth: 2
         terrains:
-          water:
-            row: 9
+          grass:
+            row: 2
             col: 0
-            nearby: [water-clear, water-shallow]
-          water-clear:
-            row: 9
-            col: 1
-            nearby: [water]
+            type: base
+            accents: [flowers, stump]
+            specials: [foliage]
+          flowers:
+            row: 4
+            col: 0
+            type: accent
+          foliage:
+            row: 3
+            col: 0
+            type: special
         """
         let catalog = try TerrainCatalog.decode(from: Data(yaml.utf8))
         #expect(catalog.sprite.root == "Sprites/Floor")
@@ -66,9 +72,14 @@ struct FloorSpriteSystemTests {
         #expect(catalog.sprite.chromaKeyTolerance == 18)
         #expect(catalog.sprite.chromaKeyFeather == 48)
         #expect(catalog.sprite.chromaKeySmooth == 2)
-        #expect(catalog.terrains["water"]?.row == 9)
-        #expect(catalog.terrains["water"]?.nearby == ["water-clear", "water-shallow"])
-        #expect(catalog.nearbyByID["water-clear"] == ["water"])
+        #expect(catalog.terrains["grass"]?.type == .base)
+        #expect(catalog.terrains["grass"]?.accents == ["flowers", "stump"])
+        #expect(catalog.terrains["grass"]?.specials == ["foliage"])
+        #expect(catalog.terrains["flowers"]?.type == .accent)
+        #expect(catalog.terrains["foliage"]?.type == .special)
+        #expect(catalog.accents(for: "grass") == ["flowers", "stump"])
+        #expect(catalog.specials(for: "grass") == ["foliage"])
+        #expect(catalog.type(of: "flowers") == .accent)
     }
 
     @Test func bundleTerrainCatalogLoadsWithExpectedCount() throws {
@@ -78,9 +89,14 @@ struct FloorSpriteSystemTests {
         #expect(catalog.sprite.chromaKeyTolerance == 18)
         #expect(catalog.sprite.chromaKeyFeather == 48)
         #expect(catalog.sprite.chromaKeySmooth == 2)
-        #expect(catalog.terrains["water"] != nil)
-        #expect(catalog.terrains["grass"] != nil)
-        #expect(catalog.terrains["sand"] != nil)
+        #expect(catalog.terrains["water"]?.type == .base)
+        #expect(catalog.terrains["grass"]?.type == .base)
+        #expect(catalog.terrains["sand"]?.type == .base)
+        #expect(catalog.terrains["swamp-roots"]?.type == .special)
+        #expect(catalog.terrains["flowers"]?.type == .accent)
+        #expect(catalog.terrains["mushroom"]?.type == .special)
+        #expect(catalog.specials(for: "swamp").contains("swamp-roots"))
+        #expect(catalog.specials(for: "grass").contains("foliage"))
     }
 
     @Test func chromaKeyToleranceRemovesNearBlack() throws {
@@ -232,59 +248,20 @@ struct FloorSpriteSystemTests {
         return data[3]
     }
 
-    @Test func floorTerrainAssignmentUsesNearbyIntersection() throws {
-        var tiles: [[[Tile]]] = [
-            [
-                [Tile(kind: .floor(isPit: false)), Tile(kind: .floor(isPit: false))],
-                [Tile(kind: .wall(destructible: false)), Tile(kind: .floor(isPit: true))],
-            ],
-        ]
-        let palette = ["a", "b", "c"]
-        let nearby: [String: [String]] = [
-            "a": ["b"],
-            "b": ["c"],
-            "c": ["a"],
-        ]
-        var rng = SeededGenerator(seed: 42)
-        // Use the same algorithm as ProceduralGenerator via a tiny local copy for determinism checks:
-        // first floor picks from palette; subsequent from intersection.
-        var previous: String?
-        for y in tiles[0].indices {
-            for x in tiles[0][y].indices {
-                guard case .floor = tiles[0][y][x].kind else { continue }
-                let candidates: [String]
-                if let previous, let near = nearby[previous] {
-                    let intersection = near.filter { palette.contains($0) }
-                    candidates = intersection.isEmpty ? palette : intersection
-                } else {
-                    candidates = palette
-                }
-                let pick = candidates[Int.random(in: 0..<candidates.count, using: &rng)]
-                tiles[0][y][x].terrainID = pick
-                previous = pick
-            }
-        }
-
-        let ids = tiles[0].flatMap { $0.compactMap(\.terrainID) }
-        #expect(ids.count == 3)
-        #expect(Set(ids).isSubset(of: Set(palette)))
-        // With nearby a→b→c→a, consecutive floor picks (scan order) stay in the chain.
-        if ids.count >= 2 {
-            let first = ids[0]
-            let second = ids[1]
-            #expect(nearby[first]?.contains(second) == true || first == second)
-        }
-    }
-
-    @Test func tilePersistsTerrainID() throws {
+    @Test func tilePersistsTerrainAndAccentIDs() throws {
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
         let decoder = PropertyListDecoder()
 
-        let tile = Tile(kind: .floor(isPit: false), terrainID: "grass")
+        let tile = Tile(
+            kind: .floor(isPit: false),
+            terrainID: "grass",
+            accentTerrainID: "flowers"
+        )
         let data = try encoder.encode(tile)
         let decoded = try decoder.decode(Tile.self, from: data)
         #expect(decoded.terrainID == "grass")
+        #expect(decoded.accentTerrainID == "flowers")
         if case .floor(let isPit) = decoded.kind {
             #expect(!isPit)
         } else {
@@ -298,9 +275,21 @@ struct FloorSpriteSystemTests {
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(Tile.self, from: json)
         #expect(decoded.terrainID == nil)
+        #expect(decoded.accentTerrainID == nil)
     }
 
-    @Test func proceduralGeneratorAssignsFloorTerrains() throws {
+    @Test func floorIdentityIncludesAccent() {
+        let withAccent = Tile(
+            kind: .floor(isPit: false),
+            terrainID: "grass",
+            accentTerrainID: "flowers"
+        )
+        let withoutAccent = Tile(kind: .floor(isPit: false), terrainID: "grass")
+        #expect(PlaceholderFactory.floorIdentity(for: withAccent) == "grass|flowers|0")
+        #expect(PlaceholderFactory.floorIdentity(for: withoutAccent) == "grass||0")
+    }
+
+    @Test func proceduralGeneratorAssignsFloorTerrainsWithAccentsAndSpecials() throws {
         var config = WorldSeedConfig(
             version: 1,
             seed: 7,
@@ -318,37 +307,52 @@ struct FloorSpriteSystemTests {
                 )
             ),
             extensions: nil,
-            floorSprites: ["grass", "dirt-arid", "sand"]
+            floorSprites: ["grass"],
+            floorAccentProb: 1.0,
+            cornerSpecialProb: 1.0
         )
         config.enemies = .init(types: ["horranth"], spawnChancePerRoom: 1.0)
-        let nearby: [String: [String]] = [
-            "grass": ["dirt-arid", "sand"],
-            "dirt-arid": ["grass", "sand"],
-            "sand": ["grass", "dirt-arid"],
-        ]
+        let placement = TerrainPlacementTable(
+            accents: ["grass": ["flowers"]],
+            specials: ["grass": ["foliage"]]
+        )
         let world = try ProceduralGenerator().generate(
             from: config,
-            terrainNearby: nearby
+            terrainPlacement: placement
         )
         var floorCount = 0
-        var assigned = 0
+        var specialCount = 0
+        var accentCount = 0
         for story in world.tiles {
             for row in story {
                 for tile in row {
                     guard case .floor = tile.kind else { continue }
                     floorCount += 1
-                    if let id = tile.terrainID {
-                        assigned += 1
-                        #expect(["grass", "dirt-arid", "sand"].contains(id))
+                    let id = try #require(tile.terrainID)
+                    #expect(id == "grass" || id == "foliage")
+                    if id == "foliage" {
+                        specialCount += 1
+                        #expect(tile.accentTerrainID == nil)
+                    } else if let accent = tile.accentTerrainID {
+                        accentCount += 1
+                        #expect(accent == "flowers")
                     }
                 }
             }
         }
         #expect(floorCount > 0)
-        #expect(assigned == floorCount)
+        #expect(specialCount > 0)
+        #expect(accentCount > 0)
     }
 
-    @Test func floorSpriteLoaderSlicesSampleTerrainFromBundle() throws {
+    @Test func levelConfigFallbackFloorSpritesAreBaseOnly() {
+        #expect(!LevelConfig.fallbackFloorSprites.contains("foliage"))
+        #expect(LevelConfig.fallbackFloorSprites.contains("grass"))
+        #expect(LevelConfig.fallbackFloorAccentProb == 0.15)
+        #expect(LevelConfig.fallbackCornerSpecialProb == 0.15)
+    }
+
+    @Test func floorSpriteLoaderSlicesSampleTerrainFromBundle() async throws {
         let catalog = try TerrainCatalog.loadFromBundle()
         // Load only via a one-entry catalog so the test stays fast.
         let sampleID = "water"
@@ -357,20 +361,32 @@ struct FloorSpriteSystemTests {
             sprite: catalog.sprite,
             terrains: [sampleID: sample]
         )
-        let animations = try FloorSpriteLoader.loadAll(catalog: slim)
+        let animations = try await FloorSpriteLoader.loadAll(catalog: slim)
         let animation = try #require(animations[sampleID])
         #expect(animation.frames.count == 1)
-        #expect(abs(animation.frames.map(\.duration).reduce(0, +) - 1.0) < 0.001)
+        #expect(animation.frames[0].duration == 0)
         let size = animation.frames[0].texture.size()
         #expect(size.width > 1)
         #expect(size.height > 1)
     }
 
     @Test @MainActor
-    func floorSpriteLibraryLoadsAllTerrainsFromBundle() throws {
+    func floorSpritePlayDoesNotStartLoopingAction() {
+        let texture = SKTexture()
+        let animation = SpriteAnimation(frames: [
+            SpriteFrame(texture: texture, duration: 0),
+        ])
+        let sprite = AnimatedSpriteNode(size: CGSize(width: 40, height: 40))
+        sprite.play(animation: animation, name: "grass")
+        #expect(sprite.action(forKey: AnimatedSpriteNode.animationActionKey) == nil)
+        #expect(sprite.currentAnimationName == "grass")
+    }
+
+    @Test @MainActor
+    func floorSpriteLibraryLoadsAllTerrainsFromBundle() async throws {
         let catalog = try TerrainCatalog.loadFromBundle()
         let library = FloorSpriteLibrary()
-        library.ensureLoaded(catalog: catalog)
+        await library.ensureLoaded(catalog: catalog)
         #expect(library.animationCount == catalog.terrains.count)
         #expect(library.animationCount > 0)
     }

@@ -88,14 +88,14 @@ enum IsometricMath {
         return entityScreenPosition(x: focusX, y: focusY, story: story, config: config)
     }
 
-    /// Floor terrain only — always beneath walls and entity sprites.
+    /// Floors, walls, and entities share this parent band so they interleave by grid Y.
     static let floorBandBase: CGFloat = 0
-    /// Walls + entities. Must exceed any floor depth so sprites never sink under floors,
-    /// while still Y-sorting against walls for occlusion.
-    static let occlusionBandBase: CGFloat = 1_000_000
+    /// Same band as floors — local sort (+0.5) keeps entities above same-cell tiles.
+    static let occlusionBandBase: CGFloat = 0
 
     /// Painter order: increasing grid **Y** draws on top (X, then story, break ties).
-    /// Used for floors among themselves, and for walls/entities in the occlusion band.
+    /// Floors, walls, and entities share this space so tall floor sprites can occlude
+    /// walls behind them, and front walls can occlude entities.
     static func depthSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         let stories = max(config.maxStories, 1)
         // Stride large enough that any x/story at y+1 beats every tile at y.
@@ -114,7 +114,7 @@ enum IsometricMath {
         depthSortValue(for: coord, config: config)
     }
 
-    /// Sprites sit slightly above walls at the same cell (e.g. doorways).
+    /// Sprites sit slightly above floors/walls at the same cell (standing on the tile).
     static func entitySortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config) + 0.5
     }

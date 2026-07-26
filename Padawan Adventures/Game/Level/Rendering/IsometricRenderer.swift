@@ -8,11 +8,11 @@ final class IsometricRenderer {
     private let itemsConfig: ItemsConfig?
     private let floorSpriteLibrary: FloorSpriteLibrary?
     private let worldRoot = SKNode()
-    /// Floor terrain — always beneath the occlusion band.
+    /// Floor terrain — shared band with walls/entities; local z uses increasing grid Y.
     private let floorLayer = SKNode()
-    /// Walls / ceilings — share the occlusion band with entities (Y-sorted).
+    /// Walls / ceilings — same parent band as floors so Y-order can cover either way.
     private let wallLayer = SKNode()
-    /// Players, enemies, pickups, effects — above floors; occluded by front walls.
+    /// Players, enemies, pickups, effects — same band; +0.5 above same-cell tiles.
     private let occlusionLayer = SKNode()
     private var entityNodes: [UUID: SKNode] = [:]
     /// Stable floor nodes keyed by grid coord so animations are not restarted each render.
@@ -60,9 +60,9 @@ final class IsometricRenderer {
             y: scene.size.height * (0.5 - scene.anchorPoint.y)
         )
 
-        // Floors beneath; walls + entities share a higher band and Y-sort for occlusion.
+        // Shared parent band: floors, walls, and entities interleave by increasing grid Y.
         floorLayer.zPosition = IsometricMath.floorBandBase
-        wallLayer.zPosition = IsometricMath.occlusionBandBase
+        wallLayer.zPosition = IsometricMath.floorBandBase
         occlusionLayer.zPosition = IsometricMath.occlusionBandBase
 
         worldRoot.addChild(floorLayer)

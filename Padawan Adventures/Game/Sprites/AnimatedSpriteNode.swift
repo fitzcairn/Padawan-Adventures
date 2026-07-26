@@ -84,6 +84,9 @@ final class AnimatedSpriteNode: SKSpriteNode {
 
         applyScale(flipsHorizontally: animation.flipsHorizontally)
 
+        // Static one-frame clips (floors) keep the texture without a looping action.
+        guard textures.count > 1 else { return }
+
         let animAction: SKAction
         if let timePerFrame = Self.uniformFrameDuration(durations) {
             // Exact atlas timing when all frame weights are equal.

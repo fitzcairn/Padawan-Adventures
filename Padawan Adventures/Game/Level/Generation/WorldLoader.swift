@@ -12,14 +12,17 @@ nonisolated enum WorldLoader {
     static func load(
         from url: URL,
         playerConfig: PlayerConfig = .fallback,
-        enemyConfig: EnemyConfig = .fallback
+        enemyConfig: EnemyConfig = .fallback,
+        terrainPlacement: TerrainPlacementTable? = nil
     ) throws -> GameWorld {
         let data = try Data(contentsOf: url)
         let config = try decodeConfig(from: data)
+        let placement = try terrainPlacement ?? Self.bundleTerrainPlacement()
         return try ProceduralGenerator().generate(
             from: config,
             playerConfig: playerConfig,
-            enemyConfig: enemyConfig
+            enemyConfig: enemyConfig,
+            terrainPlacement: placement
         )
     }
 
@@ -66,6 +69,8 @@ nonisolated enum WorldLoader {
         config.pickups = level.pickups
         config.fx = level.worldFx
         config.floorSprites = level.floorSprites
+        config.floorAccentProb = level.floorAccentProb
+        config.cornerSpecialProb = level.cornerSpecialProb
     }
 
     static func loadFromBundle(
@@ -74,7 +79,8 @@ nonisolated enum WorldLoader {
         levelNamed levelName: String = "base_level",
         levelSubdirectory: String? = nil,
         playerConfig: PlayerConfig = .fallback,
-        enemyConfig: EnemyConfig = .fallback
+        enemyConfig: EnemyConfig = .fallback,
+        terrainPlacement: TerrainPlacementTable? = nil
     ) throws -> GameWorld {
         let config = try loadConfigFromBundle(
             named: name,
@@ -82,11 +88,18 @@ nonisolated enum WorldLoader {
             levelNamed: levelName,
             levelSubdirectory: levelSubdirectory
         )
+        let placement = try terrainPlacement ?? Self.bundleTerrainPlacement()
         return try ProceduralGenerator().generate(
             from: config,
             playerConfig: playerConfig,
-            enemyConfig: enemyConfig
+            enemyConfig: enemyConfig,
+            terrainPlacement: placement
         )
+    }
+
+    /// Placement accents/specials from the bundled `terrain.yaml`.
+    private static func bundleTerrainPlacement() throws -> TerrainPlacementTable {
+        try TerrainCatalog.loadFromBundle().placementTable
     }
 
     static func decodeConfig(from data: Data) throws -> WorldSeedConfig {

@@ -63,29 +63,97 @@ nonisolated struct FloorSpriteConfig: Codable, Equatable, Sendable {
     }
 }
 
+/// How a terrain sprite is used during floor placement.
+nonisolated enum TerrainType: String, Codable, Equatable, Sendable {
+    case base
+    case accent
+    case special
+}
+
 /// One named terrain tile from `terrain.yaml`.
 nonisolated struct TerrainDefinition: Codable, Equatable, Sendable {
     var row: Int
     var col: Int
-    var nearby: [String]
+    var type: TerrainType
+    /// Overlay accents allowed when this base is painted (bases only).
+    var accents: [String]
+    /// Corner replacements allowed when this base is painted (bases only).
+    var specials: [String]
 
     enum CodingKeys: String, CodingKey {
         case row
         case col
-        case nearby
+        case type
+        case accents
+        case specials
     }
 
-    init(row: Int, col: Int, nearby: [String] = []) {
+    init(
+        row: Int,
+        col: Int,
+        type: TerrainType,
+        accents: [String] = [],
+        specials: [String] = []
+    ) {
         self.row = row
         self.col = col
-        self.nearby = nearby
+        self.type = type
+        self.accents = accents
+        self.specials = specials
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         row = try container.decode(Int.self, forKey: .row)
         col = try container.decode(Int.self, forKey: .col)
-        nearby = try container.decodeIfPresent([String].self, forKey: .nearby) ?? []
+        type = try container.decode(TerrainType.self, forKey: .type)
+        let decodedAccents = try container.decodeIfPresent([String].self, forKey: .accents) ?? []
+        let decodedSpecials = try container.decodeIfPresent([String].self, forKey: .specials) ?? []
+        if type == .base {
+            accents = decodedAccents
+            specials = decodedSpecials
+        } else {
+            accents = []
+            specials = []
+        }
+    }
+}
+
+/// Sendable accent/special lookup for procedural floor assignment.
+nonisolated struct TerrainPlacementTable: Equatable, Sendable {
+    private let accentsByID: [String: [String]]
+    private let specialsByID: [String: [String]]
+
+    static let empty = TerrainPlacementTable(accentsByID: [:], specialsByID: [:])
+
+    init(catalog: TerrainCatalog) {
+        var accents: [String: [String]] = [:]
+        var specials: [String: [String]] = [:]
+        for (id, def) in catalog.terrains where def.type == .base {
+            accents[id] = def.accents
+            specials[id] = def.specials
+        }
+        self.accentsByID = accents
+        self.specialsByID = specials
+    }
+
+    private init(accentsByID: [String: [String]], specialsByID: [String: [String]]) {
+        self.accentsByID = accentsByID
+        self.specialsByID = specialsByID
+    }
+
+    /// Test helper for hand-built placement tables.
+    init(accents: [String: [String]], specials: [String: [String]]) {
+        self.accentsByID = accents
+        self.specialsByID = specials
+    }
+
+    func accents(for id: String) -> [String] {
+        accentsByID[id] ?? []
+    }
+
+    func specials(for id: String) -> [String] {
+        specialsByID[id] ?? []
     }
 }
 
@@ -94,9 +162,20 @@ nonisolated struct TerrainCatalog: Equatable, Sendable {
     var sprite: FloorSpriteConfig
     var terrains: [String: TerrainDefinition]
 
-    /// Nearby affinity lists keyed by terrain id (for procedural assignment).
-    var nearbyByID: [String: [String]] {
-        terrains.mapValues(\.nearby)
+    var placementTable: TerrainPlacementTable {
+        TerrainPlacementTable(catalog: self)
+    }
+
+    func type(of id: String) -> TerrainType? {
+        terrains[id]?.type
+    }
+
+    func accents(for id: String) -> [String] {
+        terrains[id]?.accents ?? []
+    }
+
+    func specials(for id: String) -> [String] {
+        terrains[id]?.specials ?? []
     }
 
     static func loadFromBundle(

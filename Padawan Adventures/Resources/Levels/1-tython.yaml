@@ -10,12 +10,9 @@ floor_sprites:
   - grass
   - grass-lush
   - grass-thick
-  - foliage
-  - foliage-lush
   - dirt-weed
   - dirt-sprout
   - plank
-  - flowers
 enemies:
   types: [horranth]
   spawn_chance_per_room: 0.8

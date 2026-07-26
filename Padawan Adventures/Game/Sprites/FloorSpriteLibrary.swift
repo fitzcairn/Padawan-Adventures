@@ -12,16 +12,30 @@ final class FloorSpriteLibrary {
     }
 
     /// Loads every terrain animation from `catalog` once.
-    func ensureLoaded(catalog: TerrainCatalog) {
-        guard !isLoaded else { return }
+    func ensureLoaded(
+        catalog: TerrainCatalog,
+        onProgress: ((Double) -> Void)? = nil
+    ) async {
+        guard !isLoaded else {
+            onProgress?(1)
+            return
+        }
         do {
-            animations = try FloorSpriteLoader.loadAll(catalog: catalog, bundle: bundle)
+            animations = try await FloorSpriteLoader.loadAll(
+                catalog: catalog,
+                bundle: bundle,
+                onProgress: { fraction in
+                    onProgress?(fraction)
+                }
+            )
             isLoaded = true
+            onProgress?(1)
         } catch {
             // Missing assets leave the library empty; floors fall back to shape placeholders.
             print("FloorSpriteLibrary: failed to load terrains — \(error)")
             animations = [:]
             isLoaded = true
+            onProgress?(1)
         }
     }
 

@@ -57,6 +57,18 @@ enum PlaceholderFactory {
                     sprite.zPosition = 0.02
                     container.addChild(sprite)
                 }
+                if let accentID = tile.accentTerrainID,
+                   let accentAnimation = library.animation(id: accentID) {
+                    let accent = floorSpriteNode(
+                        animation: accentAnimation,
+                        terrainID: accentID,
+                        isPit: false,
+                        config: config
+                    )
+                    accent.name = "floor-accent"
+                    accent.zPosition = 0.03
+                    container.addChild(accent)
+                }
             }
 
         case .wall(let destructible):
@@ -175,7 +187,8 @@ enum PlaceholderFactory {
     static func floorIdentity(for tile: Tile) -> String? {
         guard case .floor(let isPit) = tile.kind else { return nil }
         let terrain = tile.terrainID ?? ""
-        return "\(terrain)|\(isPit ? 1 : 0)"
+        let accent = tile.accentTerrainID ?? ""
+        return "\(terrain)|\(accent)|\(isPit ? 1 : 0)"
     }
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.

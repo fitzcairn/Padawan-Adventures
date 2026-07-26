@@ -12,8 +12,17 @@ final class SpriteLibrary {
     }
 
     /// Loads all animations for `config` under `id` if not already loaded.
-    func ensureLoaded(_ config: SpriteConfig, id: String) {
-        guard !loadedIDs.contains(id) else { return }
+    ///
+    /// `onProgress` receives a 0...1 fraction after each sheet animation is processed.
+    func ensureLoaded(
+        _ config: SpriteConfig,
+        id: String,
+        onProgress: ((Double) -> Void)? = nil
+    ) async {
+        guard !loadedIDs.contains(id) else {
+            onProgress?(1)
+            return
+        }
 
         var loaded: [String: SpriteAnimation] = [:]
         var sheetSources: [(name: String, sheet: String, atlas: String)] = []
@@ -28,7 +37,12 @@ final class SpriteLibrary {
             }
         }
 
-        for entry in sheetSources {
+        let total = max(sheetSources.count, 1)
+        if sheetSources.isEmpty {
+            onProgress?(1)
+        }
+
+        for (index, entry) in sheetSources.enumerated() {
             do {
                 loaded[entry.name] = try SpriteSheetLoader.loadAnimation(
                     sheet: entry.sheet,
@@ -42,14 +56,16 @@ final class SpriteLibrary {
                 )
             } catch {
                 // Missing assets are skipped so worlds still load while sheets arrive.
-                continue
             }
+            onProgress?(Double(index + 1) / Double(total))
+            await Task.yield()
         }
 
         Self.resolveFlipAnimations(into: &loaded, flipSources: flipSources)
 
         animationsByID[id] = loaded
         loadedIDs.insert(id)
+        onProgress?(1)
     }
 
     /// Resolves `flip_of` entries against already-loaded sheet animations.

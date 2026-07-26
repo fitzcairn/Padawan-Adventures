@@ -5,11 +5,19 @@ import UIKit
 
 enum FloorSpriteLoader {
     /// Loads every terrain animation from the floor spritesheet + atlas.
+    ///
+    /// `onProgress` receives a 0...1 fraction after sheet prep and after each terrain.
     static func loadAll(
         catalog: TerrainCatalog,
-        bundle: Bundle = .main
-    ) throws -> [String: SpriteAnimation] {
+        bundle: Bundle = .main,
+        onProgress: (@MainActor @Sendable (Double) -> Void)? = nil
+    ) async throws -> [String: SpriteAnimation] {
         let sprite = catalog.sprite
+        let terrainCount = catalog.terrains.count
+        // Sheet prep (decode + chroma) is one unit; each terrain is another.
+        let totalUnits = max(terrainCount + 1, 1)
+        await report(onProgress, 0)
+
         let sheetURL = try resourceURL(
             named: sprite.sheet,
             extensions: ["png", "jpg", "jpeg"],
@@ -49,41 +57,39 @@ enum FloorSpriteLoader {
             throw SpriteLoadError.invalidImage(sprite.sheet)
         }
 
-        let frameCount = atlas.frameCount
-        let duration = atlas.frameDurationSeconds()
+        // Floors are static tiles: always slice frame 0 only (ignore multi-block atlas
+        // layouts / duration_s animation timing used by character sheets).
+        let terrains = catalog.terrains
+        var completedUnits = 1
+        await report(onProgress, Double(completedUnits) / Double(totalUnits))
+
         var result: [String: SpriteAnimation] = [:]
-        result.reserveCapacity(catalog.terrains.count)
+        result.reserveCapacity(terrains.count)
 
-        for (id, definition) in catalog.terrains {
-            var cropped: [CGImage] = []
-            cropped.reserveCapacity(frameCount)
-
-            for frameIndex in 0..<frameCount {
-                guard let rect = atlas.frameRect(
-                    tileRow: definition.row,
-                    tileCol: definition.col,
-                    frameIndex: frameIndex
-                ) else {
-                    throw SpriteLoadError.frameOutOfBounds(
-                        atlas: sprite.atlas,
-                        frame: "\(id)#\(frameIndex)",
-                        rect: "(row \(definition.row), col \(definition.col))"
-                    )
-                }
-                guard rect.minX >= 0, rect.minY >= 0,
-                      rect.maxX <= CGFloat(sheetWidth) + 0.5,
-                      rect.maxY <= CGFloat(sheetHeight) + 0.5,
-                      let piece = keyedImage.cropping(to: rect) else {
-                    throw SpriteLoadError.frameOutOfBounds(
-                        atlas: sprite.atlas,
-                        frame: "\(id)#\(frameIndex)",
-                        rect: "(\(Int(rect.minX)),\(Int(rect.minY)),\(Int(rect.width)),\(Int(rect.height)))"
-                    )
-                }
-                cropped.append(piece)
+        for (id, definition) in terrains {
+            guard let rect = atlas.frameRect(
+                tileRow: definition.row,
+                tileCol: definition.col,
+                frameIndex: 0
+            ) else {
+                throw SpriteLoadError.frameOutOfBounds(
+                    atlas: sprite.atlas,
+                    frame: "\(id)#0",
+                    rect: "(row \(definition.row), col \(definition.col))"
+                )
+            }
+            guard rect.minX >= 0, rect.minY >= 0,
+                  rect.maxX <= CGFloat(sheetWidth) + 0.5,
+                  rect.maxY <= CGFloat(sheetHeight) + 0.5,
+                  let piece = keyedImage.cropping(to: rect) else {
+                throw SpriteLoadError.frameOutOfBounds(
+                    atlas: sprite.atlas,
+                    frame: "\(id)#0",
+                    rect: "(\(Int(rect.minX)),\(Int(rect.minY)),\(Int(rect.width)),\(Int(rect.height)))"
+                )
             }
 
-            let trimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(cropped)
+            let trimmed = SpriteSheetLoader.trimToSharedOpaqueBounds([piece])
             // Floor nodes skip AnimatedSpriteNode's yScale=-1 correction (so the
             // diamond stays below the tile origin), so do NOT flipAroundXAxis here —
             // that pair is only for player/item sprites. Mirror horizontally so
@@ -92,13 +98,28 @@ enum FloorSpriteLoader {
                 let displayImage = SpriteSheetLoader.flipAroundYAxis(image)
                 return SpriteFrame(
                     texture: SpriteSheetLoader.makeFrameTexture(from: displayImage),
-                    duration: max(duration, 0.000_001)
+                    duration: 0
                 )
             }
             result[id] = SpriteAnimation(frames: frames)
+
+            completedUnits += 1
+            await report(onProgress, Double(completedUnits) / Double(totalUnits))
         }
 
         return result
+    }
+
+    private static func report(
+        _ onProgress: (@MainActor @Sendable (Double) -> Void)?,
+        _ fraction: Double
+    ) async {
+        if let onProgress {
+            await MainActor.run {
+                onProgress(fraction)
+            }
+        }
+        await Task.yield()
     }
 
     private static func resourceURL(

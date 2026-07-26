@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// Parametric atlas for the floor spritesheet (5×5 animation blocks × 11×11 tiles).
+/// Parametric atlas for the floor spritesheet (static 1-frame blocks × 11×11 tiles).
 nonisolated struct FloorAtlas: Codable, Equatable, Sendable {
     var meta: Meta
 

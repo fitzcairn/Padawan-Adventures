@@ -24,13 +24,15 @@ nonisolated struct ProceduralGenerator: Sendable {
         from config: WorldSeedConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainNearby: [String: [String]] = [:]
+        terrainPlacement: TerrainPlacementTable = .empty,
+        onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GameWorld {
         try generateDetailed(
             from: config,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainNearby: terrainNearby
+            terrainPlacement: terrainPlacement,
+            onProgress: onProgress
         ).world
     }
 
@@ -38,13 +40,20 @@ nonisolated struct ProceduralGenerator: Sendable {
         from config: WorldSeedConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainNearby: [String: [String]] = [:]
+        terrainPlacement: TerrainPlacementTable = .empty,
+        onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GenerationResult {
         try config.validate()
         try playerConfig.validate()
 
         let baseSeed = config.resolvedSeed()
         var lastMissing: [RequiredInteractable] = RequiredInteractable.allCases
+        var peakProgress = 0.0
+
+        func report(_ value: Double) {
+            peakProgress = max(peakProgress, min(1, max(0, value)))
+            onProgress?(peakProgress)
+        }
 
         for attempt in 0..<Self.maxValidityAttempts {
             let seed = baseSeed &+ UInt64(attempt)
@@ -53,13 +62,21 @@ nonisolated struct ProceduralGenerator: Sendable {
                 config: config,
                 playerConfig: playerConfig,
                 enemyConfig: enemyConfig,
-                terrainNearby: terrainNearby
+                terrainPlacement: terrainPlacement,
+                onPhaseProgress: { phaseFraction in
+                    // Keep retries monotonic: each attempt advances a shrinking remainder.
+                    let attemptBase = 1 - pow(0.55, Double(attempt))
+                    let attemptSpan = pow(0.55, Double(attempt)) * 0.92
+                    report(attemptBase + attemptSpan * phaseFraction)
+                }
             )
             let missing = Self.missingRequiredInteractables(in: result.world)
             if missing.isEmpty {
+                report(1)
                 return result
             }
             lastMissing = missing
+            report(1 - pow(0.55, Double(attempt + 1)))
         }
 
         throw WorldSeedError.missingRequiredInteractables(lastMissing)
@@ -101,8 +118,14 @@ nonisolated struct ProceduralGenerator: Sendable {
         config: WorldSeedConfig,
         playerConfig: PlayerConfig,
         enemyConfig: EnemyConfig,
-        terrainNearby: [String: [String]]
+        terrainPlacement: TerrainPlacementTable,
+        onPhaseProgress: ((Double) -> Void)? = nil
     ) throws -> GenerationResult {
+        let phaseCount = 5.0
+        func phase(_ index: Double) {
+            onPhaseProgress?(min(1, index / phaseCount))
+        }
+
         var rng = SeededGenerator(seed: seed)
         let width = config.world.width
         let height = config.world.height
@@ -121,6 +144,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         )
 
         carveRooms(rooms, into: &tiles[0])
+        phase(1)
 
         let corridorWidth = max(2, params.corridorWidth)
 
@@ -160,6 +184,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             chance: params.room.wallDestructibleChance,
             rng: &rng
         )
+        phase(2)
 
         // At most one pit area per room, rolled with room.pit_chance.
         sprinklePits(
@@ -173,6 +198,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             rng: &rng
         )
         clearPits(around: spawn, tiles: &tiles, story: 0)
+        phase(3)
 
         let letter = playerConfig.letter.first ?? "P"
         let player = GameEntity(letter: letter, position: spawn, isPlayer: true)
@@ -219,6 +245,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         ) {
             entities.append(treasure)
         }
+        phase(4)
 
         // Guarantee at least one of each interactable when the rolls/layout allow it.
         ensureRequiredInteractables(
@@ -237,9 +264,12 @@ nonisolated struct ProceduralGenerator: Sendable {
         assignFloorTerrains(
             tiles: &tiles,
             palette: config.floorSprites,
-            nearbyByID: terrainNearby,
+            placement: terrainPlacement,
+            accentProb: config.floorAccentProb,
+            cornerSpecialProb: config.cornerSpecialProb,
             rng: &rng
         )
+        phase(5)
 
         let world = GameWorld(
             width: width,
@@ -260,26 +290,81 @@ nonisolated struct ProceduralGenerator: Sendable {
         )
     }
 
-    /// Paints every floor cell with a random terrain id from `palette`.
-    /// (Nearby affinity temporarily disabled for floor-sprite visibility testing.)
+    /// Paints floors from the base palette, then optionally replaces corners with specials
+    /// or overlays accents on non-corners.
     private func assignFloorTerrains(
         tiles: inout [[[Tile]]],
         palette: [String],
-        nearbyByID: [String: [String]],
+        placement: TerrainPlacementTable,
+        accentProb: Double,
+        cornerSpecialProb: Double,
         rng: inout SeededGenerator
     ) {
         guard !palette.isEmpty else { return }
-        _ = nearbyByID
 
         for storyIndex in tiles.indices {
-            for y in tiles[storyIndex].indices {
-                for x in tiles[storyIndex][y].indices {
+            let height = tiles[storyIndex].count
+            let width = tiles[storyIndex].first?.count ?? 0
+            for y in 0..<height {
+                for x in 0..<width {
                     guard case .floor = tiles[storyIndex][y][x].kind else { continue }
-                    let pick = palette[Int.random(in: 0..<palette.count, using: &rng)]
-                    tiles[storyIndex][y][x].terrainID = pick
+                    let base = palette[Int.random(in: 0..<palette.count, using: &rng)]
+                    let isCorner = Self.isFloorCorner(
+                        x: x,
+                        y: y,
+                        story: tiles[storyIndex],
+                        width: width,
+                        height: height
+                    )
+                    var placedSpecial = false
+                    if isCorner,
+                       Double.random(in: 0..<1, using: &rng) < cornerSpecialProb {
+                        let specials = placement.specials(for: base)
+                        if !specials.isEmpty {
+                            let special = specials[Int.random(in: 0..<specials.count, using: &rng)]
+                            tiles[storyIndex][y][x].terrainID = special
+                            tiles[storyIndex][y][x].accentTerrainID = nil
+                            placedSpecial = true
+                        }
+                    }
+                    if !placedSpecial {
+                        tiles[storyIndex][y][x].terrainID = base
+                        if Double.random(in: 0..<1, using: &rng) < accentProb {
+                            let accents = placement.accents(for: base)
+                            if !accents.isEmpty {
+                                let accent = accents[Int.random(in: 0..<accents.count, using: &rng)]
+                                tiles[storyIndex][y][x].accentTerrainID = accent
+                            } else {
+                                tiles[storyIndex][y][x].accentTerrainID = nil
+                            }
+                        } else {
+                            tiles[storyIndex][y][x].accentTerrainID = nil
+                        }
+                    }
                 }
             }
         }
+    }
+
+    /// Corner = floor with exactly two orthogonal floor neighbors (N/E/S/W).
+    private static func isFloorCorner(
+        x: Int,
+        y: Int,
+        story: [[Tile]],
+        width: Int,
+        height: Int
+    ) -> Bool {
+        let deltas = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        var floorNeighbors = 0
+        for (dx, dy) in deltas {
+            let nx = x + dx
+            let ny = y + dy
+            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+            if case .floor = story[ny][nx].kind {
+                floorNeighbors += 1
+            }
+        }
+        return floorNeighbors == 2
     }
 
     /// Force-places any missing required interactables (chance rolls already applied).

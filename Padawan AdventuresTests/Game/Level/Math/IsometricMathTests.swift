@@ -30,13 +30,29 @@ struct IsometricMathTests {
         #expect(entityZ > floorZ)
     }
 
-    @Test func entityAlwaysAboveAnyFloorTile() {
+    @Test func higherGridYFloorDrawsOverLowerGridYWall() {
         let config = IsometricConfig()
-        let entity = GridCoord(x: 0, y: 0, story: 0)
-        let frontFloor = GridCoord(x: 99, y: 99, story: 0)
+        let wallBack = GridCoord(x: 0, y: 100, story: 0)
+        let floorMid = GridCoord(x: 0, y: 200, story: 0)
+        let wallFront = GridCoord(x: 0, y: 300, story: 0)
+
         #expect(
-            IsometricMath.effectiveEntityZ(for: entity, config: config)
-                > IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
+            IsometricMath.effectiveFloorZ(for: floorMid, config: config)
+                > IsometricMath.floorBandBase + IsometricMath.wallSortValue(for: wallBack, config: config)
+        )
+        #expect(
+            IsometricMath.floorBandBase + IsometricMath.wallSortValue(for: wallFront, config: config)
+                > IsometricMath.effectiveFloorZ(for: floorMid, config: config)
+        )
+    }
+
+    @Test func frontFloorDrawsOverBackEntity() {
+        let config = IsometricConfig()
+        let entity = GridCoord(x: 0, y: 100, story: 0)
+        let frontFloor = GridCoord(x: 0, y: 200, story: 0)
+        #expect(
+            IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
+                > IsometricMath.effectiveEntityZ(for: entity, config: config)
         )
     }
 

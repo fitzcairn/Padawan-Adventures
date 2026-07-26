@@ -14,10 +14,6 @@ floor_sprites:
   - dirt-arid
   - dirt-cracked
   - dirt-barren
-  - canyon
-  - canyon-mesa
-  - boulder
-  - rocks-small
 enemies:
   types: [krayt_dragon, tusken_raider]
   spawn_chance_per_room: 0.8

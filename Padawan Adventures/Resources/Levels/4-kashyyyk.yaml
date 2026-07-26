@@ -10,14 +10,7 @@ artifact: tree.fill
 floor_sprites:
   - grass
   - grass-lush
-  - foliage
-  - foliage-lush
-  - foliage-dark
-  - stump
-  - stump-mossy
-  - log-mossy
   - dirt-sprout
-  - flowers-green
 enemies:
   types: [katarn, kinrath]
   spawn_chance_per_room: 0.8

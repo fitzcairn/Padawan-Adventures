@@ -508,8 +508,12 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var pit: PitPuzzleConfig
     var gate: GatePuzzleConfig
     var destructibleWall: DestructibleWallPuzzleConfig
-    /// Terrain ids from `terrain.yaml` used when painting floor tiles for this level.
+    /// Base terrain ids from `terrain.yaml` used when painting floor tiles for this level.
     var floorSprites: [String]
+    /// Probability that a non-corner floor gets an accent overlay (0...1).
+    var floorAccentProb: Double
+    /// Probability that a corner floor (exactly 2 orthogonal floor neighbors) becomes a special (0...1).
+    var cornerSpecialProb: Double
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -531,19 +535,23 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case gate
         case destructibleWall = "destructible_wall"
         case floorSprites = "floor_sprites"
+        case floorAccentProb = "floor_accent_prob"
+        case cornerSpecialProb = "corner_special_prob"
     }
 
-    /// Default mixed palette when a level omits `floor_sprites:`.
+    /// Default mixed base palette when a level omits `floor_sprites:`.
     static let fallbackFloorSprites = [
         "grass",
         "grass-lush",
         "dirt-arid",
         "dirt-dry",
-        "foliage",
         "sand",
         "plank",
         "water",
     ]
+
+    static let fallbackFloorAccentProb = 0.15
+    static let fallbackCornerSpecialProb = 0.15
 
     nonisolated static let fallback = LevelConfig(
         name: "Level 1",
@@ -575,7 +583,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pit: .fallback,
         gate: .fallback,
         destructibleWall: .fallback,
-        floorSprites: fallbackFloorSprites
+        floorSprites: fallbackFloorSprites,
+        floorAccentProb: fallbackFloorAccentProb,
+        cornerSpecialProb: fallbackCornerSpecialProb
     )
 
     /// World interaction FX synthesized from puzzle configs (`wall_destroyed`, `gate_opened`).
@@ -605,7 +615,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pit: PitPuzzleConfig = .fallback,
         gate: GatePuzzleConfig = .fallback,
         destructibleWall: DestructibleWallPuzzleConfig = .fallback,
-        floorSprites: [String] = LevelConfig.fallbackFloorSprites
+        floorSprites: [String] = LevelConfig.fallbackFloorSprites,
+        floorAccentProb: Double = LevelConfig.fallbackFloorAccentProb,
+        cornerSpecialProb: Double = LevelConfig.fallbackCornerSpecialProb
     ) {
         self.name = name
         self.order = order
@@ -626,6 +638,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.gate = gate
         self.destructibleWall = destructibleWall
         self.floorSprites = floorSprites
+        self.floorAccentProb = floorAccentProb
+        self.cornerSpecialProb = cornerSpecialProb
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -675,6 +689,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
         floorSprites = try container.decodeIfPresent([String].self, forKey: .floorSprites)
             ?? Self.fallbackFloorSprites
+        floorAccentProb = try container.decodeIfPresent(Double.self, forKey: .floorAccentProb)
+            ?? Self.fallbackFloorAccentProb
+        cornerSpecialProb = try container.decodeIfPresent(Double.self, forKey: .cornerSpecialProb)
+            ?? Self.fallbackCornerSpecialProb
     }
 
     func validate() throws {
@@ -683,6 +701,12 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
         guard !floorSprites.isEmpty else {
             throw WorldSeedError.emptyFloorSprites
+        }
+        guard floorAccentProb >= 0, floorAccentProb <= 1 else {
+            throw WorldSeedError.invalidFloorAccentProb(floorAccentProb)
+        }
+        guard cornerSpecialProb >= 0, cornerSpecialProb <= 1 else {
+            throw WorldSeedError.invalidCornerSpecialProb(cornerSpecialProb)
         }
         try pit.validate()
         try gate.validate()

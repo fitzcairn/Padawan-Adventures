@@ -67,11 +67,15 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
 nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     var kind: TileKind
     /// Terrain sprite id from `terrain.yaml` (floors only; nil for walls/gates or legacy saves).
+    /// May be a base or a corner special that replaced the base.
     var terrainID: String?
+    /// Optional accent overlay drawn above the base floor sprite.
+    var accentTerrainID: String?
 
-    init(kind: TileKind, terrainID: String? = nil) {
+    init(kind: TileKind, terrainID: String? = nil, accentTerrainID: String? = nil) {
         self.kind = kind
         self.terrainID = terrainID
+        self.accentTerrainID = accentTerrainID
     }
 
     var isPit: Bool {
@@ -97,17 +101,20 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     private enum CodingKeys: String, CodingKey {
         case kind
         case terrainID
+        case accentTerrainID
     }
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         kind = try container.decode(TileKind.self, forKey: .kind)
         terrainID = try container.decodeIfPresent(String.self, forKey: .terrainID)
+        accentTerrainID = try container.decodeIfPresent(String.self, forKey: .accentTerrainID)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kind, forKey: .kind)
         try container.encodeIfPresent(terrainID, forKey: .terrainID)
+        try container.encodeIfPresent(accentTerrainID, forKey: .accentTerrainID)
     }
 }

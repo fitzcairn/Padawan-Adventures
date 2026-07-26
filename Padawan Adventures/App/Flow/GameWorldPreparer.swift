@@ -1,8 +1,19 @@
 import Foundation
 
 enum GameWorldPreparer {
+    /// Sprite warming occupies the first slice; world load/generation fills the rest.
+    private static let spritesEnd = 0.42
+
     @MainActor
-    static func prepareLaunch(session: AppSession, mode: GameLaunchMode) async -> GameWorld {
+    static func prepareLaunch(
+        session: AppSession,
+        mode: GameLaunchMode,
+        onProgress: (@MainActor (Double) -> Void)? = nil
+    ) async -> GameWorld {
+        func report(_ value: Double) {
+            onProgress?(min(1, max(0, value)))
+        }
+
         if mode == .continueSave, let lastLevel = session.playerState?.lastLevelStarted {
             try? session.selectLevel(resourceName: lastLevel)
         }
@@ -13,79 +24,79 @@ enum GameWorldPreparer {
             }
             await session.markLevelStarted(resourceName: resourceName)
         }
+        report(0.02)
 
         // Warm sprite cache once per session before the world is presented.
-        session.ensurePlayerSpritesLoaded()
-        session.ensureItemSpritesLoaded()
+        await session.ensurePlayerSpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.02, to: 0.24))
+        }
+        await session.ensureItemSpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.24, to: spritesEnd))
+        }
+        report(spritesEnd)
 
-        var world = await loadWorld(session: session, mode: mode)
-        // TEST: stamp sand onto every floor tile.
-        paintUniformFloorSprites(on: &world, terrainID: "sand", library: session.floorSpriteLibrary)
-        return world
+        return await loadWorld(session: session, mode: mode) { local in
+            report(LoadProgress.map(local, from: spritesEnd, to: 1))
+        }
     }
 
     @MainActor
-    static func loadWorld(session: AppSession, mode: GameLaunchMode) async -> GameWorld {
+    static func loadWorld(
+        session: AppSession,
+        mode: GameLaunchMode,
+        onProgress: (@MainActor (Double) -> Void)? = nil
+    ) async -> GameWorld {
+        func report(_ value: Double) {
+            onProgress?(min(1, max(0, value)))
+        }
+
         switch mode {
         case .continueSave:
+            report(0.05)
             if let saved = try? await session.saveService.load(),
                WorldLoader.isCompatibleSave(saved, with: session.seedConfig) {
+                report(1)
                 return saved
             }
-            return await generateWorld(session: session)
+            return await generateWorld(session: session, onProgress: onProgress)
 
         case .newGame:
             try? await session.saveService.delete()
             await session.resetVitalsToStarting()
-            return await generateWorld(session: session)
-        }
-    }
-
-    /// Assigns a single terrain id to every floor cell (visibility / layout testing).
-    @MainActor
-    static func paintUniformFloorSprites(
-        on world: inout GameWorld,
-        terrainID: String,
-        library: FloorSpriteLibrary
-    ) {
-        guard library.animation(id: terrainID) != nil else {
-            print("FloorSpriteLibrary missing \"\(terrainID)\" — cannot paint uniform floor sprites")
-            return
-        }
-        for story in 0..<world.storyCount {
-            for y in 0..<world.height {
-                for x in 0..<world.width {
-                    let coord = GridCoord(x: x, y: y, story: story)
-                    guard case .floor(let isPit) = world.tile(at: coord)?.kind else { continue }
-                    world.setTile(Tile(kind: .floor(isPit: isPit), terrainID: terrainID), at: coord)
-                }
-            }
+            report(0.05)
+            return await generateWorld(session: session, onProgress: onProgress)
         }
     }
 
     @MainActor
-    private static func generateWorld(session: AppSession) async -> GameWorld {
-        var config = session.seedConfig
+    private static func generateWorld(
+        session: AppSession,
+        onProgress: (@MainActor (Double) -> Void)? = nil
+    ) async -> GameWorld {
+        let config = session.seedConfig
         let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
         let health = session.playerState?.health ?? playerConfig.startingHealth
         let energy = session.playerState?.energy ?? playerConfig.startingEnergy
 
-        // TEST: every floor uses sand.
-        config.floorSprites = ["sand"]
-
-        let terrainNearby = session.terrainCatalog.nearbyByID
+        let terrainPlacement = session.terrainCatalog.placementTable
         do {
             var world = try await Task.detached(priority: .userInitiated) {
                 try ProceduralGenerator().generate(
                     from: config,
                     playerConfig: playerConfig,
                     enemyConfig: enemyConfig,
-                    terrainNearby: terrainNearby
+                    terrainPlacement: terrainPlacement,
+                    onProgress: { fraction in
+                        Task { @MainActor in
+                            onProgress?(fraction)
+                        }
+                    }
                 )
             }.value
             world.healthCount = health
             world.energyCount = energy
+            onProgress?(1)
             return world
         } catch {
             let fallback = AppSession.fallbackConfig()
@@ -95,13 +106,20 @@ enum GameWorldPreparer {
                         from: fallback,
                         playerConfig: .fallback,
                         enemyConfig: .fallback,
-                        terrainNearby: terrainNearby
+                        terrainPlacement: terrainPlacement,
+                        onProgress: { fraction in
+                            Task { @MainActor in
+                                onProgress?(fraction)
+                            }
+                        }
                     )
                 }.value
                 world.healthCount = health
                 world.energyCount = energy
+                onProgress?(1)
                 return world
             } catch {
+                onProgress?(1)
                 return minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
             }
         }
