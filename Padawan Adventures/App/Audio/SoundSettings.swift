@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-/// Global sound settings from `Resources/sound.yaml`.
+/// Global sound settings from `Resources/Config/sound.yaml`.
 nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
     var fadeSeconds: Double
     /// Shared one-shot FX (`win`, `lose`, `error`, `correct`, …).

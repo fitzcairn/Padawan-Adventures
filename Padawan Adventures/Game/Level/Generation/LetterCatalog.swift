@@ -7,7 +7,7 @@ nonisolated struct LetterSpec: Decodable, Equatable, Sendable {
     var name: String
 }
 
-/// Shared letter FX loaded from `Vocab/letters.yaml` for reuse across minigames.
+/// Shared letter FX loaded from `Resources/Config/Vocab/letters.yaml` for reuse across minigames.
 nonisolated struct LetterCatalog: Equatable, Sendable {
     static let subdirectory = "Vocab"
 

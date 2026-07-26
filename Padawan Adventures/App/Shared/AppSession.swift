@@ -23,6 +23,7 @@ final class AppSession {
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let itemsConfig: ItemsConfig
+    let uiSpritesConfig: UISpritesConfig
     let playerStore: PlayerStateStore
     private(set) var saveService: GameSaveService
     private(set) var hasCompatibleSave: Bool
@@ -50,6 +51,7 @@ final class AppSession {
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
+        uiSpritesConfig: UISpritesConfig? = nil,
         playerStore: PlayerStateStore,
         saveService: GameSaveService,
         hasCompatibleSave: Bool = false,
@@ -74,6 +76,7 @@ final class AppSession {
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
         self.itemsConfig = itemsConfig ?? .fallback
+        self.uiSpritesConfig = uiSpritesConfig ?? .fallback
         self.playerStore = playerStore
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
@@ -128,6 +131,28 @@ final class AppSession {
         onProgress?(1)
     }
 
+    /// Ensures UI sprites (level-select planets, …) are loaded for this session.
+    func ensureUISpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let entries = uiSpritesConfig.sprites.compactMap { id, entry -> (String, SpriteConfig)? in
+            guard let sprite = entry.sprite else { return nil }
+            return (id, sprite)
+        }
+        guard !entries.isEmpty else {
+            onProgress?(1)
+            return
+        }
+
+        let total = entries.count
+        for (index, entry) in entries.enumerated() {
+            let start = Double(index) / Double(total)
+            let end = Double(index + 1) / Double(total)
+            await spriteLibrary.ensureLoaded(entry.1, id: entry.0) { local in
+                onProgress?(LoadProgress.map(local, from: start, to: end))
+            }
+        }
+        onProgress?(1)
+    }
+
     nonisolated static func fallbackConfig() -> WorldSeedConfig {
         let level = LevelConfig.fallback
         return WorldSeedConfig(
@@ -157,7 +182,7 @@ final class AppSession {
             await Task.yield()
         }
 
-        // Config / store bootstrap occupies the first slice; floor sheets fill the rest.
+        // Config / store bootstrap occupies the first slice; UI planets then floor sheets fill the rest.
         let configEnd = 0.18
 
         let seedConfig: WorldSeedConfig
@@ -233,6 +258,15 @@ final class AppSession {
         } catch {
             itemsConfig = .fallback
         }
+
+        let uiSpritesConfig: UISpritesConfig
+        do {
+            let loaded = try UISpritesConfig.loadFromBundle()
+            try loaded.validate()
+            uiSpritesConfig = loaded
+        } catch {
+            uiSpritesConfig = .fallback
+        }
         await report(0.10)
 
         let playerStore: PlayerStateStore
@@ -273,10 +307,29 @@ final class AppSession {
         }
         await report(configEnd)
 
+        let spriteLibrary = SpriteLibrary()
+        // Level-select planet art: load at game open so the picker has sprites ready.
+        let uiEntries = uiSpritesConfig.sprites.compactMap { id, entry -> (String, SpriteConfig)? in
+            guard let sprite = entry.sprite else { return nil }
+            return (id, sprite)
+        }
+        let uiEnd = uiEntries.isEmpty ? configEnd : 0.28
+        if !uiEntries.isEmpty {
+            let total = uiEntries.count
+            for (index, entry) in uiEntries.enumerated() {
+                let start = LoadProgress.map(Double(index) / Double(total), from: configEnd, to: uiEnd)
+                let end = LoadProgress.map(Double(index + 1) / Double(total), from: configEnd, to: uiEnd)
+                await spriteLibrary.ensureLoaded(entry.1, id: entry.0) { local in
+                    onProgress?(LoadProgress.map(local, from: start, to: end))
+                }
+            }
+        }
+        await report(uiEnd)
+
         let floorSpriteLibrary = FloorSpriteLibrary()
         // Slice all floor terrains once at game open so every level can reuse them.
         await floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog) { local in
-            onProgress?(LoadProgress.map(local, from: configEnd, to: 1))
+            onProgress?(LoadProgress.map(local, from: uiEnd, to: 1))
         }
         await report(1)
 
@@ -293,9 +346,11 @@ final class AppSession {
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             itemsConfig: itemsConfig,
+            uiSpritesConfig: uiSpritesConfig,
             playerStore: playerStore,
             saveService: saveService,
             hasCompatibleSave: false,
+            spriteLibrary: spriteLibrary,
             terrainCatalog: terrainCatalog,
             floorSpriteLibrary: floorSpriteLibrary
         )

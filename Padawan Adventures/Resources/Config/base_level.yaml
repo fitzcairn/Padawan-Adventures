@@ -1,6 +1,6 @@
 # Level generation knobs (merged into world.yaml at load).
 # Includes map size, generation, enemy spawn, pickups, and puzzle FX.
-# Per-level files in Levels/ inherit from this base via `inherits: base_level`.
+# Per-level files in Config/Levels/ inherit from this base via `inherits: base_level`.
 
 name: Level
 
@@ -63,7 +63,7 @@ pit:
   fail_sound: sfx_pit_fall
   # Extra random letters beyond the chosen word (total sprites = word length + this).
   num_padding_letters: 6
-  # Selectable pit words for this level (keys into shared `Vocab/words.yaml`).
+  # Selectable pit words for this level (keys into shared `Config/Vocab/words.yaml`).
   words: [cat, dog, star]
 
 # Gate letter-puzzle minigame (triggered on gate tile contact).
@@ -75,7 +75,7 @@ gate:
   gate_opened: sfx_gate_opened
   # Extra random letters beyond the chosen word (total sprites = word length + this).
   num_padding_letters: 6
-  # Selectable gate words for this level (keys into shared `Vocab/words.yaml` for spelling/progressive FX).
+  # Selectable gate words for this level (keys into shared `Config/Vocab/words.yaml` for spelling/progressive FX).
   words: [cat, dog, star, gate, open]
 
 # Destructible-wall letter-matching minigame (triggered on soft-wall contact).
@@ -88,7 +88,7 @@ destructible_wall:
   letter_count_max: 8
   # Played in the world when the soft wall is destroyed after a win.
   wall_destroyed: sfx_wall_destroyed
-  # Selectable letters for this level (keys into shared `Vocab/letters.yaml` for pronunciation/name FX).
+  # Selectable letters for this level (keys into shared `Config/Vocab/letters.yaml` for pronunciation/name FX).
   letters: [a, b, c, d, e, f, g, h]
 
 enemies:

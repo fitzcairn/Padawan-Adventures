@@ -336,6 +336,25 @@ struct SpriteSystemTests {
         #expect(CompassDirection.southeast.animationName(locomotion: .walk) == "walk_southeast")
     }
 
+    @Test @MainActor func loadsLevelPlanetUISpriteFromBundle() async throws {
+        let config = try UISpritesConfig.loadFromBundle()
+        let sprite = try #require(config.spriteConfig(for: "tython"))
+        #expect(sprite.chromaKey == "#000000")
+        #expect(sprite.chromaKeyTolerance == 2)
+        let library = SpriteLibrary()
+        await library.ensureLoaded(sprite, id: "tython")
+        let idle = try #require(library.animation(id: "tython", named: "idle"))
+        #expect(idle.frames.count == 1)
+        // Opaque trim crops the keyed black field, so the still is smaller than 512×512.
+        let size = idle.frames[0].texture.size()
+        #expect(size.width > 0 && size.width <= 512)
+        #expect(size.height > 0 && size.height <= 512)
+        #expect(size.width < 512 || size.height < 512)
+        let uiImage = try #require(library.uiImage(id: "tython", named: "idle"))
+        #expect(uiImage.size.width > 0)
+        #expect(uiImage.size.height > 0)
+    }
+
     @Test @MainActor func spriteLibraryEnsureLoadedIsIdempotent() async {
         let library = SpriteLibrary()
         let config = SpriteConfig(

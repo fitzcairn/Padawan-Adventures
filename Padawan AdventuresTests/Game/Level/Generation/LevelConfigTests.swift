@@ -334,6 +334,10 @@ struct LevelConfigTests {
         ])
         #expect(levels.map(\.order) == [1, 2, 3, 4, 5, 6, 7, 8])
         #expect(levels.allSatisfy { !$0.color.isEmpty })
+        #expect(levels.map(\.levelSprite) == [
+            "tython", "tatooine", "ilum", "kashyyyk",
+            "dagobah", "coruscant", "mustafar", "geonosis",
+        ])
 
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
@@ -342,6 +346,7 @@ struct LevelConfigTests {
         #expect(tython.name == "Tython")
         #expect(tython.order == 1)
         #expect(tython.color == "#2E7D32")
+        #expect(tython.levelSprite == "tython")
         #expect(tython.enemies?.types == ["horranth"])
         #expect(tython.width == 20)
         #expect(tython.roomCount == 5)
@@ -388,6 +393,20 @@ struct LevelConfigTests {
         )
         #expect(level.order == 3)
         #expect(level.color == "#81D4FA")
+    }
+
+    @Test func decodesLevelSprite() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Ilum
+            order: 3
+            color: "#81D4FA"
+            level_sprite: ilum
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.levelSprite == "ilum")
     }
 
     @Test func decodesGatePuzzleConfigWithDefaultsWhenOmitted() throws {

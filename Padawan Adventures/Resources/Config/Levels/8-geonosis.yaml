@@ -6,6 +6,7 @@ inherits: base_level
 name: Geonosis
 order: 8
 color: "#A1887F"
+level_sprite: geonosis
 artifact: circle.hexagongrid.fill
 floor_sprites:
   - sand

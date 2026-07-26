@@ -1,4 +1,6 @@
 import Foundation
+import SpriteKit
+import UIKit
 
 /// Session-scoped cache of sliced sprite animations.
 @MainActor
@@ -110,5 +112,17 @@ final class SpriteLibrary {
 
     func animationCount(for id: String) -> Int {
         animationsByID[id]?.count ?? 0
+    }
+
+    /// First frame as a UIKit image oriented for SwiftUI / UIKit.
+    ///
+    /// Undoes the SpriteKit prep flip applied in `SpriteSheetLoader.loadAnimation`.
+    func uiImage(id: String, named name: String = "idle") -> UIImage? {
+        guard let frame = animation(id: id, named: name)?.frames.first else {
+            return nil
+        }
+        let cgImage = frame.texture.cgImage()
+        let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
+        return UIImage(cgImage: upright, scale: 1, orientation: .up)
     }
 }

@@ -5,6 +5,7 @@ inherits: base_level
 name: Ilum
 order: 3
 color: "#81D4FA"
+level_sprite: ilum
 artifact: snowflake
 floor_sprites:
   - water-ice

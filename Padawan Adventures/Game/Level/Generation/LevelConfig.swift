@@ -37,7 +37,7 @@ nonisolated struct GateWord: Equatable, Sendable {
 }
 
 /// Per-level gate letter-puzzle settings from `gate:` in level YAML.
-/// Vocabulary lives in shared `Vocab/words.yaml`; levels may optionally subset via `gate.words: [id, …]`.
+/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `gate.words: [id, …]`.
 nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
     var timerSeconds: Double
     /// Optional override for shared `sound.yaml` `fx.win`; `nil` uses the common track.
@@ -168,7 +168,7 @@ nonisolated struct GatePuzzleConfig: Decodable, Equatable, Sendable {
 }
 
 /// Per-level pit spelling-hop settings from `pit:` in level YAML.
-/// Vocabulary lives in shared `Vocab/words.yaml`; levels may optionally subset via `pit.words: [id, …]`.
+/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `pit.words: [id, …]`.
 nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     var timerSeconds: Double
     /// Optional override for shared `sound.yaml` `fx.win`; `nil` uses the common track.
@@ -281,7 +281,7 @@ nonisolated struct DestructibleWallLetter: Equatable, Sendable {
 }
 
 /// Per-level destructible-wall letter-matching settings from `destructible_wall:` in level YAML.
-/// Letter FX lives in shared `Vocab/letters.yaml`; levels may optionally subset via `letters: [id, …]`.
+/// Letter FX lives in shared `Resources/Config/Vocab/letters.yaml`; levels may optionally subset via `letters: [id, …]`.
 nonisolated struct DestructibleWallPuzzleConfig: Decodable, Equatable, Sendable {
     var timerSeconds: Double
     /// Max seconds between target-pronunciation plays before auto-replay.
@@ -477,7 +477,7 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
     var gateCue: MusicCue { MusicCue.parse(gate) }
 }
 
-/// Per-level map size and generation settings loaded from `base_level.yaml` / `Levels/*.yaml`.
+/// Per-level map size and generation settings loaded from `base_level.yaml` / `Resources/Config/Levels/*.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
     static let fallbackArtifact = "star.fill"
@@ -489,6 +489,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var order: Int
     /// Hex fill for the level-select planet sprite (`#RRGGBB`).
     var color: String
+    /// Sprite id from `Screens/level_select.yaml` used for the level-select planet art.
+    var levelSprite: String?
     /// SF Symbol name awarded to inventory on first level completion.
     var artifact: String
     /// Raw `music:` value; interpret with `MusicCue.parse`.
@@ -519,6 +521,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case name
         case order
         case color
+        case levelSprite = "level_sprite"
         case artifact
         case music
         case gameMusic = "game_music"
@@ -557,6 +560,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         name: "Level 1",
         order: 0,
         color: fallbackColor,
+        levelSprite: nil,
         artifact: fallbackArtifact,
         music: "level_theme",
         gameMusic: .fallback,
@@ -600,6 +604,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         name: String,
         order: Int = 0,
         color: String = LevelConfig.fallbackColor,
+        levelSprite: String? = nil,
         artifact: String = LevelConfig.fallbackArtifact,
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
@@ -622,6 +627,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.name = name
         self.order = order
         self.color = color
+        self.levelSprite = Self.normalizedOptionalID(levelSprite)
         self.artifact = artifact
         self.music = music
         self.gameMusic = gameMusic
@@ -649,6 +655,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         color = (
             try container.decodeIfPresent(String.self, forKey: .color) ?? Self.fallbackColor
         ).trimmingCharacters(in: .whitespacesAndNewlines)
+        levelSprite = Self.normalizedOptionalID(
+            try container.decodeIfPresent(String.self, forKey: .levelSprite)
+        )
         artifact = try container.decodeIfPresent(String.self, forKey: .artifact) ?? Self.fallbackArtifact
         music = try container.decodeIfPresent(String.self, forKey: .music)
         gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
@@ -717,6 +726,14 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         MusicCue.parse(music)
     }
 
+    private static func normalizedOptionalID(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
     var generation: WorldSeedConfig.GenerationParams {
         .init(
             algorithm: algorithm,
@@ -737,7 +754,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         return try decode(
             from: data,
             parentDataNamed: { parentName in
-                // Inherited bases live at the Resources root.
+                // Inherited bases live in Resources/Config/ (bundled at root).
                 try resourceData(named: parentName, withExtension: ext, subdirectory: nil)
             },
             wordCatalog: wordCatalog,
@@ -882,7 +899,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         subdirectory: String?
     ) throws -> Data {
         // Prefer subdirectory when present; fall back to bundle root because Xcode may flatten
-        // Resources/Levels/*.yaml into the app bundle root.
+        // Resources/Config/Levels/*.yaml into the app bundle root.
         if let subdirectory,
            let url = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: subdirectory) {
             return try Data(contentsOf: url)
@@ -923,13 +940,15 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 }
 
-/// A playable level discovered from `Resources/Levels/`.
+/// A playable level discovered from `Resources/Config/Levels/`.
 nonisolated struct LevelDescriptor: Equatable, Sendable {
     let resourceName: String
     let displayName: String
     let order: Int
     /// Hex fill for the level-select planet sprite.
     let color: String
+    /// Sprite id from `Screens/level_select.yaml` for the level-select planet art.
+    let levelSprite: String?
 }
 
 nonisolated enum LevelCatalog {
@@ -963,7 +982,8 @@ nonisolated enum LevelCatalog {
                     resourceName: resourceName,
                     displayName: level.name,
                     order: level.order,
-                    color: level.color
+                    color: level.color,
+                    levelSprite: level.levelSprite
                 )
             } catch {
                 levelCatalogLogger.error(

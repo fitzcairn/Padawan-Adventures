@@ -5,6 +5,7 @@ inherits: base_level
 name: Dagobah
 order: 5
 color: "#556B2F"
+level_sprite: dagobah
 artifact: drop.fill
 floor_sprites:
   - swamp

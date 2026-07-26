@@ -5,6 +5,7 @@ inherits: base_level
 name: Mustafar
 order: 7
 color: "#E65100"
+level_sprite: mustafar
 artifact: flame.fill
 floor_sprites:
   - dirt-scorched

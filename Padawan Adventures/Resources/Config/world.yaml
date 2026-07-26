@@ -1,7 +1,7 @@
 # Padawan Adventures — world (v1)
 # All procedural generation is deterministic for a given seed + params.
 # Use `seed: time` for a fresh seed from the clock on each new game, or a number to fix it.
-# Map size, generation knobs, and enemy spawn live in base_level.yaml / Levels/*.yaml.
+# Map size, generation knobs, and enemy spawn live in base_level.yaml / Config/Levels/*.yaml.
 
 version: 1
 seed: time

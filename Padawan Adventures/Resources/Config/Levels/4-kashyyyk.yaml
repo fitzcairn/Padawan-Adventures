@@ -6,6 +6,7 @@ inherits: base_level
 name: Kashyyyk
 order: 4
 color: "#1B5E20"
+level_sprite: kashyyyk
 artifact: tree.fill
 floor_sprites:
   - grass

@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-/// Per-screen settings from `Resources/Screens/<name>.yaml`.
+/// Per-screen settings from `Resources/Config/Screens/<name>.yaml`.
 nonisolated struct ScreenConfig: Codable, Equatable, Sendable {
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?

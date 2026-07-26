@@ -7,7 +7,7 @@ nonisolated struct WordSpec: Decodable, Equatable, Sendable {
     var progressive: [String: String]
 }
 
-/// Shared vocabulary + word FX loaded from `Vocab/words.yaml` for reuse across minigames.
+/// Shared vocabulary + word FX loaded from `Resources/Config/Vocab/words.yaml` for reuse across minigames.
 nonisolated struct WordCatalog: Equatable, Sendable {
     static let subdirectory = "Vocab"
 

@@ -206,7 +206,6 @@ struct LevelSelectView: View {
             .accessibilityHidden(true)
     }
 
-    @ViewBuilder
     private func planetSprite(for level: LevelDescriptor) -> some View {
         let state = LevelProgression.unlockState(
             for: level.resourceName,
@@ -216,21 +215,31 @@ struct LevelSelectView: View {
         )
         let isLocked = !dadModeUnlocked && state == .locked
         let fill = Color(uiColor: UIColor(hex: level.color) ?? .gray)
+        let planetImage = level.levelSprite.flatMap {
+            session.spriteLibrary.uiImage(id: $0, named: "idle")
+        }
 
-        Button {
+        return Button {
             handleLevelTap(level)
         } label: {
             ZStack {
-                Circle()
-                    .fill(fill)
-                    .frame(width: planetDiameter, height: planetDiameter)
-                    .overlay {
-                        if state == .completed {
-                            Circle()
-                                .stroke(Color.green, lineWidth: 4)
-                        }
+                Group {
+                    if let planetImage {
+                        Image(uiImage: planetImage)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        Circle().fill(fill)
                     }
-                    .opacity(isLocked ? 0.5 : 1)
+                }
+                .frame(width: planetDiameter, height: planetDiameter)
+                .overlay {
+                    if state == .completed {
+                        Circle()
+                            .stroke(Color.green, lineWidth: 4)
+                    }
+                }
+                .opacity(isLocked ? 0.5 : 1)
 
                 if isLocked {
                     Image(systemName: "lock.fill")

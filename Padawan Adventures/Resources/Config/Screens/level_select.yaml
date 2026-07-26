@@ -1,0 +1,82 @@
+# Level-select screen. Planet sprite ids are referenced by level YAML `level_sprite:`.
+music: menu_theme
+
+tython:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 1-tython
+        atlas: 1-tython-atlas
+
+tatooine:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 2-tatooine
+        atlas: 2-tatooine-atlas
+
+ilum:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 3-ilum
+        atlas: 3-ilum-atlas
+
+kashyyyk:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 4-kashyyyk
+        atlas: 4-kashyyyk-atlas
+
+dagobah:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 5-dagobah
+        atlas: 5-dagobah-atlas
+
+coruscant:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 6-coruscant
+        atlas: 6-coruscant-atlas
+
+mustafar:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 7-mustafar
+        atlas: 7-mustafar-atlas
+
+geonosis:
+  sprite:
+    root: Sprites/UI/Levels
+    chroma_key: "#000000"
+    chroma_key_tolerance: 2
+    animations:
+      idle:
+        sheet: 8-geonisis
+        atlas: 8-geonisis-atlas

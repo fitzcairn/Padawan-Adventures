@@ -6,6 +6,7 @@ inherits: base_level
 name: Tatooine
 order: 2
 color: "#D4A017"
+level_sprite: tatooine
 artifact: sun.max.fill
 floor_sprites:
   - sand

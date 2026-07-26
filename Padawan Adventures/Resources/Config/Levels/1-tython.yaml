@@ -5,6 +5,7 @@ inherits: base_level
 name: Tython
 order: 1
 color: "#2E7D32"
+level_sprite: tython
 artifact: leaf.fill
 floor_sprites:
   - grass

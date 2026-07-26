@@ -6,6 +6,7 @@ inherits: base_level
 name: Coruscant
 order: 6
 color: "#607D8B"
+level_sprite: coruscant
 artifact: building.2.fill
 floor_sprites:
   - grate

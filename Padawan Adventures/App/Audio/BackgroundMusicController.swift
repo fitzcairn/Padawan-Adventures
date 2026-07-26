@@ -40,7 +40,7 @@ final class BackgroundMusicController {
         applyEffectiveVolumeLive()
     }
 
-    /// Loads `Resources/Screens/<name>.yaml` and applies its music cue.
+    /// Loads `Resources/Config/Screens/<name>.yaml` and applies its music cue.
     func applyScreen(named name: String) {
         let cue: MusicCue
         if let config = try? ScreenConfig.loadFromBundle(named: name) {

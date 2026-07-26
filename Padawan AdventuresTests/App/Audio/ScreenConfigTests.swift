@@ -43,5 +43,10 @@ struct ScreenConfigTests {
         #expect(config.musicCue == .silence)
     }
 
+    @Test func loadsLevelSelectScreenMusicAlongsidePlanetSprites() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "level_select")
+        #expect(config.musicCue == .track("menu_theme"))
+    }
+
 }
 
