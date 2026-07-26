@@ -13,6 +13,7 @@ sprite:
       sheet: 7-mustafar
       atlas: 7-mustafar-atlas
 artifact: flame.fill
+treasure: connector
 floor_sprites:
   - dirt-scorched
   - dirt-dark

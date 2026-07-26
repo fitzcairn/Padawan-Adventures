@@ -33,7 +33,6 @@ nonisolated enum ConfigAudit {
         bundle: Bundle = .main
     ) throws {
         _ = app
-        _ = items
 
         var problems: [String] = []
 
@@ -44,6 +43,7 @@ nonisolated enum ConfigAudit {
             problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
             problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
             problems.append(contentsOf: checkArtifact(level.artifact, label: label))
+            problems.append(contentsOf: checkTreasureID(level: level, items: items, label: label, bundle: bundle))
             problems.append(contentsOf: checkLevelSprite(level.sprite, label: label, bundle: bundle))
             problems.append(contentsOf: checkMusicCue(level.musicCue, kind: "music", label: label, bundle: bundle))
             problems.append(contentsOf: checkMusicCue(
@@ -169,6 +169,19 @@ nonisolated enum ConfigAudit {
             }
             return nil
         }
+    }
+
+    private static func checkTreasureID(
+        level: LevelConfig,
+        items: ItemsConfig,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        guard let id = level.treasure else { return [] }
+        guard let sprite = items.items[id]?.sprite else {
+            return ["\(label).treasure: unknown item id '\(id)' in items.yaml"]
+        }
+        return checkSpriteConfig(sprite, label: "\(label).treasure.sprite", bundle: bundle)
     }
 
     private static func checkWordIDs(

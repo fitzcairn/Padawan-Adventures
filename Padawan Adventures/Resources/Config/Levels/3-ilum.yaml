@@ -13,6 +13,7 @@ sprite:
       sheet: 3-ilum
       atlas: 3-ilum-atlas
 artifact: snowflake
+treasure: central-grip
 floor_sprites:
   - water-ice
   - water

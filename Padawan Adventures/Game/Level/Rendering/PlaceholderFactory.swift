@@ -304,7 +304,8 @@ enum PlaceholderFactory {
         spriteLibrary: SpriteLibrary? = nil,
         spriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
-        enemySprite: (id: String, config: SpriteConfig)? = nil
+        enemySprite: (id: String, config: SpriteConfig)? = nil,
+        treasureItemID: String? = nil
     ) -> SKNode {
         if let kind = entity.pickupKind {
             return pickupNode(
@@ -312,7 +313,8 @@ enum PlaceholderFactory {
                 entityID: entity.id,
                 config: config,
                 spriteLibrary: spriteLibrary,
-                itemsConfig: itemsConfig
+                itemsConfig: itemsConfig,
+                treasureItemID: treasureItemID
             )
         }
 
@@ -455,14 +457,18 @@ enum PlaceholderFactory {
         entityID: UUID,
         config: IsometricConfig,
         spriteLibrary: SpriteLibrary? = nil,
-        itemsConfig: ItemsConfig? = nil
+        itemsConfig: ItemsConfig? = nil,
+        treasureItemID: String? = nil
     ) -> SKNode {
         let container = SKNode()
         container.name = "pickup-\(entityID.uuidString)"
 
+        // Treasure art is per-level; health/energy keep their PickupKind id.
+        let itemID = (kind == .treasure ? treasureItemID : nil) ?? kind.rawValue
+
         if let library = spriteLibrary,
-           let spriteConfig = itemsConfig?.spriteConfig(for: kind),
-           library.animation(id: kind.rawValue, named: "idle") != nil {
+           let spriteConfig = itemsConfig?.spriteConfig(id: itemID),
+           library.animation(id: itemID, named: "idle") != nil {
             let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
             let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
             sprite.targetHeight = height
@@ -471,7 +477,7 @@ enum PlaceholderFactory {
             // Feet (bottom-middle) on the tile center; optional anchor_correction nudge.
             sprite.position = CGPoint(x: 0, y: -correction)
             container.addChild(sprite)
-            sprite.play(name: "idle", library: library, libraryID: kind.rawValue)
+            sprite.play(name: "idle", library: library, libraryID: itemID)
             return container
         }
 

@@ -63,6 +63,7 @@ final class GameViewController: LandscapeHostingController {
             spriteLibrary: session.spriteLibrary,
             playerSpriteConfig: session.playerConfig.sprite,
             itemsConfig: session.itemsConfig,
+            treasureItemID: session.selectedLevel.treasure,
             floorSpriteLibrary: session.floorSpriteLibrary,
             saveService: session.saveService
         )

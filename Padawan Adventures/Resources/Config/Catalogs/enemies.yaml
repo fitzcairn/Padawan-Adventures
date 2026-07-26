@@ -38,7 +38,7 @@ sprites:
   dino:
     root: Enemies/Dino
     trim: false
-    scale: 1.10
+    scale: 1.40
     anchor_correction: 0
     animations:
       idle_up: { sheet: dino-idle_up-spritesheet, atlas: dino-idle_up-atlas }

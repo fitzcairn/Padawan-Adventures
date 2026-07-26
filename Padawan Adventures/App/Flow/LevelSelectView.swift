@@ -15,11 +15,13 @@ struct LevelSelectView: View {
     @State private var nameSpeaker = LevelNameSpeaker()
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
+    @State private var inventoryIcons: [String: UIImage] = [:]
 
     /// Previous diameter was 96; +30% → 124.8.
     private let planetDiameter: CGFloat = 124.8
     /// Previous spacing was 28; +40% → 39.2.
     private let planetSpacing: CGFloat = 39.2
+    private let inventoryIconSide: CGFloat = 52
 
     init(
         session: AppSession,
@@ -32,8 +34,15 @@ struct LevelSelectView: View {
         self.screenBackground = (try? ScreenConfig.loadFromBundle(named: "level_select"))?.background
     }
 
-    private var inventoryArtifacts: [String] {
-        session.playerState?.inventory.artifacts ?? []
+    /// Earned parts in catalog order; completing a level is what grants its treasure.
+    private var inventoryLevels: [LevelDescriptor] {
+        _ = progressionEpoch
+        let completed = completedLevels
+        return levels.filter { completed.contains($0.resourceName) }
+    }
+
+    private var inventoryTreasureIDs: [String] {
+        inventoryLevels.compactMap(\.treasure)
     }
 
     private var orderedResourceNames: [String] {
@@ -310,19 +319,46 @@ struct LevelSelectView: View {
             .frame(height: 72)
             .overlay {
                 HStack(spacing: 16) {
-                    ForEach(inventoryArtifacts, id: \.self) { artifact in
-                        Image(systemName: artifact)
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(AppChrome.primaryTextColor)
-                            .accessibilityIdentifier("levelSelect.inventory.\(artifact)")
+                    ForEach(inventoryLevels, id: \.resourceName) { level in
+                        inventoryIcon(for: level)
                     }
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 16)
             }
+            .task(id: inventoryTreasureIDs) {
+                let ids = inventoryTreasureIDs
+                await session.ensureTreasureIconsLoaded(ids: ids)
+                var icons: [String: UIImage] = [:]
+                for id in ids {
+                    if let image = session.treasureIcons.uiImage(id: id) {
+                        icons[id] = image
+                    }
+                }
+                inventoryIcons = icons
+            }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("levelSelect.inventory")
             .accessibilityLabel("Inventory")
+    }
+
+    @ViewBuilder
+    private func inventoryIcon(for level: LevelDescriptor) -> some View {
+        if let id = level.treasure, let image = inventoryIcons[id] {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: inventoryIconSide, height: inventoryIconSide)
+                // Parts stand upright in the sheets; lay them flat along the rack.
+                .rotationEffect(.degrees(90))
+                .accessibilityIdentifier("levelSelect.inventory.\(id)")
+                .accessibilityLabel(level.displayName)
+        } else {
+            Image(systemName: level.artifact)
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(AppChrome.primaryTextColor)
+                .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
+        }
     }
 
     private struct ScrollOverflow: Equatable {

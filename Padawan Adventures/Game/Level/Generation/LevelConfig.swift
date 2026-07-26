@@ -504,6 +504,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var sprite: SpriteConfig?
     /// SF Symbol name awarded to inventory on first level completion.
     var artifact: String
+    /// Item id from `items.yaml` for this level's in-world treasure pickup.
+    var treasure: String?
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
     /// Per-minigame music overrides for this level.
@@ -538,6 +540,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case color
         case sprite
         case artifact
+        case treasure
         case music
         case gameMusic = "game_music"
         case background
@@ -629,6 +632,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         color: String = LevelConfig.fallbackColor,
         sprite: SpriteConfig? = nil,
         artifact: String = LevelConfig.fallbackArtifact,
+        treasure: String? = nil,
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
         background: String? = nil,
@@ -654,6 +658,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.color = color
         self.sprite = sprite
         self.artifact = artifact
+        self.treasure = treasure
         self.music = music
         self.gameMusic = gameMusic
         self.background = Self.normalizedOptionalID(background)
@@ -684,6 +689,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         ).trimmingCharacters(in: .whitespacesAndNewlines)
         sprite = try container.decodeIfPresent(SpriteConfig.self, forKey: .sprite)
         artifact = try container.decodeIfPresent(String.self, forKey: .artifact) ?? Self.fallbackArtifact
+        treasure = Self.normalizedOptionalID(
+            try container.decodeIfPresent(String.self, forKey: .treasure)
+        )
         music = try container.decodeIfPresent(String.self, forKey: .music)
         gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
         background = Self.normalizedOptionalID(
@@ -1112,6 +1120,10 @@ nonisolated struct LevelDescriptor: Equatable, Sendable {
     let color: String
     /// Level-select planet art from the level YAML `sprite:` block.
     let sprite: SpriteConfig?
+    /// Item id for this level's treasure part, shown in the inventory once earned.
+    let treasure: String?
+    /// SF Symbol awarded on completion; the inventory glyph fallback.
+    let artifact: String
 }
 
 nonisolated enum LevelCatalog {
@@ -1141,7 +1153,9 @@ nonisolated enum LevelCatalog {
                     displayName: level.name,
                     order: level.order,
                     color: level.color,
-                    sprite: level.sprite
+                    sprite: level.sprite,
+                    treasure: level.treasure,
+                    artifact: level.artifact
                 )
             } catch {
                 levelCatalogLogger.error(

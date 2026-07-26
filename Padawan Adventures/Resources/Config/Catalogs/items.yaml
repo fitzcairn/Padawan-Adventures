@@ -20,13 +20,76 @@ health:
         sheet: health-spritesheet
         atlas: health-atlas
 
-treasure:
+# Treasure: lightsaber parts, one per level (see each level's `treasure:` key).
+# Sheets already carry alpha, so no chroma key.
+emitter:
   sprite:
-    root: Sprites/Effects/Explosion
-    # Near-white sheet background (often #FBFBFB–#FEFEFE), not pure #FFFFFF.
-    chroma: white_item
-    scale: 0.4
+    root: Sprites/Items/Treasure/1-emitter
+    scale: 1.0
     animations:
       idle:
-        sheet: explosion-spritesheet
-        atlas: explosion-atlas
+        sheet: 1-emitter-spritesheet
+        atlas: 1-emitter-atlas
+
+control-ring:
+  sprite:
+    root: Sprites/Items/Treasure/2-control
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 2-control-ring-spritesheet
+        atlas: 2-control-ring-atlas
+
+central-grip:
+  sprite:
+    root: Sprites/Items/Treasure/3-central
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 3-central-grip-spritesheet
+        atlas: 3-central-grip-atlas
+
+activation-switch:
+  sprite:
+    root: Sprites/Items/Treasure/4-activation
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 4-activation-switch-spritesheet
+        atlas: 4-activation-switch-atlas
+
+lower-grip:
+  sprite:
+    root: Sprites/Items/Treasure/5-lower
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 5-lower-grip-spritesheet
+        atlas: 5-lower-grip-atlas
+
+power-cell:
+  sprite:
+    root: Sprites/Items/Treasure/6-power
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 6-power-cell-spritesheet
+        atlas: 6-power-cell-atlas
+
+connector:
+  sprite:
+    root: Sprites/Items/Treasure/7-connector
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 7-connector-spritesheet
+        atlas: 7-connector-atlas
+
+pommel:
+  sprite:
+    root: Sprites/Items/Treasure/8-pommel
+    scale: 1.0
+    animations:
+      idle:
+        sheet: 8-pommel-spritesheet
+        atlas: 8-pommel-atlas

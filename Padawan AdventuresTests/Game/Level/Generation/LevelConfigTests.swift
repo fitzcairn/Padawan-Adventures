@@ -141,6 +141,38 @@ struct LevelConfigTests {
         #expect(level.artifact == "key.fill")
     }
 
+    @Test func decodesTreasureItemID() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Level 1
+            treasure: emitter
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.treasure == "emitter")
+    }
+
+    @Test func omittedTreasureDecodesToNil() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Level 1
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.treasure == nil)
+    }
+
+    @Test func catalogLevelsCarryTreasureAndArtifact() {
+        let levels = LevelCatalog.loadFromBundle()
+        #expect(!levels.isEmpty)
+        for level in levels {
+            #expect(level.treasure != nil, "\(level.resourceName) missing treasure")
+            #expect(!level.artifact.isEmpty, "\(level.resourceName) missing artifact")
+        }
+    }
+
     @Test func inheritsMusicFromBase() throws {
         let child = """
         inherits: base_level

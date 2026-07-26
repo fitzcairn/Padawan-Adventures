@@ -52,4 +52,23 @@ struct ItemsConfigTests {
     @Test func emptyFallbackHasNoItems() {
         #expect(ItemsConfig.fallback.items.isEmpty)
     }
+
+    @Test func decodesTreasurePartSpriteWithoutChroma() throws {
+        let yaml = """
+        emitter:
+          sprite:
+            root: Sprites/Items/Treasure/1-emitter
+            scale: 0.4
+            animations:
+              idle:
+                sheet: 1-emitter-spritesheet
+                atlas: 1-emitter-atlas
+        """
+        let config = try ItemsConfig.decode(from: yaml)
+        let sprite = try #require(config.spriteConfig(id: "emitter"))
+        #expect(sprite.root == "Sprites/Items/Treasure/1-emitter")
+        #expect(sprite.chromaKey == nil)
+        #expect(sprite.scale == 0.4)
+        #expect(config.spriteConfig(for: .treasure) == nil)
+    }
 }

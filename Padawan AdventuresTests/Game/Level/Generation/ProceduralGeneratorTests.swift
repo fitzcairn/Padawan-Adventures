@@ -794,6 +794,34 @@ struct ProceduralGeneratorTests {
         #expect(pickups.contains { $0.pickupKind == .treasure })
     }
 
+    @Test func pickupsNeverSpawnOnAdjacentFloorTiles() throws {
+        for seed: UInt64 in [11, 42, 55, 99, 123] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.pickups = .init(
+                health: .init(spawnChancePerRoom: 1.0),
+                energy: .init(spawnChancePerRoom: 1.0)
+            )
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let pickups = result.world.entities.filter(\.isPickup)
+            #expect(pickups.count > 1, "expected multiple pickups (seed \(seed))")
+
+            for i in pickups.indices {
+                for j in pickups.indices where j > i {
+                    let a = pickups[i].position
+                    let b = pickups[j].position
+                    #expect(a != b, "overlapping pickups at \(a) (seed \(seed))")
+                    let dx = abs(a.x - b.x)
+                    let dy = abs(a.y - b.y)
+                    let orthogonallyAdjacent = a.story == b.story && dx + dy == 1
+                    #expect(
+                        !orthogonallyAdjacent,
+                        "pickups adjacent at \(a) and \(b) (seed \(seed))"
+                    )
+                }
+            }
+        }
+    }
+
     @Test func pickupsAndEnemiesOnlySpawnOnRoomFloorTiles() throws {
         for seed: UInt64 in [11, 42, 99, 123] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)

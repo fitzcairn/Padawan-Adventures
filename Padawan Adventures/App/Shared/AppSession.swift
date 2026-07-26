@@ -48,6 +48,8 @@ final class AppSession {
     let floorSpriteLibrary: FloorSpriteLibrary
     /// Session-scoped still background cache (screen BGs at game open; engine BGs at level start).
     let backgroundLibrary: BackgroundLibrary
+    /// Still frames of treasure parts for the level-select inventory row.
+    let treasureIcons: SpriteIconLibrary
 
     init(
         appConfig: AppConfig,
@@ -75,7 +77,8 @@ final class AppSession {
         spriteLibrary: SpriteLibrary? = nil,
         terrainCatalog: TerrainCatalog? = nil,
         floorSpriteLibrary: FloorSpriteLibrary? = nil,
-        backgroundLibrary: BackgroundLibrary? = nil
+        backgroundLibrary: BackgroundLibrary? = nil,
+        treasureIcons: SpriteIconLibrary? = nil
     ) {
         self.appConfig = appConfig
         self.selectedLevel = selectedLevel
@@ -118,6 +121,7 @@ final class AppSession {
         )
         self.floorSpriteLibrary = floorSpriteLibrary ?? FloorSpriteLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
+        self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
     }
 
     /// Ensures player sprite animations are loaded for this session.
@@ -130,11 +134,25 @@ final class AppSession {
     }
 
     /// Ensures item pickup sprite animations are loaded for this session.
+    ///
+    /// Only the selected level's treasure part is warmed; the other seven stay unread.
     func ensureItemSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
-        let entries = itemsConfig.items.compactMap { id, item -> (String, SpriteConfig)? in
-            guard let sprite = item.sprite else { return nil }
-            return (id, sprite)
+        var requiredIDs: Set<String> = [
+            PickupKind.health.rawValue,
+            PickupKind.energy.rawValue,
+            PickupKind.treasure.rawValue,
+        ]
+        if let treasureID = selectedLevel.treasure {
+            requiredIDs.insert(treasureID)
         }
+
+        let entries = itemsConfig.items
+            .filter { requiredIDs.contains($0.key) }
+            .sorted { $0.key < $1.key }
+            .compactMap { id, item -> (String, SpriteConfig)? in
+                guard let sprite = item.sprite else { return nil }
+                return (id, sprite)
+            }
         guard !entries.isEmpty else {
             onProgress?(1)
             return
@@ -149,6 +167,14 @@ final class AppSession {
             }
         }
         onProgress?(1)
+    }
+
+    /// Warms level-select inventory icons for the given treasure item ids.
+    func ensureTreasureIconsLoaded(ids: [String]) async {
+        for id in ids {
+            guard let sprite = itemsConfig.spriteConfig(id: id) else { continue }
+            await treasureIcons.ensureLoaded(sprite, id: id)
+        }
     }
 
     /// Ensures enemy sprite animations for the selected level's spawn list are loaded.

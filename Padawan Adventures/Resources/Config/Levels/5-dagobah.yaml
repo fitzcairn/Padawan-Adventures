@@ -14,6 +14,7 @@ sprite:
       sheet: 5-dagobah
       atlas: 5-dagobah-atlas
 artifact: drop.fill
+treasure: lower-grip
 floor_sprites:
   - swamp
   - swamp-murky

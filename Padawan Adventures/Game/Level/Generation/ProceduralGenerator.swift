@@ -258,6 +258,9 @@ nonisolated struct ProceduralGenerator: Sendable {
             }
         }
 
+        // Pickup cells only — used so health/energy/treasure never sit on adjacent tiles.
+        var pickupCells: Set<GridCoord> = []
+
         if let pickups = config.pickups {
             let spawned = spawnPickups(
                 pickups,
@@ -265,6 +268,7 @@ nonisolated struct ProceduralGenerator: Sendable {
                 excludingRoomID: topRight.id,
                 tiles: tiles,
                 occupied: &occupied,
+                pickupCells: &pickupCells,
                 rng: &rng
             )
             entities.append(contentsOf: spawned)
@@ -275,6 +279,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             spawn: spawn,
             tiles: tiles,
             occupied: &occupied,
+            pickupCells: &pickupCells,
             rng: &rng
         ) {
             entities.append(treasure)
@@ -773,12 +778,15 @@ nonisolated struct ProceduralGenerator: Sendable {
     }
 
     /// One roll per room per kind (except the spawn room); visible room floor only.
+    ///
+    /// Never places two pickups on the same or orthogonally adjacent tiles.
     private func spawnPickups(
         _ config: LevelConfig.PickupsSpawnConfig,
         in rooms: [GeneratedRoom],
         excludingRoomID: Int,
         tiles: [[[Tile]]],
         occupied: inout Set<GridCoord>,
+        pickupCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> [GameEntity] {
         var pickups: [GameEntity] = []
@@ -795,10 +803,12 @@ nonisolated struct ProceduralGenerator: Sendable {
                     in: room,
                     tiles: tiles,
                     occupied: occupied,
+                    pickupCells: pickupCells,
                     rng: &rng
                 ) else { continue }
 
                 occupied.insert(position)
+                pickupCells.insert(position)
                 pickups.append(
                     GameEntity(
                         letter: " ",
@@ -819,6 +829,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         spawn: GridCoord,
         tiles: [[[Tile]]],
         occupied: inout Set<GridCoord>,
+        pickupCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> GameEntity? {
         let ordered = rooms.sorted { lhs, rhs in
@@ -833,10 +844,12 @@ nonisolated struct ProceduralGenerator: Sendable {
                 in: room,
                 tiles: tiles,
                 occupied: occupied,
+                pickupCells: pickupCells,
                 rng: &rng
             ) else { continue }
 
             occupied.insert(position)
+            pickupCells.insert(position)
             return GameEntity(
                 letter: " ",
                 position: position,
@@ -877,15 +890,19 @@ nonisolated struct ProceduralGenerator: Sendable {
     }
 
     /// Picks a pickup cell in full view and at least one tile from any wall/gate.
+    ///
+    /// Also skips cells that share an edge with an already-placed pickup.
     private func pickVisiblePickupFloorCell(
         in room: GeneratedRoom,
         tiles: [[[Tile]]],
         occupied: Set<GridCoord>,
+        pickupCells: Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> GridCoord? {
         let candidates = room.cells
             .filter { cell in
                 guard !occupied.contains(cell) else { return false }
+                guard !isOrthogonallyAdjacent(cell, toAnyIn: pickupCells) else { return false }
                 guard isEntityPlaceableRoomFloor(cell, in: room, tiles: tiles) else { return false }
                 return !IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: tiles[0])
             }
@@ -894,6 +911,16 @@ nonisolated struct ProceduralGenerator: Sendable {
                 return lhs.y < rhs.y
             }
         return rng.pick(candidates)
+    }
+
+    /// True when `cell` shares an edge with any coord in `others` (same story).
+    private func isOrthogonallyAdjacent(_ cell: GridCoord, toAnyIn others: Set<GridCoord>) -> Bool {
+        for (dx, dy) in GridCoord.cardinals {
+            if others.contains(cell.neighbor(dx: dx, dy: dy)) {
+                return true
+            }
+        }
+        return false
     }
 
     /// True only for non-pit floor tiles inside the given room (pickups and enemy sprites).

@@ -13,6 +13,7 @@ sprite:
       sheet: 2-tatooine
       atlas: 2-tatooine-atlas
 artifact: sun.max.fill
+treasure: control-ring
 floor_sprites:
   - sand
   - sand-dune

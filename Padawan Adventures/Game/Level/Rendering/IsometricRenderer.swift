@@ -6,6 +6,7 @@ final class IsometricRenderer {
     private let spriteLibrary: SpriteLibrary?
     private let playerSpriteConfig: SpriteConfig?
     private let itemsConfig: ItemsConfig?
+    private let treasureItemID: String?
     private let floorSpriteLibrary: FloorSpriteLibrary?
     private let worldRoot = SKNode()
     /// Floor terrain — shared band with walls/entities; local z uses increasing grid Y.
@@ -36,6 +37,7 @@ final class IsometricRenderer {
         spriteLibrary: SpriteLibrary? = nil,
         playerSpriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
+        treasureItemID: String? = nil,
         floorSpriteLibrary: FloorSpriteLibrary? = nil
     ) {
         self.config = config
@@ -43,6 +45,7 @@ final class IsometricRenderer {
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
         self.itemsConfig = itemsConfig
+        self.treasureItemID = treasureItemID
         self.floorSpriteLibrary = floorSpriteLibrary
     }
 
@@ -312,7 +315,8 @@ final class IsometricRenderer {
                     spriteLibrary: spriteLibrary,
                     spriteConfig: entity.isPlayer ? playerSpriteConfig : nil,
                     itemsConfig: itemsConfig,
-                    enemySprite: enemySprite(for: entity)
+                    enemySprite: enemySprite(for: entity),
+                    treasureItemID: treasureItemID
                 )
                 entityNodes[entity.id] = node
                 occlusionLayer.addChild(node)

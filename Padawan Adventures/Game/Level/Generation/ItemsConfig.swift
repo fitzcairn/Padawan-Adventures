@@ -46,6 +46,11 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
         items[kind.rawValue]?.sprite
     }
 
+    /// Sprite config for an arbitrary item id (e.g. a per-level treasure part).
+    func spriteConfig(id: String) -> SpriteConfig? {
+        items[id]?.sprite
+    }
+
     func validate() throws {
         for (id, item) in items {
             guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
