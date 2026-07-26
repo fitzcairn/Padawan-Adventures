@@ -1050,6 +1050,8 @@ nonisolated struct ProceduralGenerator: Sendable {
     /// Cells carved as a door-style floor opening (eligible for gates).
     private struct DoorOpening: Equatable {
         var cells: [GridCoord]
+        /// Room pair this opening joins, when known (used to place only one gate per join).
+        var roomPair: RoomPair?
     }
 
     @discardableResult
@@ -1085,6 +1087,7 @@ nonisolated struct ProceduralGenerator: Sendable {
     ) -> [DoorOpening] {
         let width = max(2, corridorWidth)
 
+        let pair = RoomPair(roomA.id, roomB.id)
         if let opening = sharedWallOpening(roomA, roomB) {
             let cells = placeFloorOpeningStrip(
                 at: opening.wall,
@@ -1095,7 +1098,7 @@ nonisolated struct ProceduralGenerator: Sendable {
                 story: story,
                 requiresSharedWallBetween: (roomA, roomB)
             )
-            return cells.isEmpty ? [] : [DoorOpening(cells: cells)]
+            return cells.isEmpty ? [] : [DoorOpening(cells: cells, roomPair: pair)]
         }
 
         let (start, end) = closestPair(roomA, roomB)
@@ -1113,7 +1116,7 @@ nonisolated struct ProceduralGenerator: Sendable {
                 story: story,
                 requiresSharedWallBetween: nil
             )
-            return cells.isEmpty ? [] : [DoorOpening(cells: cells)]
+            return cells.isEmpty ? [] : [DoorOpening(cells: cells, roomPair: pair)]
         }
 
         let path = lPath(from: start, to: end)
@@ -1132,15 +1135,17 @@ nonisolated struct ProceduralGenerator: Sendable {
         )
     }
 
-    /// Hallway floor cells just outside each room along a carved corridor (never room interiors).
+    /// One hallway mouth just outside a room on a carved corridor (never both mouths).
+    /// Gating both ends would stack two puzzles on the same join.
     private func corridorMouthOpenings(
         roomA: GeneratedRoom,
         roomB: GeneratedRoom,
         tiles: [[[Tile]]],
         story: Int
     ) -> [DoorOpening] {
+        let pair = RoomPair(roomA.id, roomB.id)
         let roomCells = roomA.cells.union(roomB.cells)
-        var openings: [DoorOpening] = []
+        // Deterministic: prefer roomA's mouth, then roomB.
         for room in [roomA, roomB] {
             var mouth: [GridCoord] = []
             for cell in room.cells {
@@ -1155,13 +1160,12 @@ nonisolated struct ProceduralGenerator: Sendable {
             }
             let unique = Array(Set(mouth)).sorted { ($0.x, $0.y) < ($1.x, $1.y) }
             guard !unique.isEmpty else { continue }
-            if let pair = firstContiguousFloorPair(in: unique) {
-                openings.append(DoorOpening(cells: pair))
-            } else {
-                openings.append(DoorOpening(cells: [unique[0]]))
+            if let cells = firstContiguousFloorPair(in: unique) {
+                return [DoorOpening(cells: cells, roomPair: pair)]
             }
+            return [DoorOpening(cells: [unique[0]], roomPair: pair)]
         }
-        return openings
+        return []
     }
 
     /// Carves a corridor of `width` tiles along an L-path using a square brush so bends stay wide.
@@ -1640,9 +1644,12 @@ nonisolated struct ProceduralGenerator: Sendable {
             } else {
                 continue
             }
-            let pair = roomPartitionInfo(gateCells[0], roomByCell: roomByCell)?.pair
+            let pair = opening.roomPair
+                ?? roomPartitionInfo(gateCells[0], roomByCell: roomByCell)?.pair
                 ?? roomPairForOpening(gateCells, roomByCell: roomByCell)
+            // One gate feature per room-pair join; never stack against an existing gate.
             if let pair, gatedPairs.contains(pair) { continue }
+            guard !segmentAbutsGate(gateCells, in: tiles[story]) else { continue }
             let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in gateCells {
                 tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
@@ -1687,7 +1694,9 @@ nonisolated struct ProceduralGenerator: Sendable {
                 tiles: tiles[story],
                 roomByCell: roomByCell
             ) else { return }
-            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
+            // Match an abutting gate's kind so a seal cut never creates a second puzzle strip.
+            let kind = abuttingGateKind(cut, in: tiles[story])
+                ?? pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in cut {
                 guard cell.y >= 0, cell.y < tiles[story].count else { continue }
                 guard cell.x >= 0, cell.x < tiles[story][cell.y].count else { continue }
@@ -1914,21 +1923,71 @@ nonisolated struct ProceduralGenerator: Sendable {
         return nil
     }
 
-    /// Room pairs that already have a gate opening between them on their shared wall.
+    /// Room pairs that already have a gate on their join (shared-wall partition or corridor mouth).
     private func roomPairsSeparatedByGate(
         in story: [[Tile]],
         roomByCell: [GridCoord: Int]
     ) -> Set<RoomPair> {
         var pairs = Set<RoomPair>()
+        var visitedGates = Set<GridCoord>()
+
         for y in 0..<story.count {
             for x in 0..<story[y].count {
+                let start = GridCoord(x: x, y: y, story: 0)
                 guard story[y][x].isGate else { continue }
-                let coord = GridCoord(x: x, y: y, story: 0)
-                for (dx, dy) in GridCoord.cardinals {
-                    let a = coord.neighbor(dx: dx, dy: dy)
-                    let b = coord.neighbor(dx: -dx, dy: -dy)
-                    guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
-                    pairs.insert(RoomPair(idA, idB))
+                guard visitedGates.insert(start).inserted else { continue }
+
+                // Contiguous gate feature (one puzzle strip).
+                var component = [start]
+                var head = 0
+                while head < component.count {
+                    let current = component[head]
+                    head += 1
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        guard next.y >= 0, next.y < story.count else { continue }
+                        guard next.x >= 0, next.x < story[next.y].count else { continue }
+                        guard story[next.y][next.x].isGate else { continue }
+                        guard visitedGates.insert(next).inserted else { continue }
+                        component.append(next)
+                    }
+                }
+
+                // Classic shared-wall: rooms on opposite sides of a gate cell.
+                for coord in component {
+                    for (dx, dy) in GridCoord.cardinals {
+                        let a = coord.neighbor(dx: dx, dy: dy)
+                        let b = coord.neighbor(dx: -dx, dy: -dy)
+                        guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                        pairs.insert(RoomPair(idA, idB))
+                    }
+                }
+
+                // Corridor-mouth: flood hallway floors from this strip (other gates block)
+                // and collect every room that touches the pocket — typically the two joined rooms.
+                var rooms = Set<Int>()
+                var flood = component
+                var flooded = Set(component)
+                var floodHead = 0
+                while floodHead < flood.count {
+                    let current = flood[floodHead]
+                    floodHead += 1
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        if let roomID = roomByCell[next] {
+                            rooms.insert(roomID)
+                            continue
+                        }
+                        guard next.y >= 0, next.y < story.count else { continue }
+                        guard next.x >= 0, next.x < story[next.y].count else { continue }
+                        guard flooded.insert(next).inserted else { continue }
+                        guard isFloor(story[next.y][next.x]) else { continue }
+                        flood.append(next)
+                    }
+                }
+                let orderedRooms = rooms.sorted()
+                if orderedRooms.count == 2 {
+                    pairs.insert(RoomPair(orderedRooms[0], orderedRooms[1]))
                 }
             }
         }
@@ -1936,15 +1995,19 @@ nonisolated struct ProceduralGenerator: Sendable {
     }
 
     private func segmentAbutsGate(_ segment: [GridCoord], in story: [[Tile]]) -> Bool {
+        abuttingGateKind(segment, in: story) != nil
+    }
+
+    private func abuttingGateKind(_ segment: [GridCoord], in story: [[Tile]]) -> GateMinigameKind? {
         for cell in segment {
             for (dx, dy) in GridCoord.cardinals {
                 let next = cell.neighbor(dx: dx, dy: dy)
                 guard next.y >= 0, next.y < story.count else { continue }
                 guard next.x >= 0, next.x < story[next.y].count else { continue }
-                if story[next.y][next.x].isGate { return true }
+                if let kind = story[next.y][next.x].gateMinigame { return kind }
             }
         }
-        return false
+        return nil
     }
 
     /// True when every cell is a solid wall between the same room pair (sealed shortcut).

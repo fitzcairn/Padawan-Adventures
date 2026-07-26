@@ -283,7 +283,7 @@ final class CombatScene: SKScene {
             shape.strokeColor = .white
             shape.lineWidth = 1.5
             let label = SKLabelNode(text: visualLetter)
-            label.fontName = "Helvetica-Bold"
+            label.fontName = AppFont.name
             label.fontSize = shotBaseSize * 0.62
             label.verticalAlignmentMode = .center
             label.horizontalAlignmentMode = .center

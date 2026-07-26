@@ -37,13 +37,15 @@ struct PitResultOverlay: View {
                 + Text("!")
                     .foregroundStyle(.white)
             )
-            .font(.system(size: 36, weight: .bold))
+            .font(AppFont.swiftUI(size: 36, weight: .bold))
             .multilineTextAlignment(.center)
+            .appCopyShadow()
         case .falling:
             Text("you're fallllling!")
-                .font(.system(size: 36, weight: .bold))
+                .font(AppFont.swiftUI(size: 36, weight: .bold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white)
+                .appCopyShadow()
         }
     }
 

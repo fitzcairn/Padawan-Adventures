@@ -46,6 +46,8 @@ final class AppSession {
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
     let treasureIcons: SpriteIconLibrary
+    /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
+    private(set) var pendingLevelSelectCelebration: String? = nil
 
     init(
         appConfig: AppConfig,
@@ -529,6 +531,7 @@ final class AppSession {
             energy: playerConfig.startingEnergy
         )
         playerState = state
+        pendingLevelSelectCelebration = nil
         await persistPlayerState()
         try? await saveService.delete()
         await refreshContinueEligibility()
@@ -541,8 +544,19 @@ final class AppSession {
     }
 
     func markLevelCompleted(resourceName: String) async {
+        let wasCompleted = playerState?.levels[resourceName]?.completed == true
         playerState?.markLevelCompleted(resourceName, artifact: selectedLevelArtifact)
+        if !wasCompleted {
+            pendingLevelSelectCelebration = resourceName
+        }
         await persistPlayerState()
+    }
+
+    /// Returns and clears the pending level-select unlock celebration, if any.
+    func consumeLevelSelectCelebration() -> String? {
+        let resourceName = pendingLevelSelectCelebration
+        pendingLevelSelectCelebration = nil
+        return resourceName
     }
 
     var isDadModeUnlocked: Bool {

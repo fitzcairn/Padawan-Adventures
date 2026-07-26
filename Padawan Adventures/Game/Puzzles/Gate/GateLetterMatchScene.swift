@@ -31,17 +31,13 @@ final class GateLetterMatchScene: SKScene {
     private let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
     private let squareWrongFill = UIColor.systemRed
 
-    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
-
     init(
         size: CGSize,
         puzzleConfig: GateLetterMatchConfig,
-        playerFx: SoundEffectTable,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary
+        playerFx: SoundEffectTable
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.engine = GateLetterMatchMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -222,25 +218,15 @@ final class GateLetterMatchScene: SKScene {
         root.addChild(square)
         squareNodes[token.id] = square
 
-        if let glyph = LetterSpriteFactory.sprite(
-            letter: token.letter,
-            side: side * 0.62,
-            library: letterSpriteSetLibrary
-        ) {
-            glyph.zPosition = 1
-            glyph.isUserInteractionEnabled = false
-            root.addChild(glyph)
-        } else {
-            let label = SKLabelNode(text: token.letter)
-            label.fontName = "Helvetica-Bold"
-            label.fontSize = side * 0.62
-            label.fontColor = .white
-            label.verticalAlignmentMode = .center
-            label.horizontalAlignmentMode = .center
-            label.zPosition = 1
-            label.isUserInteractionEnabled = false
-            root.addChild(label)
-        }
+        let label = SKLabelNode(text: token.letter)
+        label.fontName = AppFont.name
+        label.fontSize = side * 0.62
+        label.fontColor = .white
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.zPosition = 1
+        label.isUserInteractionEnabled = false
+        root.addChild(label)
 
         return root
     }

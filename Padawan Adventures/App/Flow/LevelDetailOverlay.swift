@@ -9,27 +9,25 @@ struct LevelDetailOverlay: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
-
+        ModalOverlayShell(
+            accessibilityRootID: "levelSelect.detail.root",
+            onBackgroundTap: onDismiss
+        ) {
             VStack(spacing: 20) {
                 Text(levelName)
-                    .font(.system(size: 32, weight: .bold))
+                    .font(AppFont.swiftUI(size: 32, weight: .bold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
+                    .appCopyShadow()
                     .accessibilityIdentifier("levelSelect.detail.title")
 
                 if hasBeenPlayed {
                     HStack(spacing: 8) {
                         Text("Your highest score: \(highestStars)")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(AppFont.swiftUI(size: 20, weight: .semibold))
                             .foregroundStyle(.white)
-                        Image(systemName: "star.fill")
-                            .foregroundStyle(.orange)
-                            .font(.system(size: 20, weight: .semibold))
+                            .appCopyShadow()
+                        ScoreCoinIcon.Image(side: 20)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("levelSelect.detail.highestScore")
@@ -52,8 +50,6 @@ struct LevelDetailOverlay: View {
             .padding(28)
             .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 16))
             .frame(maxWidth: .infinity)
-            .appScreenContentPadding()
         }
-        .accessibilityIdentifier("levelSelect.detail.root")
     }
 }

@@ -3,6 +3,7 @@ version: 1
 screens:
   menu:
     music: menu_theme
+    background: menu_screen_bg
   loading:
     # Continue whatever was playing (nothing at cold start).
     music: none

@@ -6,15 +6,14 @@ struct DefeatView: View {
     var body: some View {
         DismissibleOverlay(
             accessibilityRootID: "defeat.root",
-            onFinished: onFinished,
-            background: { Color.black }
+            onFinished: onFinished
         ) {
             Text("Defeated")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
+                .font(AppFont.swiftUI(size: 22, weight: .semibold))
+                .foregroundStyle(AppChrome.buttonForegroundColor)
                 .padding(.horizontal, 28)
                 .padding(.vertical, 16)
-                .background(Color(white: 0.22), in: RoundedRectangle(cornerRadius: 12))
+                .appButtonChrome(RoundedRectangle(cornerRadius: 12))
                 .accessibilityIdentifier("defeat.button")
         }
     }

@@ -303,7 +303,7 @@ enum PlaceholderFactory {
 
         let label = SKLabelNode(text: String(entity.letter))
         label.fontSize = 22
-        label.fontName = "Menlo-Bold"
+        label.fontName = AppFont.name
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

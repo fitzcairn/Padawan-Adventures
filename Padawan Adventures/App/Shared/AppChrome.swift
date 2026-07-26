@@ -5,14 +5,40 @@ enum AppChrome {
     static let backgroundColor = Color.black
     static let primaryTextColor = Color.white
     static let secondaryTextColor = Color(white: 0.65)
-    static let buttonBackgroundColor = Color(white: 0.92)
-    static let buttonForegroundColor = Color.black
+    static let buttonBackgroundColor = Color(red: 36 / 255, green: 90 / 255, blue: 133 / 255)
+    static let buttonForegroundColor = Color.white
+    static let buttonOutlineColor = Color(red: 9 / 255, green: 135 / 255, blue: 232 / 255)
+    static let buttonOutlineWidth: CGFloat = 2
+    static let copyShadowColor = Color(red: 36 / 255, green: 90 / 255, blue: 133 / 255)
+    static let copyShadowRadius: CGFloat = 0
+    static let copyShadowY: CGFloat = 2
+    static let controlAccentColor = Color(white: 0.92)
     static let maxContentWidth: CGFloat = 420
 
     static var versionBuildString: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
         return "v\(version) (\(build))"
+    }
+
+    static var uiButtonBackgroundColor: UIColor {
+        UIColor(red: 36 / 255, green: 90 / 255, blue: 133 / 255, alpha: 1)
+    }
+    static var uiButtonForegroundColor: UIColor { .white }
+    static var uiButtonOutlineColor: UIColor {
+        UIColor(red: 9 / 255, green: 135 / 255, blue: 232 / 255, alpha: 1)
+    }
+    static var uiCopyShadowColor: UIColor {
+        UIColor(red: 36 / 255, green: 90 / 255, blue: 133 / 255, alpha: 1)
+    }
+
+    /// #245a85 drop shadow for non-button copy.
+    static func applyCopyShadow(to layer: CALayer) {
+        layer.shadowColor = uiCopyShadowColor.cgColor
+        layer.shadowOpacity = 1
+        layer.shadowRadius = copyShadowRadius
+        layer.shadowOffset = CGSize(width: 0, height: copyShadowY)
+        layer.masksToBounds = false
     }
 }
 
@@ -42,6 +68,31 @@ extension View {
         frame(maxWidth: AppChrome.maxContentWidth)
             .frame(maxWidth: .infinity)
     }
+
+    /// #245a85 fill with #0987e8 outline (no drop shadow).
+    func appButtonChrome<S: Shape>(
+        _ shape: S,
+        fill: Color = AppChrome.buttonBackgroundColor
+    ) -> some View {
+        background(fill, in: shape)
+            .overlay(shape.stroke(AppChrome.buttonOutlineColor, lineWidth: AppChrome.buttonOutlineWidth))
+    }
+
+    /// #245a85 drop shadow for non-button copy.
+    func appCopyShadow() -> some View {
+        shadow(
+            color: AppChrome.copyShadowColor,
+            radius: AppChrome.copyShadowRadius,
+            x: 0,
+            y: AppChrome.copyShadowY
+        )
+    }
+}
+
+extension UILabel {
+    func applyAppCopyShadow() {
+        AppChrome.applyCopyShadow(to: layer)
+    }
 }
 
 struct AppTitleText: View {
@@ -56,6 +107,7 @@ struct AppTitleText: View {
             .foregroundStyle(color)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
+            .appCopyShadow()
     }
 }
 
@@ -69,12 +121,12 @@ struct AppLargeButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 22, weight: .semibold))
+                .font(AppFont.swiftUI(size: 22, weight: .semibold))
                 .foregroundStyle(AppChrome.buttonForegroundColor)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(backgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                .appButtonChrome(RoundedRectangle(cornerRadius: 12), fill: backgroundColor)
         }
         .buttonStyle(.plain)
         .opacity(opacity)
@@ -83,7 +135,7 @@ struct AppLargeButton: View {
     }
 }
 
-/// Circular chrome control (back, lock, etc.) — light fill, dark SF Symbol.
+/// Circular chrome control (back, lock, etc.) — filled chrome with light SF Symbol.
 struct AppCircularIconButton: View {
     let systemName: String
     var size: CGFloat = 52
@@ -97,7 +149,7 @@ struct AppCircularIconButton: View {
                 .font(.system(size: size * 0.42, weight: .semibold))
                 .foregroundStyle(AppChrome.buttonForegroundColor)
                 .frame(width: size, height: size)
-                .background(AppChrome.buttonBackgroundColor, in: Circle())
+                .appButtonChrome(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityID ?? systemName)
@@ -112,10 +164,10 @@ struct AppCheckbox: View {
     var boxSize: CGFloat = 28
     var cornerRadius: CGFloat = 6
     var borderColor: Color = AppChrome.primaryTextColor
-    var fillColor: Color = AppChrome.buttonBackgroundColor
-    var checkColor: Color = AppChrome.buttonForegroundColor
+    var fillColor: Color = AppChrome.controlAccentColor
+    var checkColor: Color = Color.black
     var labelColor: Color = AppChrome.primaryTextColor
-    var font: Font = .system(size: 18, weight: .medium)
+    var font: Font = AppFont.swiftUI(size: 18, weight: .medium)
     var accessibilityID: String? = nil
 
     var body: some View {
@@ -143,6 +195,7 @@ struct AppCheckbox: View {
                 Text(label)
                     .font(font)
                     .foregroundStyle(labelColor)
+                    .appCopyShadow()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .opacity(isEnabled ? 1 : 0.4)
@@ -162,7 +215,7 @@ struct AppSlider: View {
     var isEnabled: Bool = true
     var trackHeight: CGFloat = 6
     var thumbSize: CGFloat = 22
-    var activeTrackColor: Color = AppChrome.buttonBackgroundColor
+    var activeTrackColor: Color = AppChrome.controlAccentColor
     var inactiveTrackColor: Color = Color(white: 0.35)
     var thumbColor: Color = AppChrome.primaryTextColor
     var disabledOpacity: Double = 0.4
@@ -223,7 +276,7 @@ struct AppProgressBar: View {
     var progress: Double
     var height: CGFloat = 12
     var trackColor: Color = Color(white: 0.25)
-    var fillColor: Color = AppChrome.buttonBackgroundColor
+    var fillColor: Color = AppChrome.controlAccentColor
     var accessibilityID: String? = nil
 
     var body: some View {

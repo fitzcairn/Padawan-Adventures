@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum OverlayDismissSecondsKey: EnvironmentKey {
     static let defaultValue: TimeInterval =
@@ -13,17 +14,60 @@ extension EnvironmentValues {
     }
 }
 
+/// Shared chrome for modal overlays and fullscreen minigame hosts.
+enum OverlayChrome {
+    /// Fully opaque fill for minigames / UIKit fullscreen hosts.
+    static let backgroundColor = Color.black
+    static var uiBackgroundColor: UIColor { .black }
+
+    /// 50% dim scrim so the screen behind a modal stays visible.
+    static let dimColor = Color.black.opacity(0.5)
+}
+
+/// Full-bleed dim scrim + centered content for modal overlays.
+///
+/// Structure: 50% transparent backdrop + content (modal boxes should be opaque).
+/// Optional background tap for dismiss.
+struct ModalOverlayShell<Content: View>: View {
+    let accessibilityRootID: String
+    var onBackgroundTap: (() -> Void)?
+    private let content: Content
+
+    init(
+        accessibilityRootID: String,
+        onBackgroundTap: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.accessibilityRootID = accessibilityRootID
+        self.onBackgroundTap = onBackgroundTap
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            OverlayChrome.dimColor
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onBackgroundTap?()
+                }
+
+            content
+                .appScreenContentPadding()
+        }
+        .accessibilityIdentifier(accessibilityRootID)
+    }
+}
+
 /// Shared shell for fullscreen result overlays (win, lose, defeat, level complete).
 ///
-/// Structure: full-bleed background + centered content. Behavior: dismiss on tap,
+/// Structure: dim scrim + centered content. Behavior: dismiss on tap,
 /// or automatically after `overlayDismissSeconds` (configurable in app.yaml).
-/// Backgrounds and content stay customizable per call site.
-struct DismissibleOverlay<Background: View, Content: View>: View {
+struct DismissibleOverlay<Content: View>: View {
     @Environment(\.overlayDismissSeconds) private var dismissSeconds
 
     let accessibilityRootID: String
     let onFinished: () -> Void
-    private let background: Background
     private let content: Content
 
     @State private var didFinish = false
@@ -31,26 +75,20 @@ struct DismissibleOverlay<Background: View, Content: View>: View {
     init(
         accessibilityRootID: String,
         onFinished: @escaping () -> Void,
-        @ViewBuilder background: () -> Background,
         @ViewBuilder content: () -> Content
     ) {
         self.accessibilityRootID = accessibilityRootID
         self.onFinished = onFinished
-        self.background = background()
         self.content = content()
     }
 
     var body: some View {
-        ZStack {
-            background
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { finish() }
-
+        ModalOverlayShell(
+            accessibilityRootID: accessibilityRootID,
+            onBackgroundTap: { finish() }
+        ) {
             content
-                .appScreenContentPadding()
         }
-        .accessibilityIdentifier(accessibilityRootID)
         .task {
             let delay = max(dismissSeconds, 0)
             guard delay > 0 else { return }
@@ -67,23 +105,7 @@ struct DismissibleOverlay<Background: View, Content: View>: View {
     }
 }
 
-extension DismissibleOverlay where Background == Color {
-    /// Default dimmed backdrop used by most minigame result overlays.
-    init(
-        accessibilityRootID: String,
-        onFinished: @escaping () -> Void,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.init(
-            accessibilityRootID: accessibilityRootID,
-            onFinished: onFinished,
-            background: { Color.black.opacity(0.55) },
-            content: content
-        )
-    }
-}
-
-/// Shared yellow star row used by puzzle result overlays.
+/// Shared coin row used by puzzle result overlays (score awards).
 struct OverlayStars: View {
     let count: Int
     let accessibilityID: String
@@ -92,9 +114,7 @@ struct OverlayStars: View {
         if count > 0 {
             HStack(spacing: 16) {
                 ForEach(0..<count, id: \.self) { _ in
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 54))
-                        .foregroundStyle(.yellow)
+                    ScoreCoinIcon.Image(side: 54)
                 }
             }
             .accessibilityIdentifier(accessibilityID)

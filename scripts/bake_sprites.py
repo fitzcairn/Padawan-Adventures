@@ -32,9 +32,10 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + letters + planets
+  python3 scripts/bake_sprites.py              # player + items + floors + letters + planets + loading
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
+  python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -778,6 +779,32 @@ def collect_planets(plan: BakePlan) -> None:
         )
 
 
+def collect_loading(plan: BakePlan) -> None:
+    path = CONFIG / "UI" / "loading.yaml"
+    add_config_input(plan, path)
+    if not path.is_file():
+        plan.errors.append(f"loading: missing {path.relative_to(RESOURCES.parent)}")
+        return
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        plan.errors.append("loading: Config/UI/loading.yaml must be a mapping")
+        return
+    for name, entry in data.items():
+        if not isinstance(entry, dict):
+            plan.errors.append(f"loading.{name}: expected mapping with sprite:")
+            continue
+        sprite = entry.get("sprite")
+        if not isinstance(sprite, dict):
+            plan.errors.append(f"loading.{name}: missing sprite:")
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"loading.{name}",
+            sprite=sprite,
+            flip_vertical=True,
+        )
+
+
 def build_plan(args: argparse.Namespace) -> BakePlan:
     plan = BakePlan()
     if args.verify_only:
@@ -789,6 +816,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_floors = args.all or args.default_set or args.floors
     bake_letters = args.all or args.default_set or args.letters
     bake_planets = args.all or args.default_set or args.planets
+    bake_loading = args.all or args.default_set or args.loading
     bake_enemies = args.all or args.enemies or bool(args.enemy)
 
     # Default invocation (no flags) → default set.
@@ -802,10 +830,11 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.floors,
             args.letters,
             args.planets,
+            args.loading,
             args.verify,
         ]
     ):
-        bake_player = bake_items = bake_floors = bake_letters = bake_planets = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_planets = bake_loading = True
 
     if args.verify and not any(
         [
@@ -817,11 +846,12 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.floors,
             args.letters,
             args.planets,
+            args.loading,
         ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
-        bake_player = bake_items = bake_floors = bake_letters = bake_planets = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_planets = bake_loading = True
 
     if bake_player:
         collect_player(plan)
@@ -833,6 +863,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_letter_job(plan)
     if bake_planets:
         collect_planets(plan)
+    if bake_loading:
+        collect_loading(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)
@@ -1085,7 +1117,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, planets, enemies",
+        help="Bake player, items, floors, letters, planets, loading, enemies",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument(
@@ -1099,6 +1131,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--floors", action="store_true", help="Bake per-level floor tile sets")
     p.add_argument("--letters", action="store_true", help="Bake per-level letter glyph sets")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
+    p.add_argument("--loading", action="store_true", help="Bake loading-screen UI sprites")
     p.add_argument(
         "--verify",
         action="store_true",
@@ -1120,6 +1153,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.floors,
             args.letters,
             args.planets,
+            args.loading,
         ]
     )
     return args

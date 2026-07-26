@@ -65,7 +65,7 @@ struct EnemyMinigameView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black.ignoresSafeArea()
+                OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
                     CombatSpriteView(scene: scene)

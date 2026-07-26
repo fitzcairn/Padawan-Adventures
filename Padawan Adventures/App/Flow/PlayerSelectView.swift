@@ -143,14 +143,16 @@ struct PlayerSelectView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                .appReadableWidth()
+                .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
+                .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity)
 
                 AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
                     model.beginCreatePlayer()
                 }
                 .disabled(model.isCreatingAvatar)
-                .appReadableWidth()
+                .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
+                .frame(maxWidth: .infinity)
             }
         }
         .playScreenMusic("player_select")
@@ -209,12 +211,12 @@ struct PlayerSelectView: View {
                 }
             } label: {
                 Text(name)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(AppFont.swiftUI(size: 20, weight: .semibold))
                     .foregroundStyle(AppChrome.buttonForegroundColor)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
-                    .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                    .appButtonChrome(RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("playerSelect.player.\(name)")

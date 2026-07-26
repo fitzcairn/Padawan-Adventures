@@ -42,9 +42,10 @@ final class GateLetterMatchHUDView: UIView {
 
         timerLabel.text = "\(max(timerSeconds, 0))"
         timerLabel.textColor = .white
-        timerLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .bold)
+        timerLabel.font = AppFont.uiKit(size: 28, weight: .bold)
         timerLabel.textAlignment = .right
         timerLabel.translatesAutoresizingMaskIntoConstraints = false
+        timerLabel.applyAppCopyShadow()
         timerLabel.accessibilityIdentifier = "gate.letter_match.timer"
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)

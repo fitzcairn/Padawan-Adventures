@@ -74,8 +74,9 @@ struct SettingsView: View {
     ) -> some View {
         HStack(spacing: 16) {
             Text(label)
-                .font(.system(size: 18, weight: .medium))
+                .font(AppFont.swiftUI(size: 18, weight: .medium))
                 .foregroundStyle(AppChrome.primaryTextColor)
+                .appCopyShadow()
                 .frame(maxWidth: 180, alignment: .leading)
                 .accessibilityIdentifier(labelID)
 

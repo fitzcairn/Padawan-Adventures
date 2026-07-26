@@ -104,4 +104,23 @@ struct LevelProgressionTests {
             )
         )
     }
+
+    @Test func resourceUnlockedByCompletingReturnsNextPlanet() {
+        #expect(
+            LevelProgression.resourceUnlockedByCompleting("level_1", orderedLevels: ordered)
+                == "level_2"
+        )
+        #expect(
+            LevelProgression.resourceUnlockedByCompleting("level_2", orderedLevels: ordered)
+                == "level_3"
+        )
+        #expect(
+            LevelProgression.resourceUnlockedByCompleting("level_3", orderedLevels: ordered)
+                == nil
+        )
+        #expect(
+            LevelProgression.resourceUnlockedByCompleting("missing", orderedLevels: ordered)
+                == nil
+        )
+    }
 }

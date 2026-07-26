@@ -16,6 +16,14 @@ struct LevelSelectView: View {
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
     @State private var inventoryIcons: [String: UIImage] = [:]
+    /// Resource whose treasure should fade in (first completion this session).
+    @State private var celebratingInventoryResource: String?
+    /// Planet that should animate from locked → unlocked.
+    @State private var celebratingUnlockResource: String?
+    /// When false during a celebration, show the pre-unlock visuals; then animate to true.
+    @State private var celebrationRevealed = true
+    @State private var inventorySparklesActive = false
+    @State private var planetSparklesActive = false
 
     /// Planet diameter as a fraction of available content width (~18% ≈ 150pt on phone landscape).
     private static let planetDiameterFraction: CGFloat = 0.18
@@ -24,6 +32,9 @@ struct LevelSelectView: View {
     /// Vertical jitter half-range relative to planet diameter.
     private static let planetJitterToDiameter: CGFloat = 0.32
     private let inventoryIconSide: CGFloat = 52
+    private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
+    private static let celebrationRevealSeconds: TimeInterval = 0.85
+    private static let celebrationSparkleNanoseconds: UInt64 = 1_200_000_000
 
     init(
         session: AppSession,
@@ -32,8 +43,20 @@ struct LevelSelectView: View {
     ) {
         self.session = session
         self.router = router
-        self.levels = levels ?? LevelCatalog.loadFromBundle()
+        let resolvedLevels = levels ?? LevelCatalog.loadFromBundle()
+        self.levels = resolvedLevels
         self.screenBackground = (try? ScreenConfig.loadFromBundle(named: "level_select"))?.background
+
+        // Seed celebration from session so the first frame already hides the new item / lock.
+        let pending = session.pendingLevelSelectCelebration
+        let ordered = resolvedLevels.map(\.resourceName)
+        _celebratingInventoryResource = State(initialValue: pending)
+        _celebratingUnlockResource = State(
+            initialValue: pending.flatMap {
+                LevelProgression.resourceUnlockedByCompleting($0, orderedLevels: ordered)
+            }
+        )
+        _celebrationRevealed = State(initialValue: pending == nil)
     }
 
     /// Earned parts in catalog order; completing a level is what grants its treasure.
@@ -154,6 +177,9 @@ struct LevelSelectView: View {
             }
         }
         .playScreenMusic("level_select")
+        .task {
+            await runPendingCelebrationIfNeeded()
+        }
         .fullScreenCover(isPresented: $showPassword) {
             DadModePasswordView(
                 expectedPassword: session.appConfig.dadModePassword,
@@ -172,14 +198,50 @@ struct LevelSelectView: View {
         }
     }
 
+    @MainActor
+    private func runPendingCelebrationIfNeeded() async {
+        let completed = celebratingInventoryResource ?? session.pendingLevelSelectCelebration
+        guard let completed else { return }
+        _ = session.consumeLevelSelectCelebration()
+        celebratingInventoryResource = completed
+        celebratingUnlockResource = LevelProgression.resourceUnlockedByCompleting(
+            completed,
+            orderedLevels: orderedResourceNames
+        )
+        celebrationRevealed = false
+        inventorySparklesActive = false
+        planetSparklesActive = false
+
+        // Warm the new treasure icon before fading it in.
+        if let treasureID = levels.first(where: { $0.resourceName == completed })?.treasure {
+            await session.ensureTreasureIconsLoaded(ids: [treasureID])
+            if let image = session.treasureIcons.uiImage(id: treasureID) {
+                inventoryIcons[treasureID] = image
+            }
+        }
+
+        try? await Task.sleep(nanoseconds: Self.celebrationHoldNanoseconds)
+        guard !Task.isCancelled else { return }
+
+        inventorySparklesActive = true
+        planetSparklesActive = celebratingUnlockResource != nil
+        withAnimation(.easeIn(duration: Self.celebrationRevealSeconds)) {
+            celebrationRevealed = true
+        }
+
+        try? await Task.sleep(nanoseconds: Self.celebrationSparkleNanoseconds)
+        guard !Task.isCancelled else { return }
+        inventorySparklesActive = false
+        planetSparklesActive = false
+    }
+
     private var starCountHeader: some View {
         HStack(spacing: 8) {
-            Image(systemName: "star.fill")
-                .foregroundStyle(.orange)
-                .font(.system(size: 22, weight: .semibold))
+            ScoreCoinIcon.Image(side: 22)
             Text("\(session.playerState?.totalStars ?? 0)")
-                .font(.system(size: 22, weight: .semibold))
+                .font(AppFont.swiftUI(size: 22, weight: .semibold))
                 .foregroundStyle(AppChrome.primaryTextColor)
+                .appCopyShadow()
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -236,6 +298,15 @@ struct LevelSelectView: View {
             dadModeUnlocked: dadModeUnlocked
         )
         let isLocked = !dadModeUnlocked && state == .locked
+        let isCelebratingUnlock = celebratingUnlockResource == level.resourceName
+        let visuallyLocked = isLocked || (isCelebratingUnlock && !celebrationRevealed)
+        let showLockOverlay = isLocked || isCelebratingUnlock
+        let lockOpacity: Double = {
+            if isCelebratingUnlock {
+                return celebrationRevealed ? 0 : 1
+            }
+            return isLocked ? 1 : 0
+        }()
         let fill = Color(uiColor: UIColor(hex: level.color) ?? .gray)
         let planetImage = level.sprite != nil
             ? session.spriteLibrary.uiImage(id: level.resourceName, named: "idle")
@@ -263,14 +334,20 @@ struct LevelSelectView: View {
                             .stroke(Color.green, lineWidth: completedStroke)
                     }
                 }
-                .opacity(isLocked ? 0.5 : 1)
+                .opacity(visuallyLocked ? 0.5 : 1)
 
-                if isLocked {
+                if showLockOverlay {
                     Image(systemName: "lock.fill")
                         .font(.system(size: lockIconSize, weight: .semibold))
                         .foregroundStyle(AppChrome.primaryTextColor)
                         .shadow(color: .black.opacity(0.6), radius: 3, y: 1)
-                        .opacity(1)
+                        .opacity(lockOpacity)
+                }
+
+                if isCelebratingUnlock {
+                    SparkleBurstView(isActive: planetSparklesActive, diameter: diameter)
+                        .frame(width: diameter, height: diameter)
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -323,6 +400,7 @@ struct LevelSelectView: View {
 
     private var inventorySection: some View {
         HStack(spacing: 16) {
+            Spacer(minLength: 0)
             ForEach(inventoryLevels, id: \.resourceName) { level in
                 inventoryIcon(for: level)
             }
@@ -348,21 +426,34 @@ struct LevelSelectView: View {
 
     @ViewBuilder
     private func inventoryIcon(for level: LevelDescriptor) -> some View {
-        if let id = level.treasure, let image = inventoryIcons[id] {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .frame(width: inventoryIconSide, height: inventoryIconSide)
-                // Parts stand upright in the sheets; lay them flat along the rack.
-                .rotationEffect(.degrees(90))
-                .accessibilityIdentifier("levelSelect.inventory.\(id)")
-                .accessibilityLabel(level.displayName)
-        } else {
-            Image(systemName: level.artifact)
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(AppChrome.primaryTextColor)
-                .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
+        let isCelebrating = celebratingInventoryResource == level.resourceName
+        let opacity: Double = (isCelebrating && !celebrationRevealed) ? 0 : 1
+
+        ZStack {
+            if let id = level.treasure, let image = inventoryIcons[id] {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: inventoryIconSide, height: inventoryIconSide)
+                    // Parts stand upright in the sheets; lay them flat along the rack.
+                    .rotationEffect(.degrees(90))
+                    .accessibilityIdentifier("levelSelect.inventory.\(id)")
+                    .accessibilityLabel(level.displayName)
+            } else {
+                Image(systemName: level.artifact)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(AppChrome.primaryTextColor)
+                    .frame(width: inventoryIconSide, height: inventoryIconSide)
+                    .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
+            }
+
+            if isCelebrating {
+                SparkleBurstView(isActive: inventorySparklesActive, diameter: inventoryIconSide)
+                    .frame(width: inventoryIconSide, height: inventoryIconSide)
+                    .allowsHitTesting(false)
+            }
         }
+        .opacity(opacity)
     }
 
     private struct ScrollOverflow: Equatable {

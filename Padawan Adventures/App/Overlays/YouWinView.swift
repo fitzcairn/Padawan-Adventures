@@ -6,22 +6,22 @@ struct YouWinView: View {
     let onFinished: () -> Void
 
     var body: some View {
-        // Host chrome already provides the dark backdrop; keep this layer clear for taps.
         DismissibleOverlay(
             accessibilityRootID: "youWin.root",
-            onFinished: onFinished,
-            background: { Color.clear }
+            onFinished: onFinished
         ) {
             VStack(spacing: 12) {
                 Text("You win!")
-                    .font(.system(size: 44, weight: .bold))
+                    .font(AppFont.swiftUI(size: 44, weight: .bold))
                     .foregroundStyle(.white)
+                    .appCopyShadow()
                     .accessibilityIdentifier("youWin.title")
 
                 if didBeatPreviousScore {
                     Text("New high score: \(newScore)!")
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(AppFont.swiftUI(size: 22, weight: .semibold))
                         .foregroundStyle(.orange)
+                        .appCopyShadow()
                         .accessibilityIdentifier("youWin.highScore")
                 }
             }

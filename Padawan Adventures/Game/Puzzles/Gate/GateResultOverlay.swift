@@ -13,9 +13,10 @@ struct GateResultOverlay: View {
         DismissibleOverlay(accessibilityRootID: rootAccessibilityID, onFinished: onFinished) {
             VStack(spacing: 28) {
                 Text(title)
-                    .font(.system(size: 36, weight: .bold))
+                    .font(AppFont.swiftUI(size: 36, weight: .bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
+                    .appCopyShadow()
                     .accessibilityIdentifier(titleAccessibilityID)
 
                 if case let .unlocked(starsAwarded) = kind {

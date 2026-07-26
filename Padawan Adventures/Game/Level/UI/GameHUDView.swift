@@ -4,41 +4,42 @@ final class GameHUDView: UIView {
     var onFleeTapped: (() -> Void)?
 
     private let config: HudConfig
-    private let levelName: String
     private let fleeButton: UIButton
     private let heartsStack: UIStackView
     private let boltsStack: UIStackView
     private let heartImage: UIImage?
     private let boltImage: UIImage?
     private let scoreLabel = UILabel()
+    private let coinHost = UIView()
+    private let coinImageView: UIImageView
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
+    private var displayedStarCount = 0
+    private var starAwardTask: Task<Void, Never>?
+    private var sparkleLayer: CAEmitterLayer?
+    private var sparkleStopWorkItem: DispatchWorkItem?
+
     private static let hudIconFadeDuration: TimeInterval = 0.2
+    private static let starStepNanoseconds: UInt64 = 280_000_000
+    private static let sparkleLingerNanoseconds: UInt64 = 700_000_000
 
     init(
         config: HudConfig,
-        levelName: String,
         healthCount: Int = 0,
         energyCount: Int = 0,
         starsCount: Int = 0
     ) {
         self.config = config
-        self.levelName = levelName
         self.fleeButton = Self.makeFleeButton()
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
         self.boltsStack = Self.makeIconStack(spacing: config.iconSpacing)
         // Trailing-aligned row that grows left as icons are inserted.
         self.boltsStack.semanticContentAttribute = .forceRightToLeft
-        self.heartImage = Self.makeSymbolImage(
-            systemName: "heart.fill",
-            tint: .systemRed,
-            pointSize: config.iconSize
-        )
-        self.boltImage = Self.makeSymbolImage(
-            systemName: "bolt.fill",
-            tint: .systemYellow,
-            pointSize: config.iconSize
-        )
+        let size = CGFloat(config.iconSize)
+        self.heartImage = HudVitalIcon.health.makeUIImage(pointSize: size)
+        self.boltImage = HudVitalIcon.energy.makeUIImage(pointSize: size)
+        self.coinImageView = ScoreCoinIcon.makeImageView(side: size)
+        self.displayedStarCount = max(starsCount, 0)
         super.init(frame: .zero)
         setup(healthCount: healthCount, energyCount: energyCount, starsCount: starsCount)
     }
@@ -59,6 +60,11 @@ final class GameHUDView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         edgeInsets.update()
+        if let sparkleLayer {
+            sparkleLayer.emitterPosition = CGPoint(x: coinHost.bounds.midX, y: coinHost.bounds.midY)
+            let side = max(coinHost.bounds.width, CGFloat(config.iconSize))
+            sparkleLayer.emitterSize = CGSize(width: side * 0.92, height: side * 0.92)
+        }
     }
 
     override func safeAreaInsetsDidChange() {
@@ -94,7 +100,45 @@ final class GameHUDView: UIView {
     }
 
     func setStars(_ count: Int) {
-        scoreLabel.text = "\(max(count, 0))"
+        starAwardTask?.cancel()
+        starAwardTask = nil
+        stopCoinSparkles(immediate: true)
+        displayedStarCount = max(count, 0)
+        scoreLabel.text = "\(displayedStarCount)"
+        scoreLabel.transform = .identity
+    }
+
+    /// Sparkles the HUD coin and counts the score label from `from` up to `to`.
+    @MainActor
+    func animateStarAward(from: Int, to: Int) async {
+        let start = max(from, 0)
+        let end = max(to, start)
+        starAwardTask?.cancel()
+        stopCoinSparkles(immediate: true)
+
+        displayedStarCount = start
+        scoreLabel.text = "\(start)"
+        scoreLabel.transform = .identity
+        guard end > start else { return }
+
+        let task = Task { @MainActor in
+            self.startCoinSparkles()
+            for value in (start + 1)...end {
+                try? await Task.sleep(nanoseconds: Self.starStepNanoseconds)
+                guard !Task.isCancelled else { return }
+                self.displayedStarCount = value
+                self.scoreLabel.text = "\(value)"
+                self.pulseScoreLabel()
+            }
+            try? await Task.sleep(nanoseconds: Self.sparkleLingerNanoseconds)
+            guard !Task.isCancelled else { return }
+            self.stopCoinSparkles(immediate: false)
+        }
+        starAwardTask = task
+        await task.value
+        if starAwardTask == task {
+            starAwardTask = nil
+        }
     }
 
     private func setup(healthCount: Int, energyCount: Int, starsCount: Int) {
@@ -110,13 +154,11 @@ final class GameHUDView: UIView {
         }
 
         let score = makeScoreRow(starsCount: starsCount)
-        let levelLabel = makeLevelNameLabel()
         fleeButton.addTarget(self, action: #selector(fleeTapped), for: .touchUpInside)
 
         addSubview(heartsStack)
         addSubview(boltsStack)
         addSubview(score)
-        addSubview(levelLabel)
         addSubview(fleeButton)
 
         let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
@@ -125,7 +167,6 @@ final class GameHUDView: UIView {
         let boltsTrailing = boltsStack.trailingAnchor.constraint(equalTo: trailingAnchor)
         let scoreBottom = score.bottomAnchor.constraint(equalTo: bottomAnchor)
         let scoreLeading = score.leadingAnchor.constraint(equalTo: leadingAnchor)
-        let levelBottom = levelLabel.bottomAnchor.constraint(equalTo: bottomAnchor)
         let fleeBottom = fleeButton.bottomAnchor.constraint(equalTo: bottomAnchor)
         let fleeTrailing = fleeButton.trailingAnchor.constraint(equalTo: trailingAnchor)
 
@@ -135,7 +176,6 @@ final class GameHUDView: UIView {
         edgeInsets.addTrailing(boltsTrailing)
         edgeInsets.addBottom(scoreBottom)
         edgeInsets.addLeading(scoreLeading)
-        edgeInsets.addBottom(levelBottom)
         edgeInsets.addBottom(fleeBottom)
         edgeInsets.addTrailing(fleeTrailing)
 
@@ -148,17 +188,6 @@ final class GameHUDView: UIView {
 
             scoreBottom,
             scoreLeading,
-
-            levelLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            levelBottom,
-            levelLabel.leadingAnchor.constraint(
-                greaterThanOrEqualTo: score.trailingAnchor,
-                constant: 8
-            ),
-            levelLabel.trailingAnchor.constraint(
-                lessThanOrEqualTo: fleeButton.leadingAnchor,
-                constant: -8
-            ),
 
             fleeBottom,
             fleeTrailing,
@@ -226,16 +255,6 @@ final class GameHUDView: UIView {
         }
     }
 
-    private static func makeSymbolImage(
-        systemName: String,
-        tint: UIColor,
-        pointSize: Int
-    ) -> UIImage? {
-        let configuration = UIImage.SymbolConfiguration(pointSize: CGFloat(pointSize), weight: .regular)
-        return UIImage(systemName: systemName, withConfiguration: configuration)?
-            .withTintColor(tint, renderingMode: .alwaysOriginal)
-    }
-
     private static func makeIconStack(spacing: Int) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -253,55 +272,150 @@ final class GameHUDView: UIView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.isUserInteractionEnabled = false
+        stack.clipsToBounds = false
 
         let size = CGFloat(config.iconSize)
-        let star = UIImageView(image: UIImage(systemName: "star.fill"))
-        star.tintColor = .systemOrange
-        star.contentMode = .scaleAspectFit
-        star.translatesAutoresizingMaskIntoConstraints = false
-        star.isUserInteractionEnabled = false
-        NSLayoutConstraint.activate([
-            star.widthAnchor.constraint(equalToConstant: size),
-            star.heightAnchor.constraint(equalToConstant: size),
-        ])
+        coinHost.translatesAutoresizingMaskIntoConstraints = false
+        coinHost.isUserInteractionEnabled = false
+        coinHost.clipsToBounds = false
+        if coinImageView.superview !== coinHost {
+            coinHost.addSubview(coinImageView)
+            NSLayoutConstraint.activate([
+                coinHost.widthAnchor.constraint(equalToConstant: size),
+                coinHost.heightAnchor.constraint(equalToConstant: size),
+                coinImageView.centerXAnchor.constraint(equalTo: coinHost.centerXAnchor),
+                coinImageView.centerYAnchor.constraint(equalTo: coinHost.centerYAnchor),
+            ])
+        }
 
         scoreLabel.text = "\(max(starsCount, 0))"
         scoreLabel.textColor = .white
-        scoreLabel.font = .systemFont(ofSize: 22, weight: .semibold)
+        scoreLabel.font = AppFont.uiKit(size: 22, weight: .semibold)
         scoreLabel.translatesAutoresizingMaskIntoConstraints = false
         scoreLabel.isUserInteractionEnabled = false
+        scoreLabel.applyAppCopyShadow()
 
-        stack.addArrangedSubview(star)
+        stack.addArrangedSubview(coinHost)
         stack.addArrangedSubview(scoreLabel)
         return stack
     }
 
-    private func makeLevelNameLabel() -> UILabel {
-        let label = UILabel()
-        label.text = levelName
-        label.textColor = .systemGreen
-        label.font = .systemFont(ofSize: 22, weight: .semibold)
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.isUserInteractionEnabled = false
-        return label
+    private func pulseScoreLabel() {
+        scoreLabel.layer.removeAnimation(forKey: "scorePulse")
+        let pulse = CABasicAnimation(keyPath: "transform.scale")
+        pulse.fromValue = 1.18
+        pulse.toValue = 1
+        pulse.duration = 0.22
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        scoreLabel.layer.add(pulse, forKey: "scorePulse")
     }
 
-    private static func makeFleeButton() -> UIButton {
-        var configuration = UIButton.Configuration.filled()
-        configuration.title = "Flee the planet!"
-        configuration.baseForegroundColor = .black
-        configuration.baseBackgroundColor = UIColor(white: 0.92, alpha: 1)
-        configuration.cornerStyle = .medium
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16)
-        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = .systemFont(ofSize: 17, weight: .semibold)
-            return outgoing
+    private func startCoinSparkles() {
+        stopCoinSparkles(immediate: true)
+        coinHost.layoutIfNeeded()
+
+        let emitter = CAEmitterLayer()
+        emitter.emitterShape = .circle
+        emitter.emitterMode = .outline
+        emitter.renderMode = .additive
+        let side = max(coinHost.bounds.width, CGFloat(config.iconSize))
+        emitter.emitterSize = CGSize(width: side * 0.92, height: side * 0.92)
+        emitter.emitterPosition = CGPoint(x: coinHost.bounds.midX, y: coinHost.bounds.midY)
+        emitter.zPosition = 1
+
+        let cell = CAEmitterCell()
+        cell.contents = Self.sparkleParticleImage().cgImage
+        cell.birthRate = 36
+        cell.lifetime = 0.7
+        cell.lifetimeRange = 0.25
+        cell.velocity = side * 0.55
+        cell.velocityRange = side * 0.25
+        cell.emissionRange = .pi * 2
+        cell.scale = 0.22
+        cell.scaleRange = 0.12
+        cell.scaleSpeed = -0.2
+        cell.alphaSpeed = -1.2
+        cell.color = UIColor(red: 1, green: 0.84, blue: 0.35, alpha: 0.95).cgColor
+        cell.alphaRange = 0.25
+        cell.spin = 2
+        cell.spinRange = 4
+
+        emitter.emitterCells = [cell]
+        coinHost.layer.addSublayer(emitter)
+        sparkleLayer = emitter
+    }
+
+    private func stopCoinSparkles(immediate: Bool) {
+        sparkleStopWorkItem?.cancel()
+        sparkleStopWorkItem = nil
+        guard let emitter = sparkleLayer else { return }
+        emitter.birthRate = 0
+        if immediate {
+            emitter.removeFromSuperlayer()
+            sparkleLayer = nil
+            return
         }
+        let work = DispatchWorkItem { [weak self, weak emitter] in
+            emitter?.removeFromSuperlayer()
+            if self?.sparkleLayer === emitter {
+                self?.sparkleLayer = nil
+            }
+        }
+        sparkleStopWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+    }
+
+    private static func sparkleParticleImage() -> UIImage {
+        let size = CGSize(width: 24, height: 24)
+        return UIGraphicsImageRenderer(size: size).image { context in
+            let cg = context.cgContext
+            let colors = [
+                UIColor.white.cgColor,
+                UIColor.white.withAlphaComponent(0).cgColor,
+            ] as CFArray
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: colors,
+                locations: [0, 1]
+            ) else {
+                return
+            }
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            cg.drawRadialGradient(
+                gradient,
+                startCenter: center,
+                startRadius: 0,
+                endCenter: center,
+                endRadius: size.width / 2,
+                options: []
+            )
+        }
+    }
+
+    private static let fleeButtonSize: CGFloat = 52
+
+    private static func makeFleeButton() -> UIButton {
+        let symbol = UIImage.SymbolConfiguration(
+            pointSize: fleeButtonSize * 0.42,
+            weight: .semibold
+        )
+        var configuration = UIButton.Configuration.filled()
+        configuration.image = UIImage(systemName: "figure.run", withConfiguration: symbol)
+        configuration.baseForegroundColor = AppChrome.uiButtonForegroundColor
+        configuration.baseBackgroundColor = AppChrome.uiButtonBackgroundColor
+        configuration.background.strokeColor = AppChrome.uiButtonOutlineColor
+        configuration.background.strokeWidth = AppChrome.buttonOutlineWidth
+        configuration.background.cornerRadius = fleeButtonSize / 2
+        configuration.cornerStyle = .fixed
+        configuration.contentInsets = .zero
 
         let button = UIButton(configuration: configuration)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityLabel = "Flee the planet!"
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: fleeButtonSize),
+            button.heightAnchor.constraint(equalToConstant: fleeButtonSize),
+        ])
         return button
     }
 

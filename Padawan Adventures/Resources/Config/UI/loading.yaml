@@ -1,0 +1,29 @@
+kam:
+  sprite:
+    root: Sprites/UI/Loading
+    # Source sheet uses near-black #130C0C, not pure black — black_soft (±2) misses it.
+    chroma_key: "#130C0C"
+    chroma_key_tolerance: 4
+    chroma_key_feather: 4
+    animations:
+      idle:
+        sheet: kam-spritesheet
+        atlas: kam-atlas
+
+logo:
+  sprite:
+    root: Sprites/UI/Loading
+    # Exterior black already flood-filled out of logo.png; keep interior/letter blacks.
+    animations:
+      idle:
+        sheet: logo
+        atlas: logo-atlas
+
+yoda:
+  sprite:
+    root: Sprites/UI/Loading
+    chroma: black_soft
+    animations:
+      idle:
+        sheet: yoda-spritesheet
+        atlas: yoda-atlas

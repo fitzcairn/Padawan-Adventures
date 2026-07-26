@@ -22,17 +22,18 @@ struct DadModePasswordView: View {
                 Spacer(minLength: 0)
 
                 Text("Enter password")
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(AppFont.swiftUI(size: 28, weight: .semibold))
                     .foregroundStyle(AppChrome.primaryTextColor)
+                    .appCopyShadow()
                     .accessibilityIdentifier("dadModePassword.title")
 
                 HStack(spacing: 16) {
                     ForEach(0..<4, id: \.self) { index in
                         Text(index < digits.count ? digits[index] : "")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(AppFont.swiftUI(size: 28, weight: .bold))
                             .foregroundStyle(AppChrome.buttonForegroundColor)
                             .frame(width: 56, height: 64)
-                            .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                            .appButtonChrome(RoundedRectangle(cornerRadius: 12))
                             .accessibilityIdentifier("dadModePassword.slot.\(index)")
                     }
                 }
@@ -41,8 +42,9 @@ struct DadModePasswordView: View {
 
                 if showIncorrect {
                     Text("incorrect")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(AppFont.swiftUI(size: 18, weight: .semibold))
                         .foregroundStyle(.red)
+                        .appCopyShadow()
                         .accessibilityIdentifier("dadModePassword.incorrect")
                 }
 
@@ -77,11 +79,11 @@ struct DadModePasswordView: View {
                 handlePadTap(label)
             } label: {
                 Text(label)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(label == "⌫" ? .system(size: 24, weight: .semibold) : AppFont.swiftUI(size: 24, weight: .semibold))
                     .foregroundStyle(AppChrome.buttonForegroundColor)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(AppChrome.buttonBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+                    .appButtonChrome(RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(

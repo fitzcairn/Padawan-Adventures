@@ -49,4 +49,15 @@ nonisolated enum LevelProgression {
             dadModeUnlocked: dadModeUnlocked
         ) != .locked
     }
+
+    /// Planet that becomes newly available after first-completing `completedResource`, if any.
+    static func resourceUnlockedByCompleting(
+        _ completedResource: String,
+        orderedLevels: [String]
+    ) -> String? {
+        guard let index = orderedLevels.firstIndex(of: completedResource) else { return nil }
+        let nextIndex = index + 1
+        guard nextIndex < orderedLevels.count else { return nil }
+        return orderedLevels[nextIndex]
+    }
 }

@@ -13,9 +13,10 @@ struct MessageOverlay: View {
             onFinished: onFinished
         ) {
             Text(title)
-                .font(.system(size: 32, weight: .bold))
+                .font(AppFont.swiftUI(size: 32, weight: .bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
+                .appCopyShadow()
                 .accessibilityIdentifier(accessibilityTitleID)
         }
     }

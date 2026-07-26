@@ -18,10 +18,24 @@ final class Padawan_AdventuresUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
+        let tapToStart = app.staticTexts["loading.status"]
+        XCTAssertTrue(
+            tapToStart.waitForExistence(timeout: 10),
+            "Expected loading status after launch"
+        )
+        let ready = NSPredicate(format: "label == %@", "Tap to start")
+        let readyExpectation = XCTNSPredicateExpectation(predicate: ready, object: tapToStart)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [readyExpectation], timeout: 10),
+            .completed,
+            "Expected tap-to-start after loading"
+        )
+        tapToStart.tap()
+
         let newPlayerButton = app.buttons["playerSelect.new"]
         XCTAssertTrue(
-            newPlayerButton.waitForExistence(timeout: 10),
-            "Expected player select after loading"
+            newPlayerButton.waitForExistence(timeout: 5),
+            "Expected player select after tap to start"
         )
 
         newPlayerButton.tap()

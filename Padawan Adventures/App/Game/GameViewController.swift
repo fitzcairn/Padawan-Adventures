@@ -120,7 +120,6 @@ final class GameViewController: LandscapeHostingController {
         let starsCount = levelResource.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
         let hud = GameHUDView(
             config: hudConfig,
-            levelName: session.selectedLevelName,
             healthCount: world.healthCount,
             energyCount: world.energyCount,
             starsCount: starsCount
@@ -229,15 +228,16 @@ final class GameViewController: LandscapeHostingController {
                 }
                 switch outcomeBox.outcome {
                 case let .won(starsAwarded):
-                    Task {
-                        await self.session.recordStat { $0.enemiesKilled += 1 }
-                        await self.awardLevelStars(count: starsAwarded)
-                    }
                     BackgroundMusicController.shared.apply(
                         MusicCue.parse(self.session.selectedLevelMusic)
                     )
                     scene.resolveEnemyEncounter(enemyID: enemyID) {
+                        // Reveal the level HUD before the coin count-up so sparkles are visible.
                         self.setWorldHUDHidden(false)
+                        Task {
+                            await self.session.recordStat { $0.enemiesKilled += 1 }
+                            await self.awardLevelStars(count: starsAwarded)
+                        }
                         done()
                     }
                 case .lost, .none:
@@ -297,7 +297,6 @@ final class GameViewController: LandscapeHostingController {
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
-                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -381,7 +380,6 @@ final class GameViewController: LandscapeHostingController {
                         config: chosen,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
-                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()
@@ -418,10 +416,13 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func awardLevelStars(count: Int) async {
-        guard let resourceName = session.selectedLevelResourceName else { return }
+        guard count > 0, let resourceName = session.selectedLevelResourceName else { return }
+        let previous = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
         await session.addLevelStars(resourceName: resourceName, count: count)
-        let stars = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
-        hud?.setStars(stars)
+        let stars = session.playerState?.levels[resourceName]?.starsCurrent ?? previous
+        if let hud {
+            await hud.animateStarAward(from: previous, to: stars)
+        }
     }
 
     @MainActor

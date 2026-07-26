@@ -7,7 +7,7 @@ final class FullscreenOverlayHost: LandscapeHostingController {
     /// Invoked when the overlay/minigame is ready to dismiss.
     var onFinished: (() -> Void)?
 
-    static let overlayBackgroundColor = UIColor(white: 0.08, alpha: 1)
+    static let overlayBackgroundColor = OverlayChrome.uiBackgroundColor
     static let contentFadeDuration: TimeInterval = 0.2
 
     private let contentContainer = UIView()

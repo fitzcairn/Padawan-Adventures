@@ -1,6 +1,6 @@
 import UIKit
 
-/// Combat-only HUD: hearts (top-leading), timer (top-trailing), stars (bottom-leading).
+/// Combat-only HUD: health (top-leading), timer (top-trailing), coins (bottom-leading).
 final class CombatHUDView: UIView {
     private let config: HudConfig
     private let heartsStack: UIStackView
@@ -12,11 +12,7 @@ final class CombatHUDView: UIView {
     init(config: HudConfig, healthCount: Int, starsCount: Int = 0, timerSeconds: Int) {
         self.config = config
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
-        self.heartImage = Self.makeSymbolImage(
-            systemName: "heart.fill",
-            tint: .systemRed,
-            pointSize: config.iconSize
-        )
+        self.heartImage = HudVitalIcon.health.makeUIImage(pointSize: CGFloat(config.iconSize))
         super.init(frame: .zero)
         setup(healthCount: healthCount, starsCount: starsCount, timerSeconds: timerSeconds)
     }
@@ -74,9 +70,10 @@ final class CombatHUDView: UIView {
         let score = makeScoreRow(starsCount: starsCount)
         timerLabel.text = "\(max(timerSeconds, 0))"
         timerLabel.textColor = .white
-        timerLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .bold)
+        timerLabel.font = AppFont.uiKit(size: 28, weight: .bold)
         timerLabel.textAlignment = .right
         timerLabel.translatesAutoresizingMaskIntoConstraints = false
+        timerLabel.applyAppCopyShadow()
         timerLabel.accessibilityIdentifier = "combat.timer"
         // Avoid collapsing to zero width before first layout pass.
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
@@ -126,16 +123,6 @@ final class CombatHUDView: UIView {
         stack.addArrangedSubview(imageView)
     }
 
-    private static func makeSymbolImage(
-        systemName: String,
-        tint: UIColor,
-        pointSize: Int
-    ) -> UIImage? {
-        let configuration = UIImage.SymbolConfiguration(pointSize: CGFloat(pointSize), weight: .regular)
-        return UIImage(systemName: systemName, withConfiguration: configuration)?
-            .withTintColor(tint, renderingMode: .alwaysOriginal)
-    }
-
     private static func makeIconStack(spacing: Int) -> UIStackView {
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -153,28 +140,18 @@ final class CombatHUDView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         let size = CGFloat(config.iconSize)
-        let starImage = Self.makeSymbolImage(
-            systemName: "star.fill",
-            tint: .systemOrange,
-            pointSize: config.iconSize
-        )
-        let star = UIImageView(image: starImage)
-        star.contentMode = .scaleAspectFit
-        star.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            star.widthAnchor.constraint(equalToConstant: size),
-            star.heightAnchor.constraint(equalToConstant: size),
-        ])
+        let coin = ScoreCoinIcon.makeImageView(side: size)
 
         scoreLabel.text = "\(max(starsCount, 0))"
         scoreLabel.textColor = .white
-        scoreLabel.font = .systemFont(ofSize: 22, weight: .semibold)
+        scoreLabel.font = AppFont.uiKit(size: 22, weight: .semibold)
         scoreLabel.translatesAutoresizingMaskIntoConstraints = false
+        scoreLabel.applyAppCopyShadow()
         scoreLabel.accessibilityIdentifier = "combat.stars"
         scoreLabel.setContentHuggingPriority(.required, for: .horizontal)
         scoreLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-        stack.addArrangedSubview(star)
+        stack.addArrangedSubview(coin)
         stack.addArrangedSubview(scoreLabel)
         return stack
     }

@@ -6,7 +6,6 @@ enum GateMinigameFactory {
         config: GateMinigameConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (GateOutcome) -> Void
     ) -> some View {
         switch config {
@@ -15,7 +14,6 @@ enum GateMinigameFactory {
                 puzzleConfig: spelling,
                 playerFx: playerFx,
                 hudConfig: hudConfig,
-                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 onFinished: onFinished
             )
         case .letterMatch(let letterMatch):
@@ -23,7 +21,6 @@ enum GateMinigameFactory {
                 puzzleConfig: letterMatch,
                 playerFx: playerFx,
                 hudConfig: hudConfig,
-                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 onFinished: onFinished
             )
         }

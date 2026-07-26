@@ -22,6 +22,18 @@ health:
         sheet: health-spritesheet
         atlas: health-atlas
 
+# Score / currency icon (HUD, level select, puzzle win overlays). Not a world pickup.
+# Exterior black already flood-filled to alpha; no chroma key.
+coin:
+  sprite:
+    root: Sprites/Items/Coins
+    bake_scale: 0.25
+    scale: 0.45
+    animations:
+      idle:
+        sheet: coin
+        atlas: coin-atlas
+
 # Treasure: lightsaber parts, one per level (see each level's `treasure:` key).
 # Sheets already carry alpha, so no chroma key.
 # Optional `highlight:` draws a particle halo behind the sprite (any item id can opt in).

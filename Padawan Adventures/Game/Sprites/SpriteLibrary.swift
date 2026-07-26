@@ -9,6 +9,7 @@ final class SpriteLibrary {
     private var animationsByID: [String: [String: SpriteAnimation]] = [:]
     private var bytesByID: [String: Int] = [:]
     private var uiImageCache: [String: UIImage] = [:]
+    private var uiImagesCache: [String: [(image: UIImage, duration: TimeInterval)]] = [:]
     private var actionCache: [String: SKAction] = [:]
     private let bundle: Bundle
 
@@ -140,6 +141,10 @@ final class SpriteLibrary {
             guard let id = entry.key.split(separator: "|").first else { return false }
             return keep.contains(String(id))
         }
+        uiImagesCache = uiImagesCache.filter { entry in
+            guard let id = entry.key.split(separator: "|").first else { return false }
+            return keep.contains(String(id))
+        }
         actionCache = actionCache.filter { entry in
             guard let id = entry.key.split(separator: "|").first else { return false }
             return keep.contains(String(id))
@@ -200,13 +205,32 @@ final class SpriteLibrary {
         if let cached = uiImageCache[key] {
             return cached
         }
-        guard let frame = animation(id: id, named: name)?.frames.first else {
+        guard let frames = uiImages(id: id, named: name), let first = frames.first else {
             return nil
         }
-        let cgImage = frame.texture.cgImage()
-        let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
-        let image = UIImage(cgImage: upright, scale: 1, orientation: .up)
-        uiImageCache[key] = image
-        return image
+        uiImageCache[key] = first.image
+        return first.image
+    }
+
+    /// All frames as upright UIKit images with per-frame durations (for SwiftUI looping).
+    func uiImages(id: String, named name: String = "idle") -> [(image: UIImage, duration: TimeInterval)]? {
+        let key = "\(id)|\(name)|all"
+        if let cached = uiImagesCache[key] {
+            return cached
+        }
+        guard let animation = animation(id: id, named: name), !animation.frames.isEmpty else {
+            return nil
+        }
+        let frames: [(image: UIImage, duration: TimeInterval)] = animation.frames.map { frame in
+            let cgImage = frame.texture.cgImage()
+            let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
+            let image = UIImage(cgImage: upright, scale: 1, orientation: .up)
+            return (image, frame.duration)
+        }
+        uiImagesCache[key] = frames
+        if let first = frames.first {
+            uiImageCache["\(id)|\(name)"] = first.image
+        }
+        return frames
     }
 }

@@ -7,7 +7,6 @@ struct PitMinigameView: View {
     let puzzleConfig: PitPuzzleConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
-    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (PitOutcome) -> Void
 
     @StateObject private var session: PitSessionController
@@ -16,19 +15,16 @@ struct PitMinigameView: View {
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (PitOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
-                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -37,7 +33,7 @@ struct PitMinigameView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black.ignoresSafeArea()
+                OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
                     PitSpriteView(scene: scene)
@@ -93,18 +89,15 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
-    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -117,8 +110,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         let created = PitScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx,
-            letterSpriteSetLibrary: letterSpriteSetLibrary
+            playerFx: playerFx
         )
         created.pitDelegate = self
         scene = created

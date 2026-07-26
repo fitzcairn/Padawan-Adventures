@@ -5,7 +5,7 @@ import UIKit
 final class GateHUDView: UIView {
     private let wordLabel = UILabel()
     private let timerLabel = UILabel()
-    private let wordFont = UIFont.systemFont(ofSize: 44, weight: .bold)
+    private let wordFont = AppFont.uiKit(size: 44, weight: .bold)
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
     /// Extra clearance so the word does not collide with the timer.
     private var wordLeadingConstraint: NSLayoutConstraint?
@@ -68,14 +68,16 @@ final class GateHUDView: UIView {
         )
         wordLabel.textAlignment = .center
         wordLabel.translatesAutoresizingMaskIntoConstraints = false
+        wordLabel.applyAppCopyShadow()
         wordLabel.accessibilityIdentifier = "gate.word"
         wordLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         timerLabel.text = "\(max(timerSeconds, 0))"
         timerLabel.textColor = .white
-        timerLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .bold)
+        timerLabel.font = AppFont.uiKit(size: 28, weight: .bold)
         timerLabel.textAlignment = .right
         timerLabel.translatesAutoresizingMaskIntoConstraints = false
+        timerLabel.applyAppCopyShadow()
         timerLabel.accessibilityIdentifier = "gate.timer"
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)

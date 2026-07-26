@@ -480,6 +480,84 @@ struct ProceduralGeneratorTests {
         }
     }
 
+    @Test func atMostOneGateFeaturePerJoinedRoomPair() throws {
+        // Each join (shared wall or corridor) may contribute only one contiguous gate strip.
+        // Corridor mouths used to gate both ends, stacking two puzzles on the same path.
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 16)
+            config.generation.room.partitionGateChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let world = result.world
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+
+            var visitedGates = Set<GridCoord>()
+            var featuresPerPair: [String: Int] = [:]
+
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    let start = GridCoord(x: x, y: y, story: 0)
+                    guard world.tile(at: start)?.isGate == true else { continue }
+                    guard visitedGates.insert(start).inserted else { continue }
+
+                    var component = [start]
+                    var head = 0
+                    while head < component.count {
+                        let current = component[head]
+                        head += 1
+                        for (dx, dy) in GridCoord.cardinals {
+                            let next = current.neighbor(dx: dx, dy: dy)
+                            guard world.tile(at: next)?.isGate == true else { continue }
+                            guard visitedGates.insert(next).inserted else { continue }
+                            component.append(next)
+                        }
+                    }
+
+                    var rooms = Set<Int>()
+                    // Opposite-side partition rooms.
+                    for coord in component {
+                        for (dx, dy) in GridCoord.cardinals {
+                            let a = coord.neighbor(dx: dx, dy: dy)
+                            let b = coord.neighbor(dx: -dx, dy: -dy)
+                            guard let idA = roomByCell[a], let idB = roomByCell[b], idA != idB else { continue }
+                            rooms.insert(idA)
+                            rooms.insert(idB)
+                        }
+                    }
+                    // Hallway pocket rooms (corridor mouths); other gates block the flood.
+                    var flood = component
+                    var flooded = Set(component)
+                    var floodHead = 0
+                    while floodHead < flood.count {
+                        let current = flood[floodHead]
+                        floodHead += 1
+                        for (dx, dy) in GridCoord.cardinals {
+                            let next = current.neighbor(dx: dx, dy: dy)
+                            if let roomID = roomByCell[next] {
+                                rooms.insert(roomID)
+                                continue
+                            }
+                            guard world.isInBounds(next) else { continue }
+                            guard flooded.insert(next).inserted else { continue }
+                            guard case .floor = world.tile(at: next)?.kind else { continue }
+                            flood.append(next)
+                        }
+                    }
+
+                    let ordered = rooms.sorted()
+                    guard ordered.count == 2 else { continue }
+                    let key = "\(ordered[0])-\(ordered[1])"
+                    featuresPerPair[key, default: 0] += 1
+                }
+            }
+
+            for (pair, count) in featuresPerPair {
+                #expect(count <= 1, "pair \(pair) has \(count) gate features (seed \(seed))")
+            }
+        }
+    }
+
     @Test func generationPlacesBothGateMinigameKindsAcrossSeeds() throws {
         var sawSpelling = false
         var sawLetterMatch = false

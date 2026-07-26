@@ -19,6 +19,7 @@ nonisolated struct ConfigPath: Equatable, Sendable {
     static let letters = ConfigPath(basename: "letters", subdirectory: "Catalogs")
 
     static let levelDefaults = ConfigPath(basename: "_defaults", subdirectory: "Levels")
+    static let loading = ConfigPath(basename: "loading", subdirectory: "UI")
 
     static func level(_ name: String) -> ConfigPath {
         ConfigPath(basename: name, subdirectory: "Levels")

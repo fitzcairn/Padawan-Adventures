@@ -7,7 +7,6 @@ struct GateLetterMatchMinigameView: View {
     let puzzleConfig: GateLetterMatchConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
-    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (GateOutcome) -> Void
 
     @StateObject private var session: GateLetterMatchSessionController
@@ -16,19 +15,16 @@ struct GateLetterMatchMinigameView: View {
         puzzleConfig: GateLetterMatchConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (GateOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateLetterMatchSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
-                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -37,7 +33,7 @@ struct GateLetterMatchMinigameView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black.ignoresSafeArea()
+                OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
                     GateLetterMatchSpriteView(scene: scene)
@@ -89,18 +85,15 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
 
     private let puzzleConfig: GateLetterMatchConfig
     private let playerFx: SoundEffectTable
-    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: GateLetterMatchConfig,
         playerFx: SoundEffectTable,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -113,8 +106,7 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
         let created = GateLetterMatchScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx,
-            letterSpriteSetLibrary: letterSpriteSetLibrary
+            playerFx: playerFx
         )
         created.letterMatchDelegate = self
         scene = created

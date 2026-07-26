@@ -7,7 +7,6 @@ struct GateMinigameView: View {
     let puzzleConfig: GateSpellingConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
-    let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let onFinished: (GateOutcome) -> Void
 
     @StateObject private var session: GateSessionController
@@ -16,20 +15,17 @@ struct GateMinigameView: View {
         puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         onFinished: @escaping (GateOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
                 hudConfig: hudConfig,
-                letterSpriteSetLibrary: letterSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -38,7 +34,7 @@ struct GateMinigameView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.black.ignoresSafeArea()
+                OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
                     GateSpriteView(scene: scene)
@@ -93,20 +89,17 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     private let puzzleConfig: GateSpellingConfig
     private let playerFx: SoundEffectTable
     private let hudConfig: HudConfig
-    private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
-        self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -119,8 +112,7 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         let created = GateScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx,
-            letterSpriteSetLibrary: letterSpriteSetLibrary
+            playerFx: playerFx
         )
         created.gateDelegate = self
         scene = created
