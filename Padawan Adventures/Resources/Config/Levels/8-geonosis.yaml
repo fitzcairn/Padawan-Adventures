@@ -16,11 +16,8 @@ sprite:
       atlas: 8-geonisis-atlas
 artifact: circle.hexagongrid.fill
 treasure: pommel
-floor_sprites:
-  - sand
-  - sand-dusty
-  - dirt-arid
-  - dirt-cracked
+floor:
+  set: 8-geonosis
 enemies:
   types: [centipede, snake]
   spawn_chance_per_room: 0.8

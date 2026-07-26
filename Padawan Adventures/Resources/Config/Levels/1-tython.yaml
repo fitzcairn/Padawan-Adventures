@@ -15,13 +15,8 @@ sprite:
       atlas: 1-tython-atlas
 artifact: leaf.fill
 treasure: emitter
-floor_sprites:
-  - grass
-  - grass-lush
-  - grass-thick
-  - dirt-weed
-  - dirt-sprout
-  - plank
+floor:
+  set: 1-tython
 enemies:
   types: [dino, treant]
   spawn_chance_per_room: 0.8

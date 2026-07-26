@@ -14,6 +14,6 @@ world:
 
 display:
   tile_width: 80
-  tile_height: 40
+  tile_height: 49
   # Auto-dismiss delay for overlays (tap also dismisses).
   overlay_dismiss_seconds: 6

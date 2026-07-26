@@ -40,10 +40,8 @@ final class AppSession {
     let audioPreferences: AudioPreferences
     /// Session-scoped sprite animation cache (sheets sliced once per process).
     let spriteLibrary: SpriteLibrary
-    /// Floor terrain definitions from `terrain.yaml`.
-    let terrainCatalog: TerrainCatalog
-    /// Session-scoped floor tile animation cache (all terrains sliced at game open).
-    let floorSpriteLibrary: FloorSpriteLibrary
+    /// Session-scoped cache of the active level's baked floor tile set.
+    let floorTileSetLibrary: FloorTileSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
@@ -71,8 +69,7 @@ final class AppSession {
         playerState: PlayerGameState? = nil,
         audioPreferences: AudioPreferences? = nil,
         spriteLibrary: SpriteLibrary? = nil,
-        terrainCatalog: TerrainCatalog? = nil,
-        floorSpriteLibrary: FloorSpriteLibrary? = nil,
+        floorTileSetLibrary: FloorTileSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
         treasureIcons: SpriteIconLibrary? = nil
     ) {
@@ -100,20 +97,7 @@ final class AppSession {
         self.playerState = playerState
         self.audioPreferences = audioPreferences ?? .shared
         self.spriteLibrary = spriteLibrary ?? SpriteLibrary()
-        self.terrainCatalog = terrainCatalog ?? TerrainCatalog(
-            sprite: FloorSpriteConfig(
-                root: "Sprites/Floor",
-                sheet: "floor-spritesheet",
-                atlasRoot: "Sprites/Floor",
-                atlas: "atlas",
-                chromaKey: "#FFFFFF",
-                chromaKeyTolerance: 18,
-                chromaKeyFeather: 48,
-                chromaKeySmooth: 2
-            ),
-            terrains: [:]
-        )
-        self.floorSpriteLibrary = floorSpriteLibrary ?? FloorSpriteLibrary()
+        self.floorTileSetLibrary = floorTileSetLibrary ?? FloorTileSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
     }
@@ -232,6 +216,12 @@ final class AppSession {
             }
         }
         onProgress?(1)
+    }
+
+    /// Loads the baked floor tile set for the currently selected level.
+    func ensureFloorTileSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let setName = selectedLevel.floor.set
+        await floorTileSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
     }
 
     /// Ensures level-select planet sprites are loaded for this session.
@@ -360,24 +350,6 @@ final class AppSession {
         try? await playerStore.purgeOrphans()
         await report(0.14)
 
-        let terrainCatalog = ConfigStore.loadOrFallback(
-            "terrain",
-            fallback: TerrainCatalog(
-                sprite: FloorSpriteConfig(
-                    root: "Sprites/Floor",
-                    sheet: "floor-spritesheet",
-                    atlasRoot: "Sprites/Floor",
-                    atlas: "atlas",
-                    chromaKey: "#FFFFFF",
-                    chromaKeyTolerance: 18,
-                    chromaKeyFeather: 48,
-                    chromaKeySmooth: 2
-                ),
-                terrains: [:]
-            )
-        ) {
-            try TerrainCatalog.loadFromBundle()
-        }
         await report(configEnd)
 
         let spriteLibrary = SpriteLibrary()
@@ -408,11 +380,8 @@ final class AppSession {
         }
         await report(backgroundsEnd)
 
-        let floorSpriteLibrary = FloorSpriteLibrary()
-        // Slice all floor terrains once at game open so every level can reuse them.
-        await floorSpriteLibrary.ensureLoaded(catalog: terrainCatalog) { local in
-            onProgress?(LoadProgress.map(local, from: backgroundsEnd, to: 1))
-        }
+        // Floor sets are per-level; load when a level is selected / launched.
+        let floorTileSetLibrary = FloorTileSetLibrary()
         await report(1)
 
         do {
@@ -428,7 +397,6 @@ final class AppSession {
                 app: appConfig,
                 levels: levels,
                 enemies: enemyConfig,
-                terrain: terrainCatalog,
                 items: itemsConfig,
                 words: wordCatalog,
                 letters: letterCatalog,
@@ -450,8 +418,7 @@ final class AppSession {
             saveService: saveService,
             hasCompatibleSave: false,
             spriteLibrary: spriteLibrary,
-            terrainCatalog: terrainCatalog,
-            floorSpriteLibrary: floorSpriteLibrary,
+            floorTileSetLibrary: floorTileSetLibrary,
             backgroundLibrary: backgroundLibrary
         )
     }

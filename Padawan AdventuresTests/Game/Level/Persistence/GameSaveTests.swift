@@ -84,10 +84,17 @@ struct GameSaveTests {
             #expect(decoded == tile)
         }
 
-        let withTerrain = Tile(kind: .floor(isPit: false), terrainID: "water")
-        let terrainData = try encoder.encode(withTerrain)
-        let decodedTerrain = try decoder.decode(Tile.self, from: terrainData)
-        #expect(decodedTerrain == withTerrain)
+        let withTile = Tile(kind: .floor(isPit: false), floorTileID: "r00c03")
+        let tileData = try encoder.encode(withTile)
+        let decodedTile = try decoder.decode(Tile.self, from: tileData)
+        #expect(decodedTile == withTile)
+
+        // Legacy saves that stored `terrainID` still decode into `floorTileID`.
+        let legacyJSON = """
+        {"kind":{"type":"floor","isPit":false},"terrainID":"grass","accentTerrainID":"flowers"}
+        """.data(using: .utf8)!
+        let legacy = try JSONDecoder().decode(Tile.self, from: legacyJSON)
+        #expect(legacy.floorTileID == "grass")
     }
 
     @Test func legacyDoorWallDecodesAsFloor() throws {

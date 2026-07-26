@@ -15,16 +15,8 @@ sprite:
       atlas: 6-coruscant-atlas
 artifact: building.2.fill
 treasure: power-cell
-floor_sprites:
-  - grate
-  - grate-vent
-  - grate-panel
-  - metal-floor
-  - metal-worn
-  - metal-panel
-  - metal-rust
-  - reflect
-  - plank
+floor:
+  set: 6-coruscant
 enemies:
   types: [drone, robot]
   spawn_chance_per_room: 0.8

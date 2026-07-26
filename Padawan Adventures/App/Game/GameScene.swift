@@ -66,7 +66,7 @@ final class GameScene: SKScene {
         playerSpriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
         treasureItemID: String? = nil,
-        floorSpriteLibrary: FloorSpriteLibrary? = nil,
+        floorTileSetLibrary: FloorTileSetLibrary? = nil,
         saveService: GameSaveService?
     ) {
         self.world = world
@@ -85,7 +85,7 @@ final class GameScene: SKScene {
             playerSpriteConfig: playerSpriteConfig,
             itemsConfig: itemsConfig,
             treasureItemID: treasureItemID,
-            floorSpriteLibrary: floorSpriteLibrary
+            floorTileSetLibrary: floorTileSetLibrary
         )
         super.init(size: size)
     }

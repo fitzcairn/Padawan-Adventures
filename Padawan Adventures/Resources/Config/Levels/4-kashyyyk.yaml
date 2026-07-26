@@ -15,10 +15,8 @@ sprite:
       atlas: 4-kashyyyk-atlas
 artifact: tree.fill
 treasure: activation-switch
-floor_sprites:
-  - grass
-  - grass-lush
-  - dirt-sprout
+floor:
+  set: 4-kashyyyk
 enemies:
   types: [spider, moth]
   spawn_chance_per_room: 0.8

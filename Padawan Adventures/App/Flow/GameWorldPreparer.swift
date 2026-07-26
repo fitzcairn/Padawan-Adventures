@@ -67,8 +67,10 @@ enum GameWorldPreparer {
         switch mode {
         case .continueSave:
             report(0.05)
-            if let saved = try? await session.saveService.load(),
+            if var saved = try? await session.saveService.load(),
                WorldLoader.isCompatibleSave(saved, with: session.generationConfig) {
+                await attachFloorSet(to: &saved, session: session)
+                saved.retileAllFloorsIfNeeded()
                 report(1)
                 return saved
             }
@@ -93,14 +95,26 @@ enum GameWorldPreparer {
         let health = session.playerState?.health ?? playerConfig.startingHealth
         let energy = session.playerState?.energy ?? playerConfig.startingEnergy
 
-        let terrainPlacement = session.terrainCatalog.placementTable
+        await session.ensureFloorTileSetLoaded()
+        let floorTileSet: FloorTileSet
+        if let loaded = session.floorTileSetLibrary.tileSet {
+            floorTileSet = loaded
+        } else {
+            do {
+                floorTileSet = try FloorTileSet.loadFromBundle(set: config.floorSet)
+            } catch {
+                onProgress?(1)
+                return minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
+            }
+        }
+
         do {
             var world = try await Task.detached(priority: .userInitiated) {
                 try ProceduralGenerator().generate(
                     from: config,
                     playerConfig: playerConfig,
                     enemyConfig: enemyConfig,
-                    terrainPlacement: terrainPlacement,
+                    floorTileSet: floorTileSet,
                     onProgress: { fraction in
                         Task { @MainActor in
                             onProgress?(fraction)
@@ -118,12 +132,14 @@ enum GameWorldPreparer {
                 level: .fallback
             )
             do {
+                let fallbackSet = (try? FloorTileSet.loadFromBundle(set: fallback.floorSet))
+                    ?? floorTileSet
                 var world = try await Task.detached(priority: .userInitiated) {
                     try ProceduralGenerator().generate(
                         from: fallback,
                         playerConfig: .fallback,
                         enemyConfig: .fallback,
-                        terrainPlacement: terrainPlacement,
+                        floorTileSet: fallbackSet,
                         onProgress: { fraction in
                             Task { @MainActor in
                                 onProgress?(fraction)
@@ -138,6 +154,21 @@ enum GameWorldPreparer {
             } catch {
                 onProgress?(1)
                 return minimalWorld(health: health, energy: energy, playerConfig: playerConfig)
+            }
+        }
+    }
+
+    @MainActor
+    private static func attachFloorSet(to world: inout GameWorld, session: AppSession) async {
+        await session.ensureFloorTileSetLoaded()
+        if let set = session.floorTileSetLibrary.tileSet {
+            world.floorSet = set
+            world.floorSetName = set.meta.floorSet
+        } else {
+            let name = world.floorSetName ?? session.generationConfig.floorSet
+            if let set = try? FloorTileSet.loadFromBundle(set: name) {
+                world.floorSet = set
+                world.floorSetName = name
             }
         }
     }

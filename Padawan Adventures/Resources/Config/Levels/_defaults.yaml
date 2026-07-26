@@ -21,22 +21,10 @@ letter_sound_repeat_seconds: 3
 width: 20
 height: 20
 
-# Default base floor terrain palette (overridden per level). Ids from terrain.yaml.
-# Accents/specials are placed from each base's lists in terrain.yaml.
-floor_sprites:
-  - grass
-  - grass-lush
-  - dirt-arid
-  - dirt-dry
-  - sand
-  - plank
-  - water
-
-# Chance a floor gets an accent overlay (when not replaced by a corner special).
-# For now, turn this off -- enable per-level.
-floor_accent_prob: 0
-# Chance a corner floor (exactly 2 orthogonal floor neighbors) becomes a special.
-corner_special_prob: 0.55
+# Per-level baked floor tile set under Resources/Sprites/Floor/{set}/.
+floor:
+  set: 1-tython
+  decor_prob: 0.06
 
 algorithm: rooms_doors
 # How many rooms to place on the map.
@@ -46,7 +34,7 @@ room:
   min_room_size: 4
   max_room_size: 12
   # Probability that a room contains a pit (at most one pit area per room).
-  pit_chance: 0.2
+  pit_chance: 1.0
   # Pit area size: mean tile count, capped at max.
   pit_mean_size: 2
   pit_max_size: 5

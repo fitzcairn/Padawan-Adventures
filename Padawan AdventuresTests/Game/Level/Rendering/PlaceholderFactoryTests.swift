@@ -101,6 +101,51 @@ struct PlaceholderFactoryTests {
         #expect(colorsMatch(pitShape?.fillColor, PlaceholderFactory.pitColor))
     }
 
+    @Test func pitTileDropsBelowNeighbouringFloor() {
+        let config = IsometricConfig(tileWidth: 80, tileHeight: 49)
+        let coord = GridCoord(x: 2, y: 1, story: 0)
+        let floor = PlaceholderFactory.tileNode(
+            for: Tile(kind: .floor(isPit: false)),
+            at: coord,
+            config: config
+        )
+        let pit = PlaceholderFactory.tileNode(
+            for: Tile(kind: .floor(isPit: true)),
+            at: coord,
+            config: config
+        )
+        #expect(abs(floor.position.x - pit.position.x) < 0.001)
+        #expect(
+            abs(floor.position.y - pit.position.y - PlaceholderFactory.pitDropPixels) < 0.001
+        )
+    }
+
+    @Test @MainActor
+    func floorTileNodeAnchorsNorthCornerAndScalesToDiamond() async throws {
+        let library = FloorTileSetLibrary()
+        await library.ensureLoaded(set: "1-tython")
+        let set = try #require(library.tileSet)
+        let tid = try #require(set.floorTileIDs.first)
+        let frame = try #require(set.frames[tid])
+        let texture = try #require(library.texture(tid))
+        let config = IsometricConfig(tileWidth: 80, tileHeight: 49)
+        let node = PlaceholderFactory.floorTileNode(
+            tileID: tid,
+            texture: texture,
+            frame: frame,
+            diamond: set.meta.diamond,
+            config: config
+        )
+        let sprite = try #require(node.children.first as? SKSpriteNode)
+        let sx = config.tileWidth / set.meta.diamond.w
+        let sy = config.tileHeight / set.meta.diamond.h
+        #expect(abs(sprite.size.width - CGFloat(frame.w) * sx) < 0.001)
+        #expect(abs(sprite.size.height - CGFloat(frame.h) * sy) < 0.001)
+        #expect(abs(sprite.anchorPoint.x - frame.anchor.x / CGFloat(frame.w)) < 0.001)
+        #expect(abs(sprite.anchorPoint.y - (1 - frame.anchor.y / CGFloat(frame.h))) < 0.001)
+        #expect(sprite.position == .zero)
+    }
+
     private func colorsMatch(_ actual: UIColor?, _ expected: UIColor) -> Bool {
         guard let actual else { return false }
         var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0

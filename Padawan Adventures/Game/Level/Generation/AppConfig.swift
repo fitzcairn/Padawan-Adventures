@@ -190,9 +190,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var generation: LevelConfig.GenerationParams
     var enemies: LevelConfig.EnemiesSpawnConfig?
     var pickups: LevelConfig.PickupsSpawnConfig?
-    var floorSprites: [String]
-    var floorAccentProb: Double
-    var cornerSpecialProb: Double
+    var floorSet: String
+    var decorProb: Double
 
     nonisolated struct MapSize: Equatable, Sendable {
         var width: Int
@@ -206,18 +205,16 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         generation: LevelConfig.GenerationParams,
         enemies: LevelConfig.EnemiesSpawnConfig? = nil,
         pickups: LevelConfig.PickupsSpawnConfig? = nil,
-        floorSprites: [String] = LevelConfig.fallback.floorSprites,
-        floorAccentProb: Double = LevelConfig.fallbackFloorAccentProb,
-        cornerSpecialProb: Double = LevelConfig.fallbackCornerSpecialProb
+        floorSet: String = LevelConfig.fallbackFloor.set,
+        decorProb: Double = LevelConfig.fallbackFloor.decorProb
     ) {
         self.seed = seed
         self.world = world
         self.generation = generation
         self.enemies = enemies
         self.pickups = pickups
-        self.floorSprites = floorSprites
-        self.floorAccentProb = floorAccentProb
-        self.cornerSpecialProb = cornerSpecialProb
+        self.floorSet = floorSet
+        self.decorProb = decorProb
     }
 
     static func compose(app: AppConfig, level: LevelConfig) -> WorldGenerationConfig {
@@ -231,9 +228,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             generation: level.generation,
             enemies: level.enemies,
             pickups: level.pickups,
-            floorSprites: level.floorSprites,
-            floorAccentProb: level.floorAccentProb,
-            cornerSpecialProb: level.cornerSpecialProb
+            floorSet: level.floor.set,
+            decorProb: level.floor.decorProb
         )
     }
 
@@ -251,14 +247,11 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         guard world.width > 4, world.height > 4 else {
             throw WorldSeedError.worldTooSmall
         }
-        guard !floorSprites.isEmpty else {
-            throw WorldSeedError.emptyFloorSprites
+        guard !floorSet.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw WorldSeedError.emptyFloorSet
         }
-        guard floorAccentProb >= 0, floorAccentProb <= 1 else {
-            throw WorldSeedError.invalidFloorAccentProb(floorAccentProb)
-        }
-        guard cornerSpecialProb >= 0, cornerSpecialProb <= 1 else {
-            throw WorldSeedError.invalidCornerSpecialProb(cornerSpecialProb)
+        guard decorProb >= 0, decorProb <= 1 else {
+            throw WorldSeedError.invalidDecorProb(decorProb)
         }
         guard generation.corridorWidth >= 2 else {
             throw WorldSeedError.corridorTooNarrow(generation.corridorWidth)
@@ -344,9 +337,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case missingResource
     /// YAML/config decode failed; associated value carries the underlying reason.
     case decodeFailed(String)
-    case emptyFloorSprites
-    case invalidFloorAccentProb(Double)
-    case invalidCornerSpecialProb(Double)
+    case emptyFloorSet
+    case invalidDecorProb(Double)
 }
 
 /// Interactable kinds every valid map must include at least once.

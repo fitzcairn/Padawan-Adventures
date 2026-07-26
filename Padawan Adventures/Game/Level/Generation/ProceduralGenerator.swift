@@ -25,14 +25,14 @@ nonisolated struct ProceduralGenerator: Sendable {
         level: LevelConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable = .empty,
+        floorTileSet: FloorTileSet? = nil,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GameWorld {
         try generate(
             from: .compose(app: app, level: level),
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainPlacement: terrainPlacement,
+            floorTileSet: floorTileSet,
             onProgress: onProgress
         )
     }
@@ -41,14 +41,14 @@ nonisolated struct ProceduralGenerator: Sendable {
         from config: WorldGenerationConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable = .empty,
+        floorTileSet: FloorTileSet? = nil,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GameWorld {
         try generateDetailed(
             from: config,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainPlacement: terrainPlacement,
+            floorTileSet: floorTileSet,
             onProgress: onProgress
         ).world
     }
@@ -58,14 +58,14 @@ nonisolated struct ProceduralGenerator: Sendable {
         level: LevelConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable = .empty,
+        floorTileSet: FloorTileSet? = nil,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GenerationResult {
         try generateDetailed(
             from: .compose(app: app, level: level),
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainPlacement: terrainPlacement,
+            floorTileSet: floorTileSet,
             onProgress: onProgress
         )
     }
@@ -74,11 +74,12 @@ nonisolated struct ProceduralGenerator: Sendable {
         from config: WorldGenerationConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable = .empty,
+        floorTileSet: FloorTileSet? = nil,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) throws -> GenerationResult {
         try config.validate()
         try playerConfig.validate()
+        let resolvedFloorSet = try floorTileSet ?? FloorTileSet.loadFromBundle(set: config.floorSet)
 
         let baseSeed = config.resolvedSeed()
         var lastMissing: [RequiredInteractable] = RequiredInteractable.allCases
@@ -96,7 +97,7 @@ nonisolated struct ProceduralGenerator: Sendable {
                 config: config,
                 playerConfig: playerConfig,
                 enemyConfig: enemyConfig,
-                terrainPlacement: terrainPlacement,
+                floorTileSet: resolvedFloorSet,
                 onPhaseProgress: { phaseFraction in
                     // Keep retries monotonic: each attempt advances a shrinking remainder.
                     let attemptBase = 1 - pow(0.55, Double(attempt))
@@ -152,7 +153,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         config: WorldGenerationConfig,
         playerConfig: PlayerConfig,
         enemyConfig: EnemyConfig,
-        terrainPlacement: TerrainPlacementTable,
+        floorTileSet: FloorTileSet,
         onPhaseProgress: ((Double) -> Void)? = nil
     ) throws -> GenerationResult {
         let phaseCount = 5.0
@@ -300,14 +301,16 @@ nonisolated struct ProceduralGenerator: Sendable {
             rng: &rng
         )
 
-        assignFloorTerrains(
-            tiles: &tiles,
-            palette: config.floorSprites,
-            placement: terrainPlacement,
-            accentProb: config.floorAccentProb,
-            cornerSpecialProb: config.cornerSpecialProb,
-            rng: &rng
-        )
+        var floorRng = SeededGenerator(seed: seed ^ FloorTiler.seedSalt)
+        for storyIndex in tiles.indices {
+            FloorTiler.tile(
+                tiles: &tiles[storyIndex],
+                story: storyIndex,
+                set: floorTileSet,
+                options: FloorTiler.Options(decorProb: config.decorProb),
+                rng: &floorRng
+            )
+        }
         phase(5)
 
         let world = GameWorld(
@@ -318,7 +321,10 @@ nonisolated struct ProceduralGenerator: Sendable {
             entities: entities,
             spawn: spawn,
             healthCount: playerConfig.startingHealth,
-            energyCount: playerConfig.startingEnergy
+            energyCount: playerConfig.startingEnergy,
+            floorSet: floorTileSet,
+            decorProb: config.decorProb,
+            tileSeed: seed ^ FloorTiler.seedSalt
         )
 
         return GenerationResult(
@@ -327,158 +333,6 @@ nonisolated struct ProceduralGenerator: Sendable {
             topRightRoomID: topRight.id,
             joinPairs: mstEdges
         )
-    }
-
-    /// Relative weight boost when a palette base matches an orthogonal neighbor's terrain.
-    private static let neighborBaseWeightMultiplier = 2.0
-
-    /// Paints floors from the base palette, then optionally replaces corners with specials
-    /// or overlays accents on non-corners.
-    private func assignFloorTerrains(
-        tiles: inout [[[Tile]]],
-        palette: [String],
-        placement: TerrainPlacementTable,
-        accentProb: Double,
-        cornerSpecialProb: Double,
-        rng: inout SeededGenerator
-    ) {
-        guard !palette.isEmpty else { return }
-
-        for storyIndex in tiles.indices {
-            let height = tiles[storyIndex].count
-            let width = tiles[storyIndex].first?.count ?? 0
-            for y in 0..<height {
-                for x in 0..<width {
-                    guard case .floor = tiles[storyIndex][y][x].kind else { continue }
-                    let base = Self.pickBaseTerrain(
-                        palette: palette,
-                        x: x,
-                        y: y,
-                        story: tiles[storyIndex],
-                        width: width,
-                        height: height,
-                        rng: &rng
-                    )
-                    let isCorner = Self.isFloorCorner(
-                        x: x,
-                        y: y,
-                        story: tiles[storyIndex],
-                        width: width,
-                        height: height
-                    )
-                    var placedSpecial = false
-                    if isCorner,
-                       Double.random(in: 0..<1, using: &rng) < cornerSpecialProb {
-                        let specials = placement.specials(for: base)
-                        if !specials.isEmpty {
-                            let special = specials[Int.random(in: 0..<specials.count, using: &rng)]
-                            tiles[storyIndex][y][x].terrainID = special
-                            tiles[storyIndex][y][x].accentTerrainID = nil
-                            placedSpecial = true
-                        }
-                    }
-                    if !placedSpecial {
-                        tiles[storyIndex][y][x].terrainID = base
-                        var accentID: String?
-                        if Double.random(in: 0..<1, using: &rng) < accentProb {
-                            let accents = placement.accents(for: base)
-                            if !accents.isEmpty,
-                               !Self.hasNeighboringAccent(
-                                x: x,
-                                y: y,
-                                story: tiles[storyIndex],
-                                width: width,
-                                height: height
-                               ) {
-                                accentID = accents[Int.random(in: 0..<accents.count, using: &rng)]
-                            }
-                        }
-                        tiles[storyIndex][y][x].accentTerrainID = accentID
-                    }
-                }
-            }
-        }
-    }
-
-    /// Weighted palette pick: each orthogonal neighbor matching a palette id multiplies that
-    /// id's weight by `neighborBaseWeightMultiplier` (2× per match vs base weight 1).
-    private static func pickBaseTerrain(
-        palette: [String],
-        x: Int,
-        y: Int,
-        story: [[Tile]],
-        width: Int,
-        height: Int,
-        rng: inout SeededGenerator
-    ) -> String {
-        var weights = Array(repeating: 1.0, count: palette.count)
-        var indicesByID: [String: [Int]] = [:]
-        for (index, id) in palette.enumerated() {
-            indicesByID[id, default: []].append(index)
-        }
-
-        for (dx, dy) in orthogonalDeltas {
-            let nx = x + dx
-            let ny = y + dy
-            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
-            guard case .floor = story[ny][nx].kind,
-                  let neighborID = story[ny][nx].terrainID,
-                  let indices = indicesByID[neighborID] else { continue }
-            for index in indices {
-                weights[index] *= neighborBaseWeightMultiplier
-            }
-        }
-
-        let total = weights.reduce(0, +)
-        var roll = Double.random(in: 0..<total, using: &rng)
-        for (index, weight) in weights.enumerated() {
-            roll -= weight
-            if roll < 0 {
-                return palette[index]
-            }
-        }
-        return palette[palette.count - 1]
-    }
-
-    /// Corner = floor with exactly two orthogonal floor neighbors (N/E/S/W).
-    private static func isFloorCorner(
-        x: Int,
-        y: Int,
-        story: [[Tile]],
-        width: Int,
-        height: Int
-    ) -> Bool {
-        var floorNeighbors = 0
-        for (dx, dy) in Self.orthogonalDeltas {
-            let nx = x + dx
-            let ny = y + dy
-            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
-            if case .floor = story[ny][nx].kind {
-                floorNeighbors += 1
-            }
-        }
-        return floorNeighbors == 2
-    }
-
-    private static let orthogonalDeltas = [(0, -1), (1, 0), (0, 1), (-1, 0)]
-
-    /// True when any orthogonal neighbor already has an accent overlay.
-    private static func hasNeighboringAccent(
-        x: Int,
-        y: Int,
-        story: [[Tile]],
-        width: Int,
-        height: Int
-    ) -> Bool {
-        for (dx, dy) in orthogonalDeltas {
-            let nx = x + dx
-            let ny = y + dy
-            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
-            if story[ny][nx].accentTerrainID != nil {
-                return true
-            }
-        }
-        return false
     }
 
     /// Force-places any missing required interactables (chance rolls already applied).

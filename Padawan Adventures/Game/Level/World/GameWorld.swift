@@ -9,6 +9,12 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     let spawn: GridCoord
     var healthCount: Int
     var energyCount: Int
+    /// Active floor set name (persisted); full atlas is loaded into `floorSet` at runtime.
+    var floorSetName: String?
+    var decorProb: Double
+    var tileSeed: UInt64
+    /// Runtime-only atlas used for re-tiling after mutations (not persisted).
+    var floorSet: FloorTileSet?
 
     init(
         width: Int,
@@ -18,7 +24,10 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         entities: [GameEntity],
         spawn: GridCoord,
         healthCount: Int = 0,
-        energyCount: Int = 0
+        energyCount: Int = 0,
+        floorSet: FloorTileSet? = nil,
+        decorProb: Double = 0.06,
+        tileSeed: UInt64 = 0
     ) {
         self.width = width
         self.height = height
@@ -28,6 +37,10 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         self.spawn = spawn
         self.healthCount = healthCount
         self.energyCount = energyCount
+        self.floorSet = floorSet
+        self.floorSetName = floorSet?.meta.floorSet
+        self.decorProb = decorProb
+        self.tileSeed = tileSeed
     }
 
     func isInBounds(_ coord: GridCoord) -> Bool {
@@ -120,6 +133,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 queue.append(next)
             }
         }
+        retileFloors(around: Array(visited))
         return true
     }
 
@@ -142,6 +156,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 queue.append(next)
             }
         }
+        retileFloors(around: Array(visited))
         return true
     }
 
@@ -164,7 +179,56 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 queue.append(next)
             }
         }
+        retileFloors(around: Array(visited))
         return true
+    }
+
+    /// Assigns floor art for mutated cells using the active floor set.
+    mutating func retileFloors(around coords: [GridCoord]) {
+        guard let floorSet else { return }
+        var rng = SeededGenerator(seed: tileSeed &+ UInt64(coords.count) &+ 1)
+        let byStory = Dictionary(grouping: coords, by: \.story)
+        for (story, storyCoords) in byStory {
+            guard story >= 0, story < storyCount else { continue }
+            FloorTiler.retile(
+                tiles: &tiles[story],
+                story: story,
+                coords: storyCoords,
+                set: floorSet,
+                options: FloorTiler.Options(decorProb: decorProb),
+                rng: &rng
+            )
+        }
+    }
+
+    /// Re-assigns every floor tile when legacy/missing ids are detected.
+    mutating func retileAllFloorsIfNeeded() {
+        guard let floorSet else { return }
+        var needs = false
+        for story in tiles {
+            for row in story {
+                for tile in row {
+                    guard case .floor = tile.kind else { continue }
+                    if tile.floorTileID == nil || floorSet.frames[tile.floorTileID ?? ""] == nil {
+                        needs = true
+                        break
+                    }
+                }
+                if needs { break }
+            }
+            if needs { break }
+        }
+        guard needs else { return }
+        var rng = SeededGenerator(seed: tileSeed)
+        for storyIndex in tiles.indices {
+            FloorTiler.tile(
+                tiles: &tiles[storyIndex],
+                story: storyIndex,
+                set: floorSet,
+                options: FloorTiler.Options(decorProb: decorProb),
+                rng: &rng
+            )
+        }
     }
 
     func isEnterable(at coord: GridCoord) -> Bool {
@@ -383,6 +447,9 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         case spawn
         case healthCount
         case energyCount
+        case floorSetName
+        case decorProb
+        case tileSeed
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -395,6 +462,10 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         spawn = try container.decode(GridCoord.self, forKey: .spawn)
         healthCount = try container.decodeIfPresent(Int.self, forKey: .healthCount) ?? 0
         energyCount = try container.decodeIfPresent(Int.self, forKey: .energyCount) ?? 0
+        floorSetName = try container.decodeIfPresent(String.self, forKey: .floorSetName)
+        decorProb = try container.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
+        tileSeed = try container.decodeIfPresent(UInt64.self, forKey: .tileSeed) ?? 0
+        floorSet = nil
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -407,6 +478,9 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         try container.encode(spawn, forKey: .spawn)
         try container.encode(healthCount, forKey: .healthCount)
         try container.encode(energyCount, forKey: .energyCount)
+        try container.encodeIfPresent(floorSetName, forKey: .floorSetName)
+        try container.encode(decorProb, forKey: .decorProb)
+        try container.encode(tileSeed, forKey: .tileSeed)
     }
 
     private func tileDescription(_ tile: Tile) -> String {

@@ -3,8 +3,8 @@ import Foundation
 
 /// TexturePacker-style atlas describing frames inside a spritesheet PNG.
 ///
-/// Also decodes floor atlases: named string keys (e.g. `"sand"`) with optional
-/// per-frame `anchor` blocks. Character sheets keep numeric keys (`"0"`, `"1"`, …).
+/// Character sheets use numeric keys (`"0"`, `"1"`, …). Floor tile sets use the
+/// separate `FloorTileSet` model.
 nonisolated struct SpriteAtlas: Codable, Equatable, Sendable {
     var frames: [String: SpriteAtlasFrame]
     var meta: SpriteAtlasMeta
@@ -16,8 +16,6 @@ nonisolated struct SpriteAtlas: Codable, Equatable, Sendable {
         var h: Int
         /// Relative duration weight (often `1`); scaled against `meta.duration_s`.
         var duration: Double?
-        /// Optional diamond / ground-contact anchor (floor terrains).
-        var anchor: FloorAnchor?
     }
 
     struct SpriteAtlasMeta: Codable, Equatable, Sendable {

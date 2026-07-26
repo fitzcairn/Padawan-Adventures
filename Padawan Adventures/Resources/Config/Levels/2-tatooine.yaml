@@ -14,13 +14,8 @@ sprite:
       atlas: 2-tatooine-atlas
 artifact: sun.max.fill
 treasure: control-ring
-floor_sprites:
-  - sand
-  - sand-dune
-  - sand-ripple
-  - dirt-arid
-  - dirt-cracked
-  - dirt-barren
+floor:
+  set: 2-tatooine
 enemies:
   types: [centipede]
   spawn_chance_per_room: 0.8

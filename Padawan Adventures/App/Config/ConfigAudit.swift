@@ -23,7 +23,6 @@ nonisolated enum ConfigAudit {
         app: AppConfig,
         levels: [LevelConfig],
         enemies: EnemyConfig,
-        terrain: TerrainCatalog,
         items: ItemsConfig,
         words: WordCatalog,
         letters: LetterCatalog,
@@ -38,7 +37,7 @@ nonisolated enum ConfigAudit {
 
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"
-            problems.append(contentsOf: checkFloorSprites(level: level, terrain: terrain, label: label))
+            problems.append(contentsOf: checkFloorSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkEnemyTypes(level: level, enemies: enemies, label: label))
             problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
             problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
@@ -137,24 +136,27 @@ nonisolated enum ConfigAudit {
 
     // MARK: - Checks
 
-    private static func checkFloorSprites(
+    private static func checkFloorSet(
         level: LevelConfig,
-        terrain: TerrainCatalog,
-        label: String
+        label: String,
+        bundle: Bundle
     ) -> [String] {
-        var problems: [String] = []
-        for id in level.floorSprites {
-            guard let def = terrain.terrains[id] else {
-                problems.append("\(label).floor_sprites: unknown terrain id '\(id)'")
-                continue
-            }
-            if def.type != .base {
-                problems.append(
-                    "\(label).floor_sprites: '\(id)' has type \(def.type.rawValue), expected base"
-                )
-            }
+        let setName = level.floor.set.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !setName.isEmpty else {
+            return ["\(label).floor.set: empty"]
         }
-        return problems
+        do {
+            let tileSet = try FloorTileSet.loadFromBundle(set: setName, bundle: bundle)
+            if tileSet.floorTileIDs.isEmpty {
+                return ["\(label).floor.set: '\(setName)' has no role=floor tiles"]
+            }
+        } catch {
+            return ["\(label).floor.set: missing or invalid atlas for '\(setName)' (\(error))"]
+        }
+        if level.floor.decorProb < 0 || level.floor.decorProb > 1 {
+            return ["\(label).floor.decor_prob: \(level.floor.decorProb) out of 0...1"]
+        }
+        return []
     }
 
     private static func checkEnemyTypes(

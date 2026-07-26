@@ -485,4 +485,66 @@ struct IsometricMathTests {
         #expect(next.x == 80)
         #expect(next.y == 60)
     }
+
+    /// Production display (`app.yaml`: 80×49) after the floor tile-set rewrite.
+    @Test func productionTileHeightRoundTripsAndPicksCells() {
+        let config = IsometricConfig(tileWidth: 80, tileHeight: 49, wallHeight: 80, storyHeight: 80)
+        let coord = GridCoord(x: 4, y: 2, story: 0)
+        let north = IsometricMath.gridToScreen(coord, config: config)
+        let recovered = IsometricMath.screenToGrid(north, story: 0, config: config)
+        #expect(recovered == coord)
+
+        let feet = IsometricMath.entityScreenPosition(coord, config: config)
+        #expect(abs(feet.x - north.x) < 0.001)
+        #expect(abs(feet.y - (north.y - config.tileHeight * 0.5)) < 0.001)
+        #expect(IsometricTileGeometry.containsFloorPoint(feet, at: coord, config: config))
+
+        let world = TestWorldFactory.emptyFloor(width: 8, height: 8)
+        let focus = IsometricMath.gridToScreen(GridCoord(x: 3, y: 3, story: 0), config: config)
+        let viewCenter = CGPoint(x: 400, y: 300)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: feet,
+            focus: focus,
+            viewCenter: viewCenter
+        )
+        let picked = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(picked == coord)
+    }
+
+    @Test func productionTileHeightMapBoundsFitInPhoneViewport() {
+        let config = IsometricConfig(tileWidth: 80, tileHeight: 49, wallHeight: 80)
+        let bounds = IsometricMath.mapScreenBounds(width: 30, height: 30, story: 0, config: config)
+        #expect(bounds.width > 0)
+        #expect(bounds.height > 0)
+        // Diamond aspect ≈ tileWidth/tileHeight; map AABB should stay in that ballpark.
+        let aspect = bounds.width / bounds.height
+        #expect(aspect > 0.8 && aspect < 2.2)
+
+        let phone = CGSize(width: 393, height: 852)
+        let scale = IsometricMath.fitScale(mapBounds: bounds, viewSize: phone)
+        #expect(scale > 0.05 && scale < 2.0)
+        #expect(bounds.width * scale <= phone.width)
+        #expect(bounds.height * scale <= phone.height)
+    }
+
+    @Test func floorDiamondAspectMatchesBakedSetsWithinTolerance() throws {
+        let config = IsometricConfig(tileWidth: 80, tileHeight: 49)
+        let logicalAspect = config.tileWidth / config.tileHeight
+        for name in [
+            "1-tython", "2-tatooine", "3-ilum", "4-kashyyyk",
+            "5-dagobah", "6-coruscant", "7-mustafar", "8-geonosis",
+        ] {
+            let set = try FloorTileSet.loadFromBundle(set: name)
+            let artAspect = set.meta.diamond.w / set.meta.diamond.h
+            let distortion = abs(artAspect - logicalAspect) / logicalAspect
+            #expect(distortion < 0.05, "\(name) distortion \(distortion)")
+        }
+    }
 }

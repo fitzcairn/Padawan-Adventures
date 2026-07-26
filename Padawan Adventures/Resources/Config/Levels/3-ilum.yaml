@@ -14,11 +14,8 @@ sprite:
       atlas: 3-ilum-atlas
 artifact: snowflake
 treasure: central-grip
-floor_sprites:
-  - water-ice
-  - water
-  - water-bright
-  - reflect
+floor:
+  set: 3-ilum
 enemies:
   types: [ice_monster]
   spawn_chance_per_room: 0.8

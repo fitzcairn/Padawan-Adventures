@@ -41,31 +41,25 @@ struct SpriteOrientationSnapshotTests {
     }
 
     @Test
-    func floorGrassMatchesGolden() async throws {
-        let catalog = try TerrainCatalog.loadFromBundle()
-        let grass = try #require(catalog.terrains["grass"])
-        let slim = TerrainCatalog(sprite: catalog.sprite, terrains: ["grass": grass])
+    func floorTileMatchesGolden() async throws {
+        let library = FloorTileSetLibrary()
+        await library.ensureLoaded(set: "1-tython")
+        let set = try #require(library.tileSet)
+        let tileID = try #require(set.floorTileIDs.first)
+        let texture = try #require(library.texture(tileID))
+        let frame = try #require(library.frame(tileID))
 
-        let library = FloorSpriteLibrary()
-        await library.ensureLoaded(catalog: slim)
-        let animation = try #require(library.animation(id: "grass"))
-        let anchor = library.anchor(of: "grass")
-        #expect(anchor != nil)
-
-        let container = PlaceholderFactory.floorSpriteNode(
-            animation: animation,
-            terrainID: "grass",
-            isPit: false,
-            config: IsometricConfig(),
-            anchor: anchor
+        let container = PlaceholderFactory.floorTileNode(
+            tileID: tileID,
+            texture: texture,
+            frame: frame,
+            diamond: set.meta.diamond,
+            config: IsometricConfig(tileWidth: 80, tileHeight: 49)
         )
-        let sprite = try #require(
-            container.childNode(withName: AnimatedSpriteNode.nodeName) as? AnimatedSpriteNode
-        )
-        #expect(sprite.correctsUIImageVInversion == false)
-        #expect(sprite.currentAnimationName == "grass")
+        let sprite = try #require(container.children.first as? SKSpriteNode)
+        #expect(sprite.texture != nil)
 
-        try assertTextureMatchesGolden(sprite.texture, named: "floor-grass.png")
+        try assertTextureMatchesGolden(sprite.texture, named: "floor-tython-r00c00.png")
     }
 
     @Test

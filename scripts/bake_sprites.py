@@ -58,6 +58,7 @@ RESOURCES = ROOT / "Padawan Adventures" / "Resources"
 SPRITES = RESOURCES / "Sprites"
 CONFIG = RESOURCES / "Config"
 MANIFEST_PATH = SPRITES / "bake-manifest.json"
+FLOOR_SET_DIR = SPRITES / "Floor"
 
 CHROMA_PRESETS: dict[str, tuple[str, int, int, int]] = {
     # name → (hex, tolerance, feather, smooth)
@@ -635,41 +636,40 @@ def collect_animation_jobs(
 
 
 def collect_floor_job(plan: BakePlan) -> None:
-    path = CONFIG / "Catalogs" / "terrain.yaml"
-    add_config_input(plan, path)
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    sprite = data.get("sprite") or {}
-    root = str(sprite.get("root") or "Sprites/Floor")
-    sheet_name = sprite.get("sheet") or "floor-spritesheet"
-    atlas_name = sprite.get("atlas") or "atlas"
-    atlas_root = str(sprite.get("atlas_root") or root)
-    sheet_dir = resolve_sprites_root(root)
-    atlas_dir = resolve_sprites_root(atlas_root)
-    sheet_path = find_resource(sheet_dir, str(sheet_name), ["png", "jpg", "jpeg"])
-    atlas_path = find_resource(atlas_dir, str(atlas_name), ["json"])
-    if sheet_path is None:
-        plan.errors.append(f"floor: missing sheet {root}/{sheet_name}")
+    """Register per-level floor tile sets for baking via bake_floor_sets.py."""
+    # Import lazily so bake_sprites still works if floor helper is unavailable.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import bake_floor_sets as floor_sets
+    except ImportError as exc:
+        plan.errors.append(f"floor: cannot import bake_floor_sets: {exc}")
         return
-    if atlas_path is None:
-        plan.errors.append(f"floor: missing atlas {atlas_root}/{atlas_name}")
+
+    discovered = floor_sets.discover_source_sheets()
+    if not discovered:
+        plan.errors.append("floor: no per-level floor spritesheets found under Sprites/Floor/")
         return
-    plan.jobs.append(
-        BakeJob(
-            category="floor",
-            sheet_path=sheet_path,
-            atlas_path=atlas_path,
-            chroma=chroma_from_sprite_dict(sprite),
-            trim=False,  # never re-trim; anchors are frame-relative
-            bake_scale=bake_scale_from_sprite(sprite),
-            flip_vertical=False,
-            isolate_primary=True,
-            preserve_anchors=True,
-            label="floor",
+
+    for set_name, source in discovered:
+        set_dir = FLOOR_SET_DIR / set_name
+        # Placeholder atlas path — bake_floor_sets writes the real atlas.
+        atlas_placeholder = set_dir / "Baked" / f"{set_name}-floor-atlas.json"
+        plan.jobs.append(
+            BakeJob(
+                category=f"floor.{set_name}",
+                sheet_path=source,
+                atlas_path=atlas_placeholder,
+                chroma=ChromaSettings(),
+                trim=False,
+                bake_scale=1.0,
+                flip_vertical=False,
+                isolate_primary=False,
+                preserve_anchors=False,
+                label=f"floor.{set_name}",
+            )
         )
-    )
-    plan.input_paths.extend(
-        p for p in (sheet_path, atlas_path) if p not in plan.input_paths
-    )
+        if source not in plan.input_paths:
+            plan.input_paths.append(source)
 
 
 def collect_player(plan: BakePlan) -> None:
@@ -808,6 +808,21 @@ def baked_output_paths(sheet_path: Path, atlas_path: Path) -> tuple[Path, Path]:
     # Atlas may live next to the sheet (normal) — write matching basename into Baked/.
     out_atlas = baked_dir / atlas_path.name
     return out_sheet, out_atlas
+
+
+def bake_floor_set_job(job: BakeJob) -> tuple[Path, Path]:
+    """Bake one per-level floor set via scripts/bake_floor_sets.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import bake_floor_sets as floor_sets
+
+    set_name = job.category.split(".", 1)[1]
+    result = floor_sets.bake_one(
+        set_name,
+        job.sheet_path,
+        grid_override=None,
+        contact_only=False,
+    )
+    return result["baked_sheet"], result["atlas"]
 
 
 def bake_job(job: BakeJob) -> tuple[Path, Path]:
@@ -1010,7 +1025,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--player", action="store_true", help="Bake player sheets only (with other flags)")
     p.add_argument("--items", action="store_true", help="Bake item sheets")
-    p.add_argument("--floors", action="store_true", help="Bake floor sheet")
+    p.add_argument("--floors", action="store_true", help="Bake per-level floor tile sets")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
     p.add_argument(
         "--verify",
@@ -1053,14 +1068,19 @@ def main(argv: list[str] | None = None) -> int:
 
     for i, job in enumerate(plan.jobs, 1):
         try:
-            out_sheet, out_atlas = bake_job(job)
+            if job.category.startswith("floor."):
+                out_sheet, out_atlas = bake_floor_set_job(job)
+            else:
+                out_sheet, out_atlas = bake_job(job)
             outputs.extend([out_sheet, out_atlas])
             jobs_meta.append(
                 {
                     "label": job.label,
                     "category": job.category,
                     "source_sheet": rel_to_repo(job.sheet_path),
-                    "source_atlas": rel_to_repo(job.atlas_path),
+                    "source_atlas": rel_to_repo(job.atlas_path)
+                    if job.atlas_path.is_file()
+                    else rel_to_repo(out_atlas),
                     "baked_sheet": rel_to_repo(out_sheet),
                     "baked_atlas": rel_to_repo(out_atlas),
                     "trim": job.trim,

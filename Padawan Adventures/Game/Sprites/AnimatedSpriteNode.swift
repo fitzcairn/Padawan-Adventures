@@ -64,7 +64,7 @@ final class AnimatedSpriteNode: SKSpriteNode {
         }
     }
 
-    /// Plays a concrete animation (e.g. floor terrains from `FloorSpriteLibrary`).
+    /// Plays a concrete animation (e.g. item/enemy clips supplied directly).
     func play(animation: SpriteAnimation, name: String? = nil) {
         let key = name ?? currentAnimationName ?? "animation"
         if let name, currentAnimationName == name, action(forKey: Self.animationActionKey) != nil {

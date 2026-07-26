@@ -2,7 +2,7 @@ import Foundation
 import Yams
 
 nonisolated enum WorldLoader {
-    /// True when a saved world matches the configured map dimensions.
+    /// True when a saved world matches the configured map dimensions and floor set.
     nonisolated static func isCompatibleSave(
         _ world: GameWorld,
         with config: WorldGenerationConfig
@@ -10,6 +10,7 @@ nonisolated enum WorldLoader {
         world.width == config.world.width
             && world.height == config.world.height
             && world.storyCount == config.world.stories
+            && (world.floorSetName == nil || world.floorSetName == config.floorSet)
     }
 
     nonisolated static func isCompatibleSave(
@@ -24,18 +25,17 @@ nonisolated enum WorldLoader {
         from url: URL,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable? = nil
+        floorTileSet: FloorTileSet
     ) throws -> GameWorld {
         let data = try Data(contentsOf: url)
         let app = try decodeConfig(from: data)
         let level = LevelConfig.fallback
-        let placement = try terrainPlacement ?? Self.bundleTerrainPlacement()
         return try ProceduralGenerator().generate(
             from: app,
             level: level,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainPlacement: placement
+            floorTileSet: floorTileSet
         )
     }
 
@@ -78,7 +78,7 @@ nonisolated enum WorldLoader {
         levelSubdirectory: String? = LevelCatalog.subdirectory,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
-        terrainPlacement: TerrainPlacementTable? = nil
+        floorTileSet: FloorTileSet? = nil
     ) throws -> GameWorld {
         let loaded = try loadConfigAndLevelFromBundle(
             named: name,
@@ -86,19 +86,14 @@ nonisolated enum WorldLoader {
             levelNamed: levelName,
             levelSubdirectory: levelSubdirectory
         )
-        let placement = try terrainPlacement ?? Self.bundleTerrainPlacement()
+        let set = try floorTileSet ?? FloorTileSet.loadFromBundle(set: loaded.level.floor.set)
         return try ProceduralGenerator().generate(
             from: loaded.config,
             level: loaded.level,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
-            terrainPlacement: placement
+            floorTileSet: set
         )
-    }
-
-    /// Placement accents/specials from the bundled `terrain.yaml`.
-    private static func bundleTerrainPlacement() throws -> TerrainPlacementTable {
-        try TerrainCatalog.loadFromBundle().placementTable
     }
 
     static func decodeConfig(from data: Data) throws -> AppConfig {

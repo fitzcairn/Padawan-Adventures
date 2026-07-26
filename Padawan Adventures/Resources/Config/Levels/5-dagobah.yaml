@@ -15,13 +15,8 @@ sprite:
       atlas: 5-dagobah-atlas
 artifact: drop.fill
 treasure: lower-grip
-floor_sprites:
-  - swamp
-  - swamp-murky
-  - swamp-deep
-  - swamp-algae
-  - swamp-glow
-  - water-green
+floor:
+  set: 5-dagobah
 enemies:
   types: [snake, treant]
   spawn_chance_per_room: 0.8

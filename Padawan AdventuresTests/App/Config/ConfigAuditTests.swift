@@ -7,6 +7,8 @@ struct ConfigAuditTests {
     @Test func loadsEveryBundledConfigWithoutFallback() throws {
         let app = try WorldLoader.loadConfigFromBundle()
         try app.validate()
+        #expect(app.display.tileWidth == 80)
+        #expect(app.display.tileHeight == 49)
 
         let audio = try SoundSettings.loadFromBundle()
         try audio.validate()
@@ -25,9 +27,6 @@ struct ConfigAuditTests {
 
         let items = try ItemsConfig.loadFromBundle()
         try items.validate()
-
-        let terrain = try TerrainCatalog.loadFromBundle()
-        #expect(!terrain.terrains.isEmpty)
 
         let words = try WordCatalog.loadFromBundle()
         try words.validate()
@@ -54,11 +53,16 @@ struct ConfigAuditTests {
             letterCatalog: letters
         )
 
+        for level in levels {
+            #expect(!level.floor.set.isEmpty)
+            let set = try FloorTileSet.loadFromBundle(set: level.floor.set)
+            #expect(!set.floorTileIDs.isEmpty)
+        }
+
         try ConfigAudit.run(
             app: app,
             levels: levels + [defaults],
             enemies: enemies,
-            terrain: terrain,
             items: items,
             words: words,
             letters: letters,
@@ -66,5 +70,31 @@ struct ConfigAuditTests {
             screens: screens,
             player: player
         )
+    }
+
+    @Test func badFloorSetFailsAudit() throws {
+        let app = try WorldLoader.loadConfigFromBundle()
+        let words = try WordCatalog.loadFromBundle()
+        let letters = try LetterCatalog.loadFromBundle()
+        var level = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory,
+            wordCatalog: words,
+            letterCatalog: letters
+        )
+        level.floor.set = "does-not-exist"
+        #expect(throws: ConfigAuditError.self) {
+            try ConfigAudit.run(
+                app: app,
+                levels: [level],
+                enemies: try EnemyConfig.loadFromBundle(),
+                items: try ItemsConfig.loadFromBundle(),
+                words: words,
+                letters: letters,
+                audio: try SoundSettings.loadFromBundle(),
+                screens: try ScreensConfig.loadFromBundle(),
+                player: try PlayerConfig.loadFromBundle()
+            )
+        }
     }
 }
