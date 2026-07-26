@@ -66,16 +66,12 @@ enum FloorSpriteLoader {
         var result: [String: SpriteAnimation] = [:]
         result.reserveCapacity(terrains.count)
 
-        for (id, definition) in terrains {
-            guard let rect = atlas.frameRect(
-                tileRow: definition.row,
-                tileCol: definition.col,
-                frameIndex: 0
-            ) else {
+        for (id, _) in terrains {
+            guard let rect = atlas.frameRect(named: id) else {
                 throw SpriteLoadError.frameOutOfBounds(
                     atlas: sprite.atlas,
-                    frame: "\(id)#0",
-                    rect: "(row \(definition.row), col \(definition.col))"
+                    frame: id,
+                    rect: "(missing frame)"
                 )
             }
             guard rect.minX >= 0, rect.minY >= 0,
@@ -84,12 +80,15 @@ enum FloorSpriteLoader {
                   let piece = keyedImage.cropping(to: rect) else {
                 throw SpriteLoadError.frameOutOfBounds(
                     atlas: sprite.atlas,
-                    frame: "\(id)#0",
+                    frame: id,
                     rect: "(\(Int(rect.minX)),\(Int(rect.minY)),\(Int(rect.width)),\(Int(rect.height)))"
                 )
             }
 
-            let trimmed = SpriteSheetLoader.trimToSharedOpaqueBounds([piece])
+            // Atlas rects are per-sprite; drop any neighbor pixels that still fall
+            // inside the AABB, then trim to the remaining opaque bounds.
+            let isolated = SpriteSheetLoader.keepPrimaryOpaqueComponent(piece)
+            let trimmed = SpriteSheetLoader.trimToSharedOpaqueBounds([isolated])
             // Floor nodes skip AnimatedSpriteNode's yScale=-1 correction (so the
             // diamond stays below the tile origin), so do NOT flipAroundXAxis here —
             // that pair is only for player/item sprites. Mirror horizontally so

@@ -57,18 +57,6 @@ enum PlaceholderFactory {
                     sprite.zPosition = 0.02
                     container.addChild(sprite)
                 }
-                if let accentID = tile.accentTerrainID,
-                   let accentAnimation = library.animation(id: accentID) {
-                    let accent = floorSpriteNode(
-                        animation: accentAnimation,
-                        terrainID: accentID,
-                        isPit: false,
-                        config: config
-                    )
-                    accent.name = "floor-accent"
-                    accent.zPosition = 0.03
-                    container.addChild(accent)
-                }
             }
 
         case .wall(let destructible):
@@ -126,7 +114,11 @@ enum PlaceholderFactory {
         return node
     }
 
-    /// Animated floor terrain sprite. Bottom pixel sits on the floor diamond's south tip.
+    /// Extra screen-up lift as a fraction of the fitted sprite height (bases + accents).
+    static let floorSpriteRaiseFraction: CGFloat = 0.10
+
+    /// Floor terrain / accent sprite. Top-center near the diamond north tip, then raised
+    /// by 10% of the sprite's own height.
     static func floorSpriteNode(
         animation: SpriteAnimation,
         terrainID: String,
@@ -148,11 +140,14 @@ enum PlaceholderFactory {
         sprite.correctsUIImageVInversion = false
         // Top-center near the diamond north tip, nudged 30% of tile height screen-up.
         sprite.anchorPoint = CGPoint(x: 0.5, y: 1)
-        sprite.position = CGPoint(x: 0, y: config.tileHeight * 0.30)
         sprite.zPosition = 0
         sprite.fitWidth(config.tileWidth)
         sprite.play(animation: animation, name: terrainID)
         sprite.fitWidth(config.tileWidth)
+        sprite.position = CGPoint(
+            x: 0,
+            y: config.tileHeight * 0.30 + sprite.size.height * floorSpriteRaiseFraction
+        )
         container.addChild(sprite)
 
         if isPit {
@@ -183,12 +178,36 @@ enum PlaceholderFactory {
         return ids[index]
     }
 
-    /// Identity key for reusing floor nodes across renderer rebuilds.
+    /// Identity key for reusing base floor nodes across renderer rebuilds.
     static func floorIdentity(for tile: Tile) -> String? {
         guard case .floor(let isPit) = tile.kind else { return nil }
         let terrain = tile.terrainID ?? ""
-        let accent = tile.accentTerrainID ?? ""
-        return "\(terrain)|\(accent)|\(isPit ? 1 : 0)"
+        return "\(terrain)|\(isPit ? 1 : 0)"
+    }
+
+    /// Identity key for reusing accent overlay nodes (nil when the tile has no accent).
+    static func floorAccentIdentity(for tile: Tile) -> String? {
+        guard case .floor = tile.kind else { return nil }
+        return tile.accentTerrainID
+    }
+
+    /// Accent prop drawn in a later pass above all base floor sprites.
+    static func floorAccentNode(
+        accentID: String,
+        at coord: GridCoord,
+        config: IsometricConfig,
+        library: FloorSpriteLibrary
+    ) -> SKNode? {
+        guard let animation = library.animation(id: accentID) else { return nil }
+        let node = floorSpriteNode(
+            animation: animation,
+            terrainID: accentID,
+            isPit: false,
+            config: config
+        )
+        node.name = "floor-accent"
+        node.position = IsometricMath.gridToScreen(coord, config: config)
+        return node
     }
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.

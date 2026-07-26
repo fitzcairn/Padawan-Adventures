@@ -110,6 +110,11 @@ enum IsometricMath {
         depthSortValue(for: coord, config: config)
     }
 
+    /// Accent overlays sit above base floors at the same cell, below entities (+0.5).
+    static func floorAccentSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
+        depthSortValue(for: coord, config: config) + 0.25
+    }
+
     static func wallSortValue(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         depthSortValue(for: coord, config: config)
     }

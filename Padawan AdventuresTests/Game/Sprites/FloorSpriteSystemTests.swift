@@ -5,37 +5,49 @@ import Testing
 @testable import Padawan_Adventures
 
 struct FloorSpriteSystemTests {
-    @Test func floorAtlasComputesEvenCellOrigins() {
-        #expect(FloorAtlas.dividedOrigin(0, total: 352, count: 11) == 0)
-        #expect(FloorAtlas.dividedOrigin(11, total: 352, count: 11) == 352)
-        // 352/11 = 32 exactly.
-        let width0 = FloorAtlas.dividedOrigin(1, total: 352, count: 11)
-            - FloorAtlas.dividedOrigin(0, total: 352, count: 11)
-        #expect(width0 == 32)
-    }
-
-    @Test func floorAtlasFrameRectsCoverSingleFrameGrid() throws {
+    @Test func floorAtlasDecodesNamedFrames() throws {
         let json = """
         {
           "meta": {
-            "size": { "w": 2048, "h": 2048 },
-            "duration_s": 1.0,
-            "blocks": { "cols": 1, "rows": 1, "width": 2048, "height": 2048 },
-            "grid": { "cols": 11, "rows": 11 }
+            "size": { "w": 2046, "h": 2046 },
+            "duration_s": 0
+          },
+          "frames": {
+            "sand": { "x": 0, "y": 41, "w": 186, "h": 145 },
+            "flowers": { "x": 31, "y": 744, "w": 136, "h": 166 }
           }
         }
         """
         let atlas = try FloorAtlas.decode(from: Data(json.utf8))
-        #expect(atlas.frameCount == 1)
-        #expect(abs(atlas.frameDurationSeconds() - 1.0) < 0.000_1)
+        #expect(atlas.meta.size.w == 2046)
+        #expect(atlas.frames.count == 2)
+        let sand = try #require(atlas.frameRect(named: "sand"))
+        #expect(sand == CGRect(x: 0, y: 41, width: 186, height: 145))
+        let flowers = try #require(atlas.frameRect(named: "flowers"))
+        #expect(flowers.width < 186)
+        #expect(flowers.height < 186)
+        #expect(atlas.frameRect(named: "missing") == nil)
+    }
 
-        let first = try #require(atlas.frameRect(tileRow: 0, tileCol: 0, frameIndex: 0))
-        let cell = CGFloat(FloorAtlas.dividedOrigin(1, total: 2048, count: 11))
-        #expect(first == CGRect(x: 0, y: 0, width: cell, height: cell))
-
-        let last = try #require(atlas.frameRect(tileRow: 10, tileCol: 10, frameIndex: 0))
-        #expect(last.maxX == 2048)
-        #expect(last.maxY == 2048)
+    @Test func bundleFloorAtlasListsEveryTerrain() throws {
+        let catalog = try TerrainCatalog.loadFromBundle()
+        guard let url = Bundle.main.url(
+            forResource: "atlas",
+            withExtension: "json",
+            subdirectory: "Sprites/Floor"
+        ) ?? Bundle.main.url(forResource: "atlas", withExtension: "json") else {
+            Issue.record("Missing floor atlas.json in bundle")
+            return
+        }
+        let atlas = try FloorAtlas.decode(from: Data(contentsOf: url))
+        #expect(atlas.frames.count == catalog.terrains.count)
+        for id in catalog.terrains.keys {
+            let rect = try #require(atlas.frameRect(named: id))
+            #expect(rect.width >= 1)
+            #expect(rect.height >= 1)
+            #expect(rect.maxX <= CGFloat(atlas.meta.size.w) + 0.5)
+            #expect(rect.maxY <= CGFloat(atlas.meta.size.h) + 0.5)
+        }
     }
 
     @Test func terrainCatalogDecodesTypeAccentsAndSpecials() throws {
@@ -278,15 +290,17 @@ struct FloorSpriteSystemTests {
         #expect(decoded.accentTerrainID == nil)
     }
 
-    @Test func floorIdentityIncludesAccent() {
+    @Test func floorIdentitySeparatesBaseAndAccent() {
         let withAccent = Tile(
             kind: .floor(isPit: false),
             terrainID: "grass",
             accentTerrainID: "flowers"
         )
         let withoutAccent = Tile(kind: .floor(isPit: false), terrainID: "grass")
-        #expect(PlaceholderFactory.floorIdentity(for: withAccent) == "grass|flowers|0")
-        #expect(PlaceholderFactory.floorIdentity(for: withoutAccent) == "grass||0")
+        #expect(PlaceholderFactory.floorIdentity(for: withAccent) == "grass|0")
+        #expect(PlaceholderFactory.floorIdentity(for: withoutAccent) == "grass|0")
+        #expect(PlaceholderFactory.floorAccentIdentity(for: withAccent) == "flowers")
+        #expect(PlaceholderFactory.floorAccentIdentity(for: withoutAccent) == nil)
     }
 
     @Test func proceduralGeneratorAssignsFloorTerrainsWithAccentsAndSpecials() throws {
@@ -323,19 +337,27 @@ struct FloorSpriteSystemTests {
         var floorCount = 0
         var specialCount = 0
         var accentCount = 0
-        for story in world.tiles {
-            for row in story {
-                for tile in row {
-                    guard case .floor = tile.kind else { continue }
-                    floorCount += 1
-                    let id = try #require(tile.terrainID)
-                    #expect(id == "grass" || id == "foliage")
-                    if id == "foliage" {
-                        specialCount += 1
-                        #expect(tile.accentTerrainID == nil)
-                    } else if let accent = tile.accentTerrainID {
-                        accentCount += 1
-                        #expect(accent == "flowers")
+        let story = world.tiles[0]
+        let height = story.count
+        let width = story.first?.count ?? 0
+        for y in 0..<height {
+            for x in 0..<width {
+                let tile = story[y][x]
+                guard case .floor = tile.kind else { continue }
+                floorCount += 1
+                let id = try #require(tile.terrainID)
+                #expect(id == "grass" || id == "foliage")
+                if id == "foliage" {
+                    specialCount += 1
+                    #expect(tile.accentTerrainID == nil)
+                } else if let accent = tile.accentTerrainID {
+                    accentCount += 1
+                    #expect(accent == "flowers")
+                    for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
+                        let nx = x + dx
+                        let ny = y + dy
+                        guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+                        #expect(story[ny][nx].accentTerrainID == nil)
                     }
                 }
             }

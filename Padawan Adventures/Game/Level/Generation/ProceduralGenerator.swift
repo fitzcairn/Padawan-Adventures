@@ -290,6 +290,9 @@ nonisolated struct ProceduralGenerator: Sendable {
         )
     }
 
+    /// Relative weight boost when a palette base matches an orthogonal neighbor's terrain.
+    private static let neighborBaseWeightMultiplier = 2.0
+
     /// Paints floors from the base palette, then optionally replaces corners with specials
     /// or overlays accents on non-corners.
     private func assignFloorTerrains(
@@ -308,7 +311,15 @@ nonisolated struct ProceduralGenerator: Sendable {
             for y in 0..<height {
                 for x in 0..<width {
                     guard case .floor = tiles[storyIndex][y][x].kind else { continue }
-                    let base = palette[Int.random(in: 0..<palette.count, using: &rng)]
+                    let base = Self.pickBaseTerrain(
+                        palette: palette,
+                        x: x,
+                        y: y,
+                        story: tiles[storyIndex],
+                        width: width,
+                        height: height,
+                        rng: &rng
+                    )
                     let isCorner = Self.isFloorCorner(
                         x: x,
                         y: y,
@@ -329,21 +340,65 @@ nonisolated struct ProceduralGenerator: Sendable {
                     }
                     if !placedSpecial {
                         tiles[storyIndex][y][x].terrainID = base
+                        var accentID: String?
                         if Double.random(in: 0..<1, using: &rng) < accentProb {
                             let accents = placement.accents(for: base)
-                            if !accents.isEmpty {
-                                let accent = accents[Int.random(in: 0..<accents.count, using: &rng)]
-                                tiles[storyIndex][y][x].accentTerrainID = accent
-                            } else {
-                                tiles[storyIndex][y][x].accentTerrainID = nil
+                            if !accents.isEmpty,
+                               !Self.hasNeighboringAccent(
+                                x: x,
+                                y: y,
+                                story: tiles[storyIndex],
+                                width: width,
+                                height: height
+                               ) {
+                                accentID = accents[Int.random(in: 0..<accents.count, using: &rng)]
                             }
-                        } else {
-                            tiles[storyIndex][y][x].accentTerrainID = nil
                         }
+                        tiles[storyIndex][y][x].accentTerrainID = accentID
                     }
                 }
             }
         }
+    }
+
+    /// Weighted palette pick: each orthogonal neighbor matching a palette id multiplies that
+    /// id's weight by `neighborBaseWeightMultiplier` (2× per match vs base weight 1).
+    private static func pickBaseTerrain(
+        palette: [String],
+        x: Int,
+        y: Int,
+        story: [[Tile]],
+        width: Int,
+        height: Int,
+        rng: inout SeededGenerator
+    ) -> String {
+        var weights = Array(repeating: 1.0, count: palette.count)
+        var indicesByID: [String: [Int]] = [:]
+        for (index, id) in palette.enumerated() {
+            indicesByID[id, default: []].append(index)
+        }
+
+        for (dx, dy) in orthogonalDeltas {
+            let nx = x + dx
+            let ny = y + dy
+            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+            guard case .floor = story[ny][nx].kind,
+                  let neighborID = story[ny][nx].terrainID,
+                  let indices = indicesByID[neighborID] else { continue }
+            for index in indices {
+                weights[index] *= neighborBaseWeightMultiplier
+            }
+        }
+
+        let total = weights.reduce(0, +)
+        var roll = Double.random(in: 0..<total, using: &rng)
+        for (index, weight) in weights.enumerated() {
+            roll -= weight
+            if roll < 0 {
+                return palette[index]
+            }
+        }
+        return palette[palette.count - 1]
     }
 
     /// Corner = floor with exactly two orthogonal floor neighbors (N/E/S/W).
@@ -354,9 +409,8 @@ nonisolated struct ProceduralGenerator: Sendable {
         width: Int,
         height: Int
     ) -> Bool {
-        let deltas = [(0, -1), (1, 0), (0, 1), (-1, 0)]
         var floorNeighbors = 0
-        for (dx, dy) in deltas {
+        for (dx, dy) in Self.orthogonalDeltas {
             let nx = x + dx
             let ny = y + dy
             guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
@@ -365,6 +419,27 @@ nonisolated struct ProceduralGenerator: Sendable {
             }
         }
         return floorNeighbors == 2
+    }
+
+    private static let orthogonalDeltas = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+
+    /// True when any orthogonal neighbor already has an accent overlay.
+    private static func hasNeighboringAccent(
+        x: Int,
+        y: Int,
+        story: [[Tile]],
+        width: Int,
+        height: Int
+    ) -> Bool {
+        for (dx, dy) in orthogonalDeltas {
+            let nx = x + dx
+            let ny = y + dy
+            guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+            if story[ny][nx].accentTerrainID != nil {
+                return true
+            }
+        }
+        return false
     }
 
     /// Force-places any missing required interactables (chance rolls already applied).

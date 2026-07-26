@@ -10,6 +10,8 @@ final class IsometricRenderer {
     private let worldRoot = SKNode()
     /// Floor terrain — shared band with walls/entities; local z uses increasing grid Y.
     private let floorLayer = SKNode()
+    /// Accent props — drawn after all base floors so they sit on top of base art.
+    private let floorAccentLayer = SKNode()
     /// Walls / ceilings — same parent band as floors so Y-order can cover either way.
     private let wallLayer = SKNode()
     /// Players, enemies, pickups, effects — same band; +0.5 above same-cell tiles.
@@ -18,6 +20,8 @@ final class IsometricRenderer {
     /// Stable floor nodes keyed by grid coord so animations are not restarted each render.
     private var floorNodes: [GridCoord: SKNode] = [:]
     private var floorIdentities: [GridCoord: String] = [:]
+    private var floorAccentNodes: [GridCoord: SKNode] = [:]
+    private var floorAccentIdentities: [GridCoord: String] = [:]
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
     private var viewSize: CGSize = .zero
@@ -46,11 +50,14 @@ final class IsometricRenderer {
         worldRoot.removeFromParent()
         worldRoot.removeAllChildren()
         floorLayer.removeAllChildren()
+        floorAccentLayer.removeAllChildren()
         wallLayer.removeAllChildren()
         occlusionLayer.removeAllChildren()
         entityNodes.removeAll()
         floorNodes.removeAll()
         floorIdentities.removeAll()
+        floorAccentNodes.removeAll()
+        floorAccentIdentities.removeAll()
         visibleStory = 0
         worldScale = 1
 
@@ -61,11 +68,14 @@ final class IsometricRenderer {
         )
 
         // Shared parent band: floors, walls, and entities interleave by increasing grid Y.
+        // Accents are a sibling added after bases so they paint above base floor art.
         floorLayer.zPosition = IsometricMath.floorBandBase
+        floorAccentLayer.zPosition = IsometricMath.floorBandBase
         wallLayer.zPosition = IsometricMath.floorBandBase
         occlusionLayer.zPosition = IsometricMath.occlusionBandBase
 
         worldRoot.addChild(floorLayer)
+        worldRoot.addChild(floorAccentLayer)
         worldRoot.addChild(wallLayer)
         worldRoot.addChild(occlusionLayer)
         scene.addChild(worldRoot)
@@ -92,6 +102,7 @@ final class IsometricRenderer {
         }
 
         syncFloorNodes(world: world, story: story)
+        syncFloorAccentNodes(world: world, story: story)
 
         for y in 0..<world.height {
             for x in 0..<world.width {
@@ -129,7 +140,7 @@ final class IsometricRenderer {
         updateViewportFocus(focus)
     }
 
-    /// Reuses floor sprite nodes when terrain identity is unchanged.
+    /// Reuses base floor sprite nodes when terrain identity is unchanged.
     private func syncFloorNodes(world: GameWorld, story: Int) {
         var liveCoords = Set<GridCoord>()
 
@@ -175,12 +186,73 @@ final class IsometricRenderer {
         }
     }
 
+    /// Places accents after bases so every accent paints above base floor art.
+    private func syncFloorAccentNodes(world: GameWorld, story: Int) {
+        var liveCoords = Set<GridCoord>()
+        guard let library = floorSpriteLibrary, library.animationCount > 0 else {
+            clearFloorAccentNodes()
+            return
+        }
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                let tile = world.tiles[story][y][x]
+                guard let identity = PlaceholderFactory.floorAccentIdentity(for: tile) else {
+                    continue
+                }
+                liveCoords.insert(coord)
+
+                if let existing = floorAccentNodes[coord], floorAccentIdentities[coord] == identity {
+                    if existing.parent !== floorAccentLayer {
+                        existing.removeFromParent()
+                        floorAccentLayer.addChild(existing)
+                    }
+                    existing.position = IsometricMath.gridToScreen(coord, config: config)
+                    existing.zPosition = IsometricMath.floorAccentSortValue(for: coord, config: config)
+                    continue
+                }
+
+                floorAccentNodes[coord]?.removeFromParent()
+                guard let node = PlaceholderFactory.floorAccentNode(
+                    accentID: identity,
+                    at: coord,
+                    config: config,
+                    library: library
+                ) else {
+                    floorAccentNodes[coord] = nil
+                    floorAccentIdentities[coord] = nil
+                    continue
+                }
+                node.zPosition = IsometricMath.floorAccentSortValue(for: coord, config: config)
+                floorAccentLayer.addChild(node)
+                floorAccentNodes[coord] = node
+                floorAccentIdentities[coord] = identity
+            }
+        }
+
+        for coord in floorAccentNodes.keys where !liveCoords.contains(coord) {
+            floorAccentNodes[coord]?.removeFromParent()
+            floorAccentNodes[coord] = nil
+            floorAccentIdentities[coord] = nil
+        }
+    }
+
     private func clearFloorNodes() {
         for node in floorNodes.values {
             node.removeFromParent()
         }
         floorNodes.removeAll()
         floorIdentities.removeAll()
+        clearFloorAccentNodes()
+    }
+
+    private func clearFloorAccentNodes() {
+        for node in floorAccentNodes.values {
+            node.removeFromParent()
+        }
+        floorAccentNodes.removeAll()
+        floorAccentIdentities.removeAll()
     }
 
     /// Locks uniform world scale (1 = native `IsometricConfig` tile size).
