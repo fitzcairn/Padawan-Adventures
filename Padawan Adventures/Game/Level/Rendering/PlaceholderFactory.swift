@@ -480,10 +480,21 @@ enum PlaceholderFactory {
            let spriteConfig = itemsConfig?.spriteConfig(id: itemID),
            library.animation(id: itemID, named: "idle") != nil {
             let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
+            let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
+            if let highlight = itemsConfig?.highlight(id: itemID) {
+                let glow = SparkleEmitterFactory.makeNode(
+                    config: highlight,
+                    referenceHeight: height
+                )
+                glow.position = CGPoint(
+                    x: 0,
+                    y: height * CGFloat(highlight.yOffset) - correction
+                )
+                container.addChild(glow)
+            }
             let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
             sprite.targetHeight = height
             sprite.zPosition = entityBodyZ
-            let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
             // Feet (bottom-middle) on the tile center; optional anchor_correction nudge.
             sprite.position = CGPoint(x: 0, y: -correction)
             container.addChild(sprite)
@@ -491,10 +502,20 @@ enum PlaceholderFactory {
             return container
         }
 
+        let iconY = config.tileHeight * 0.35
+        if let highlight = itemsConfig?.highlight(id: itemID) {
+            let glow = SparkleEmitterFactory.makeNode(
+                config: highlight,
+                referenceHeight: pickupIconSize
+            )
+            glow.position = CGPoint(x: 0, y: iconY)
+            container.addChild(glow)
+        }
+
         let sprite = SKSpriteNode(texture: pickupTexture(kind: kind))
         sprite.size = CGSize(width: pickupIconSize, height: pickupIconSize)
         // Lift slightly above the tile center so the icon sits on the floor diamond.
-        sprite.position = CGPoint(x: 0, y: config.tileHeight * 0.35)
+        sprite.position = CGPoint(x: 0, y: iconY)
         sprite.zPosition = entityBodyZ
         container.addChild(sprite)
 
@@ -543,7 +564,8 @@ enum PlaceholderFactory {
 
     /// One bounce then fade; calls `completion` when finished.
     static func playCollectAnimation(on node: SKNode, completion: @escaping () -> Void) {
-        let icon = node.children.first ?? node
+        SparkleEmitterFactory.stop(in: node)
+        let icon = node.children.first { !($0 is SKEmitterNode) } ?? node
         icon.removeAction(forKey: "pickupBounce")
         let up = SKAction.moveBy(x: 0, y: pickupBounceAmplitude, duration: 0.2)
         up.timingMode = .easeInEaseOut

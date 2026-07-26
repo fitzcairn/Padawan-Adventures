@@ -70,5 +70,70 @@ struct ItemsConfigTests {
         #expect(sprite.chromaKey == nil)
         #expect(sprite.scale == 0.4)
         #expect(config.spriteConfig(for: .treasure) == nil)
+        #expect(config.highlight(id: "emitter") == nil)
+    }
+
+    @Test func decodesHighlightBlock() throws {
+        let yaml = """
+        emitter:
+          sprite:
+            root: Sprites/Items/Treasure/1-emitter
+            scale: 1.0
+            animations:
+              idle:
+                sheet: 1-emitter-spritesheet
+                atlas: 1-emitter-atlas
+          highlight:
+            color: "#FFD54F"
+            birth_rate: 22
+            lifetime: 1.1
+            radius: 0.45
+            particle_size: 0.12
+            alpha: 0.85
+            y_offset: 0.45
+        """
+        let config = try ItemsConfig.decode(from: yaml)
+        let highlight = try #require(config.highlight(id: "emitter"))
+        #expect(highlight.color == "#FFD54F")
+        #expect(highlight.birthRate == 22)
+        #expect(highlight.lifetime == 1.1)
+        #expect(highlight.radius == 0.45)
+        #expect(highlight.particleSize == 0.12)
+        #expect(highlight.alpha == 0.85)
+        #expect(highlight.yOffset == 0.45)
+        try config.validate()
+    }
+
+    @Test func highlightUsesDefaultsForOmittedKeys() throws {
+        let yaml = """
+        emitter:
+          sprite:
+            root: Sprites/Items/Treasure/1-emitter
+          highlight:
+            color: "#FFFFFF"
+        """
+        let config = try ItemsConfig.decode(from: yaml)
+        let highlight = try #require(config.highlight(id: "emitter"))
+        #expect(highlight.color == "#FFFFFF")
+        #expect(highlight.birthRate == 22)
+        #expect(highlight.lifetime == 1.1)
+        #expect(highlight.radius == 0.45)
+        #expect(highlight.particleSize == 0.12)
+        #expect(highlight.alpha == 0.85)
+        #expect(highlight.yOffset == 0.45)
+    }
+
+    @Test func validateRejectsBadHighlightColor() {
+        let config = ItemsConfig(items: [
+            "emitter": ItemDefinition(
+                sprite: SpriteConfig(root: "x"),
+                highlight: HighlightConfig(color: "nope")
+            ),
+        ])
+        #expect(throws: ItemsConfigError.invalid(
+            "emitter.highlight.color must be a hex color like #RRGGBB"
+        )) {
+            try config.validate()
+        }
     }
 }

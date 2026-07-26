@@ -47,7 +47,7 @@ struct SpriteIconLibraryTests {
             treasureItemID: "emitter"
         )
         let animated = try #require(
-            node.children.first as? AnimatedSpriteNode
+            node.children.compactMap { $0 as? AnimatedSpriteNode }.first
         )
         #expect(animated.currentAnimationName == "idle")
     }

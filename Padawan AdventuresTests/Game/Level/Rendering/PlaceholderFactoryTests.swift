@@ -307,4 +307,64 @@ struct PlaceholderFactoryTests {
                 == IsometricMath.depthSortValue(for: coord, config: config)
         )
     }
+
+    @Test @MainActor
+    func highlightedPickupGetsSparkleBehindIcon() {
+        let items = ItemsConfig(items: [
+            "emitter": ItemDefinition(highlight: HighlightConfig()),
+        ])
+        let node = PlaceholderFactory.pickupNode(
+            kind: .treasure,
+            entityID: UUID(),
+            config: IsometricConfig(),
+            itemsConfig: items,
+            treasureItemID: "emitter"
+        )
+        let glow = node.childNode(withName: SparkleEmitterFactory.nodeName) as? SKEmitterNode
+        #expect(glow != nil)
+        #expect(glow!.zPosition < PlaceholderFactory.entityBodyZ)
+    }
+
+    @Test @MainActor
+    func pickupWithoutHighlightHasNoSparkle() {
+        let items = ItemsConfig(items: [
+            "emitter": ItemDefinition(),
+        ])
+        let node = PlaceholderFactory.pickupNode(
+            kind: .treasure,
+            entityID: UUID(),
+            config: IsometricConfig(),
+            itemsConfig: items,
+            treasureItemID: "emitter"
+        )
+        #expect(node.childNode(withName: SparkleEmitterFactory.nodeName) == nil)
+    }
+
+    @Test @MainActor
+    func collectAnimationStopsSparkleAndBouncesIcon() throws {
+        let items = ItemsConfig(items: [
+            "emitter": ItemDefinition(highlight: HighlightConfig()),
+        ])
+        let node = PlaceholderFactory.pickupNode(
+            kind: .treasure,
+            entityID: UUID(),
+            config: IsometricConfig(),
+            itemsConfig: items,
+            treasureItemID: "emitter"
+        )
+        let glow = try #require(
+            node.childNode(withName: SparkleEmitterFactory.nodeName) as? SKEmitterNode
+        )
+        let icon = try #require(node.children.first { !($0 is SKEmitterNode) })
+        #expect(glow.particleBirthRate > 0)
+        #expect(icon.action(forKey: "pickupBounce") != nil)
+
+        var completed = false
+        PlaceholderFactory.playCollectAnimation(on: node) {
+            completed = true
+        }
+        #expect(glow.particleBirthRate == 0)
+        #expect(icon.action(forKey: "pickupBounce") == nil)
+        #expect(!completed)
+    }
 }

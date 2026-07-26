@@ -22,6 +22,7 @@ health:
 
 # Treasure: lightsaber parts, one per level (see each level's `treasure:` key).
 # Sheets already carry alpha, so no chroma key.
+# Optional `highlight:` draws a particle halo behind the sprite (any item id can opt in).
 emitter:
   sprite:
     root: Sprites/Items/Treasure/1-emitter
@@ -30,6 +31,14 @@ emitter:
       idle:
         sheet: 1-emitter-spritesheet
         atlas: 1-emitter-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 control-ring:
   sprite:
@@ -39,6 +48,14 @@ control-ring:
       idle:
         sheet: 2-control-ring-spritesheet
         atlas: 2-control-ring-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 central-grip:
   sprite:
@@ -48,6 +65,14 @@ central-grip:
       idle:
         sheet: 3-central-grip-spritesheet
         atlas: 3-central-grip-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 activation-switch:
   sprite:
@@ -57,6 +82,14 @@ activation-switch:
       idle:
         sheet: 4-activation-switch-spritesheet
         atlas: 4-activation-switch-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 lower-grip:
   sprite:
@@ -66,6 +99,14 @@ lower-grip:
       idle:
         sheet: 5-lower-grip-spritesheet
         atlas: 5-lower-grip-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 power-cell:
   sprite:
@@ -75,6 +116,14 @@ power-cell:
       idle:
         sheet: 6-power-cell-spritesheet
         atlas: 6-power-cell-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 connector:
   sprite:
@@ -84,6 +133,14 @@ connector:
       idle:
         sheet: 7-connector-spritesheet
         atlas: 7-connector-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45
 
 pommel:
   sprite:
@@ -93,3 +150,11 @@ pommel:
       idle:
         sheet: 8-pommel-spritesheet
         atlas: 8-pommel-atlas
+  highlight:
+    color: "#FFD54F"
+    birth_rate: 22
+    lifetime: 1.1
+    radius: 0.45
+    particle_size: 0.12
+    alpha: 0.85
+    y_offset: 0.45

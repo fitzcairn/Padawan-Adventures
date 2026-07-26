@@ -1,22 +1,28 @@
 import Foundation
+import UIKit
 import Yams
 
 /// One item definition from `items.yaml` (keyed by pickup id).
 nonisolated struct ItemDefinition: Codable, Equatable, Sendable {
     /// Optional animated sprite definition (`Resources/Sprites/...`).
     var sprite: SpriteConfig?
+    /// Optional particle halo drawn behind the sprite.
+    var highlight: HighlightConfig?
 
     enum CodingKeys: String, CodingKey {
         case sprite
+        case highlight
     }
 
-    init(sprite: SpriteConfig? = nil) {
+    init(sprite: SpriteConfig? = nil, highlight: HighlightConfig? = nil) {
         self.sprite = sprite
+        self.highlight = highlight
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sprite = try container.decodeIfPresent(SpriteConfig.self, forKey: .sprite)
+        highlight = try container.decodeIfPresent(HighlightConfig.self, forKey: .highlight)
     }
 }
 
@@ -51,6 +57,11 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
         items[id]?.sprite
     }
 
+    /// Highlight config for an arbitrary item id, when the item opts in.
+    func highlight(id: String) -> HighlightConfig? {
+        items[id]?.highlight
+    }
+
     func validate() throws {
         for (id, item) in items {
             guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -59,6 +70,23 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
             if let sprite = item.sprite {
                 guard !sprite.root.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     throw ItemsConfigError.invalid("\(id).sprite.root must be non-empty")
+                }
+            }
+            if let highlight = item.highlight {
+                guard UIColor(hex: highlight.color) != nil else {
+                    throw ItemsConfigError.invalid(
+                        "\(id).highlight.color must be a hex color like #RRGGBB"
+                    )
+                }
+                guard highlight.birthRate > 0 else {
+                    throw ItemsConfigError.invalid(
+                        "\(id).highlight.birth_rate must be greater than 0"
+                    )
+                }
+                guard highlight.lifetime > 0 else {
+                    throw ItemsConfigError.invalid(
+                        "\(id).highlight.lifetime must be greater than 0"
+                    )
                 }
             }
         }
