@@ -11,7 +11,8 @@ struct GameWorldPreparerTests {
         let store = try PlayerStateStore(directoryURL: directory)
         let saveService = try GameSaveService(directoryURL: directory)
         return AppSession(
-            seedConfig: AppSession.fallbackConfig(),
+            appConfig: AppSession.fallbackAppConfig(),
+            selectedLevel: .fallback,
             playerStore: store,
             saveService: saveService
         )
@@ -21,9 +22,9 @@ struct GameWorldPreparerTests {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Rex")
         let existing = TestWorldFactory.emptyFloor(
-            width: session.seedConfig.world.width,
-            height: session.seedConfig.world.height,
-            stories: session.seedConfig.world.stories
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
         )
         try await session.saveService.save(existing)
 
@@ -37,9 +38,9 @@ struct GameWorldPreparerTests {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Rex")
         var depleted = TestWorldFactory.emptyFloor(
-            width: session.seedConfig.world.width,
-            height: session.seedConfig.world.height,
-            stories: session.seedConfig.world.stories
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
         )
         depleted.healthCount = 1
         depleted.energyCount = 0
@@ -59,9 +60,9 @@ struct GameWorldPreparerTests {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Ahsoka")
         var saved = TestWorldFactory.emptyFloor(
-            width: session.seedConfig.world.width,
-            height: session.seedConfig.world.height,
-            stories: session.seedConfig.world.stories
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
         )
         saved.healthCount = 7
         try await session.saveService.save(saved)

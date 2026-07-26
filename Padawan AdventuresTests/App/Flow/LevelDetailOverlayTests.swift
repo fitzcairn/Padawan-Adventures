@@ -16,7 +16,7 @@ struct LevelDetailOverlayTests {
     }
 
     @Test func multiTypeSpawnConfigPreservesOrder() {
-        let config = WorldSeedConfig.EnemiesSpawnConfig(
+        let config = LevelConfig.EnemiesSpawnConfig(
             types: ["krayt_dragon", "tusken_raider"],
             spawnChancePerRoom: 0.8
         )

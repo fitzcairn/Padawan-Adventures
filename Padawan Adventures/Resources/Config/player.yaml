@@ -22,7 +22,7 @@ fx:
 # left / northwest / southwest reuse right / northeast / southeast via flip.
 sprite:
   root: Sprites/Player
-  chroma_key: "#000000"
+  chroma: black
   scale: 1.2
   # Percent of scaled height; nudges sprite toward bottom of screen (feet into tile).
   anchor_correction: 7

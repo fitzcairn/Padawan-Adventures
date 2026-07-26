@@ -70,6 +70,12 @@ nonisolated enum TerrainType: String, Codable, Equatable, Sendable {
     case special
 }
 
+/// Named accent/special lists shared by base terrains via `palette:`.
+nonisolated struct TerrainPalette: Codable, Equatable, Sendable {
+    var accents: [String]
+    var specials: [String]
+}
+
 /// One named terrain tile from `terrain.yaml`.
 nonisolated struct TerrainDefinition: Codable, Equatable, Sendable {
     var row: Int
@@ -86,6 +92,7 @@ nonisolated struct TerrainDefinition: Codable, Equatable, Sendable {
         case type
         case accents
         case specials
+        case palette
     }
 
     init(
@@ -106,7 +113,9 @@ nonisolated struct TerrainDefinition: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         row = try container.decode(Int.self, forKey: .row)
         col = try container.decode(Int.self, forKey: .col)
-        type = try container.decode(TerrainType.self, forKey: .type)
+        type = try container.decodeIfPresent(TerrainType.self, forKey: .type) ?? .base
+        // `palette` is resolved at catalog decode time; ignore if present here.
+        _ = try container.decodeIfPresent(String.self, forKey: .palette)
         let decodedAccents = try container.decodeIfPresent([String].self, forKey: .accents) ?? []
         let decodedSpecials = try container.decodeIfPresent([String].self, forKey: .specials) ?? []
         if type == .base {
@@ -115,6 +124,17 @@ nonisolated struct TerrainDefinition: Codable, Equatable, Sendable {
         } else {
             accents = []
             specials = []
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(row, forKey: .row)
+        try container.encode(col, forKey: .col)
+        try container.encode(type, forKey: .type)
+        if type == .base {
+            try container.encode(accents, forKey: .accents)
+            try container.encode(specials, forKey: .specials)
         }
     }
 }
@@ -183,10 +203,11 @@ nonisolated struct TerrainCatalog: Equatable, Sendable {
         withExtension ext: String = "yaml",
         bundle: Bundle = .main
     ) throws -> TerrainCatalog {
-        guard let url = bundle.url(forResource: name, withExtension: ext) else {
-            throw TerrainCatalogError.missingResource("\(name).\(ext)")
-        }
-        return try decode(from: Data(contentsOf: url))
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: "Catalogs"),
+            bundle: bundle
+        )
+        return try decode(from: data)
     }
 
     static func decode(from data: Data) throws -> TerrainCatalog {
@@ -200,12 +221,64 @@ nonisolated struct TerrainCatalog: Equatable, Sendable {
         guard !doc.terrains.isEmpty else {
             throw TerrainCatalogError.emptyTerrains
         }
-        return TerrainCatalog(sprite: doc.sprite, terrains: doc.terrains)
+        let terrains = try resolveTerrains(doc.terrains, palettes: doc.palettes ?? [:])
+        return TerrainCatalog(sprite: doc.sprite, terrains: terrains)
+    }
+
+    private static func resolveTerrains(
+        _ entries: [String: TerrainEntry],
+        palettes: [String: TerrainPalette]
+    ) throws -> [String: TerrainDefinition] {
+        var resolved: [String: TerrainDefinition] = [:]
+        resolved.reserveCapacity(entries.count)
+        for (id, entry) in entries {
+            let type = entry.type ?? .base
+            var accents = entry.accents
+            var specials = entry.specials
+            if let paletteName = entry.palette {
+                guard let palette = palettes[paletteName] else {
+                    throw TerrainCatalogError.decodeFailed(
+                        "Unknown palette '\(paletteName)' for terrain '\(id)'"
+                    )
+                }
+                accents = accents ?? palette.accents
+                specials = specials ?? palette.specials
+            }
+            if type == .base {
+                resolved[id] = TerrainDefinition(
+                    row: entry.row,
+                    col: entry.col,
+                    type: type,
+                    accents: accents ?? [],
+                    specials: specials ?? []
+                )
+            } else {
+                resolved[id] = TerrainDefinition(
+                    row: entry.row,
+                    col: entry.col,
+                    type: type,
+                    accents: [],
+                    specials: []
+                )
+            }
+        }
+        return resolved
     }
 
     private struct Document: Decodable {
         var sprite: FloorSpriteConfig
-        var terrains: [String: TerrainDefinition]
+        var palettes: [String: TerrainPalette]?
+        var terrains: [String: TerrainEntry]
+    }
+
+    /// Private DTO: optional `palette` + optional `type` (defaults to base).
+    private struct TerrainEntry: Decodable {
+        var row: Int
+        var col: Int
+        var type: TerrainType?
+        var palette: String?
+        var accents: [String]?
+        var specials: [String]?
     }
 }
 

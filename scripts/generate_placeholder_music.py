@@ -18,7 +18,10 @@ AMPLITUDE = 0.18
 TRACKS: dict[str, list[float]] = {
     "menu_theme": [261.63, 329.63],  # C4 + E4
     "level_theme": [196.00, 246.94],  # G3 + B3
+    "combat_theme": [130.81, 164.81, 196.00],  # C3 + E3 + G3
     "pit_theme": [146.83, 174.61],  # D3 + F3
+    "destructible_wall_theme": [164.81, 220.00],  # E3 + A3
+    "gate_theme": [174.61, 233.08],  # F3 + Bb3
     "victory": [392.00, 523.25, 659.25],  # G4 + C5 + E5
 }
 

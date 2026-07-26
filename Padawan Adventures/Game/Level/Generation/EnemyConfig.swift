@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import Yams
 
-/// One combat projectile kind keyed by letter in `shot_types`.
+/// One combat projectile kind keyed by letter in `shotTypes`.
 nonisolated struct EnemyShotTypeConfig: Codable, Equatable, Sendable {
     /// Cue SFX table; basename YAML form becomes `{ shoot: <basename> }`.
     var fx: SoundEffectTable
@@ -77,7 +77,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         combatTimerSeconds: Double = 10,
         shotTravelSeconds: Double = 3.2,
         starsToWin: Int = 10,
-        shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.defaultShotTypes,
+        shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.fallbackShotTypes,
         fx: SoundEffectTable = .empty
     ) {
         self.letter = letter
@@ -101,11 +101,12 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         shotTravelSeconds = try container.decodeIfPresent(Double.self, forKey: .shotTravelSeconds) ?? 3.2
         starsToWin = try container.decodeIfPresent(Int.self, forKey: .starsToWin) ?? 10
         shotTypes = try container.decodeIfPresent([String: EnemyShotTypeConfig].self, forKey: .shotTypes)
-            ?? EnemyTypeConfig.defaultShotTypes
+            ?? EnemyTypeConfig.fallbackShotTypes
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
     }
 
-    static let defaultShotTypes: [String: EnemyShotTypeConfig] = [
+    /// Fallback A/B/C letter-name shots used by hand-built configs / tests.
+    static let fallbackShotTypes: [String: EnemyShotTypeConfig] = [
         "A": EnemyShotTypeConfig(trackBasename: "sfx_letter_a_name"),
         "B": EnemyShotTypeConfig(trackBasename: "sfx_letter_b_name"),
         "C": EnemyShotTypeConfig(trackBasename: "sfx_letter_c_name"),
@@ -178,7 +179,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 combatTimerSeconds: 10,
                 shotTravelSeconds: 3.2,
                 starsToWin: 10,
-                shotTypes: EnemyTypeConfig.defaultShotTypes,
+                shotTypes: EnemyTypeConfig.fallbackShotTypes,
                 fx: .empty
             ),
         ]
@@ -216,30 +217,145 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     }
 
     static func loadFromBundle(
-        named name: String = "combat",
+        named name: String = "enemies",
         withExtension ext: String = "yaml"
     ) throws -> EnemyConfig {
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw EnemyConfigError.missingResource
-        }
-        let data = try Data(contentsOf: url)
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: "Catalogs")
+        )
         return try decode(from: data)
     }
 
-    static func decode(from data: Data) throws -> EnemyConfig {
+    static func decode(
+        from data: Data,
+        letterCatalog: LetterCatalog? = nil
+    ) throws -> EnemyConfig {
         do {
-            let config = try YAMLDecoder().decode(EnemyConfig.self, from: data)
+            let letters = try letterCatalog ?? Self.loadLetterCatalog()
+            var tree = try ConfigStore.rawTree(
+                from: data,
+                parentDataNamed: nil,
+                fileLabel: "enemies.yaml"
+            )
+            try resolveShotLetters(in: &tree, letterCatalog: letters)
+            let yaml = try Yams.dump(object: tree)
+            let config = try YAMLDecoder().decode(EnemyConfigDTO.self, from: yaml).asEnemyConfig()
             try config.validate()
             return config
         } catch let error as EnemyConfigError {
             throw error
+        } catch let error as ConfigError {
+            throw EnemyConfigError.decodeFailed
         } catch {
             throw EnemyConfigError.decodeFailed
         }
     }
 
-    static func decode(from yaml: String) throws -> EnemyConfig {
-        try decode(from: Data(yaml.utf8))
+    static func decode(
+        from yaml: String,
+        letterCatalog: LetterCatalog? = nil
+    ) throws -> EnemyConfig {
+        try decode(from: Data(yaml.utf8), letterCatalog: letterCatalog)
+    }
+
+    private static func loadLetterCatalog() throws -> LetterCatalog {
+        do {
+            return try LetterCatalog.loadFromBundle()
+        } catch {
+            return .fallback
+        }
+    }
+
+    /// Replaces each enemy's `shot_letters: [a, b, …]` with a `shot_types` map resolved
+    /// through the letter catalog (`a` → key `A`, shoot track = letter `name`).
+    private static func resolveShotLetters(
+        in tree: inout [String: Any],
+        letterCatalog: LetterCatalog
+    ) throws {
+        guard var enemies = ConfigStore.asStringKeyedDictionary(tree["enemies"] as Any?) else {
+            return
+        }
+        for (enemyID, entryValue) in enemies {
+            guard var entry = ConfigStore.asStringKeyedDictionary(entryValue) else { continue }
+            guard let rawLetters = entry["shot_letters"] as? [Any] else {
+                // Allow hand-built YAML that already has shot_types (tests).
+                continue
+            }
+            var shotTypes: [String: Any] = [:]
+            for raw in rawLetters {
+                let id = String(describing: raw).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                guard !id.isEmpty else {
+                    throw EnemyConfigError.invalid("\(enemyID).shot_letters entries must be non-empty")
+                }
+                guard let letter = letterCatalog.letter(named: id) else {
+                    throw EnemyConfigError.invalid(
+                        "\(enemyID).shot_letters.\(id) is not in the letter catalog"
+                    )
+                }
+                let key = id.uppercased()
+                shotTypes[key] = ["fx": letter.name]
+            }
+            entry.removeValue(forKey: "shot_letters")
+            entry["shot_types"] = shotTypes
+            enemies[enemyID] = entry
+        }
+        tree["enemies"] = enemies
+    }
+}
+
+/// Intermediate decode shape that still accepts injected `shot_types` maps.
+private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
+    var slashMaxSeconds: Double?
+    var enemies: [String: EnemyTypeConfigDTO]
+
+    enum CodingKeys: String, CodingKey {
+        case slashMaxSeconds = "slash_max_seconds"
+        case enemies
+    }
+
+    nonisolated func asEnemyConfig() -> EnemyConfig {
+        EnemyConfig(
+            slashMaxSeconds: slashMaxSeconds ?? EnemyConfig.fallbackSlashMaxSeconds,
+            enemies: enemies.mapValues { $0.asEnemyTypeConfig() }
+        )
+    }
+}
+
+private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
+    var letter: String
+    var color: String
+    var tilesPerSecond: Double
+    var forgetSeconds: Double
+    var combatTimerSeconds: Double?
+    var shotTravelSeconds: Double?
+    var starsToWin: Int?
+    var shotTypes: [String: EnemyShotTypeConfig]?
+    var fx: SoundEffectTable?
+
+    enum CodingKeys: String, CodingKey {
+        case letter
+        case color
+        case tilesPerSecond = "tiles_per_second"
+        case forgetSeconds = "forget_seconds"
+        case combatTimerSeconds = "combat_timer_seconds"
+        case shotTravelSeconds = "shot_travel_seconds"
+        case starsToWin = "stars_to_win"
+        case shotTypes = "shot_types"
+        case fx
+    }
+
+    nonisolated func asEnemyTypeConfig() -> EnemyTypeConfig {
+        EnemyTypeConfig(
+            letter: letter,
+            color: color,
+            tilesPerSecond: tilesPerSecond,
+            forgetSeconds: forgetSeconds,
+            combatTimerSeconds: combatTimerSeconds ?? 10,
+            shotTravelSeconds: shotTravelSeconds ?? 3.2,
+            starsToWin: starsToWin ?? 10,
+            shotTypes: shotTypes ?? EnemyTypeConfig.fallbackShotTypes,
+            fx: fx ?? .empty
+        )
     }
 }
 

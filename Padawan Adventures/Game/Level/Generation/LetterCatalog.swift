@@ -2,14 +2,16 @@ import Foundation
 import Yams
 
 /// YAML shape for one shared letter entry under `letters.<letter>:`.
+/// Absent fields are derived via `LetterSoundCatalog`.
 nonisolated struct LetterSpec: Decodable, Equatable, Sendable {
-    var pronunciation: String
-    var name: String
+    var pronunciation: String?
+    var name: String?
 }
 
-/// Shared letter FX loaded from `Resources/Config/Vocab/letters.yaml` for reuse across minigames.
+/// Shared letter FX loaded from `Resources/Config/Catalogs/letters.yaml` for reuse across minigames.
 nonisolated struct LetterCatalog: Equatable, Sendable {
-    static let subdirectory = "Vocab"
+    static let subdirectory = "Catalogs"
+    static let defaultFxPrefix = "sfx_letter_"
 
     /// Sorted by letter for deterministic iteration / RNG.
     private(set) var letters: [DestructibleWallLetter]
@@ -76,15 +78,10 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
         withExtension ext: String = "yaml",
         subdirectory: String? = subdirectory
     ) throws -> LetterCatalog {
-        // Prefer Vocab/; fall back to bundle root if Xcode flattens the resource.
-        if let subdirectory,
-           let url = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: subdirectory) {
-            return try decode(from: Data(contentsOf: url))
-        }
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw WorldSeedError.missingResource
-        }
-        return try decode(from: Data(contentsOf: url))
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: subdirectory)
+        )
+        return try decode(from: data)
     }
 
     static func decode(from data: Data) throws -> LetterCatalog {
@@ -92,11 +89,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
             let decoded = try YAMLDecoder().decode(LetterCatalogDTO.self, from: data)
             let catalog = LetterCatalog(
                 letters: decoded.letters.map { key, spec in
-                    DestructibleWallLetter(
-                        letter: key,
-                        pronunciation: spec.pronunciation,
-                        name: spec.name
-                    )
+                    resolveEntry(id: key, spec: spec)
                 }
             )
             try catalog.validate()
@@ -111,8 +104,43 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     static func decode(from yaml: String) throws -> LetterCatalog {
         try decode(from: Data(yaml.utf8))
     }
+
+    /// Derives tracks via `LetterSoundCatalog`; explicit keys override.
+    nonisolated static func resolveEntry(id: String, spec: LetterSpec?) -> DestructibleWallLetter {
+        let derivedName = LetterSoundCatalog.nameTrackID(for: id) ?? "sfx_letter_\(id.lowercased())_name"
+        let derivedPronunciation = LetterSoundCatalog.pronunciationTrackID(for: id)
+            ?? "sfx_letter_\(id.lowercased())_pronunciation"
+
+        let pronunciation: String
+        if let override = spec?.pronunciation?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !override.isEmpty {
+            pronunciation = override
+        } else {
+            pronunciation = derivedPronunciation
+        }
+
+        let name: String
+        if let override = spec?.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !override.isEmpty {
+            name = override
+        } else {
+            name = derivedName
+        }
+
+        return DestructibleWallLetter(
+            letter: id,
+            pronunciation: pronunciation,
+            name: name
+        )
+    }
 }
 
 private struct LetterCatalogDTO: Decodable {
-    var letters: [String: LetterSpec]
+    var fxPrefix: String?
+    var letters: [String: LetterSpec?]
+
+    enum CodingKeys: String, CodingKey {
+        case fxPrefix = "fx_prefix"
+        case letters
+    }
 }

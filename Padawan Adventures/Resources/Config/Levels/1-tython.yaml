@@ -1,11 +1,17 @@
 # Terrain: Heavy primordial forest
 # Monsters:
 # - horranth: Quadrupedal reptilian carnivores with short, stubby legs and an array of horns across their backs.
-inherits: base_level
+inherits: _defaults
 name: Tython
 order: 1
 color: "#2E7D32"
-level_sprite: tython
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 1-tython
+      atlas: 1-tython-atlas
 artifact: leaf.fill
 floor_sprites:
   - grass

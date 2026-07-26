@@ -43,8 +43,7 @@ struct PlayerConfigTests {
     }
 
     @Test func newWorldUsesStartingHudCounts() throws {
-        let seed = WorldSeedConfig(
-            version: 1,
+        let seed = WorldGenerationConfig(
             seed: 7,
             world: .init(width: 30, height: 30, stories: 1),
             generation: .init(
@@ -58,8 +57,7 @@ struct PlayerConfigTests {
                     wallDestructibleChance: 0,
                     gateChance: 0.0
                 )
-            ),
-            extensions: nil
+            )
         )
         let player = PlayerConfig(letter: "P", startingHealth: 4, startingEnergy: 1)
         let world = try ProceduralGenerator().generate(from: seed, playerConfig: player)

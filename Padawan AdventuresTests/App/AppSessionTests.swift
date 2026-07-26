@@ -18,7 +18,8 @@ struct AppSessionTests {
         let store = try PlayerStateStore(directoryURL: directory)
         let saveService = try GameSaveService(directoryURL: directory)
         return AppSession(
-            seedConfig: AppSession.fallbackConfig(),
+            appConfig: AppSession.fallbackAppConfig(),
+            selectedLevel: .fallback,
             playerStore: store,
             saveService: saveService,
             audioPreferences: audioPreferences ?? makeAudioPreferences()
@@ -26,19 +27,26 @@ struct AppSessionTests {
     }
 
     @Test func fallbackConfigIsSingleStory() {
-        let config = AppSession.fallbackConfig()
-        #expect(config.world.stories == 1)
-        #expect(config.enemies?.type == "horranth")
-        #expect(config.enemies?.spawnChancePerRoom == 0.8)
+        let app = AppSession.fallbackAppConfig()
+        let level = LevelConfig.fallback
+        #expect(app.world.stories == 1)
+        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.spawnChancePerRoom == 0.8)
     }
 
     @Test func continueIneligibleWhenSaveMissing() {
-        let config = AppSession.fallbackConfig()
+        let config = WorldGenerationConfig.compose(
+            app: AppSession.fallbackAppConfig(),
+            level: .fallback
+        )
         #expect(AppSession.isContinueEligible(savedWorld: nil, config: config) == false)
     }
 
     @Test func continueEligibleWhenDimensionsMatch() {
-        let config = AppSession.fallbackConfig()
+        let config = WorldGenerationConfig.compose(
+            app: AppSession.fallbackAppConfig(),
+            level: .fallback
+        )
         let world = TestWorldFactory.emptyFloor(
             width: config.world.width,
             height: config.world.height,
@@ -48,7 +56,10 @@ struct AppSessionTests {
     }
 
     @Test func continueIneligibleWhenDimensionsDiffer() {
-        let config = AppSession.fallbackConfig()
+        let config = WorldGenerationConfig.compose(
+            app: AppSession.fallbackAppConfig(),
+            level: .fallback
+        )
         let world = TestWorldFactory.emptyFloor(width: 4, height: 4, stories: 1)
         #expect(AppSession.isContinueEligible(savedWorld: world, config: config) == false)
     }
@@ -149,9 +160,9 @@ struct AppSessionTests {
         #expect(session.hasCompatibleSave == false)
 
         let world = TestWorldFactory.emptyFloor(
-            width: session.seedConfig.world.width,
-            height: session.seedConfig.world.height,
-            stories: session.seedConfig.world.stories
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
         )
         try await session.saveService.save(world)
         await session.refreshContinueEligibility()

@@ -2,11 +2,11 @@ import SwiftUI
 
 private enum OverlayDismissSecondsKey: EnvironmentKey {
     static let defaultValue: TimeInterval =
-        WorldSeedConfig.DisplayParams.default.overlayDismissSeconds
+        AppConfig.DisplayParams.default.overlayDismissSeconds
 }
 
 extension EnvironmentValues {
-    /// Auto-dismiss delay for `DismissibleOverlay` (from `world.yaml` display knobs).
+    /// Auto-dismiss delay for `DismissibleOverlay` (from `app.yaml` display knobs).
     var overlayDismissSeconds: TimeInterval {
         get { self[OverlayDismissSecondsKey.self] }
         set { self[OverlayDismissSecondsKey.self] = newValue }
@@ -16,7 +16,7 @@ extension EnvironmentValues {
 /// Shared shell for fullscreen result overlays (win, lose, defeat, level complete).
 ///
 /// Structure: full-bleed background + centered content. Behavior: dismiss on tap,
-/// or automatically after `overlayDismissSeconds` (configurable in world.yaml).
+/// or automatically after `overlayDismissSeconds` (configurable in app.yaml).
 /// Backgrounds and content stay customizable per call site.
 struct DismissibleOverlay<Background: View, Content: View>: View {
     @Environment(\.overlayDismissSeconds) private var dismissSeconds

@@ -2,11 +2,18 @@
 # Monsters:
 # - geonosian: Native Geonosian warriors.
 # - battle_droid: Advanced Battle Droid armies.
-inherits: base_level
+inherits: _defaults
 name: Geonosis
 order: 8
 color: "#A1887F"
-level_sprite: geonosis
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      # Asset filenames use the misspelling "geonisis".
+      sheet: 8-geonisis
+      atlas: 8-geonisis-atlas
 artifact: circle.hexagongrid.fill
 floor_sprites:
   - sand

@@ -1,0 +1,13 @@
+# Shared vocabulary + word FX for minigames (gate, pit, etc.).
+# Tracks follow Resources/Audio/FX/<fx_prefix><word>.m4a and
+# <fx_prefix><word>_<prefix>.m4a for each growing prefix (s, st, sta, star).
+# Empty entries derive everything; a body overrides only the keys it names.
+
+version: 1
+fx_prefix: sfx_word_
+words:
+  cat:
+  dog:
+  star:
+  gate:
+  open:

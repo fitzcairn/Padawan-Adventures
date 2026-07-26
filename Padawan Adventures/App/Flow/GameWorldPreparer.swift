@@ -58,7 +58,7 @@ enum GameWorldPreparer {
         case .continueSave:
             report(0.05)
             if let saved = try? await session.saveService.load(),
-               WorldLoader.isCompatibleSave(saved, with: session.seedConfig) {
+               WorldLoader.isCompatibleSave(saved, with: session.generationConfig) {
                 report(1)
                 return saved
             }
@@ -77,7 +77,7 @@ enum GameWorldPreparer {
         session: AppSession,
         onProgress: (@MainActor (Double) -> Void)? = nil
     ) async -> GameWorld {
-        let config = session.seedConfig
+        let config = session.generationConfig
         let playerConfig = session.playerConfig
         let enemyConfig = session.enemyConfig
         let health = session.playerState?.health ?? playerConfig.startingHealth
@@ -103,7 +103,10 @@ enum GameWorldPreparer {
             onProgress?(1)
             return world
         } catch {
-            let fallback = AppSession.fallbackConfig()
+            let fallback = WorldGenerationConfig.compose(
+                app: AppSession.fallbackAppConfig(),
+                level: .fallback
+            )
             do {
                 var world = try await Task.detached(priority: .userInitiated) {
                     try ProceduralGenerator().generate(

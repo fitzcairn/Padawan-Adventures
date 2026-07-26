@@ -28,10 +28,9 @@ struct HudConfig: Codable, Equatable, Sendable {
         named name: String = "hud",
         withExtension ext: String = "yaml"
     ) throws -> HudConfig {
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw HudConfigError.missingResource
-        }
-        let data = try Data(contentsOf: url)
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: nil)
+        )
         return try decode(from: data)
     }
 

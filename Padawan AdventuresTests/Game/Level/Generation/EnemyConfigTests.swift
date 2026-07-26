@@ -15,13 +15,7 @@ struct EnemyConfigTests {
             combat_timer_seconds: 10
             shot_travel_seconds: 1.5
             stars_to_win: 10
-            shot_types:
-              A:
-                fx: sfx_letter_a_name
-              B:
-                fx: sfx_letter_b_name
-              C:
-                fx: sfx_letter_c_name
+            shot_letters: [a, b, c]
             fx:
               contact: sfx_enemy_contact
           scout:
@@ -29,9 +23,7 @@ struct EnemyConfigTests {
             color: "#00FF00"
             tiles_per_second: 2.0
             forget_seconds: 1.5
-            shot_types:
-              X:
-                fx: sfx_letter_a_name
+            shot_letters: [a]
         """
 
         let config = try EnemyConfig.decode(from: yaml)
@@ -52,7 +44,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "scout")?.combatTimerSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
-        #expect(config.type(named: "scout")?.shotTypes["X"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         try config.validate()
     }
 
@@ -79,12 +71,38 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            shot_types:
-              A:
-                fx: sfx_letter_a_name
+            shot_letters: [a]
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == 0.75)
+    }
+
+    @Test func appliesDefaultsToEmptyEntries() throws {
+        let yaml = """
+        slash_max_seconds: 0.5
+        defaults:
+          letter: E
+          color: "#FF0000"
+          tiles_per_second: 0.5
+          forget_seconds: 3.0
+          combat_timer_seconds: 30
+          shot_travel_seconds: 8
+          stars_to_win: 5
+          shot_letters: [a, b, c]
+          fx:
+            contact: sfx_enemy_contact
+        enemies:
+          horranth:
+          scout:
+            letter: S
+            tiles_per_second: 2.0
+        """
+        let config = try EnemyConfig.decode(from: yaml)
+        #expect(config.type(named: "horranth")?.combatTimerSeconds == 30)
+        #expect(config.type(named: "horranth")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "scout")?.letter == "S")
+        #expect(config.type(named: "scout")?.tilesPerSecond == 2.0)
+        #expect(config.type(named: "scout")?.starsToWin == 5)
     }
 
     @Test func validateRejectsNonPositiveSlashMaxSeconds() {
@@ -101,6 +119,8 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt") == nil)
         #expect(config.type(named: "horranth") != nil)
         #expect(config.enemies.count == 12)
+        #expect(config.type(named: "horranth")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "horranth")?.combatTimerSeconds == 30)
     }
 
     @Test func validateRejectsEmptyShotTypes() {

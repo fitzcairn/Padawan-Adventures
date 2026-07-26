@@ -41,17 +41,21 @@ struct WordCatalogTests {
         }
     }
 
-    @Test func rejectsMissingProgressivePrefix() {
-        #expect(throws: WorldSeedError.invalidGateWords) {
-            try WordCatalog.decode(from: """
-            words:
-              cat:
-                spelling: sfx_word_cat
-                progressive:
-                  c: sfx_word_cat_c
-                  cat: sfx_word_cat_cat
-            """)
-        }
+    @Test func derivesEmptyEntriesAndMergesPartialOverrides() throws {
+        let catalog = try WordCatalog.decode(from: """
+        fx_prefix: sfx_word_
+        words:
+          cat:
+          dog:
+            spelling: custom_dog
+            progressive:
+              d: custom_dog_d
+        """)
+        #expect(catalog.word(named: "cat")?.spelling == "sfx_word_cat")
+        #expect(catalog.word(named: "cat")?.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
+        #expect(catalog.word(named: "dog")?.spelling == "custom_dog")
+        #expect(catalog.word(named: "dog")?.progressiveTrack(forPrefix: "d") == "custom_dog_d")
+        #expect(catalog.word(named: "dog")?.progressiveTrack(forPrefix: "do") == "sfx_word_dog_do")
     }
 
     @Test func bundleWordsProvidesGateVocabulary() throws {

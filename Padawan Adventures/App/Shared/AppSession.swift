@@ -3,7 +3,9 @@ import Foundation
 /// Shared bootstrap state loaded before the menu appears.
 @MainActor
 final class AppSession {
-    private(set) var seedConfig: WorldSeedConfig
+    private(set) var appConfig: AppConfig
+    /// Full selected level (map size, generation, floors, puzzles, music, …).
+    private(set) var selectedLevel: LevelConfig
     private(set) var selectedLevelName: String
     private(set) var selectedLevelResourceName: String?
     /// SF Symbol name awarded to inventory when this level is completed.
@@ -24,10 +26,14 @@ final class AppSession {
     private(set) var selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
     /// Shared letter-name prompt replay interval for combat / wall / related games.
     private(set) var selectedLetterSoundRepeatSeconds: Double
+
+    /// App + level knobs for procedural generation / save-size checks.
+    var generationConfig: WorldGenerationConfig {
+        .compose(app: appConfig, level: selectedLevel)
+    }
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let itemsConfig: ItemsConfig
-    let uiSpritesConfig: UISpritesConfig
     let playerStore: PlayerStateStore
     private(set) var saveService: GameSaveService
     private(set) var hasCompatibleSave: Bool
@@ -44,22 +50,22 @@ final class AppSession {
     let backgroundLibrary: BackgroundLibrary
 
     init(
-        seedConfig: WorldSeedConfig,
-        selectedLevelName: String = LevelConfig.fallback.name,
+        appConfig: AppConfig,
+        selectedLevel: LevelConfig = .fallback,
+        selectedLevelName: String? = nil,
         selectedLevelResourceName: String? = nil,
-        selectedLevelArtifact: String = LevelConfig.fallbackArtifact,
-        selectedLevelMusic: String? = LevelConfig.fallback.music,
-        selectedGameMusic: GameMusicConfig = .fallback,
-        selectedLevelBackground: String? = LevelConfig.fallback.background,
-        selectedGameBackground: GameBackgroundConfig = .fallback,
-        selectedPitConfig: PitPuzzleConfig = .fallback,
-        selectedGateConfig: GatePuzzleConfig = .fallback,
-        selectedDestructibleWallConfig: DestructibleWallPuzzleConfig = .fallback,
-        selectedLetterSoundRepeatSeconds: Double = LevelConfig.fallback.letterSoundRepeatSeconds,
+        selectedLevelArtifact: String? = nil,
+        selectedLevelMusic: String? = nil,
+        selectedGameMusic: GameMusicConfig? = nil,
+        selectedLevelBackground: String? = nil,
+        selectedGameBackground: GameBackgroundConfig? = nil,
+        selectedPitConfig: PitPuzzleConfig? = nil,
+        selectedGateConfig: GatePuzzleConfig? = nil,
+        selectedDestructibleWallConfig: DestructibleWallPuzzleConfig? = nil,
+        selectedLetterSoundRepeatSeconds: Double? = nil,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
-        uiSpritesConfig: UISpritesConfig? = nil,
         playerStore: PlayerStateStore,
         saveService: GameSaveService,
         hasCompatibleSave: Bool = false,
@@ -71,23 +77,25 @@ final class AppSession {
         floorSpriteLibrary: FloorSpriteLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil
     ) {
-        self.seedConfig = seedConfig
-        self.selectedLevelName = selectedLevelName
+        self.appConfig = appConfig
+        self.selectedLevel = selectedLevel
+        self.selectedLevelName = selectedLevelName ?? selectedLevel.name
         self.selectedLevelResourceName = selectedLevelResourceName
-        self.selectedLevelArtifact = selectedLevelArtifact
-        self.selectedLevelMusic = selectedLevelMusic
-        self.selectedGameMusic = selectedGameMusic
-        self.selectedLevelBackground = selectedLevelBackground
-        self.selectedGameBackground = selectedGameBackground
-        self.selectedPitConfig = selectedPitConfig
-        self.selectedGateConfig = selectedGateConfig
+        self.selectedLevelArtifact = selectedLevelArtifact ?? selectedLevel.artifact
+        self.selectedLevelMusic = selectedLevelMusic ?? selectedLevel.music
+        self.selectedGameMusic = selectedGameMusic ?? selectedLevel.gameMusic
+        self.selectedLevelBackground = selectedLevelBackground ?? selectedLevel.background
+        self.selectedGameBackground = selectedGameBackground ?? selectedLevel.gameBackground
+        self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
+        self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
         self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
+            ?? selectedLevel.destructibleWall
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
+            ?? selectedLevel.letterSoundRepeatSeconds
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
         self.itemsConfig = itemsConfig ?? .fallback
-        self.uiSpritesConfig = uiSpritesConfig ?? .fallback
         self.playerStore = playerStore
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave
@@ -143,11 +151,11 @@ final class AppSession {
         onProgress?(1)
     }
 
-    /// Ensures UI sprites (level-select planets, …) are loaded for this session.
+    /// Ensures level-select planet sprites are loaded for this session.
     func ensureUISpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
-        let entries = uiSpritesConfig.sprites.compactMap { id, entry -> (String, SpriteConfig)? in
-            guard let sprite = entry.sprite else { return nil }
-            return (id, sprite)
+        let entries = LevelCatalog.loadFromBundle().compactMap { level -> (String, SpriteConfig)? in
+            guard let sprite = level.sprite else { return nil }
+            return (level.resourceName, sprite)
         }
         guard !entries.isEmpty else {
             onProgress?(1)
@@ -175,22 +183,18 @@ final class AppSession {
         await backgroundLibrary.ensureLoaded(names: names, onProgress: onProgress)
     }
 
-    nonisolated static func fallbackConfig() -> WorldSeedConfig {
-        let level = LevelConfig.fallback
-        return WorldSeedConfig(
+    nonisolated static func fallbackAppConfig() -> AppConfig {
+        AppConfig(
             version: 1,
             seed: nil,
-            world: WorldSeedConfig.WorldSize(
-                width: level.width,
-                height: level.height,
-                stories: 1
-            ),
-            generation: level.generation,
-            display: WorldSeedConfig.DisplayParams(tileWidth: 40, tileHeight: 40),
-            enemies: level.enemies,
-            pickups: level.pickups,
-            extensions: nil
+            world: AppConfig.WorldSize(stories: 1),
+            display: AppConfig.DisplayParams(tileWidth: 40, tileHeight: 40)
         )
+    }
+
+    /// Backward-compatible alias used by older test helpers.
+    nonisolated static func fallbackConfig() -> AppConfig {
+        fallbackAppConfig()
     }
 
     /// Loads seed config, player store, and an unbound save service.
@@ -207,94 +211,62 @@ final class AppSession {
         // Config / store bootstrap occupies the first slice; UI planets then floor sheets fill the rest.
         let configEnd = 0.18
 
-        let seedConfig: WorldSeedConfig
-        let selectedLevelName: String
-        let selectedLevelArtifact: String
-        let selectedLevelMusic: String?
-        let selectedGameMusic: GameMusicConfig
-        let selectedLevelBackground: String?
-        let selectedGameBackground: GameBackgroundConfig
-        let selectedPitConfig: PitPuzzleConfig
-        let selectedGateConfig: GatePuzzleConfig
-        let selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
-        let selectedLetterSoundRepeatSeconds: Double
-        do {
+        let appAndLevel = ConfigStore.loadOrFallback(
+            "app+level",
+            fallback: (fallbackAppConfig(), LevelConfig.fallback)
+        ) { () -> (AppConfig, LevelConfig) in
             let loaded = try WorldLoader.loadConfigAndLevelFromBundle()
             try loaded.config.validate()
-            seedConfig = loaded.config
-            selectedLevelName = loaded.level.name
-            selectedLevelArtifact = loaded.level.artifact
-            selectedLevelMusic = loaded.level.music
-            selectedGameMusic = loaded.level.gameMusic
-            selectedLevelBackground = loaded.level.background
-            selectedGameBackground = loaded.level.gameBackground
-            selectedPitConfig = loaded.level.pit
-            selectedGateConfig = loaded.level.gate
-            selectedDestructibleWallConfig = loaded.level.destructibleWall
-            selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
-        } catch {
-            seedConfig = fallbackConfig()
-            selectedLevelName = LevelConfig.fallback.name
-            selectedLevelArtifact = LevelConfig.fallback.artifact
-            selectedLevelMusic = LevelConfig.fallback.music
-            selectedGameMusic = LevelConfig.fallback.gameMusic
-            selectedLevelBackground = LevelConfig.fallback.background
-            selectedGameBackground = LevelConfig.fallback.gameBackground
-            selectedPitConfig = LevelConfig.fallback.pit
-            selectedGateConfig = LevelConfig.fallback.gate
-            selectedDestructibleWallConfig = LevelConfig.fallback.destructibleWall
-            selectedLetterSoundRepeatSeconds = LevelConfig.fallback.letterSoundRepeatSeconds
+            return (loaded.config, loaded.level)
         }
+        let appConfig = appAndLevel.0
+        let selectedLevel = appAndLevel.1
         await report(0.03)
 
-        let soundSettings: SoundSettings
-        do {
+        let soundSettings = ConfigStore.loadOrFallback("audio", fallback: SoundSettings.fallback) {
             let loaded = try SoundSettings.loadFromBundle()
             try loaded.validate()
-            soundSettings = loaded
-        } catch {
-            soundSettings = .fallback
+            return loaded
         }
         BackgroundMusicController.shared.configure(fadeSeconds: soundSettings.fadeSeconds)
         SoundEffectsController.shared.configure(commonFx: soundSettings.fx)
         AudioPreferences.shared.applyToControllers()
         await report(0.06)
 
-        let playerConfig: PlayerConfig
-        do {
+        let playerConfig = ConfigStore.loadOrFallback("player", fallback: PlayerConfig.fallback) {
             let loaded = try PlayerConfig.loadFromBundle()
             try loaded.validate()
-            playerConfig = loaded
-        } catch {
-            playerConfig = .fallback
+            return loaded
         }
 
-        let enemyConfig: EnemyConfig
-        do {
+        let enemyConfig = ConfigStore.loadOrFallback("enemies", fallback: EnemyConfig.fallback) {
             let loaded = try EnemyConfig.loadFromBundle()
             try loaded.validate()
-            enemyConfig = loaded
-        } catch {
-            enemyConfig = .fallback
+            return loaded
         }
 
-        let itemsConfig: ItemsConfig
-        do {
+        let itemsConfig = ConfigStore.loadOrFallback("items", fallback: ItemsConfig.fallback) {
             let loaded = try ItemsConfig.loadFromBundle()
             try loaded.validate()
-            itemsConfig = loaded
-        } catch {
-            itemsConfig = .fallback
+            return loaded
         }
 
-        let uiSpritesConfig: UISpritesConfig
-        do {
-            let loaded = try UISpritesConfig.loadFromBundle()
-            try loaded.validate()
-            uiSpritesConfig = loaded
-        } catch {
-            uiSpritesConfig = .fallback
+        let screensConfig = ConfigStore.loadOrFallback("screens", fallback: ScreensConfig.fallback) {
+            try ScreensConfig.loadFromBundle()
         }
+
+        let wordCatalog = ConfigStore.loadOrFallback("words", fallback: WordCatalog.fallback) {
+            let loaded = try WordCatalog.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        }
+
+        let letterCatalog = ConfigStore.loadOrFallback("letters", fallback: LetterCatalog.fallback) {
+            let loaded = try LetterCatalog.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        }
+
         await report(0.10)
 
         let playerStore: PlayerStateStore
@@ -315,11 +287,9 @@ final class AppSession {
         try? await playerStore.purgeOrphans()
         await report(0.14)
 
-        let terrainCatalog: TerrainCatalog
-        if let loaded = try? TerrainCatalog.loadFromBundle() {
-            terrainCatalog = loaded
-        } else {
-            terrainCatalog = TerrainCatalog(
+        let terrainCatalog = ConfigStore.loadOrFallback(
+            "terrain",
+            fallback: TerrainCatalog(
                 sprite: FloorSpriteConfig(
                     root: "Sprites/Floor",
                     sheet: "floor-spritesheet",
@@ -332,15 +302,17 @@ final class AppSession {
                 ),
                 terrains: [:]
             )
+        ) {
+            try TerrainCatalog.loadFromBundle()
         }
         await report(configEnd)
 
         let spriteLibrary = SpriteLibrary()
         let backgroundLibrary = BackgroundLibrary()
         // Level-select planet art: load at game open so the picker has sprites ready.
-        let uiEntries = uiSpritesConfig.sprites.compactMap { id, entry -> (String, SpriteConfig)? in
-            guard let sprite = entry.sprite else { return nil }
-            return (id, sprite)
+        let uiEntries = LevelCatalog.loadFromBundle().compactMap { level -> (String, SpriteConfig)? in
+            guard let sprite = level.sprite else { return nil }
+            return (level.resourceName, sprite)
         }
         let uiEnd = uiEntries.isEmpty ? configEnd : 0.26
         if !uiEntries.isEmpty {
@@ -355,7 +327,7 @@ final class AppSession {
         }
         await report(uiEnd)
 
-        // All screen backgrounds referenced by Screens/*.yaml.
+        // All screen backgrounds referenced by screens.yaml.
         let screenBackgroundNames = BackgroundLibrary.screenBackgroundNames()
         let backgroundsEnd = screenBackgroundNames.isEmpty ? uiEnd : 0.32
         await backgroundLibrary.ensureLoaded(names: screenBackgroundNames) { local in
@@ -370,22 +342,37 @@ final class AppSession {
         }
         await report(1)
 
+        do {
+            let levels = try LevelCatalog.loadFromBundle().map { descriptor in
+                try LevelConfig.loadFromBundle(
+                    named: descriptor.resourceName,
+                    subdirectory: LevelCatalog.subdirectory,
+                    wordCatalog: wordCatalog,
+                    letterCatalog: letterCatalog
+                )
+            }
+            try ConfigAudit.run(
+                app: appConfig,
+                levels: levels,
+                enemies: enemyConfig,
+                terrain: terrainCatalog,
+                items: itemsConfig,
+                words: wordCatalog,
+                letters: letterCatalog,
+                audio: soundSettings,
+                screens: screensConfig,
+                player: playerConfig
+            )
+        } catch {
+            assertionFailure("ConfigAudit failed: \(error)")
+        }
+
         return AppSession(
-            seedConfig: seedConfig,
-            selectedLevelName: selectedLevelName,
-            selectedLevelArtifact: selectedLevelArtifact,
-            selectedLevelMusic: selectedLevelMusic,
-            selectedGameMusic: selectedGameMusic,
-            selectedLevelBackground: selectedLevelBackground,
-            selectedGameBackground: selectedGameBackground,
-            selectedPitConfig: selectedPitConfig,
-            selectedGateConfig: selectedGateConfig,
-            selectedDestructibleWallConfig: selectedDestructibleWallConfig,
-            selectedLetterSoundRepeatSeconds: selectedLetterSoundRepeatSeconds,
+            appConfig: appConfig,
+            selectedLevel: selectedLevel,
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             itemsConfig: itemsConfig,
-            uiSpritesConfig: uiSpritesConfig,
             playerStore: playerStore,
             saveService: saveService,
             hasCompatibleSave: false,
@@ -402,18 +389,23 @@ final class AppSession {
             levelSubdirectory: LevelCatalog.subdirectory
         )
         try loaded.config.validate()
-        seedConfig = loaded.config
-        selectedLevelName = loaded.level.name
+        appConfig = loaded.config
+        applySelectedLevel(loaded.level, resourceName: resourceName)
+    }
+
+    private func applySelectedLevel(_ level: LevelConfig, resourceName: String?) {
+        selectedLevel = level
+        selectedLevelName = level.name
         selectedLevelResourceName = resourceName
-        selectedLevelArtifact = loaded.level.artifact
-        selectedLevelMusic = loaded.level.music
-        selectedGameMusic = loaded.level.gameMusic
-        selectedLevelBackground = loaded.level.background
-        selectedGameBackground = loaded.level.gameBackground
-        selectedPitConfig = loaded.level.pit
-        selectedGateConfig = loaded.level.gate
-        selectedDestructibleWallConfig = loaded.level.destructibleWall
-        selectedLetterSoundRepeatSeconds = loaded.level.letterSoundRepeatSeconds
+        selectedLevelArtifact = level.artifact
+        selectedLevelMusic = level.music
+        selectedGameMusic = level.gameMusic
+        selectedLevelBackground = level.background
+        selectedGameBackground = level.gameBackground
+        selectedPitConfig = level.pit
+        selectedGateConfig = level.gate
+        selectedDestructibleWallConfig = level.destructibleWall
+        selectedLetterSoundRepeatSeconds = level.letterSoundRepeatSeconds
     }
 
     func bindPlayer(name: String) async throws {
@@ -570,7 +562,10 @@ final class AppSession {
         await persistPlayerState()
     }
 
-    nonisolated static func isContinueEligible(savedWorld: GameWorld?, config: WorldSeedConfig) -> Bool {
+    nonisolated static func isContinueEligible(
+        savedWorld: GameWorld?,
+        config: WorldGenerationConfig
+    ) -> Bool {
         guard let savedWorld else { return false }
         return WorldLoader.isCompatibleSave(savedWorld, with: config)
     }
@@ -581,25 +576,25 @@ final class AppSession {
             return
         }
 
-        var config = seedConfig
+        var generation = generationConfig
         if let lastLevel = playerState?.lastLevelStarted {
             if let loaded = try? WorldLoader.loadConfigAndLevelFromBundle(
                 levelNamed: lastLevel,
                 levelSubdirectory: LevelCatalog.subdirectory
             ) {
-                config = loaded.config
+                generation = .compose(app: loaded.config, level: loaded.level)
             }
         }
 
         hasCompatibleSave = await Self.probeCompatibleSave(
             saveService: saveService,
-            config: config
+            config: generation
         )
     }
 
     private static func probeCompatibleSave(
         saveService: GameSaveService,
-        config: WorldSeedConfig
+        config: WorldGenerationConfig
     ) async -> Bool {
         do {
             let saved = try await saveService.load()

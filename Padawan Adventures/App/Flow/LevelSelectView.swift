@@ -123,7 +123,7 @@ struct LevelSelectView: View {
                 }
                 .environment(
                     \.overlayDismissSeconds,
-                    session.seedConfig.display.overlayDismissSeconds
+                    session.appConfig.display.overlayDismissSeconds
                 )
             }
 
@@ -145,7 +145,7 @@ struct LevelSelectView: View {
         .playScreenMusic("level_select")
         .fullScreenCover(isPresented: $showPassword) {
             DadModePasswordView(
-                expectedPassword: session.seedConfig.dadModePassword,
+                expectedPassword: session.appConfig.dadModePassword,
                 onSuccess: {
                     showPassword = false
                     Task {
@@ -221,9 +221,9 @@ struct LevelSelectView: View {
         )
         let isLocked = !dadModeUnlocked && state == .locked
         let fill = Color(uiColor: UIColor(hex: level.color) ?? .gray)
-        let planetImage = level.levelSprite.flatMap {
-            session.spriteLibrary.uiImage(id: $0, named: "idle")
-        }
+        let planetImage = level.sprite != nil
+            ? session.spriteLibrary.uiImage(id: level.resourceName, named: "idle")
+            : nil
 
         return Button {
             handleLevelTap(level)

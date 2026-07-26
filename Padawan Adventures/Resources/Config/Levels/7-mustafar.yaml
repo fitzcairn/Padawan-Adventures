@@ -1,11 +1,17 @@
 # Terrain: A volatile, young planet characterized by active volcanic mountain ranges, massive rivers of molten lava, and jagged, obsidian rock formations.
 # Monsters:
 # - lava_flea: Native Lava Fleas that live in magma rivers and can be dangerous when agitated.
-inherits: base_level
+inherits: _defaults
 name: Mustafar
 order: 7
 color: "#E65100"
-level_sprite: mustafar
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 7-mustafar
+      atlas: 7-mustafar-atlas
 artifact: flame.fill
 floor_sprites:
   - dirt-scorched

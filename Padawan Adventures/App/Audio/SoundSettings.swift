@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-/// Global sound settings from `Resources/Config/sound.yaml`.
+/// Global sound settings from `Resources/Config/audio.yaml`.
 nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
     var fadeSeconds: Double
     /// Shared one-shot FX (`win`, `lose`, `error`, `correct`, …).
@@ -41,13 +41,12 @@ nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
     }
 
     static func loadFromBundle(
-        named name: String = "sound",
+        named name: String = "audio",
         withExtension ext: String = "yaml"
     ) throws -> SoundSettings {
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw MusicConfigError.missingResource
-        }
-        let data = try Data(contentsOf: url)
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: nil)
+        )
         return try decode(from: data)
     }
 

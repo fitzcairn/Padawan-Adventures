@@ -46,6 +46,19 @@ struct LetterCatalogTests {
         }
     }
 
+    @Test func derivesEmptyEntriesAndHonorsOverrides() throws {
+        let catalog = try LetterCatalog.decode(from: """
+        letters:
+          a:
+          b:
+            name: custom_b_name
+        """)
+        #expect(catalog.letter(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
+        #expect(catalog.letter(named: "a")?.name == "sfx_letter_a_name")
+        #expect(catalog.letter(named: "b")?.pronunciation == "sfx_letter_b_pronunciation")
+        #expect(catalog.letter(named: "b")?.name == "custom_b_name")
+    }
+
     @Test func bundleLettersProvidesWallVocabulary() throws {
         let catalog = try LetterCatalog.loadFromBundle()
         #expect(catalog.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])

@@ -63,10 +63,9 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
         named name: String = "items",
         withExtension ext: String = "yaml"
     ) throws -> ItemsConfig {
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw ItemsConfigError.missingResource
-        }
-        let data = try Data(contentsOf: url)
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: "Catalogs")
+        )
         return try decode(from: data)
     }
 

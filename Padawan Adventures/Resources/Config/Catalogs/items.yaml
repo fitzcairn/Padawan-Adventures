@@ -1,0 +1,32 @@
+# Item sprite definitions. Top-level keys match pickup ids in level YAML (`pickups:`).
+
+energy:
+  sprite:
+    root: Sprites/Items/Energy
+    chroma: black
+    scale: 0.6
+    animations:
+      idle:
+        sheet: energy-spritesheet
+        atlas: energy-atlas
+
+health:
+  sprite:
+    root: Sprites/Items/Health
+    chroma: black
+    scale: 0.4
+    animations:
+      idle:
+        sheet: health-spritesheet
+        atlas: health-atlas
+
+treasure:
+  sprite:
+    root: Sprites/Effects/Explosion
+    # Near-white sheet background (often #FBFBFB–#FEFEFE), not pure #FFFFFF.
+    chroma: white_item
+    scale: 0.4
+    animations:
+      idle:
+        sheet: explosion-spritesheet
+        atlas: explosion-atlas

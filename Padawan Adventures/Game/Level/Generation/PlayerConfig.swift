@@ -77,10 +77,9 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         named name: String = "player",
         withExtension ext: String = "yaml"
     ) throws -> PlayerConfig {
-        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else {
-            throw PlayerConfigError.missingResource
-        }
-        let data = try Data(contentsOf: url)
+        let data = try ConfigStore.data(
+            at: ConfigPath(basename: name, subdirectory: nil)
+        )
         return try decode(from: data)
     }
 

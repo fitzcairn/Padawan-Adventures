@@ -1,0 +1,24 @@
+# Per-screen music cues and optional still backgrounds.
+version: 1
+screens:
+  menu:
+    music: menu_theme
+  loading:
+    # Continue whatever was playing (nothing at cold start).
+    music: none
+  preparing:
+    # Keep menu music while the world is prepared.
+    music: none
+  settings:
+    music: menu_theme
+  level_select:
+    music: menu_theme
+    background: level_screen_bg
+  player_select:
+    music: menu_theme
+  player_selfie:
+    music: menu_theme
+  you_win:
+    music: victory
+  defeat:
+    music: silence

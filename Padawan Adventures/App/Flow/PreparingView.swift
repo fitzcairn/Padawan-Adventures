@@ -31,7 +31,7 @@ struct PreparingView: View {
             progress = value
         }
         progress = 1
-        let isoConfig = session.seedConfig.display.makeIsometricConfig()
+        let isoConfig = session.appConfig.display.makeIsometricConfig()
         let game = GameViewController(
             world: world,
             isoConfig: isoConfig,

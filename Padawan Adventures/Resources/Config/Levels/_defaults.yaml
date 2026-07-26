@@ -1,0 +1,101 @@
+# Level generation knobs (merged into world.yaml at load).
+# Includes map size, generation, enemy spawn, pickups, and puzzle FX.
+# Per-level files in Config/Levels/ inherit from this base via `inherits: _defaults`.
+
+name: Level
+
+# Background music track basename (Resources/Audio/Music/<name>.m4a).
+# Use `none` to keep previous music, or `silence` to fade out.
+music: level_theme
+
+# Per-minigame music for this level (same cue rules as `music:`).
+game_music:
+  combat: combat_theme
+  pit: pit_theme
+  destructible_wall: destructible_wall_theme
+  gate: gate_theme
+
+# Optional still backgrounds (Resources/Backgrounds/<name>.png), loaded at level start.
+# background: some_level_bg
+# game_background:
+#   combat: some_combat_bg
+#   pit: some_pit_bg
+#   destructible_wall: some_wall_bg
+#   gate: some_gate_bg
+
+# How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
+letter_sound_repeat_seconds: 3
+
+width: 20
+height: 20
+
+# Default base floor terrain palette (overridden per level). Ids from terrain.yaml.
+# Accents/specials are placed from each base's lists in terrain.yaml.
+floor_sprites:
+  - grass
+  - grass-lush
+  - dirt-arid
+  - dirt-dry
+  - sand
+  - plank
+  - water
+
+# Chance a floor gets an accent overlay (when not replaced by a corner special).
+# For now, turn this off -- enable per-level.
+floor_accent_prob: 0
+# Chance a corner floor (exactly 2 orthogonal floor neighbors) becomes a special.
+corner_special_prob: 0.55
+
+algorithm: rooms_doors
+# How many rooms to place on the map.
+room_count: 5
+corridor_width: 2
+room:
+  min_room_size: 4
+  max_room_size: 12
+  # Probability that a room contains a pit (at most one pit area per room).
+  pit_chance: 0.2
+  # Pit area size: mean tile count, capped at max.
+  pit_mean_size: 2
+  pit_max_size: 5
+  wall_destructible_chance: 0.8
+  # Probability that a door opening becomes a gate strip.
+  gate_chance: 0.5
+
+# Pit spelling-hop minigame (triggered on pit tile contact).
+# Stars awarded on win = number of letters in the solved word.
+# `fx.win` / `fx.lose` override shared `sound.yaml` when present.
+pit:
+  timer_seconds: 30
+  num_padding_letters: 6
+  words: [cat, dog, star]
+  fx: { win: sfx_pit_yay, lose: sfx_pit_fall }
+
+# Gate letter-puzzle minigame (triggered on gate tile contact).
+# Stars awarded on win = number of letters in the solved word.
+# `fx.opened` plays in the world when the gate strip opens; optional `fx.win` overrides shared win SFX.
+gate:
+  timer_seconds: 30
+  num_padding_letters: 6
+  words: [cat, dog, star, gate, open]
+  fx: { opened: sfx_gate_opened }
+
+# Destructible-wall letter-matching minigame (triggered on soft-wall contact).
+# Stars awarded on win = number of letters chosen for the round.
+# `fx.destroyed` plays in the world when the soft wall is destroyed; optional `fx.correct` overrides shared correct SFX.
+destructible_wall:
+  timer_seconds: 30
+  letter_count_min: 4
+  letter_count_max: 8
+  letters: [a, b, c, d, e, f, g, h]
+  fx: { destroyed: sfx_wall_destroyed }
+
+enemies:
+  types: [horranth]
+  spawn_chance_per_room: 0.8
+
+pickups:
+  health:
+    spawn_chance_per_room: 0.8
+  energy:
+    spawn_chance_per_room: 0.8

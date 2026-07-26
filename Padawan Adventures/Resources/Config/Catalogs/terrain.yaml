@@ -1,0 +1,287 @@
+# Floor terrain catalog — single-frame tiles from floor-spritesheet (2048×2048, 11×11).
+# Sheet PNG + atlas JSON under Resources/Sprites/Floor/.
+
+version: 1
+
+sprite:
+  root: Sprites/Floor
+  sheet: floor-spritesheet
+  atlas_root: Sprites/Floor
+  atlas: atlas
+  # Near-white sheet background (often #FEFEFE); key pure white with a soft feather
+  # band, then smooth the alpha matte so fringe doesn't leave a white halo.
+  chroma_key: "#FFFFFF"
+  chroma_key_tolerance: 18
+  chroma_key_feather: 48
+  chroma_key_smooth: 2
+
+palettes:
+  desert:
+    accents: [boulder-red, boulder, boulder-wide, boulder-gray, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed]
+    specials: [canyon, canyon-mesa, canyon-ridge, meteorite, meteorite-cracked]
+  dirt:
+    accents: [rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed, stump, stump-mossy, stump-carved, stump-small]
+    specials: []
+  dirt_volcanic:
+    accents: [rock-volcanic, rock-lava, ember-spark, rocks-dark, stump, stump-mossy, stump-carved, stump-small]
+    specials: []
+  grassland:
+    accents: [flora-teal, flora-sparse, flora-odd, flowers, flowers-green, flowers-yellow, log, log-mossy, stump, stump-mossy, stump-carved, stump-small, rocks-small, rocks-pile, rocks-scatter, rocks-gray, rocks-dark, rocks-mixed]
+    specials: [foliage, foliage-lush, foliage-dark, mushroom, mushroom-blue, mushroom-glow, flora-mixed]
+  industrial:
+    accents: [sparkle, sparkle-soft, ember-spark]
+    specials: []
+  swamp:
+    accents: [log, log-mossy, stump, stump-mossy, stump-carved, stump-small, flora-teal, flora-sparse, flora-odd]
+    specials: [swamp-roots]
+  water:
+    accents: [sparkle, sparkle-soft, whirlpool]
+    specials: []
+  ice_water:
+    accents: [ice-block, sparkle, sparkle-soft]
+    specials: [ice-cave, ice-arch, ice-shard, ice-crystal, ice-spire, ice-ridge, iceberg, iceberg-tall, iceberg-wide, glacier, glacier-wall]
+  empty:
+    accents: []
+    specials: []
+
+terrains:
+  # Sandy desert dune
+  sand:          { row: 0, col: 0, palette: desert }
+  # Soft sand dune
+  sand-dune:     { row: 0, col: 1, palette: desert }
+  # Rippled sand
+  sand-ripple:   { row: 0, col: 2, palette: desert }
+  # Flat desert sand
+  sand-flat:     { row: 0, col: 3, palette: desert }
+  # Warm sand tile
+  sand-warm:     { row: 0, col: 4, palette: desert }
+  # Smooth sand
+  sand-smooth:   { row: 0, col: 5, palette: desert }
+  # Drifting sand
+  sand-drift:    { row: 0, col: 6, palette: desert }
+  # Shadowed sand
+  sand-shadow:   { row: 0, col: 7, palette: desert }
+  # Soft pale sand
+  sand-soft:     { row: 0, col: 8, palette: desert }
+  # Pale desert sand
+  sand-pale:     { row: 0, col: 9, palette: desert }
+  # Dusty sand
+  sand-dusty:    { row: 0, col: 10, palette: desert }
+
+  # Arid brown dirt
+  dirt-arid:     { row: 1, col: 0, palette: dirt }
+  # Dry packed dirt
+  dirt-dry:      { row: 1, col: 1, palette: dirt }
+  # Cracked dry earth
+  dirt-cracked:  { row: 1, col: 2, palette: dirt }
+  # Hard arid dirt
+  dirt-hard:     { row: 1, col: 3, palette: dirt }
+  # Barren dry dirt
+  dirt-barren:   { row: 1, col: 4, palette: dirt }
+  # Rough arid dirt
+  dirt-rough:    { row: 1, col: 5, palette: dirt }
+  # Dark dry dirt
+  dirt-dark:     { row: 1, col: 6, palette: dirt_volcanic }
+  # Scorched dry dirt
+  dirt-scorched: { row: 1, col: 7, palette: dirt_volcanic }
+  # Dirt with sparse weeds
+  dirt-weed:     { row: 1, col: 8, palette: dirt }
+  # Dirt with tiny sprouts
+  dirt-sprout:   { row: 1, col: 9, palette: dirt }
+  # Patchy arid dirt
+  dirt-patchy:   { row: 1, col: 10, palette: dirt }
+
+  # Green grass tile
+  grass:         { row: 2, col: 0, palette: grassland }
+  # Lush green grass
+  grass-lush:    { row: 2, col: 1, palette: grassland }
+  # Thick meadow grass
+  grass-thick:   { row: 2, col: 2, palette: grassland }
+  # Wooden plank floor
+  plank:         { row: 2, col: 3, palette: grassland }
+  # Worn wooden planks
+  plank-worn:    { row: 2, col: 4, palette: grassland }
+  # Tufted grass
+  grass-tuft:    { row: 2, col: 5, palette: grassland }
+  # Soft green grass
+  grass-soft:    { row: 2, col: 6, palette: grassland }
+  # Metal grate floor
+  grate:         { row: 2, col: 7, palette: industrial }
+  # Metal vent grate
+  grate-vent:    { row: 2, col: 8, palette: industrial }
+  # Metal floor panel
+  grate-panel:   { row: 2, col: 9, palette: industrial }
+  # Metal mesh floor
+  grate-mesh:    { row: 2, col: 10, palette: industrial }
+
+  # Dense leafy foliage
+  foliage:       { row: 3, col: 0, type: special }
+  # Lush foliage mound
+  foliage-lush:  { row: 3, col: 1, type: special }
+  # Dark green foliage
+  foliage-dark:  { row: 3, col: 2, type: special }
+  # Cluster of mushrooms
+  mushroom:      { row: 3, col: 3, type: special }
+  # Glowing blue mushrooms
+  mushroom-blue: { row: 3, col: 4, type: special }
+  # Bright glowing fungi
+  mushroom-glow: { row: 3, col: 5, type: special }
+  # Mixed alien flora
+  flora-mixed:   { row: 3, col: 6, type: special }
+  # Rusted metal tile
+  metal-rust:    { row: 3, col: 7, palette: industrial }
+  # Teal alien flora
+  flora-teal:    { row: 3, col: 8, type: accent }
+  # Sparse plant cluster
+  flora-sparse:  { row: 3, col: 9, type: accent }
+  # Odd teal flora
+  flora-odd:     { row: 3, col: 10, type: accent }
+
+  # Small flowering plant
+  flowers:       { row: 4, col: 0, type: accent }
+  # Leafy flower patch
+  flowers-green: { row: 4, col: 1, type: accent }
+  # Yellow flower cluster
+  flowers-yellow: { row: 4, col: 2, type: accent }
+  # Hollow fallen log
+  log:           { row: 4, col: 3, type: accent }
+  # Mossy hollow log
+  log-mossy:     { row: 4, col: 4, type: accent }
+  # Small rock cluster
+  rocks-small:   { row: 4, col: 5, type: accent }
+  # Small rock pile
+  rocks-pile:    { row: 4, col: 6, type: accent }
+  # Scattered stones
+  rocks-scatter: { row: 4, col: 7, type: accent }
+  # Gray pebble cluster
+  rocks-gray:    { row: 4, col: 8, type: accent }
+  # Dark small rocks
+  rocks-dark:    { row: 4, col: 9, type: accent }
+  # Mixed small rocks
+  rocks-mixed:   { row: 4, col: 10, type: accent }
+
+  # Tree stump
+  stump:         { row: 5, col: 0, type: accent }
+  # Mossy tree stump
+  stump-mossy:   { row: 5, col: 1, type: accent }
+  # Carved tree stump
+  stump-carved:  { row: 5, col: 2, type: accent }
+  # Small tree stump
+  stump-small:   { row: 5, col: 3, type: accent }
+  # Reddish rock formation
+  boulder-red:   { row: 5, col: 4, type: accent }
+  # Large brown boulder
+  boulder:       { row: 5, col: 5, type: accent }
+  # Wide rock formation
+  boulder-wide:  { row: 5, col: 6, type: accent }
+  # Gray boulder
+  boulder-gray:  { row: 5, col: 7, type: accent }
+  # Block of ice
+  ice-block:     { row: 5, col: 8, type: accent }
+  # Dark volcanic rock
+  rock-volcanic: { row: 5, col: 9, type: accent }
+  # Volcanic rock with lava
+  rock-lava:     { row: 5, col: 10, type: accent }
+
+  # Ice cave arch
+  ice-cave:      { row: 6, col: 0, type: special }
+  # Jagged ice arch
+  ice-arch:      { row: 6, col: 1, type: special }
+  # Ice shard formation
+  ice-shard:     { row: 6, col: 2, type: special }
+  # Ice crystal cluster
+  ice-crystal:   { row: 6, col: 3, type: special }
+  # Ice spire
+  ice-spire:     { row: 6, col: 4, type: special }
+  # Icy ridge
+  ice-ridge:     { row: 6, col: 5, type: special }
+  # Desert canyon mesa
+  canyon:        { row: 6, col: 6, type: special }
+  # Sandstone mesa
+  canyon-mesa:   { row: 6, col: 7, type: special }
+  # Canyon ridge
+  canyon-ridge:  { row: 6, col: 8, type: special }
+  # Dark meteorite
+  meteorite:     { row: 6, col: 9, type: special }
+  # Cracked meteorite
+  meteorite-cracked: { row: 6, col: 10, type: special }
+
+  # Large iceberg
+  iceberg:       { row: 7, col: 0, type: special }
+  # Tall iceberg
+  iceberg-tall:  { row: 7, col: 1, type: special }
+  # Glacier formation
+  glacier:       { row: 7, col: 2, type: special }
+  # Glacier wall
+  glacier-wall:  { row: 7, col: 3, type: special }
+  # Wide iceberg
+  iceberg-wide:  { row: 7, col: 4, type: special }
+  # Sparkle particle
+  sparkle:       { row: 7, col: 5, type: accent }
+  # Soft sparkle particle
+  sparkle-soft:  { row: 7, col: 6, type: accent }
+  # Ember spark particle
+  ember-spark:   { row: 7, col: 7, type: accent }
+  # Blue whirlpool
+  whirlpool:     { row: 7, col: 8, type: accent }
+
+  # Murky swamp water
+  swamp:         { row: 8, col: 0, palette: swamp }
+  # Swamp with mangrove roots
+  swamp-roots:   { row: 8, col: 1, type: special }
+  # Dark swamp water
+  swamp-dark:    { row: 8, col: 2, palette: swamp }
+  # Murky bog water
+  swamp-murky:   { row: 8, col: 3, palette: swamp }
+  # Deep swamp water
+  swamp-deep:    { row: 8, col: 4, palette: swamp }
+  # Swamp with reeds
+  swamp-reed:    { row: 8, col: 5, palette: swamp }
+  # Dark metal floor
+  metal-floor:   { row: 8, col: 6, palette: industrial }
+  # Worn metal floor
+  metal-worn:    { row: 8, col: 7, palette: industrial }
+  # Weathered metal panel
+  metal-panel:   { row: 8, col: 8, palette: industrial }
+
+  # Swamp pool
+  swamp-pool:    { row: 9, col: 0, palette: swamp }
+  # Still swamp water
+  swamp-still:   { row: 9, col: 1, palette: swamp }
+  # Algae swamp water
+  swamp-algae:   { row: 9, col: 2, palette: swamp }
+  # Green swamp water
+  swamp-green:   { row: 9, col: 3, palette: swamp }
+  # Shaded swamp water
+  swamp-shade:   { row: 9, col: 4, palette: swamp }
+  # Glowing swamp water
+  swamp-glow:    { row: 9, col: 5, palette: swamp }
+  # Dark recessed pit
+  pit:           { row: 9, col: 6, palette: empty }
+  # Blue glowing pit
+  pit-blue:      { row: 9, col: 7, palette: empty }
+  # Deep glowing pit
+  pit-deep:      { row: 9, col: 8, palette: empty }
+
+  # Green water tile
+  water-green:   { row: 10, col: 0, palette: water }
+  # Blue water
+  water:         { row: 10, col: 1, palette: water }
+  # Clear blue water
+  water-clear:   { row: 10, col: 2, palette: water }
+  # Bright blue water
+  water-bright:  { row: 10, col: 3, palette: water }
+  # Water with ice
+  water-ice:     { row: 10, col: 4, palette: ice_water }
+  # Shallow blue water
+  water-shallow: { row: 10, col: 5, palette: water }
+  # Reflective metal tile
+  reflect:       { row: 10, col: 6, palette: industrial }
+  # Cool reflective tile
+  reflect-cool:  { row: 10, col: 7, palette: industrial }
+  # Reflective panel
+  reflect-panel: { row: 10, col: 8, palette: industrial }
+  # Glass-like water
+  water-glass:   { row: 10, col: 9, palette: ice_water }
+  # Mirror-like water
+  water-mirror:  { row: 10, col: 10, palette: ice_water }

@@ -43,7 +43,7 @@ struct ScreenConfigTests {
         #expect(config.musicCue == .silence)
     }
 
-    @Test func loadsLevelSelectScreenMusicAlongsidePlanetSprites() throws {
+    @Test func loadsLevelSelectScreenMusicFromScreensYAML() throws {
         let config = try ScreenConfig.loadFromBundle(named: "level_select")
         #expect(config.musicCue == .track("menu_theme"))
     }
@@ -68,5 +68,19 @@ struct ScreenConfigTests {
         #expect(config.background == "level_screen_bg")
     }
 
-}
+    @Test func loadsBundledScreensYAML() throws {
+        let all = try ScreensConfig.loadFromBundle()
+        #expect(all.version == 1)
+        #expect(all.screens["menu"]?.musicCue == .track("menu_theme"))
+        #expect(all.screens["loading"]?.musicCue == .unchanged)
+        #expect(all.screens["preparing"]?.musicCue == .unchanged)
+        #expect(all.screens["level_select"]?.background == "level_screen_bg")
+        #expect(all.screens.count == 9)
+    }
 
+    @Test func missingScreenNameThrows() {
+        #expect(throws: ConfigError.missingResource(file: "screens.yaml#does_not_exist")) {
+            try ScreenConfig.loadFromBundle(named: "does_not_exist")
+        }
+    }
+}

@@ -6,7 +6,7 @@ import UIKit
 
 @MainActor
 struct CoverBackgroundNodeTests {
-    @Test func setCoverBackgroundInstallsCoverSizedNode() async {
+    @Test func setCoverBackgroundInstallsCoverSizedNode() async throws {
         let library = BackgroundLibrary()
         await library.ensureLoaded(named: "level_screen_bg")
         guard let image = library.uiImage(named: "level_screen_bg") else {

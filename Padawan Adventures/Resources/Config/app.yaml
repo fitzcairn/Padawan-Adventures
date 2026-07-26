@@ -1,0 +1,19 @@
+# Padawan Adventures — world (v1)
+# All procedural generation is deterministic for a given seed + params.
+# Use `seed: time` for a fresh seed from the clock on each new game, or a number to fix it.
+# Map size, generation knobs, and enemy spawn live in Levels/_defaults.yaml / Config/Levels/*.yaml.
+
+version: 1
+seed: time
+
+# 4-digit Dad mode unlock on the level select screen.
+dad_mode_password: "1234"
+
+world:
+  stories: 1
+
+display:
+  tile_width: 80
+  tile_height: 40
+  # Auto-dismiss delay for overlays (tap also dismisses).
+  overlay_dismiss_seconds: 6

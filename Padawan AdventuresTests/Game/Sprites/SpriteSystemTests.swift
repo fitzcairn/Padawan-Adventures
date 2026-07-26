@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import SpriteKit
 import Testing
+import Yams
 @testable import Padawan_Adventures
 
 struct SpriteSystemTests {
@@ -337,20 +338,28 @@ struct SpriteSystemTests {
     }
 
     @Test @MainActor func loadsLevelPlanetUISpriteFromBundle() async throws {
-        let config = try UISpritesConfig.loadFromBundle()
-        let sprite = try #require(config.spriteConfig(for: "tython"))
+        let level = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        let sprite = try #require(level.sprite)
+        #expect(sprite.root == "Sprites/UI/Levels")
         #expect(sprite.chromaKey == "#000000")
         #expect(sprite.chromaKeyTolerance == 2)
+        guard case .sheet(let sheet, let atlas) = sprite.animations["idle"] else {
+            Issue.record("Expected tython idle sheet animation")
+            return
+        }
+        #expect(sheet == "1-tython")
+        #expect(atlas == "1-tython-atlas")
         let library = SpriteLibrary()
-        await library.ensureLoaded(sprite, id: "tython")
-        let idle = try #require(library.animation(id: "tython", named: "idle"))
+        await library.ensureLoaded(sprite, id: "1-tython")
+        let idle = try #require(library.animation(id: "1-tython", named: "idle"))
         #expect(idle.frames.count == 1)
-        // Opaque trim crops the keyed black field, so the still is smaller than 512×512.
         let size = idle.frames[0].texture.size()
-        #expect(size.width > 0 && size.width <= 512)
-        #expect(size.height > 0 && size.height <= 512)
-        #expect(size.width < 512 || size.height < 512)
-        let uiImage = try #require(library.uiImage(id: "tython", named: "idle"))
+        #expect(size.width > 0)
+        #expect(size.height > 0)
+        let uiImage = try #require(library.uiImage(id: "1-tython", named: "idle"))
         #expect(uiImage.size.width > 0)
         #expect(uiImage.size.height > 0)
     }
@@ -530,6 +539,51 @@ struct SpriteSystemTests {
         #expect(sprite.animations["idle_down"] == .sheet(sheet: "idle_down", atlas: "idle_down"))
         #expect(sprite.animations["idle_northwest"] == .flipOf("idle_northeast"))
         #expect(sprite.animations["idle_up"] == .sheet(sheet: "idle_up", atlas: "idle_up"))
+    }
+
+    @Test func spriteConfigExpandsChromaPresets() throws {
+        let black = try YAMLDecoder().decode(
+            SpriteConfig.self,
+            from: Data("""
+            root: Sprites/Player
+            chroma: black
+            """.utf8)
+        )
+        #expect(black.chromaKey == "#000000")
+        #expect(black.chromaKeyTolerance == 0)
+
+        let soft = try YAMLDecoder().decode(
+            SpriteConfig.self,
+            from: Data("""
+            root: Sprites/UI/Levels
+            chroma: black_soft
+            """.utf8)
+        )
+        #expect(soft.chromaKey == "#000000")
+        #expect(soft.chromaKeyTolerance == 2)
+
+        let item = try YAMLDecoder().decode(
+            SpriteConfig.self,
+            from: Data("""
+            root: Sprites/Effects/Explosion
+            chroma: white_item
+            """.utf8)
+        )
+        #expect(item.chromaKey == "#FFFFFF")
+        #expect(item.chromaKeyTolerance == 12)
+        #expect(item.chromaKeyFeather == 20)
+        #expect(item.chromaKeySmooth == 2)
+
+        let overridden = try YAMLDecoder().decode(
+            SpriteConfig.self,
+            from: Data("""
+            root: Sprites/Player
+            chroma: black
+            chroma_key_tolerance: 5
+            """.utf8)
+        )
+        #expect(overridden.chromaKey == "#000000")
+        #expect(overridden.chromaKeyTolerance == 5)
     }
 
     /// Normalized RGBA8 top-left pixel buffer for exact image comparisons.

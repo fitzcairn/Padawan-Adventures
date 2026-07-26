@@ -51,8 +51,9 @@
 			);
 			explicitFolders = (
 				Resources/Backgrounds,
+				Resources/Config/Catalogs,
 				Resources/Config/Levels,
-				Resources/Config/Screens,
+				Resources/Sprites/Enemies,
 			);
 			path = "Padawan Adventures";
 			sourceTree = "<group>";

@@ -2,11 +2,17 @@
 # Monsters:
 # - katarn: Ferocious, quadrupedal mammalian predators with sharp horns and claws.
 # - kinrath: Aggressive, venomous arachnids that weave traps in the lower branches.
-inherits: base_level
+inherits: _defaults
 name: Kashyyyk
 order: 4
 color: "#1B5E20"
-level_sprite: kashyyyk
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 4-kashyyyk
+      atlas: 4-kashyyyk-atlas
 artifact: tree.fill
 floor_sprites:
   - grass

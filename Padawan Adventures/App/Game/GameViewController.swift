@@ -59,7 +59,7 @@ final class GameViewController: LandscapeHostingController {
             isoConfig: isoConfig,
             enemyConfig: session.enemyConfig,
             playerFx: session.playerConfig.fx,
-            worldFx: session.seedConfig.fx,
+            worldFx: session.selectedLevel.worldFx,
             spriteLibrary: session.spriteLibrary,
             playerSpriteConfig: session.playerConfig.sprite,
             itemsConfig: session.itemsConfig,
@@ -263,7 +263,7 @@ final class GameViewController: LandscapeHostingController {
     private func makeOverlayHost<Content: View>(
         @ViewBuilder content: @escaping (_ finish: @escaping () -> Void) -> Content
     ) -> FullscreenOverlayHost {
-        let dismissSeconds = session.seedConfig.display.overlayDismissSeconds
+        let dismissSeconds = session.appConfig.display.overlayDismissSeconds
         return FullscreenOverlayHost { finish in
             content(finish)
                 .environment(\.overlayDismissSeconds, dismissSeconds)

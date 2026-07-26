@@ -61,21 +61,14 @@ struct FloorSpriteSystemTests {
           chroma_key_tolerance: 18
           chroma_key_feather: 48
           chroma_key_smooth: 2
-        terrains:
-          grass:
-            row: 2
-            col: 0
-            type: base
+        palettes:
+          grassland:
             accents: [flowers, stump]
             specials: [foliage]
-          flowers:
-            row: 4
-            col: 0
-            type: accent
-          foliage:
-            row: 3
-            col: 0
-            type: special
+        terrains:
+          grass: { row: 2, col: 0, palette: grassland }
+          flowers: { row: 4, col: 0, type: accent }
+          foliage: { row: 3, col: 0, type: special }
         """
         let catalog = try TerrainCatalog.decode(from: Data(yaml.utf8))
         #expect(catalog.sprite.root == "Sprites/Floor")
@@ -304,8 +297,7 @@ struct FloorSpriteSystemTests {
     }
 
     @Test func proceduralGeneratorAssignsFloorTerrainsWithAccentsAndSpecials() throws {
-        var config = WorldSeedConfig(
-            version: 1,
+        var config = WorldGenerationConfig(
             seed: 7,
             world: .init(width: 30, height: 30, stories: 1),
             generation: .init(
@@ -320,7 +312,6 @@ struct FloorSpriteSystemTests {
                     gateChance: 0.5
                 )
             ),
-            extensions: nil,
             floorSprites: ["grass"],
             floorAccentProb: 1.0,
             cornerSpecialProb: 1.0

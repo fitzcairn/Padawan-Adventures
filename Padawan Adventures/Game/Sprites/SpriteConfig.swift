@@ -21,6 +21,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case root
+        case chroma
         case chromaKey = "chroma_key"
         case chromaKeyTolerance = "chroma_key_tolerance"
         case chromaKeyFeather = "chroma_key_feather"
@@ -29,6 +30,19 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         case anchorCorrection = "anchor_correction"
         case animations
     }
+
+    /// Named chroma presets for YAML `chroma:` (explicit `chroma_key*` still override).
+    nonisolated static let chromaPresets: [String: (
+        key: String,
+        tolerance: UInt8,
+        feather: UInt8,
+        smooth: Int
+    )] = [
+        "black": ("#000000", 0, 0, 0),
+        "black_soft": ("#000000", 2, 0, 0),
+        "white_soft": ("#FFFFFF", 18, 48, 2),
+        "white_item": ("#FFFFFF", 12, 20, 2),
+    ]
 
     init(
         root: String,
@@ -53,15 +67,54 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         root = try container.decode(String.self, forKey: .root)
-        chromaKey = try container.decodeIfPresent(String.self, forKey: .chromaKey)
-        let decodedTolerance = try container.decodeIfPresent(Int.self, forKey: .chromaKeyTolerance) ?? 0
-        chromaKeyTolerance = UInt8(clamping: max(0, decodedTolerance))
-        let decodedFeather = try container.decodeIfPresent(Int.self, forKey: .chromaKeyFeather) ?? 0
-        chromaKeyFeather = UInt8(clamping: max(0, decodedFeather))
-        chromaKeySmooth = max(0, try container.decodeIfPresent(Int.self, forKey: .chromaKeySmooth) ?? 0)
+
+        var key: String?
+        var tolerance: UInt8 = 0
+        var feather: UInt8 = 0
+        var smooth = 0
+
+        if let presetName = try container.decodeIfPresent(String.self, forKey: .chroma)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !presetName.isEmpty,
+           let preset = Self.chromaPresets[presetName] {
+            key = preset.key
+            tolerance = preset.tolerance
+            feather = preset.feather
+            smooth = preset.smooth
+        }
+
+        if let explicit = try container.decodeIfPresent(String.self, forKey: .chromaKey) {
+            key = explicit
+        }
+        if let decodedTolerance = try container.decodeIfPresent(Int.self, forKey: .chromaKeyTolerance) {
+            tolerance = UInt8(clamping: max(0, decodedTolerance))
+        }
+        if let decodedFeather = try container.decodeIfPresent(Int.self, forKey: .chromaKeyFeather) {
+            feather = UInt8(clamping: max(0, decodedFeather))
+        }
+        if let decodedSmooth = try container.decodeIfPresent(Int.self, forKey: .chromaKeySmooth) {
+            smooth = max(0, decodedSmooth)
+        }
+
+        chromaKey = key
+        chromaKeyTolerance = tolerance
+        chromaKeyFeather = feather
+        chromaKeySmooth = smooth
         scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1
         anchorCorrection = try container.decodeIfPresent(Double.self, forKey: .anchorCorrection) ?? 0
         animations = try container.decodeIfPresent([String: SpriteAnimationSource].self, forKey: .animations) ?? [:]
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(root, forKey: .root)
+        try container.encodeIfPresent(chromaKey, forKey: .chromaKey)
+        try container.encode(Int(chromaKeyTolerance), forKey: .chromaKeyTolerance)
+        try container.encode(Int(chromaKeyFeather), forKey: .chromaKeyFeather)
+        try container.encode(chromaKeySmooth, forKey: .chromaKeySmooth)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(anchorCorrection, forKey: .anchorCorrection)
+        try container.encode(animations, forKey: .animations)
     }
 }
 

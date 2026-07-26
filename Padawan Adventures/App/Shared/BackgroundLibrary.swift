@@ -57,22 +57,12 @@ final class BackgroundLibrary {
         onProgress?(1)
     }
 
-    /// Collects unique non-empty `background:` values from every Screens YAML.
+    /// Collects unique non-empty `background:` values from `screens.yaml`.
     static func screenBackgroundNames(bundle: Bundle = .main) -> [String] {
-        let urls = screenConfigURLs(bundle: bundle)
-        var names: [String] = []
-        for url in urls {
-            let resourceName = url.deletingPathExtension().lastPathComponent
-            guard let config = try? ScreenConfig.loadFromBundle(
-                named: resourceName,
-                withExtension: url.pathExtension.isEmpty ? "yaml" : url.pathExtension
-            ) else {
-                continue
-            }
-            if let background = normalizedName(config.background) {
-                names.append(background)
-            }
+        guard let screens = try? ScreensConfig.loadFromBundle(bundle: bundle) else {
+            return []
         }
+        let names = screens.screens.values.compactMap { normalizedName($0.background) }
         return uniqueNames(names)
     }
 
@@ -111,27 +101,5 @@ final class BackgroundLibrary {
             }
         }
         return nil
-    }
-
-    private static func screenConfigURLs(bundle: Bundle) -> [URL] {
-        if let nested = bundle.urls(
-            forResourcesWithExtension: "yaml",
-            subdirectory: ScreenConfig.subdirectory
-        ), !nested.isEmpty {
-            return nested
-        }
-        // Flattened bundle: known screen basenames at root.
-        let known = [
-            "loading",
-            "preparing",
-            "menu",
-            "settings",
-            "level_select",
-            "player_select",
-            "player_selfie",
-            "you_win",
-            "defeat",
-        ]
-        return known.compactMap { bundle.url(forResource: $0, withExtension: "yaml") }
     }
 }

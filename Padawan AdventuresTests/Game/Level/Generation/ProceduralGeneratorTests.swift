@@ -2,9 +2,8 @@ import Testing
 @testable import Padawan_Adventures
 
 struct ProceduralGeneratorTests {
-    private func roomsDoorsConfig(seed: UInt64 = 99, roomCount: Int = 6) -> WorldSeedConfig {
-        WorldSeedConfig(
-            version: 1,
+    private func roomsDoorsConfig(seed: UInt64 = 99, roomCount: Int = 6) -> WorldGenerationConfig {
+        WorldGenerationConfig(
             seed: seed,
             world: .init(width: 30, height: 30, stories: 1),
             generation: .init(
@@ -18,8 +17,7 @@ struct ProceduralGeneratorTests {
                     wallDestructibleChance: 0.3,
                     gateChance: 0.5
                 )
-            ),
-            extensions: nil
+            )
         )
     }
 
@@ -668,28 +666,31 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func yamlSeedUsesRoomsDoorsAlgorithm() throws {
-        let yaml = """
+    @Test func yamlLevelUsesRoomsDoorsAlgorithm() throws {
+        let appYAML = """
         version: 1
         seed: 42
         world:
-          width: 24
-          height: 24
           stories: 1
-        generation:
-          algorithm: rooms_doors
-          room_count: 6
-          corridor_width: 2
-          room:
-            min_room_size: 4
-            max_room_size: 6
-            pit_chance: 0.2
-            wall_destructible_chance: 0.2
-            gate_chance: 0.5
-        extensions: {}
+        """
+        let levelYAML = """
+        name: Rooms Doors
+        width: 24
+        height: 24
+        algorithm: rooms_doors
+        room_count: 6
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 6
+          pit_chance: 0.2
+          wall_destructible_chance: 0.2
+          gate_chance: 0.5
         """
 
-        let config = try WorldLoader.decodeConfig(from: yaml)
+        let app = try WorldLoader.decodeConfig(from: appYAML)
+        let level = try LevelConfig.decode(from: levelYAML)
+        let config = WorldGenerationConfig.compose(app: app, level: level)
         #expect(config.generation.algorithm == "rooms_doors")
         #expect(config.generation.room.minRoomSize == 4)
         #expect(config.generation.room.maxRoomSize == 6)

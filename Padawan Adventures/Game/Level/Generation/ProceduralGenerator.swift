@@ -21,7 +21,24 @@ nonisolated struct ProceduralGenerator: Sendable {
     private static let maxValidityAttempts = 48
 
     func generate(
-        from config: WorldSeedConfig,
+        from app: AppConfig,
+        level: LevelConfig,
+        playerConfig: PlayerConfig = .fallback,
+        enemyConfig: EnemyConfig = .fallback,
+        terrainPlacement: TerrainPlacementTable = .empty,
+        onProgress: (@Sendable (Double) -> Void)? = nil
+    ) throws -> GameWorld {
+        try generate(
+            from: .compose(app: app, level: level),
+            playerConfig: playerConfig,
+            enemyConfig: enemyConfig,
+            terrainPlacement: terrainPlacement,
+            onProgress: onProgress
+        )
+    }
+
+    func generate(
+        from config: WorldGenerationConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
         terrainPlacement: TerrainPlacementTable = .empty,
@@ -37,7 +54,24 @@ nonisolated struct ProceduralGenerator: Sendable {
     }
 
     func generateDetailed(
-        from config: WorldSeedConfig,
+        from app: AppConfig,
+        level: LevelConfig,
+        playerConfig: PlayerConfig = .fallback,
+        enemyConfig: EnemyConfig = .fallback,
+        terrainPlacement: TerrainPlacementTable = .empty,
+        onProgress: (@Sendable (Double) -> Void)? = nil
+    ) throws -> GenerationResult {
+        try generateDetailed(
+            from: .compose(app: app, level: level),
+            playerConfig: playerConfig,
+            enemyConfig: enemyConfig,
+            terrainPlacement: terrainPlacement,
+            onProgress: onProgress
+        )
+    }
+
+    func generateDetailed(
+        from config: WorldGenerationConfig,
         playerConfig: PlayerConfig = .fallback,
         enemyConfig: EnemyConfig = .fallback,
         terrainPlacement: TerrainPlacementTable = .empty,
@@ -115,7 +149,7 @@ nonisolated struct ProceduralGenerator: Sendable {
 
     private func generateAttempt(
         seed: UInt64,
-        config: WorldSeedConfig,
+        config: WorldGenerationConfig,
         playerConfig: PlayerConfig,
         enemyConfig: EnemyConfig,
         terrainPlacement: TerrainPlacementTable,
@@ -451,7 +485,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         tiles: inout [[[Tile]]],
         entities: inout [GameEntity],
         occupied: inout Set<GridCoord>,
-        config: WorldSeedConfig,
+        config: WorldGenerationConfig,
         enemyConfig: EnemyConfig,
         rng: inout SeededGenerator
     ) {
@@ -644,7 +678,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         in rooms: [GeneratedRoom],
         excludingRoomID: Int,
         tiles: [[[Tile]]],
-        config: WorldSeedConfig,
+        config: WorldGenerationConfig,
         enemyConfig: EnemyConfig,
         occupied: inout Set<GridCoord>,
         rng: inout SeededGenerator
@@ -740,7 +774,7 @@ nonisolated struct ProceduralGenerator: Sendable {
 
     /// One roll per room per kind (except the spawn room); visible room floor only.
     private func spawnPickups(
-        _ config: WorldSeedConfig.PickupsSpawnConfig,
+        _ config: LevelConfig.PickupsSpawnConfig,
         in rooms: [GeneratedRoom],
         excludingRoomID: Int,
         tiles: [[[Tile]]],

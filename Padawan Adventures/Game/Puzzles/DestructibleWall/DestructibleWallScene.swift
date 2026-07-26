@@ -318,18 +318,13 @@ final class DestructibleWallScene: SKScene {
     }
 
     private var correctSoundTrackID: String? {
-        if let override = puzzleConfig.correctSound?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
-            return override
-        }
-        return SoundEffectsController.shared.commonFx.trackID(for: "correct")
+        SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx).trackID(for: "correct")
     }
 
     private func playCorrectSound() {
-        SoundEffectsController.shared.playCommon(
+        SoundEffectsController.shared.play(
             event: "correct",
-            override: puzzleConfig.correctSound
+            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
         )
     }
 

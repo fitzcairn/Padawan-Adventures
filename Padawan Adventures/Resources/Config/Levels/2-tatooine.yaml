@@ -2,11 +2,17 @@
 # Monsters:
 # - krayt_dragon: Krayt Dragons lurking in the desert wastes.
 # - tusken_raider: Tusken Raiders (Sand People).
-inherits: base_level
+inherits: _defaults
 name: Tatooine
 order: 2
 color: "#D4A017"
-level_sprite: tatooine
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 2-tatooine
+      atlas: 2-tatooine-atlas
 artifact: sun.max.fill
 floor_sprites:
   - sand

@@ -436,9 +436,10 @@ final class PitScene: SKScene {
             actions.append(SKAction.wait(forDuration: audioDuration(for: spellingID)))
         }
         actions.append(SKAction.run { [weak self] in
-            SoundEffectsController.shared.playCommon(
+            guard let self else { return }
+            SoundEffectsController.shared.play(
                 event: "win",
-                override: self?.puzzleConfig.winSound
+                from: SoundEffectsController.shared.commonFx.merging(self.puzzleConfig.fx)
             )
         })
         let word = engine.targetWord
@@ -453,7 +454,10 @@ final class PitScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
-        SoundEffectsController.shared.playCommon(event: "lose", override: puzzleConfig.failSound)
+        SoundEffectsController.shared.play(
+            event: "lose",
+            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
+        )
         pitDelegate?.pitSceneDidLose()
     }
 

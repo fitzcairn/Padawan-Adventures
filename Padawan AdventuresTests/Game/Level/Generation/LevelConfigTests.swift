@@ -24,9 +24,9 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.8
           gate_chance: 0.5
         gate:
-          gate_opened: sfx_gate_opened
+          fx: { opened: sfx_gate_opened }
         destructible_wall:
-          wall_destroyed: sfx_wall_destroyed
+          fx: { destroyed: sfx_wall_destroyed }
         enemies:
           type: horranth
           spawn_chance_per_room: 0.8
@@ -247,13 +247,13 @@ struct LevelConfigTests {
           wall_destructible_chance: 0
           gate_chance: 0
         gate:
-          gate_opened: sfx_gate_opened_alt
+          fx: { opened: sfx_gate_opened_alt }
         destructible_wall:
-          wall_destroyed: sfx_wall_destroyed_alt
+          fx: { destroyed: sfx_wall_destroyed_alt }
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.gate.gateOpened == "sfx_gate_opened_alt")
-        #expect(level.destructibleWall.wallDestroyed == "sfx_wall_destroyed_alt")
+        #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened_alt")
+        #expect(level.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed_alt")
         #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
         #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened_alt")
     }
@@ -263,14 +263,14 @@ struct LevelConfigTests {
         inherits: base_level
         name: Level 1
         destructible_wall:
-          wall_destroyed: sfx_wall_destroyed_alt
+          fx: { destroyed: sfx_wall_destroyed_alt }
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.destructibleWall.wallDestroyed == "sfx_wall_destroyed_alt")
-        #expect(level.gate.gateOpened == "sfx_gate_opened")
+        #expect(level.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed_alt")
+        #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
         #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
         #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
     }
@@ -306,7 +306,7 @@ struct LevelConfigTests {
         inherits: missing_base
         name: Level 1
         """
-        #expect(throws: WorldSeedError.missingResource) {
+        #expect(throws: ConfigError.unknownParent(file: "level", parent: "missing_base")) {
             try LevelConfig.decode(from: child, parents: [:])
         }
     }
@@ -327,7 +327,7 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func worldYAMLAllowsMissingGenerationAndMapSize() throws {
+    @Test func appYAMLOmitsGenerationAndMapSize() throws {
         let yaml = """
         version: 1
         seed: time
@@ -336,10 +336,13 @@ struct LevelConfigTests {
         """
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.seed == nil)
-        #expect(config.world.width == LevelConfig.fallback.width)
-        #expect(config.world.height == LevelConfig.fallback.height)
-        #expect(config.generation == LevelConfig.fallback.generation)
+        #expect(config.world.stories == 1)
         try config.validate()
+
+        let generation = WorldGenerationConfig.compose(app: config, level: .fallback)
+        #expect(generation.world.width == LevelConfig.fallback.width)
+        #expect(generation.world.height == LevelConfig.fallback.height)
+        #expect(generation.generation == LevelConfig.fallback.generation)
     }
 
     @Test func deepMergeNestedDictionariesPreferChild() {
@@ -356,7 +359,7 @@ struct LevelConfigTests {
             ],
             "name": "Level 3",
         ]
-        let merged = LevelConfig.deepMerge(base, overwriting: child)
+        let merged = ConfigStore.deepMerge(base, overwriting: child)
         #expect(merged["name"] as? String == "Level 3")
         #expect(merged["room_count"] as? Int == 100)
         let room = merged["room"] as? [String: Any]
@@ -376,10 +379,8 @@ struct LevelConfigTests {
         ])
         #expect(levels.map(\.order) == [1, 2, 3, 4, 5, 6, 7, 8])
         #expect(levels.allSatisfy { !$0.color.isEmpty })
-        #expect(levels.map(\.levelSprite) == [
-            "tython", "tatooine", "ilum", "kashyyyk",
-            "dagobah", "coruscant", "mustafar", "geonosis",
-        ])
+        #expect(levels.allSatisfy { $0.sprite != nil })
+        #expect(levels.map { $0.sprite?.root } == Array(repeating: "Sprites/UI/Levels", count: 8))
 
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
@@ -388,7 +389,9 @@ struct LevelConfigTests {
         #expect(tython.name == "Tython")
         #expect(tython.order == 1)
         #expect(tython.color == "#2E7D32")
-        #expect(tython.levelSprite == "tython")
+        #expect(tython.sprite?.root == "Sprites/UI/Levels")
+        #expect(tython.sprite?.chromaKey == "#000000")
+        #expect(tython.sprite?.chromaKeyTolerance == 2)
         #expect(tython.enemies?.types == ["horranth"])
         #expect(tython.width == 20)
         #expect(tython.roomCount == 5)
@@ -444,11 +447,19 @@ struct LevelConfigTests {
             name: Ilum
             order: 3
             color: "#81D4FA"
-            level_sprite: ilum
+            sprite:
+              root: Sprites/UI/Levels
+              chroma: black_soft
+              animations:
+                idle:
+                  sheet: 3-ilum
+                  atlas: 3-ilum-atlas
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.levelSprite == "ilum")
+        #expect(level.sprite?.root == "Sprites/UI/Levels")
+        #expect(level.sprite?.chromaKey == "#000000")
+        #expect(level.sprite?.chromaKeyTolerance == 2)
     }
 
     @Test func decodesGatePuzzleConfigWithDefaultsWhenOmitted() throws {
@@ -655,7 +666,8 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.gate.timerSeconds == 30)
-        #expect(tython.gate.winSound == nil)
+        #expect(tython.gate.fx.trackID(for: "win") == nil)
+        #expect(tython.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
         #expect(tython.gate.numPaddingLetters == 6)
         #expect(tython.gate.words.map(\.word).contains("gate"))
         #expect(tython.gate.words.contains {
@@ -671,8 +683,8 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.timerSeconds == 30)
-        #expect(tython.pit.winSound == "sfx_pit_yay")
-        #expect(tython.pit.failSound == "sfx_pit_fall")
+        #expect(tython.pit.fx.trackID(for: "win") == "sfx_pit_yay")
+        #expect(tython.pit.fx.trackID(for: "lose") == "sfx_pit_fall")
         #expect(tython.pit.numPaddingLetters == 6)
         #expect(tython.pit.words.map(\.word) == ["cat", "dog", "star"])
         #expect(tython.pit.words.contains {
@@ -697,21 +709,20 @@ struct LevelConfigTests {
           wall_destructible_chance: 0
           gate_chance: 0
         pit:
-          win_sound: sfx_pit_win_alt
-          fail_sound: sfx_pit_lose_alt
+          fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
           words: [cat]
         gate:
-          win_sound: sfx_gate_win_alt
+          fx: { win: sfx_gate_win_alt, opened: sfx_gate_opened }
           words: [dog]
         destructible_wall:
-          correct_sound: sfx_wall_correct_alt
+          fx: { correct: sfx_wall_correct_alt, destroyed: sfx_wall_destroyed }
           letters: [a]
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.pit.winSound == "sfx_pit_win_alt")
-        #expect(level.pit.failSound == "sfx_pit_lose_alt")
-        #expect(level.gate.winSound == "sfx_gate_win_alt")
-        #expect(level.destructibleWall.correctSound == "sfx_wall_correct_alt")
+        #expect(level.pit.fx.trackID(for: "win") == "sfx_pit_win_alt")
+        #expect(level.pit.fx.trackID(for: "lose") == "sfx_pit_lose_alt")
+        #expect(level.gate.fx.trackID(for: "win") == "sfx_gate_win_alt")
+        #expect(level.destructibleWall.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
     }
 
     @Test func decodesPitWordIDsFromCatalog() throws {
@@ -836,9 +847,9 @@ struct LevelConfigTests {
           pit_chance: 0
           wall_destructible_chance: 0
           gate_chance: 0
+        letter_sound_repeat_seconds: 8
         destructible_wall:
           timer_seconds: 15
-          letter_sound_repeat_seconds: 8
           incorrect_replay_delay_seconds: 2
           letter_count_min: 2
           letter_count_max: 3
@@ -846,7 +857,7 @@ struct LevelConfigTests {
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.destructibleWall.timerSeconds == 15)
-        #expect(level.destructibleWall.letterSoundRepeatSeconds == 8)
+        #expect(level.letterSoundRepeatSeconds == 8)
         #expect(level.destructibleWall.incorrectReplayDelaySeconds == 2)
         #expect(level.destructibleWall.letterCountMin == 2)
         #expect(level.destructibleWall.letterCountMax == 3)
@@ -861,9 +872,9 @@ struct LevelConfigTests {
     @Test func inheritsDestructibleWallConfigFromBase() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
+        letter_sound_repeat_seconds: 6
         destructible_wall:
           timer_seconds: 22
-          letter_sound_repeat_seconds: 6
           letter_count_min: 1
           letter_count_max: 2
           letters: [a, c]
@@ -877,7 +888,7 @@ struct LevelConfigTests {
             parents: ["base_level": base]
         )
         #expect(level.destructibleWall.timerSeconds == 22)
-        #expect(level.destructibleWall.letterSoundRepeatSeconds == 6)
+        #expect(level.letterSoundRepeatSeconds == 6)
         #expect(level.destructibleWall.letterCountMin == 1)
         #expect(level.destructibleWall.letterCountMax == 2)
         #expect(level.destructibleWall.letters.map(\.letter) == ["a", "c"])
@@ -886,16 +897,16 @@ struct LevelConfigTests {
     @Test func childCanOverrideInheritedDestructibleWallLetterIDs() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
+        letter_sound_repeat_seconds: 6
         destructible_wall:
           timer_seconds: 22
-          letter_sound_repeat_seconds: 6
           letters: [a]
         """
         let child = """
         inherits: base_level
         name: Level 1
+        letter_sound_repeat_seconds: 12
         destructible_wall:
-          letter_sound_repeat_seconds: 12
           letters: [b]
         """
         let level = try LevelConfig.decode(
@@ -903,7 +914,7 @@ struct LevelConfigTests {
             parents: ["base_level": base]
         )
         #expect(level.destructibleWall.timerSeconds == 22)
-        #expect(level.destructibleWall.letterSoundRepeatSeconds == 12)
+        #expect(level.letterSoundRepeatSeconds == 12)
         // Letter id lists replace (not deep-merge) on inherit.
         #expect(level.destructibleWall.letters.map(\.letter) == ["b"])
     }
@@ -1006,16 +1017,16 @@ struct LevelConfigTests {
         )
         #expect(tython.destructibleWall.timerSeconds == 30)
         #expect(tython.letterSoundRepeatSeconds == 3)
-        #expect(tython.destructibleWall.letterSoundRepeatSeconds == 3)
         #expect(tython.destructibleWall.incorrectReplayDelaySeconds == 1)
         #expect(tython.destructibleWall.letterCountMin == 4)
         #expect(tython.destructibleWall.letterCountMax == 8)
-        #expect(tython.destructibleWall.correctSound == nil)
+        #expect(tython.destructibleWall.fx.trackID(for: "correct") == nil)
+        #expect(tython.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed")
         #expect(tython.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
         #expect(tython.artifact == "leaf.fill")
     }
 
-    @Test func topLevelLetterSoundRepeatOverridesWallNestedValue() throws {
+    @Test func decodesTopLevelLetterSoundRepeatSeconds() throws {
         let yaml = """
         name: Level 1
         width: 20
@@ -1031,11 +1042,175 @@ struct LevelConfigTests {
           wall_destructible_chance: 0
           gate_chance: 0
         destructible_wall:
-          letter_sound_repeat_seconds: 9
           letters: [a]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.letterSoundRepeatSeconds == 3)
-        #expect(level.destructibleWall.letterSoundRepeatSeconds == 3)
+    }
+
+    @Test func decodesEnemiesSpawnBlock() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        enemies:
+          types: [horranth, ice_spider]
+          spawn_chance_per_room: 0.8
+        """
+
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.enemies?.types == ["horranth", "ice_spider"])
+        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.spawnChancePerRoom == 0.8)
+        try level.validate()
+    }
+
+    @Test func rejectsInvalidEnemySpawnChance() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        enemies:
+          type: horranth
+          spawn_chance_per_room: 1.5
+        """
+
+        #expect(throws: WorldSeedError.invalidEnemySpawnChance(1.5)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func decodesPickupsSpawnBlock() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        pickups:
+          health:
+            spawn_chance_per_room: 0.8
+          energy:
+            spawn_chance_per_room: 0.5
+        """
+
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
+        #expect(level.pickups?.energy?.spawnChancePerRoom == 0.5)
+        try level.validate()
+    }
+
+    @Test func rejectsInvalidPickupSpawnChance() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        pickups:
+          health:
+            spawn_chance_per_room: -0.1
+        """
+
+        #expect(throws: WorldSeedError.invalidPickupSpawnChance(kind: .health, chance: -0.1)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsInvalidPitSize() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.2
+          pit_mean_size: 6
+          pit_max_size: 5
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        """
+
+        #expect(throws: WorldSeedError.invalidRoomPitSize(mean: 6, max: 5)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsInvalidGateChance() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 1.5
+        """
+
+        #expect(throws: WorldSeedError.invalidRoomGateChance(1.5)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsCorridorNarrowerThanTwo() throws {
+        let yaml = """
+        name: Level
+        width: 10
+        height: 10
+        algorithm: rooms_doors
+        room_count: 2
+        corridor_width: 1
+        room:
+          min_room_size: 4
+          max_room_size: 12
+          pit_chance: 0.0
+          wall_destructible_chance: 0.0
+          gate_chance: 0.0
+        """
+
+        #expect(throws: WorldSeedError.corridorTooNarrow(1)) {
+            try LevelConfig.decode(from: yaml)
+        }
     }
 }

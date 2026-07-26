@@ -1,11 +1,17 @@
 # Terrain: A murky, low-lying world defined by expansive, misty swamps, dense bogs, and gnarled, ancient trees.
 # Monsters:
 # - dragonsnake: Aquatic predator — the giant Dragonsnake of the swamps.
-inherits: base_level
+inherits: _defaults
 name: Dagobah
 order: 5
 color: "#556B2F"
-level_sprite: dagobah
+sprite:
+  root: Sprites/UI/Levels
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 5-dagobah
+      atlas: 5-dagobah-atlas
 artifact: drop.fill
 floor_sprites:
   - swamp

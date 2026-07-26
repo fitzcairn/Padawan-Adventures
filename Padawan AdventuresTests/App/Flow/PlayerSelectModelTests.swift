@@ -11,7 +11,8 @@ struct PlayerSelectModelTests {
         let store = try PlayerStateStore(directoryURL: directory)
         let saveService = try GameSaveService(directoryURL: directory)
         return AppSession(
-            seedConfig: AppSession.fallbackConfig(),
+            appConfig: AppSession.fallbackAppConfig(),
+            selectedLevel: .fallback,
             playerStore: store,
             saveService: saveService
         )

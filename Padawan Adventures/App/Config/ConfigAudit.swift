@@ -1,0 +1,395 @@
+import Foundation
+import UIKit
+
+nonisolated enum ConfigAuditError: Error, Equatable, CustomStringConvertible {
+    case detail(String)
+
+    var description: String {
+        switch self {
+        case .detail(let message):
+            return message
+        }
+    }
+}
+
+/// Cross-file checks no single decoder can see (ids, audio basenames, sprites, symbols).
+nonisolated enum ConfigAudit {
+    private static let audioExtensions = ["m4a", "caf", "wav", "mp3"]
+    private static let imageExtensions = ["png", "jpg", "jpeg"]
+
+    /// Cross-file checks no single decoder can see. Throws `ConfigAuditError` with details.
+    @MainActor
+    static func run(
+        app: AppConfig,
+        levels: [LevelConfig],
+        enemies: EnemyConfig,
+        terrain: TerrainCatalog,
+        items: ItemsConfig,
+        words: WordCatalog,
+        letters: LetterCatalog,
+        audio: SoundSettings,
+        screens: ScreensConfig?,
+        player: PlayerConfig? = nil,
+        bundle: Bundle = .main
+    ) throws {
+        _ = app
+        _ = items
+
+        var problems: [String] = []
+
+        for (index, level) in levels.enumerated() {
+            let label = "levels[\(index)] (\(level.name))"
+            problems.append(contentsOf: checkFloorSprites(level: level, terrain: terrain, label: label))
+            problems.append(contentsOf: checkEnemyTypes(level: level, enemies: enemies, label: label))
+            problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
+            problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
+            problems.append(contentsOf: checkArtifact(level.artifact, label: label))
+            problems.append(contentsOf: checkLevelSprite(level.sprite, label: label, bundle: bundle))
+            problems.append(contentsOf: checkMusicCue(level.musicCue, kind: "music", label: label, bundle: bundle))
+            problems.append(contentsOf: checkMusicCue(
+                level.gameMusic.combatCue, kind: "game_music.combat", label: label, bundle: bundle
+            ))
+            problems.append(contentsOf: checkMusicCue(
+                level.gameMusic.pitCue, kind: "game_music.pit", label: label, bundle: bundle
+            ))
+            problems.append(contentsOf: checkMusicCue(
+                level.gameMusic.destructibleWallCue,
+                kind: "game_music.destructible_wall",
+                label: label,
+                bundle: bundle
+            ))
+            problems.append(contentsOf: checkMusicCue(
+                level.gameMusic.gateCue, kind: "game_music.gate", label: label, bundle: bundle
+            ))
+            problems.append(contentsOf: checkFXTable(
+                level.pit.fx, kind: "pit.fx", label: label, bundle: bundle
+            ))
+            problems.append(contentsOf: checkFXTable(
+                level.gate.fx, kind: "gate.fx", label: label, bundle: bundle
+            ))
+            problems.append(contentsOf: checkFXTable(
+                level.destructibleWall.fx, kind: "destructible_wall.fx", label: label, bundle: bundle
+            ))
+        }
+
+        problems.append(contentsOf: checkFXTable(audio.fx, kind: "audio.fx", label: "audio", bundle: bundle))
+
+        if let player {
+            problems.append(contentsOf: checkFXTable(
+                player.fx, kind: "player.fx", label: "player", bundle: bundle
+            ))
+            if let sprite = player.sprite {
+                problems.append(contentsOf: checkSpriteConfig(
+                    sprite, label: "player.sprite", bundle: bundle
+                ))
+            }
+        }
+
+        for (enemyID, enemy) in enemies.enemies.sorted(by: { $0.key < $1.key }) {
+            problems.append(contentsOf: checkFXTable(
+                enemy.fx, kind: "fx", label: "enemies.\(enemyID)", bundle: bundle
+            ))
+            for (letter, shot) in enemy.shotTypes.sorted(by: { $0.key < $1.key }) {
+                problems.append(contentsOf: checkFXTable(
+                    shot.fx,
+                    kind: "shot_types.\(letter).fx",
+                    label: "enemies.\(enemyID)",
+                    bundle: bundle
+                ))
+            }
+        }
+
+        for word in words.words {
+            problems.append(contentsOf: requireFX(
+                word.spelling, kind: "words.\(word.word).spelling", bundle: bundle
+            ))
+            for (prefix, track) in word.progressive.sorted(by: { $0.key < $1.key }) {
+                problems.append(contentsOf: requireFX(
+                    track, kind: "words.\(word.word).progressive.\(prefix)", bundle: bundle
+                ))
+            }
+        }
+
+        for letter in letters.letters {
+            problems.append(contentsOf: requireFX(
+                letter.pronunciation, kind: "letters.\(letter.letter).pronunciation", bundle: bundle
+            ))
+            problems.append(contentsOf: requireFX(
+                letter.name, kind: "letters.\(letter.letter).name", bundle: bundle
+            ))
+        }
+
+        if let screens {
+            for (screenID, screen) in screens.screens.sorted(by: { $0.key < $1.key }) {
+                problems.append(contentsOf: checkMusicCue(
+                    screen.musicCue,
+                    kind: "music",
+                    label: "screens.\(screenID)",
+                    bundle: bundle
+                ))
+            }
+        }
+
+        if !problems.isEmpty {
+            throw ConfigAuditError.detail(problems.joined(separator: "; "))
+        }
+    }
+
+    // MARK: - Checks
+
+    private static func checkFloorSprites(
+        level: LevelConfig,
+        terrain: TerrainCatalog,
+        label: String
+    ) -> [String] {
+        var problems: [String] = []
+        for id in level.floorSprites {
+            guard let def = terrain.terrains[id] else {
+                problems.append("\(label).floor_sprites: unknown terrain id '\(id)'")
+                continue
+            }
+            if def.type != .base {
+                problems.append(
+                    "\(label).floor_sprites: '\(id)' has type \(def.type.rawValue), expected base"
+                )
+            }
+        }
+        return problems
+    }
+
+    private static func checkEnemyTypes(
+        level: LevelConfig,
+        enemies: EnemyConfig,
+        label: String
+    ) -> [String] {
+        guard let spawn = level.enemies else { return [] }
+        return spawn.types.compactMap { typeID in
+            guard enemies.type(named: typeID) != nil else {
+                return "\(label).enemies.types: unknown enemy id '\(typeID)'"
+            }
+            return nil
+        }
+    }
+
+    private static func checkWordIDs(
+        level: LevelConfig,
+        words: WordCatalog,
+        label: String
+    ) -> [String] {
+        var problems: [String] = []
+        if let ids = level.pit.wordIDs {
+            for id in ids where words.word(named: id) == nil {
+                problems.append("\(label).pit.words: unknown word id '\(id)'")
+            }
+        }
+        if let ids = level.gate.wordIDs {
+            for id in ids where words.word(named: id) == nil {
+                problems.append("\(label).gate.words: unknown word id '\(id)'")
+            }
+        }
+        return problems
+    }
+
+    private static func checkLetterIDs(
+        level: LevelConfig,
+        letters: LetterCatalog,
+        label: String
+    ) -> [String] {
+        guard let ids = level.destructibleWall.letterIDs else { return [] }
+        return ids.compactMap { id in
+            guard letters.letter(named: id) != nil else {
+                return "\(label).destructible_wall.letters: unknown letter id '\(id)'"
+            }
+            return nil
+        }
+    }
+
+    @MainActor
+    private static func checkArtifact(_ artifact: String, label: String) -> [String] {
+        let trimmed = artifact.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ["\(label).artifact: must be non-empty"]
+        }
+        guard UIImage(systemName: trimmed) != nil else {
+            return ["\(label).artifact: '\(trimmed)' is not a valid SF Symbol"]
+        }
+        return []
+    }
+
+    private static func checkLevelSprite(
+        _ sprite: SpriteConfig?,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        guard let sprite else { return [] }
+        return checkSpriteConfig(sprite, label: "\(label).sprite", bundle: bundle)
+    }
+
+    private static func checkSpriteConfig(
+        _ sprite: SpriteConfig,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        var problems: [String] = []
+        let root = sprite.root.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !root.isEmpty else {
+            return ["\(label).root: must be non-empty"]
+        }
+
+        var sawSheet = false
+        for (animationName, source) in sprite.animations.sorted(by: { $0.key < $1.key }) {
+            guard case .sheet(let sheet, _) = source else { continue }
+            sawSheet = true
+            let sheetName = sheet.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !sheetName.isEmpty else {
+                problems.append("\(label).animations.\(animationName).sheet: must be non-empty")
+                continue
+            }
+            if !resourceExists(
+                named: sheetName,
+                extensions: imageExtensions,
+                root: root,
+                bundle: bundle
+            ) {
+                problems.append(
+                    "\(label).animations.\(animationName): missing sheet '\(root)/\(sheetName)'"
+                )
+            }
+        }
+
+        if !sawSheet, !directoryHasResources(root: root, bundle: bundle) {
+            problems.append("\(label).root: no bundled resources under '\(root)'")
+        }
+        return problems
+    }
+
+    private static func checkMusicCue(
+        _ cue: MusicCue,
+        kind: String,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        switch cue {
+        case .unchanged, .silence:
+            return []
+        case .track(let basename):
+            return requireMusic(basename, kind: "\(label).\(kind)", bundle: bundle)
+        }
+    }
+
+    private static func checkFXTable(
+        _ table: SoundEffectTable,
+        kind: String,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        table.events.sorted(by: { $0.key < $1.key }).flatMap { event, basename in
+            requireFX(basename, kind: "\(label).\(kind).\(event)", bundle: bundle)
+        }
+    }
+
+    private static func requireMusic(
+        _ basename: String,
+        kind: String,
+        bundle: Bundle
+    ) -> [String] {
+        let trimmed = basename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ["\(kind): music basename must be non-empty"]
+        }
+        if audioExists(basename: trimmed, subdirectories: ["Audio/Music", "Audio"], bundle: bundle) {
+            return []
+        }
+        return ["\(kind): missing music track '\(trimmed)'"]
+    }
+
+    private static func requireFX(
+        _ basename: String,
+        kind: String,
+        bundle: Bundle
+    ) -> [String] {
+        let trimmed = basename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ["\(kind): fx basename must be non-empty"]
+        }
+        if audioExists(basename: trimmed, subdirectories: ["Audio/FX", "Audio"], bundle: bundle) {
+            return []
+        }
+        return ["\(kind): missing fx track '\(trimmed)'"]
+    }
+
+    // MARK: - Bundle helpers
+
+    private static func audioExists(
+        basename: String,
+        subdirectories: [String],
+        bundle: Bundle
+    ) -> Bool {
+        for ext in audioExtensions {
+            for subdirectory in subdirectories {
+                if bundle.url(
+                    forResource: basename,
+                    withExtension: ext,
+                    subdirectory: subdirectory
+                ) != nil {
+                    return true
+                }
+            }
+            if bundle.url(forResource: basename, withExtension: ext) != nil {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func resourceExists(
+        named name: String,
+        extensions: [String],
+        root: String,
+        bundle: Bundle
+    ) -> Bool {
+        let folderHint = animationFolderName(from: name)
+        var subdirectories = [root, "\(root)/\(folderHint)", folderHint, ""]
+        var seen = Set<String>()
+        subdirectories = subdirectories.filter { seen.insert($0).inserted }
+
+        for ext in extensions {
+            for subdirectory in subdirectories {
+                if subdirectory.isEmpty {
+                    if bundle.url(forResource: name, withExtension: ext) != nil {
+                        return true
+                    }
+                } else if bundle.url(
+                    forResource: name,
+                    withExtension: ext,
+                    subdirectory: subdirectory
+                ) != nil {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private static func directoryHasResources(root: String, bundle: Bundle) -> Bool {
+        if let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: root),
+           !urls.isEmpty {
+            return true
+        }
+        for ext in imageExtensions {
+            if let urls = bundle.urls(forResourcesWithExtension: ext, subdirectory: root),
+               !urls.isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func animationFolderName(from resourceName: String) -> String {
+        let suffixes = ["-spritesheet", "-atlas"]
+        for suffix in suffixes where resourceName.hasSuffix(suffix) {
+            return String(resourceName.dropLast(suffix.count))
+        }
+        return resourceName
+    }
+}
