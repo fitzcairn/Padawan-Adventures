@@ -3,21 +3,21 @@ import SpriteKit
 import SwiftUI
 import UIKit
 
-struct DestructibleWallMinigameView: View {
-    let puzzleConfig: DestructibleWallPuzzleConfig
+struct GateLetterMatchMinigameView: View {
+    let puzzleConfig: GateLetterMatchConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
-    let onFinished: (DestructibleWallOutcome) -> Void
+    let onFinished: (GateOutcome) -> Void
 
-    @StateObject private var session: DestructibleWallSessionController
+    @StateObject private var session: GateLetterMatchSessionController
 
     init(
-        puzzleConfig: DestructibleWallPuzzleConfig,
+        puzzleConfig: GateLetterMatchConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
-        onFinished: @escaping (DestructibleWallOutcome) -> Void
+        onFinished: @escaping (GateOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
@@ -25,7 +25,7 @@ struct DestructibleWallMinigameView: View {
         self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
-            wrappedValue: DestructibleWallSessionController(
+            wrappedValue: GateLetterMatchSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
                 letterSpriteSetLibrary: letterSpriteSetLibrary,
@@ -40,11 +40,11 @@ struct DestructibleWallMinigameView: View {
                 Color.black.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    DestructibleWallSpriteView(scene: scene)
+                    GateLetterMatchSpriteView(scene: scene)
                         .ignoresSafeArea()
                 }
 
-                DestructibleWallHUDRepresentable(
+                GateLetterMatchHUDRepresentable(
                     config: hudConfig,
                     timerSeconds: session.timerSeconds,
                     timerUrgent: session.timerUrgent
@@ -53,16 +53,16 @@ struct DestructibleWallMinigameView: View {
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
 
-                if session.showDestroyed {
-                    DestructibleWallResultOverlay(
-                        kind: .destroyed(starsAwarded: session.starsAwarded)
+                if session.showUnlocked {
+                    GateResultOverlay(
+                        kind: .unlocked(starsAwarded: session.starsAwarded)
                     ) {
-                        session.confirmDestroyed(onFinished: onFinished)
+                        session.confirmUnlocked(onFinished: onFinished)
                     }
                 }
 
                 if session.showTimesUp {
-                    DestructibleWallResultOverlay(kind: .timesUp) {
+                    GateResultOverlay(kind: .timesUp) {
                         session.confirmTimesUp(onFinished: onFinished)
                     }
                 }
@@ -74,26 +74,26 @@ struct DestructibleWallMinigameView: View {
                 session.updateSceneSizeIfNeeded(newSize)
             }
         }
-        .accessibilityIdentifier("minigame.destructible_wall")
+        .accessibilityIdentifier("minigame.gate.letter_match")
     }
 }
 
 @MainActor
-final class DestructibleWallSessionController: ObservableObject, DestructibleWallSceneDelegate {
+final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchSceneDelegate {
     @Published var timerSeconds: Int
     @Published var timerUrgent = false
-    @Published var showDestroyed = false
+    @Published var showUnlocked = false
     @Published var showTimesUp = false
     @Published private(set) var starsAwarded = 0
-    @Published private(set) var scene: DestructibleWallScene?
+    @Published private(set) var scene: GateLetterMatchScene?
 
-    private let puzzleConfig: DestructibleWallPuzzleConfig
+    private let puzzleConfig: GateLetterMatchConfig
     private let playerFx: SoundEffectTable
     private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
-        puzzleConfig: DestructibleWallPuzzleConfig,
+        puzzleConfig: GateLetterMatchConfig,
         playerFx: SoundEffectTable,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
         initialTimerSeconds: Int
@@ -110,13 +110,13 @@ final class DestructibleWallSessionController: ObservableObject, DestructibleWal
             return
         }
         let safeSize = Self.sanitizedSize(size)
-        let created = DestructibleWallScene(
+        let created = GateLetterMatchScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
             playerFx: playerFx,
             letterSpriteSetLibrary: letterSpriteSetLibrary
         )
-        created.wallDelegate = self
+        created.letterMatchDelegate = self
         scene = created
     }
 
@@ -133,19 +133,19 @@ final class DestructibleWallSessionController: ObservableObject, DestructibleWal
         CGSize(width: max(size.width, 320), height: max(size.height, 240))
     }
 
-    func confirmDestroyed(onFinished: (DestructibleWallOutcome) -> Void) {
+    func confirmUnlocked(onFinished: (GateOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))
     }
 
-    func confirmTimesUp(onFinished: (DestructibleWallOutcome) -> Void) {
+    func confirmTimesUp(onFinished: (GateOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.lost)
     }
 
-    func destructibleWallSceneDidUpdateTimer(seconds: Int, urgent: Bool) {
+    func gateLetterMatchSceneDidUpdateTimer(seconds: Int, urgent: Bool) {
         guard seconds != timerSeconds || urgent != timerUrgent else { return }
         Task { @MainActor in
             self.timerSeconds = seconds
@@ -153,22 +153,22 @@ final class DestructibleWallSessionController: ObservableObject, DestructibleWal
         }
     }
 
-    func destructibleWallSceneDidWin(starsAwarded: Int) {
+    func gateLetterMatchSceneDidWin(starsAwarded: Int) {
         Task { @MainActor in
             self.starsAwarded = starsAwarded
-            self.showDestroyed = true
+            self.showUnlocked = true
         }
     }
 
-    func destructibleWallSceneDidLose() {
+    func gateLetterMatchSceneDidLose() {
         Task { @MainActor in
             self.showTimesUp = true
         }
     }
 }
 
-private struct DestructibleWallSpriteView: UIViewRepresentable {
-    let scene: DestructibleWallScene
+private struct GateLetterMatchSpriteView: UIViewRepresentable {
+    let scene: GateLetterMatchScene
 
     func makeUIView(context: Context) -> SKView {
         let view = SKView()
@@ -185,13 +185,13 @@ private struct DestructibleWallSpriteView: UIViewRepresentable {
     }
 }
 
-private struct DestructibleWallHUDRepresentable: UIViewRepresentable {
+private struct GateLetterMatchHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
     let timerSeconds: Int
     let timerUrgent: Bool
 
     final class Coordinator {
-        var hud: DestructibleWallHUDView?
+        var hud: GateLetterMatchHUDView?
     }
 
     func makeCoordinator() -> Coordinator {
@@ -203,7 +203,7 @@ private struct DestructibleWallHUDRepresentable: UIViewRepresentable {
         container.backgroundColor = .clear
         container.isUserInteractionEnabled = false
 
-        let hud = DestructibleWallHUDView(config: config, timerSeconds: timerSeconds)
+        let hud = GateLetterMatchHUDView(config: config, timerSeconds: timerSeconds)
         hud.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(hud)
         NSLayoutConstraint.activate([

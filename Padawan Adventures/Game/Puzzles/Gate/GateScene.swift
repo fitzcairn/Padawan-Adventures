@@ -20,7 +20,7 @@ final class GateScene: SKScene {
 
     weak var gateDelegate: GateSceneDelegate?
 
-    private let puzzleConfig: GatePuzzleConfig
+    private let puzzleConfig: GateSpellingConfig
     private let playerFx: SoundEffectTable
 
     private var engine: GateMinigameEngine
@@ -52,7 +52,7 @@ final class GateScene: SKScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GatePuzzleConfig,
+        puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         letterSpriteSetLibrary: LetterSpriteSetLibrary
     ) {

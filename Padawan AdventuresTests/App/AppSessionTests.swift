@@ -168,4 +168,28 @@ struct AppSessionTests {
         await session.refreshContinueEligibility()
         #expect(session.hasCompatibleSave)
     }
+
+    @Test func unlockDadModeRequiresBoundPlayer() async throws {
+        let session = try makeSession()
+        #expect(session.isDadModeUnlocked == false)
+        #expect(await session.unlockDadMode() == false)
+        #expect(session.isDadModeUnlocked == false)
+    }
+
+    @Test func unlockDadModePersistsAndClearsOnProgressionJump() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Dad")
+        #expect(await session.unlockDadMode())
+        #expect(session.isDadModeUnlocked)
+
+        let reloaded = try await session.playerStore.loadState(for: "Dad")
+        #expect(reloaded.dadModeUnlocked)
+
+        let ordered = LevelCatalog.loadFromBundle().map(\.resourceName)
+        guard let target = ordered.dropFirst().first ?? ordered.first else {
+            return
+        }
+        await session.applyDadModeProgression(to: target)
+        #expect(session.isDadModeUnlocked == false)
+    }
 }

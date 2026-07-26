@@ -71,20 +71,17 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
 /// Cumulative encounter stats. Known counters plus an extensible extras bag.
 nonisolated struct PlayerStats: Codable, Equatable, Sendable {
     var gatesOpened: Int
-    var wallsBlownUp: Int
     var pitsCrossed: Int
     var enemiesKilled: Int
     var extras: [String: Int]
 
     init(
         gatesOpened: Int = 0,
-        wallsBlownUp: Int = 0,
         pitsCrossed: Int = 0,
         enemiesKilled: Int = 0,
         extras: [String: Int] = [:]
     ) {
         self.gatesOpened = gatesOpened
-        self.wallsBlownUp = wallsBlownUp
         self.pitsCrossed = pitsCrossed
         self.enemiesKilled = enemiesKilled
         self.extras = extras
@@ -92,7 +89,6 @@ nonisolated struct PlayerStats: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case gatesOpened
-        case wallsBlownUp
         case pitsCrossed
         case enemiesKilled
         case extras
@@ -101,7 +97,6 @@ nonisolated struct PlayerStats: Codable, Equatable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         gatesOpened = try container.decodeIfPresent(Int.self, forKey: .gatesOpened) ?? 0
-        wallsBlownUp = try container.decodeIfPresent(Int.self, forKey: .wallsBlownUp) ?? 0
         pitsCrossed = try container.decodeIfPresent(Int.self, forKey: .pitsCrossed) ?? 0
         enemiesKilled = try container.decodeIfPresent(Int.self, forKey: .enemiesKilled) ?? 0
         extras = try container.decodeIfPresent([String: Int].self, forKey: .extras) ?? [:]

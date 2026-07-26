@@ -1,4 +1,4 @@
-# Shared letter FX for minigames (destructible wall, combat cues, etc.).
+# Shared letter FX for minigames (gate letter-match, combat cues, etc.).
 # Tracks follow Resources/Audio/FX/<fx_prefix><letter>_pronunciation.m4a
 # and <fx_prefix><letter>_name.m4a. Empty / list entries derive both tracks;
 # a map body may override pronunciation: and/or name:.

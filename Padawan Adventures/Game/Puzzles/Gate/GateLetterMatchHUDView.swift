@@ -1,7 +1,7 @@
 import UIKit
 
-/// Destructible-wall HUD: countdown timer in the upper-trailing corner.
-final class DestructibleWallHUDView: UIView {
+/// Gate letter-match HUD: countdown timer in the upper-trailing corner.
+final class GateLetterMatchHUDView: UIView {
     private let timerLabel = UILabel()
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
@@ -45,7 +45,7 @@ final class DestructibleWallHUDView: UIView {
         timerLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .bold)
         timerLabel.textAlignment = .right
         timerLabel.translatesAutoresizingMaskIntoConstraints = false
-        timerLabel.accessibilityIdentifier = "destructible_wall.timer"
+        timerLabel.accessibilityIdentifier = "gate.letter_match.timer"
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 

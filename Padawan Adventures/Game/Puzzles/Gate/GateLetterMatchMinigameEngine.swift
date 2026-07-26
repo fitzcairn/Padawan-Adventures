@@ -1,11 +1,6 @@
 import Foundation
 
-nonisolated enum DestructibleWallOutcome: Equatable, Sendable {
-    case won(starsAwarded: Int)
-    case lost
-}
-
-nonisolated enum DestructibleWallEngineEvent: Equatable, Sendable {
+nonisolated enum GateLetterMatchEngineEvent: Equatable, Sendable {
     case timerTick
     case playTargetPronunciation
     case playName(trackID: String)
@@ -16,15 +11,15 @@ nonisolated enum DestructibleWallEngineEvent: Equatable, Sendable {
     case lost
 }
 
-/// Pure destructible-wall puzzle session rules (letter pick, match loop, timer).
-nonisolated struct DestructibleWallMinigameEngine {
+/// Pure gate letter-match puzzle session rules (letter pick, match loop, timer).
+nonisolated struct GateLetterMatchMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var timerSeconds: Double
         var letterCountMin: Int
         var letterCountMax: Int
-        var letters: [DestructibleWallLetter]
+        var letters: [GateLetter]
 
-        init(from puzzle: DestructibleWallPuzzleConfig) {
+        init(from puzzle: GateLetterMatchConfig) {
             timerSeconds = puzzle.timerSeconds
             letterCountMin = puzzle.letterCountMin
             letterCountMax = puzzle.letterCountMax
@@ -33,15 +28,15 @@ nonisolated struct DestructibleWallMinigameEngine {
 
         init(
             timerSeconds: Double,
-            letterCountMin: Int = 2,
-            letterCountMax: Int = 4,
-            letters: [DestructibleWallLetter]
+            letterCountMin: Int = 4,
+            letterCountMax: Int = 8,
+            letters: [GateLetter]
         ) {
             self.timerSeconds = timerSeconds
             self.letterCountMin = letterCountMin
             self.letterCountMax = letterCountMax
             self.letters = letters.map {
-                DestructibleWallLetter(
+                GateLetter(
                     letter: $0.letter.lowercased(),
                     pronunciation: $0.pronunciation,
                     name: $0.name
@@ -65,7 +60,7 @@ nonisolated struct DestructibleWallMinigameEngine {
     private(set) var letters: [LetterToken] = []
     private(set) var matchedIDs: Set<UUID> = []
     private(set) var currentTargetID: UUID?
-    private(set) var outcome: DestructibleWallOutcome?
+    private(set) var outcome: GateOutcome?
     private(set) var isFrozen = false
 
     private var lastDisplayedSecond: Int
@@ -107,10 +102,10 @@ nonisolated struct DestructibleWallMinigameEngine {
     var hasLost: Bool { remainingTime <= 0 }
 
     /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
-    mutating func tick(dt: Double) -> [DestructibleWallEngineEvent] {
+    mutating func tick(dt: Double) -> [GateLetterMatchEngineEvent] {
         guard isActive, !isFrozen, outcome == nil else { return [] }
 
-        var events: [DestructibleWallEngineEvent] = []
+        var events: [GateLetterMatchEngineEvent] = []
         elapsed += dt
         remainingTime = max(0, config.timerSeconds - elapsed)
 
@@ -132,7 +127,7 @@ nonisolated struct DestructibleWallMinigameEngine {
     }
 
     /// Handle a tap on a letter tile. Ignores matched / unknown / frozen taps.
-    mutating func tapLetter(id: UUID) -> [DestructibleWallEngineEvent] {
+    mutating func tapLetter(id: UUID) -> [GateLetterMatchEngineEvent] {
         guard isActive, !isFrozen, outcome == nil else { return [] }
         guard !matchedIDs.contains(id),
               let token = letters.first(where: { $0.id == id }),
@@ -140,7 +135,7 @@ nonisolated struct DestructibleWallMinigameEngine {
             return []
         }
 
-        var events: [DestructibleWallEngineEvent] = [
+        var events: [GateLetterMatchEngineEvent] = [
             .playName(trackID: token.nameTrackID),
         ]
 

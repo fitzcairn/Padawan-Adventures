@@ -41,11 +41,10 @@ nonisolated struct ContinuePointStore: Sendable {
 }
 
 extension SimulationTickResult {
-    /// True when this tick raised pit/enemy/boom/gate contact.
+    /// True when this tick raised pit/enemy/gate contact.
     nonisolated var hasEncounterContact: Bool {
         didEnterPit
             || enemyContactID != nil
-            || boomCoord != nil
             || gateCoord != nil
     }
 

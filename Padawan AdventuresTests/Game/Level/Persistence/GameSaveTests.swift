@@ -13,8 +13,8 @@ struct GameSaveTests {
 
     @Test func roundTripPreservesWorld() async throws {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        world.setTile(Tile(kind: .wall(destructible: true)), at: GridCoord(x: 2, y: 2, story: 0))
-        _ = world.destroyWall(at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 2, story: 0))
+        _ = world.openGate(at: GridCoord(x: 2, y: 2, story: 0))
         world.setPlayerPosition(GridCoord(x: 3, y: 1, story: 0))
 
         let fingerprint = world.fingerprint()
@@ -72,8 +72,8 @@ struct GameSaveTests {
         let kinds: [TileKind] = [
             .floor(isPit: false),
             .floor(isPit: true),
-            .wall(destructible: true),
-            .wall(destructible: false),
+            .gate,
+            .wall,
             .gate,
         ]
 

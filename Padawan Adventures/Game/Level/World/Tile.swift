@@ -2,7 +2,7 @@ import Foundation
 
 nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
     case floor(isPit: Bool)
-    case wall(destructible: Bool)
+    case wall
     case gate
 
     private enum KindType: String, Codable {
@@ -39,8 +39,11 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
             // Legacy doors become floor openings.
             if try container.decodeIfPresent(Bool.self, forKey: .hasDoor) == true {
                 self = .floor(isPit: false)
+            } else if try container.decodeIfPresent(Bool.self, forKey: .destructible) == true {
+                // Legacy destructible walls become gates.
+                self = .gate
             } else {
-                self = .wall(destructible: try container.decode(Bool.self, forKey: .destructible))
+                self = .wall
             }
         case .ramp, .slide:
             // Legacy connector tiles become ordinary floors.
@@ -55,9 +58,8 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
         case .floor(let isPit):
             try container.encode(KindType.floor, forKey: .type)
             try container.encode(isPit, forKey: .isPit)
-        case .wall(let destructible):
+        case .wall:
             try container.encode(KindType.wall, forKey: .type)
-            try container.encode(destructible, forKey: .destructible)
         case .gate:
             try container.encode(KindType.gate, forKey: .type)
         }
@@ -86,11 +88,6 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
 
     var isGate: Bool {
         if case .gate = kind { return true }
-        return false
-    }
-
-    var isDestructibleWall: Bool {
-        if case .wall(true) = kind { return true }
         return false
     }
 

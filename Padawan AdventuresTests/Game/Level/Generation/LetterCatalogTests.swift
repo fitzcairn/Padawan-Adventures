@@ -30,13 +30,13 @@ struct LetterCatalogTests {
     }
 
     @Test func rejectsEmptyIDList() {
-        #expect(throws: WorldSeedError.invalidDestructibleWallLetters) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.fallback.resolve(ids: [])
         }
     }
 
     @Test func rejectsInvalidLetterEntry() {
-        #expect(throws: WorldSeedError.invalidDestructibleWallLetters) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.decode(from: """
             letters:
               ab:

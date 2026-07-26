@@ -215,18 +215,18 @@ struct MovementSystemTests {
         #expect(movement.isMoving == false)
     }
 
-    @Test func enteringDestructibleWallEmitsApproachTileAndStopsMovement() {
+    @Test func enteringGateEmitsGateEventAndStops() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let start = GridCoord(x: 0, y: 1, story: 0)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: true)), at: wall)
+        world.setTile(Tile(kind: .gate), at: wall)
         world.setPlayerPosition(start)
 
         var movement = MovementSystem(tilesPerSecond: 1.0)
         movement.begin(path: [start, wall])
 
         let events = movement.update(deltaTime: 10, world: &world)
-        #expect(events.contains(.boom(wall: wall, approach: start)))
+        #expect(events.contains(.gate(gate: wall, approach: start)))
         #expect(world.playerPosition == wall)
         #expect(movement.isMoving == false)
     }

@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import Padawan_Adventures
 
-struct DestructibleWallMinigameEngineTests {
-    private func letters(_ values: [String]) -> [DestructibleWallLetter] {
+struct GateLetterMatchMinigameEngineTests {
+    private func letters(_ values: [String]) -> [GateLetter] {
         values.map {
-            DestructibleWallLetter(
+            GateLetter(
                 letter: $0,
                 pronunciation: "sfx_letter_\($0)_pronunciation",
                 name: "sfx_letter_\($0)_name"
@@ -19,22 +19,22 @@ struct DestructibleWallMinigameEngineTests {
         letterCountMax: Int = 4,
         pool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h"],
         seed: UInt64 = 42
-    ) -> DestructibleWallMinigameEngine {
-        var engine = DestructibleWallMinigameEngine(
+    ) -> GateLetterMatchMinigameEngine {
+        var engine = GateLetterMatchMinigameEngine(
             config: .init(
                 timerSeconds: timer,
                 letterCountMin: letterCountMin,
                 letterCountMax: letterCountMax,
                 letters: letters(pool)
             ),
-            rng: GateSeededGenerator(seed: seed)
+            rng: SeededGenerator(seed: seed)
         )
         engine.begin()
         return engine
     }
 
     @Test func constructsInactive() {
-        let engine = DestructibleWallMinigameEngine(
+        let engine = GateLetterMatchMinigameEngine(
             config: .init(timerSeconds: 30, letters: letters(["a"]))
         )
         #expect(!engine.isActive)
@@ -105,12 +105,12 @@ struct DestructibleWallMinigameEngineTests {
         }
 
         let events = engine.tapLetter(id: firstTarget.id)
-        #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: firstTarget.nameTrackID)))
-        #expect(events.contains(DestructibleWallEngineEvent.correctMatch(id: firstTarget.id)))
-        #expect(events.contains(DestructibleWallEngineEvent.playYay))
-        #expect(events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        #expect(events.contains(GateLetterMatchEngineEvent.playName(trackID: firstTarget.nameTrackID)))
+        #expect(events.contains(GateLetterMatchEngineEvent.correctMatch(id: firstTarget.id)))
+        #expect(events.contains(GateLetterMatchEngineEvent.playYay))
+        #expect(events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.contains(firstTarget.id))
-        #expect(!events.contains(DestructibleWallEngineEvent.won))
+        #expect(!events.contains(GateLetterMatchEngineEvent.won))
         #expect(engine.currentTargetID != firstTarget.id)
 
         guard let secondTarget = engine.currentTarget else {
@@ -118,8 +118,8 @@ struct DestructibleWallMinigameEngineTests {
             return
         }
         let winEvents = engine.tapLetter(id: secondTarget.id)
-        #expect(winEvents.contains(DestructibleWallEngineEvent.won))
-        #expect(!winEvents.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        #expect(winEvents.contains(GateLetterMatchEngineEvent.won))
+        #expect(!winEvents.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
         #expect(engine.outcome == .won(starsAwarded: 2))
         #expect(engine.isFrozen)
     }
@@ -138,21 +138,21 @@ struct DestructibleWallMinigameEngineTests {
         }
 
         let events = engine.tapLetter(id: wrong.id)
-        #expect(events.contains(DestructibleWallEngineEvent.playName(trackID: wrong.nameTrackID)))
+        #expect(events.contains(GateLetterMatchEngineEvent.playName(trackID: wrong.nameTrackID)))
         #expect(
             events.contains(
-                DestructibleWallEngineEvent.incorrectMatch(
+                GateLetterMatchEngineEvent.incorrectMatch(
                     id: wrong.id,
                     pronunciationTrackID: wrong.pronunciationTrackID
                 )
             )
         )
-        #expect(!events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.isEmpty)
         #expect(engine.currentTargetID == target.id)
 
         let later = engine.tick(dt: 5.0)
-        #expect(!later.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        #expect(!later.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
     }
 
     @Test func tickNeverAutoReplaysTargetPronunciation() {
@@ -163,7 +163,7 @@ struct DestructibleWallMinigameEngineTests {
             seed: 1
         )
         let events = engine.tick(dt: 30)
-        #expect(!events.contains(DestructibleWallEngineEvent.playTargetPronunciation))
+        #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
     }
 
     @Test func timerExpiryProducesLostAndUrgentTicks() {
@@ -177,7 +177,7 @@ struct DestructibleWallMinigameEngineTests {
         var ticks = 0
         for _ in 0..<3 {
             let events = engine.tick(dt: 1.0)
-            ticks += events.filter { $0 == DestructibleWallEngineEvent.timerTick }.count
+            ticks += events.filter { $0 == GateLetterMatchEngineEvent.timerTick }.count
         }
         #expect(ticks >= 1)
         #expect(engine.outcome == .lost)

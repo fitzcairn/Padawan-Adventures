@@ -18,7 +18,7 @@ nonisolated struct GateMinigameEngine {
         var numPaddingLetters: Int
         var words: [GateWord]
 
-        init(from puzzle: GatePuzzleConfig) {
+        init(from puzzle: GateSpellingConfig) {
             timerSeconds = puzzle.timerSeconds
             numPaddingLetters = puzzle.numPaddingLetters
             words = puzzle.words

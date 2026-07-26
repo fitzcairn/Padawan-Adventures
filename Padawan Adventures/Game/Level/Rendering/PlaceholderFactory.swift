@@ -8,8 +8,6 @@ enum PlaceholderFactory {
     static let pitColor = UIColor(red: 0.28, green: 0.14, blue: 0.06, alpha: 1)
     /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
     static let wallColor = UIColor(white: 0.72, alpha: 1)
-    /// Light yellow soft walls the player can destroy.
-    static let destructibleWallColor = UIColor(red: 1.0, green: 0.92, blue: 0.45, alpha: 1)
     /// Light green multi-tile gate barriers.
     static let gateColor = UIColor(red: 0.55, green: 0.9, blue: 0.55, alpha: 1)
     /// Raised roof fill between wall tops.
@@ -76,15 +74,8 @@ enum PlaceholderFactory {
                 container.addChild(underlay)
             }
 
-        case .wall(let destructible):
-            // Solid walls are intentionally not drawn; only soft (destructible) walls render.
-            guard destructible else { break }
-            container.position = IsometricMath.gridToScreen(coord, config: config)
-            container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-            let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
-            container.addChild(
-                perspectiveWallNode(color: destructibleWallColor, faces: faces, config: config)
-            )
+        case .wall:
+            break
 
         case .gate:
             container.position = IsometricMath.gridToScreen(coord, config: config)
@@ -166,11 +157,8 @@ enum PlaceholderFactory {
     /// Identity key for reusing wall / gate block nodes (nil when nothing should draw).
     static func wallIdentity(for tile: Tile, at coord: GridCoord, in world: GameWorld) -> String? {
         switch tile.kind {
-        case .wall(let destructible):
-            // Solid walls draw nothing; destructibles always draw.
-            guard destructible else { return nil }
-            let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-            return "wall|1|\(faces.rawValue)"
+        case .wall:
+            return nil
         case .gate:
             let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
             return "gate|\(faces.rawValue)"

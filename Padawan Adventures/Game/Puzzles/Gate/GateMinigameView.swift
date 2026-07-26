@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 
 struct GateMinigameView: View {
-    let puzzleConfig: GatePuzzleConfig
+    let puzzleConfig: GateSpellingConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
@@ -13,7 +13,7 @@ struct GateMinigameView: View {
     @StateObject private var session: GateSessionController
 
     init(
-        puzzleConfig: GatePuzzleConfig,
+        puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
@@ -90,14 +90,14 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     @Published private(set) var connectedCount = 0
     @Published private(set) var scene: GateScene?
 
-    private let puzzleConfig: GatePuzzleConfig
+    private let puzzleConfig: GateSpellingConfig
     private let playerFx: SoundEffectTable
     private let hudConfig: HudConfig
     private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private var didFinish = false
 
     init(
-        puzzleConfig: GatePuzzleConfig,
+        puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,

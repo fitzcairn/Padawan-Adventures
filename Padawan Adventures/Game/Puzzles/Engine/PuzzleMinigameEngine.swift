@@ -1,10 +1,8 @@
-/// Scaffolding for puzzle minigame session logic (pit, gate, destructible wall).
-/// Placeholder overlays own UI for now; real puzzle rules will land here later.
+/// Scaffolding for puzzle minigame session logic (pit, gate).
 struct PuzzleMinigameEngine {
     enum Kind: Equatable {
         case pit
         case gate
-        case destructibleWall
     }
 
     let kind: Kind

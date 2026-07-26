@@ -53,12 +53,6 @@ nonisolated enum ConfigAudit {
                 level.gameMusic.pitCue, kind: "game_music.pit", label: label, bundle: bundle
             ))
             problems.append(contentsOf: checkMusicCue(
-                level.gameMusic.destructibleWallCue,
-                kind: "game_music.destructible_wall",
-                label: label,
-                bundle: bundle
-            ))
-            problems.append(contentsOf: checkMusicCue(
                 level.gameMusic.gateCue, kind: "game_music.gate", label: label, bundle: bundle
             ))
             problems.append(contentsOf: checkFXTable(
@@ -67,9 +61,34 @@ nonisolated enum ConfigAudit {
             problems.append(contentsOf: checkFXTable(
                 level.gate.fx, kind: "gate.fx", label: label, bundle: bundle
             ))
-            problems.append(contentsOf: checkFXTable(
-                level.destructibleWall.fx, kind: "destructible_wall.fx", label: label, bundle: bundle
-            ))
+            for (idx, minigame) in level.gate.minigames.enumerated() {
+                switch minigame {
+                case .spelling(let c):
+                    problems.append(contentsOf: checkFXTable(
+                        c.fx, kind: "gate.minigames[\(idx)].fx", label: label, bundle: bundle
+                    ))
+                    if let music = c.music {
+                        problems.append(contentsOf: checkMusicCue(
+                            MusicCue.parse(music),
+                            kind: "gate.minigames[\(idx)].music",
+                            label: label,
+                            bundle: bundle
+                        ))
+                    }
+                case .letterMatch(let c):
+                    problems.append(contentsOf: checkFXTable(
+                        c.fx, kind: "gate.minigames[\(idx)].fx", label: label, bundle: bundle
+                    ))
+                    if let music = c.music {
+                        problems.append(contentsOf: checkMusicCue(
+                            MusicCue.parse(music),
+                            kind: "gate.minigames[\(idx)].music",
+                            label: label,
+                            bundle: bundle
+                        ))
+                    }
+                }
+            }
         }
 
         problems.append(contentsOf: checkFXTable(audio.fx, kind: "audio.fx", label: "audio", bundle: bundle))
@@ -231,9 +250,11 @@ nonisolated enum ConfigAudit {
                 problems.append("\(label).pit.words: unknown word id '\(id)'")
             }
         }
-        if let ids = level.gate.wordIDs {
-            for id in ids where words.word(named: id) == nil {
-                problems.append("\(label).gate.words: unknown word id '\(id)'")
+        for (idx, minigame) in level.gate.minigames.enumerated() {
+            if case .spelling(let c) = minigame, let ids = c.wordIDs {
+                for id in ids where words.word(named: id) == nil {
+                    problems.append("\(label).gate.minigames[\(idx)].words: unknown word id '\(id)'")
+                }
             }
         }
         return problems
@@ -244,13 +265,19 @@ nonisolated enum ConfigAudit {
         letters: LetterCatalog,
         label: String
     ) -> [String] {
-        guard let ids = level.destructibleWall.letterIDs else { return [] }
-        return ids.compactMap { id in
-            guard letters.letter(named: id) != nil else {
-                return "\(label).destructible_wall.letters: unknown letter id '\(id)'"
+        var problems: [String] = []
+        for (idx, minigame) in level.gate.minigames.enumerated() {
+            if case .letterMatch(let c) = minigame, let ids = c.letterIDs {
+                for id in ids {
+                    if letters.letter(named: id) == nil {
+                        problems.append(
+                            "\(label).gate.minigames[\(idx)].letters: unknown letter id '\(id)'"
+                        )
+                    }
+                }
             }
-            return nil
         }
+        return problems
     }
 
     @MainActor

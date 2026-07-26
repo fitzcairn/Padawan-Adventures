@@ -18,10 +18,8 @@ final class AppSession {
     private(set) var selectedGameMusic: GameMusicConfig
     /// Pit puzzle knobs for the selected level.
     private(set) var selectedPitConfig: PitPuzzleConfig
-    /// Gate puzzle knobs for the selected level.
-    private(set) var selectedGateConfig: GatePuzzleConfig
-    /// Destructible-wall puzzle knobs for the selected level.
-    private(set) var selectedDestructibleWallConfig: DestructibleWallPuzzleConfig
+    /// Gate config (host FX + minigames list) for the selected level.
+    private(set) var selectedGateConfig: GateConfig
     /// Shared letter-name prompt replay interval for combat / wall / related games.
     private(set) var selectedLetterSoundRepeatSeconds: Double
 
@@ -58,8 +56,7 @@ final class AppSession {
         selectedLevelMusic: String? = nil,
         selectedGameMusic: GameMusicConfig? = nil,
         selectedPitConfig: PitPuzzleConfig? = nil,
-        selectedGateConfig: GatePuzzleConfig? = nil,
-        selectedDestructibleWallConfig: DestructibleWallPuzzleConfig? = nil,
+        selectedGateConfig: GateConfig? = nil,
         selectedLetterSoundRepeatSeconds: Double? = nil,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
@@ -85,8 +82,6 @@ final class AppSession {
         self.selectedGameMusic = selectedGameMusic ?? selectedLevel.gameMusic
         self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
-        self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
-            ?? selectedLevel.destructibleWall
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
             ?? selectedLevel.letterSoundRepeatSeconds
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
@@ -458,7 +453,6 @@ final class AppSession {
         selectedGameMusic = level.gameMusic
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
-        selectedDestructibleWallConfig = level.destructibleWall
         selectedLetterSoundRepeatSeconds = level.letterSoundRepeatSeconds
     }
 
@@ -555,11 +549,13 @@ final class AppSession {
         playerState?.dadModeUnlocked ?? false
     }
 
-    func unlockDadMode() async {
-        guard var state = playerState else { return }
+    @discardableResult
+    func unlockDadMode() async -> Bool {
+        guard var state = playerState else { return false }
         state.dadModeUnlocked = true
         playerState = state
         await persistPlayerState()
+        return true
     }
 
     /// Grants artifacts / completion for all catalog levels before `resourceName`, clears Dad mode, persists.

@@ -47,6 +47,25 @@ struct AppConfigTests {
         #expect(config.dadModePassword == AppConfig.defaultDadModePassword)
     }
 
+    @Test func decodesUnquotedDadModePasswordAsDigits() throws {
+        let yaml = """
+        version: 1
+        seed: 1
+        dad_mode_password: 1234
+        world:
+          stories: 1
+        """
+        let config = try WorldLoader.decodeConfig(from: yaml)
+        #expect(config.dadModePassword == "1234")
+    }
+
+    @Test func bundledAppConfigIncludesDadModePassword() throws {
+        let config = try WorldLoader.loadConfigFromBundle()
+        #expect(config.dadModePassword == "1234")
+        #expect(DadModePassword.matches(entered: "1234", expected: config.dadModePassword))
+        #expect(!DadModePassword.matches(entered: "0000", expected: config.dadModePassword))
+    }
+
     @Test func decodesTimeSeedToken() throws {
         let yaml = """
         version: 1
@@ -132,26 +151,25 @@ struct AppConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
-          fx: { opened: sfx_gate_opened }
-        destructible_wall:
-          fx: { destroyed: sfx_wall_destroyed_alt }
+          fx: { opened: sfx_gate_opened_alt }
+          minigames:
+            - type: spelling
+              timer_seconds: 30
+              num_padding_letters: 2
         """)
         let generation = WorldGenerationConfig.compose(app: app, level: level)
         #expect(generation.world.width == 30)
         #expect(generation.world.height == 40)
         #expect(generation.world.stories == 1)
-        #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
-        #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
+        #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened_alt")
     }
 
     @Test func composeUsesFallbackLevelWorldFx() throws {
         let app = AppConfig(version: 1, seed: 1, world: .init(stories: 1))
         let level = LevelConfig.fallback
         let generation = WorldGenerationConfig.compose(app: app, level: level)
-        #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed")
         #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
         #expect(generation.enemies?.type == "spider")
         #expect(generation.enemies?.spawnChancePerRoom == 0.8)

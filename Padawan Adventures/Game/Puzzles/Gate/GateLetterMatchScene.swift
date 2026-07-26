@@ -2,20 +2,20 @@ import AVFoundation
 import SpriteKit
 import UIKit
 
-protocol DestructibleWallSceneDelegate: AnyObject {
-    func destructibleWallSceneDidUpdateTimer(seconds: Int, urgent: Bool)
-    func destructibleWallSceneDidWin(starsAwarded: Int)
-    func destructibleWallSceneDidLose()
+protocol GateLetterMatchSceneDelegate: AnyObject {
+    func gateLetterMatchSceneDidUpdateTimer(seconds: Int, urgent: Bool)
+    func gateLetterMatchSceneDidWin(starsAwarded: Int)
+    func gateLetterMatchSceneDidLose()
 }
 
-/// SpriteKit wall puzzle: staging area, tappable letter tiles, timer-driven engine.
-final class DestructibleWallScene: SKScene {
-    weak var wallDelegate: DestructibleWallSceneDelegate?
+/// SpriteKit gate letter-match puzzle: staging area, tappable letter tiles, timer-driven engine.
+final class GateLetterMatchScene: SKScene {
+    weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
 
-    private let puzzleConfig: DestructibleWallPuzzleConfig
+    private let puzzleConfig: GateLetterMatchConfig
     private let playerFx: SoundEffectTable
 
-    private var engine: DestructibleWallMinigameEngine
+    private var engine: GateLetterMatchMinigameEngine
     private var stagingNode: SKShapeNode!
     private var replayBoxNode: SKNode!
     private var letterNodes: [UUID: SKNode] = [:]
@@ -35,14 +35,14 @@ final class DestructibleWallScene: SKScene {
 
     init(
         size: CGSize,
-        puzzleConfig: DestructibleWallPuzzleConfig,
+        puzzleConfig: GateLetterMatchConfig,
         playerFx: SoundEffectTable,
         letterSpriteSetLibrary: LetterSpriteSetLibrary
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.letterSpriteSetLibrary = letterSpriteSetLibrary
-        self.engine = DestructibleWallMinigameEngine(config: .init(from: puzzleConfig))
+        self.engine = GateLetterMatchMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
         backgroundColor = .black
@@ -208,7 +208,7 @@ final class DestructibleWallScene: SKScene {
         }
     }
 
-    private func makeLetterNode(token: DestructibleWallMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
+    private func makeLetterNode(token: GateLetterMatchMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
         let root = SKNode()
         root.name = "letter:\(token.id.uuidString)"
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
@@ -247,7 +247,7 @@ final class DestructibleWallScene: SKScene {
 
     // MARK: - Events
 
-    private func handle(_ event: DestructibleWallEngineEvent) {
+    private func handle(_ event: GateLetterMatchEngineEvent) {
         switch event {
         case .timerTick:
             SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
@@ -269,7 +269,7 @@ final class DestructibleWallScene: SKScene {
     }
 
     /// Processes letter-tap events; sequences name → correct (and follow-ups) so they don't overlap.
-    private func handleTapEvents(_ events: [DestructibleWallEngineEvent]) {
+    private func handleTapEvents(_ events: [GateLetterMatchEngineEvent]) {
         let nameTrack = events.compactMap { event -> String? in
             if case let .playName(trackID) = event { return trackID }
             return nil
@@ -287,7 +287,7 @@ final class DestructibleWallScene: SKScene {
     }
 
     private func runCorrectFeedback(
-        events: [DestructibleWallEngineEvent],
+        events: [GateLetterMatchEngineEvent],
         nameTrackID: String?
     ) {
         inputLocked = true
@@ -394,7 +394,7 @@ final class DestructibleWallScene: SKScene {
 
     private func publishTimer() {
         let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
-        wallDelegate?.destructibleWallSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
+        letterMatchDelegate?.gateLetterMatchSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
     }
 
     private func finishWon() {
@@ -402,9 +402,9 @@ final class DestructibleWallScene: SKScene {
         didEnd = true
         isUserInteractionEnabled = false
         if case let .won(stars) = engine.outcome {
-            wallDelegate?.destructibleWallSceneDidWin(starsAwarded: stars)
+            letterMatchDelegate?.gateLetterMatchSceneDidWin(starsAwarded: stars)
         } else {
-            wallDelegate?.destructibleWallSceneDidWin(starsAwarded: engine.letters.count)
+            letterMatchDelegate?.gateLetterMatchSceneDidWin(starsAwarded: engine.letters.count)
         }
     }
 
@@ -412,7 +412,7 @@ final class DestructibleWallScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
-        wallDelegate?.destructibleWallSceneDidLose()
+        letterMatchDelegate?.gateLetterMatchSceneDidLose()
     }
 
     // MARK: - Touch

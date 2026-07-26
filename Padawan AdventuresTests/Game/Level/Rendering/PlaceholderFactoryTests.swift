@@ -62,9 +62,9 @@ struct PlaceholderFactoryTests {
         let east = GridCoord(x: 2, y: 1, story: 0)
         let south = GridCoord(x: 1, y: 2, story: 0)
 
-        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: east)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: south)
+        world.setTile(Tile(kind: .wall), at: a)
+        world.setTile(Tile(kind: .wall), at: east)
+        world.setTile(Tile(kind: .wall), at: south)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(!faces.contains(.right))
@@ -75,7 +75,7 @@ struct PlaceholderFactoryTests {
     @Test func openNeighborKeepsPerspectiveFace() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
+        world.setTile(Tile(kind: .wall), at: a)
 
         let faces = IsometricTileGeometry.visibleFaces(at: a, in: world)
         #expect(faces.contains(.left))
@@ -157,23 +157,23 @@ struct PlaceholderFactoryTests {
             && abs(ab - eb) < 0.001 && abs(aa - ea) < 0.001
     }
 
-    @Test func destructibleWallUsesLightYellow() {
+    @Test func gateUsesGreenColor() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .wall(destructible: true)),
+            for: Tile(kind: .gate),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
         let faces = node.children.first?.children.compactMap { $0 as? SKShapeNode } ?? []
         #expect(!faces.isEmpty)
-        var sawYellowFamily = false
+        var sawGreenFamily = false
         for face in faces {
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), r > 0.8, g > 0.7, b < 0.7 {
-                sawYellowFamily = true
+            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), g > r, g > 0.5 {
+                sawGreenFamily = true
             }
         }
-        #expect(sawYellowFamily)
+        #expect(sawGreenFamily)
     }
 
     @Test func gateUsesLightGreen() {
@@ -200,9 +200,9 @@ struct PlaceholderFactoryTests {
         let west = GridCoord(x: 0, y: 1, story: 0)
         let pit = GridCoord(x: 1, y: 1, story: 0)
         let east = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: west)
+        world.setTile(Tile(kind: .wall), at: west)
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: east)
+        world.setTile(Tile(kind: .wall), at: east)
 
         #expect(!IsometricTileGeometry.needsCeiling(at: pit, in: world))
         #expect(!IsometricTileGeometry.needsCeiling(at: GridCoord(x: 1, y: 0, story: 0), in: world))
@@ -219,7 +219,7 @@ struct PlaceholderFactoryTests {
         for y in 0..<3 {
             for x in 0..<3 {
                 world.setTile(
-                    Tile(kind: .wall(destructible: false)),
+                    Tile(kind: .wall),
                     at: GridCoord(x: x, y: y, story: 0)
                 )
             }
@@ -232,23 +232,18 @@ struct PlaceholderFactoryTests {
     @Test func renderedWallBorderingFloorDoesNotNeedCeiling() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
+        world.setTile(Tile(kind: .wall), at: wall)
         #expect(IsometricTileGeometry.shouldRenderWall(at: wall, in: world))
         #expect(!IsometricTileGeometry.needsCeiling(at: wall, in: world))
     }
 
-    @Test func wallIdentityTracksKindDestructibleAndFaces() {
+    @Test func wallIdentityTracksKindAndFaces() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: true)), at: a)
+        world.setTile(Tile(kind: .gate), at: a)
 
         let solid = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .wall(destructible: false)),
-            at: a,
-            in: world
-        )
-        let soft = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .wall(destructible: true)),
+            for: Tile(kind: .wall),
             at: a,
             in: world
         )
@@ -258,25 +253,23 @@ struct PlaceholderFactoryTests {
             in: world
         )
         #expect(solid == nil)
-        #expect(soft == "wall|1|\(WallFaceSet.all.rawValue)")
         #expect(gate == "gate|\(WallFaceSet.all.rawValue)")
-        #expect(soft != gate)
 
-        // Face culling still applies to destructible walls (east opaque neighbor hides .right).
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        // Face culling applies to gates (east opaque neighbor hides .right).
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
         let culled = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .wall(destructible: true)),
+            for: Tile(kind: .gate),
             at: a,
             in: world
         )
-        #expect(culled != soft)
-        #expect(culled == "wall|1|\(WallFaceSet([.left, .top]).rawValue)")
+        #expect(culled != gate)
+        #expect(culled == "gate|\(WallFaceSet([.left, .top]).rawValue)")
     }
 
     @Test func solidWallTileNodeDrawsNothing() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .wall(destructible: false)),
+            for: Tile(kind: .wall),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
@@ -288,7 +281,7 @@ struct PlaceholderFactoryTests {
         for y in 0..<3 {
             for x in 0..<3 {
                 world.setTile(
-                    Tile(kind: .wall(destructible: false)),
+                    Tile(kind: .wall),
                     at: GridCoord(x: x, y: y, story: 0)
                 )
             }
@@ -296,7 +289,7 @@ struct PlaceholderFactoryTests {
         let center = GridCoord(x: 1, y: 1, story: 0)
         #expect(
             PlaceholderFactory.wallIdentity(
-                for: Tile(kind: .wall(destructible: false)),
+                for: Tile(kind: .wall),
                 at: center,
                 in: world
             ) == nil
@@ -307,7 +300,7 @@ struct PlaceholderFactoryTests {
     @Test func floorBehindFrontWallIsOccludedForPickups() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         // Wall south of center (higher isometric depth) covers a sprite on the center tile.
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 1, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 1, y: 2, story: 0))
         let center = GridCoord(x: 1, y: 1, story: 0)
         #expect(IsometricTileGeometry.hasFrontWallOccluder(at: center, in: world.tiles[0]))
         #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: center, in: world.tiles[0]))
@@ -333,7 +326,7 @@ struct PlaceholderFactoryTests {
     @Test func wallBehindPickupAlsoBlocksVisibleFloor() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 5)
         // North wall is behind the sprite in depth, but still adjacent — not allowed.
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
         let cell = GridCoord(x: 2, y: 2, story: 0)
         #expect(!IsometricTileGeometry.hasFrontWallOccluder(at: cell, in: world.tiles[0]))
         #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: world.tiles[0]))

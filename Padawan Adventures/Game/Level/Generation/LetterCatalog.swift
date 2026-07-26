@@ -14,7 +14,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     static let defaultFxPrefix = "sfx_letter_"
 
     /// Sorted by letter for deterministic iteration / RNG.
-    private(set) var letters: [DestructibleWallLetter]
+    private(set) var letters: [GateLetter]
 
     nonisolated static let fallback = LetterCatalog(letters: [
         .init(letter: "a", pronunciation: "sfx_letter_a_pronunciation", name: "sfx_letter_a_name"),
@@ -27,38 +27,38 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
         .init(letter: "h", pronunciation: "sfx_letter_h_pronunciation", name: "sfx_letter_h_name"),
     ])
 
-    nonisolated init(letters: [DestructibleWallLetter]) {
-        self.letters = DestructibleWallPuzzleConfig.normalizedLetters(letters)
+    nonisolated init(letters: [GateLetter]) {
+        self.letters = GateLetterMatchConfig.normalizedLetters(letters)
     }
 
-    func letter(named id: String) -> DestructibleWallLetter? {
+    func letter(named id: String) -> GateLetter? {
         let key = id.lowercased()
         return letters.first { $0.letter == key }
     }
 
     /// Resolves `ids` against the catalog. `nil` means the full catalog; `[]` is invalid.
-    func resolve(ids: [String]?) throws -> [DestructibleWallLetter] {
+    func resolve(ids: [String]?) throws -> [GateLetter] {
         guard let ids else {
-            guard !letters.isEmpty else { throw WorldSeedError.invalidDestructibleWallLetters }
+            guard !letters.isEmpty else { throw WorldSeedError.invalidGateLetterMatchLetters }
             return letters
         }
         guard !ids.isEmpty else {
-            throw WorldSeedError.invalidDestructibleWallLetters
+            throw WorldSeedError.invalidGateLetterMatchLetters
         }
-        var resolved: [DestructibleWallLetter] = []
+        var resolved: [GateLetter] = []
         resolved.reserveCapacity(ids.count)
         for id in ids {
             guard let entry = letter(named: id) else {
-                throw WorldSeedError.invalidDestructibleWallLetters
+                throw WorldSeedError.invalidGateLetterMatchLetters
             }
             resolved.append(entry)
         }
-        return DestructibleWallPuzzleConfig.normalizedLetters(resolved)
+        return GateLetterMatchConfig.normalizedLetters(resolved)
     }
 
     func validate() throws {
         guard !letters.isEmpty else {
-            throw WorldSeedError.invalidDestructibleWallLetters
+            throw WorldSeedError.invalidGateLetterMatchLetters
         }
         let letterSet = CharacterSet.letters
         var seen = Set<String>()
@@ -68,7 +68,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
                   !entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   seen.insert(entry.letter).inserted else {
-                throw WorldSeedError.invalidDestructibleWallLetters
+                throw WorldSeedError.invalidGateLetterMatchLetters
             }
         }
     }
@@ -106,7 +106,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     }
 
     /// Derives tracks via `LetterSoundCatalog`; explicit keys override.
-    nonisolated static func resolveEntry(id: String, spec: LetterSpec?) -> DestructibleWallLetter {
+    nonisolated static func resolveEntry(id: String, spec: LetterSpec?) -> GateLetter {
         let derivedName = LetterSoundCatalog.nameTrackID(for: id) ?? "sfx_letter_\(id.lowercased())_name"
         let derivedPronunciation = LetterSoundCatalog.pronunciationTrackID(for: id)
             ?? "sfx_letter_\(id.lowercased())_pronunciation"
@@ -127,7 +127,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
             name = derivedName
         }
 
-        return DestructibleWallLetter(
+        return GateLetter(
             letter: id,
             pronunciation: pronunciation,
             name: name

@@ -17,7 +17,7 @@ struct PuzzleMinigameEngineTests {
     }
 
     @Test func supportsAllPuzzleKinds() {
-        let kinds: [PuzzleMinigameEngine.Kind] = [.pit, .gate, .destructibleWall]
+        let kinds: [PuzzleMinigameEngine.Kind] = [.pit, .gate]
         for kind in kinds {
             let engine = PuzzleMinigameEngine(kind: kind)
             #expect(engine.kind == kind)

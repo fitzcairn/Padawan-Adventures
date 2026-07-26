@@ -8,7 +8,6 @@ struct LevelConfigTests {
         game_music:
           combat: combat_theme
           pit: pit_theme
-          destructible_wall: destructible_wall_theme
           gate: gate_theme
         width: 100
         height: 100
@@ -21,12 +20,17 @@ struct LevelConfigTests {
           pit_chance: 0.2
           pit_mean_size: 2
           pit_max_size: 5
-          wall_destructible_chance: 0.8
-          gate_chance: 0.5
         gate:
           fx: { opened: sfx_gate_opened }
-        destructible_wall:
-          fx: { destroyed: sfx_wall_destroyed }
+          minigames:
+            - type: spelling
+              timer_seconds: 30
+              words: [cat, dog, star]
+              music: gate_theme
+            - type: letter_match
+              timer_seconds: 30
+              letters: [a, b, c, d, e, f, g, h]
+              music: destructible_wall_theme
         enemies:
           type: spider
           spawn_chance_per_room: 0.8
@@ -37,14 +41,13 @@ struct LevelConfigTests {
             spawn_chance_per_room: 0.8
         """
 
-    /// Base YAML without puzzle blocks so inheritance tests can append a single `gate:` / `destructible_wall:`.
+    /// Base YAML without the `gate:` block so inheritance tests can append their own.
     private static let baseLevelYAMLWithoutPuzzles = """
         name: Level
         music: level_theme
         game_music:
           combat: combat_theme
           pit: pit_theme
-          destructible_wall: destructible_wall_theme
           gate: gate_theme
         width: 100
         height: 100
@@ -57,8 +60,6 @@ struct LevelConfigTests {
           pit_chance: 0.2
           pit_mean_size: 2
           pit_max_size: 5
-          wall_destructible_chance: 0.8
-          gate_chance: 0.5
         enemies:
           type: spider
           spawn_chance_per_room: 0.8
@@ -83,8 +84,7 @@ struct LevelConfigTests {
           pit_chance: 0.2
           pit_mean_size: 2
           pit_max_size: 5
-          wall_destructible_chance: 0.8
-          gate_chance: 0.5
+          partition_gate_chance: 0.8
         enemies:
           type: spider
           spawn_chance_per_room: 0.8
@@ -106,8 +106,7 @@ struct LevelConfigTests {
         #expect(level.room.pitChance == 0.2)
         #expect(level.room.pitMeanSize == 2)
         #expect(level.room.pitMaxSize == 5)
-        #expect(level.room.wallDestructibleChance == 0.8)
-        #expect(level.room.gateChance == 0.5)
+        #expect(level.room.partitionGateChance == 0.8)
         #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
@@ -133,8 +132,7 @@ struct LevelConfigTests {
           pit_chance: 0.2
           pit_mean_size: 2
           pit_max_size: 5
-          wall_destructible_chance: 0.8
-          gate_chance: 0.5
+          partition_gate_chance: 0.8
         letters:
           set: 2-tatooine
         """)
@@ -209,7 +207,6 @@ struct LevelConfigTests {
         #expect(level.musicCue == .track("level_theme"))
         #expect(level.gameMusic.combatCue == .track("combat_theme"))
         #expect(level.gameMusic.pitCue == .track("pit_theme"))
-        #expect(level.gameMusic.destructibleWallCue == .track("destructible_wall_theme"))
         #expect(level.gameMusic.gateCue == .track("gate_theme"))
     }
 
@@ -228,7 +225,6 @@ struct LevelConfigTests {
         #expect(level.gameMusic.combat == "combat_theme_alt")
         #expect(level.gameMusic.gateCue == .silence)
         #expect(level.gameMusic.pit == "pit_theme")
-        #expect(level.gameMusic.destructibleWall == "destructible_wall_theme")
     }
 
     @Test func childCanOverrideMusic() throws {
@@ -257,35 +253,31 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
           fx: { opened: sfx_gate_opened_alt }
-        destructible_wall:
-          fx: { destroyed: sfx_wall_destroyed_alt }
+          minigames:
+            - type: spelling
+              words: [cat]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened_alt")
-        #expect(level.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed_alt")
-        #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
         #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened_alt")
     }
 
-    @Test func childCanOverrideInheritedPuzzleFxKeys() throws {
+    @Test func childCanOverrideInheritedGateFxKeys() throws {
         let child = """
         inherits: base_level
         name: Level 1
-        destructible_wall:
-          fx: { destroyed: sfx_wall_destroyed_alt }
+        gate:
+          fx: { opened: sfx_gate_opened_alt }
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed_alt")
-        #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
-        #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
-        #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
+        #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened_alt")
+        #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened_alt")
     }
 
     @Test func inheritsFromBaseAndOverridesFields() throws {
@@ -308,7 +300,7 @@ struct LevelConfigTests {
         #expect(level.room.pitChance == 0.9)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
-        #expect(level.room.wallDestructibleChance == 0.8)
+        #expect(level.room.partitionGateChance == 0.8)
         #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
@@ -362,7 +354,7 @@ struct LevelConfigTests {
         let base: [String: Any] = [
             "room": [
                 "pit_chance": 0.2,
-                "gate_chance": 0.5,
+                "partition_gate_chance": 0.5,
             ],
             "room_count": 100,
         ]
@@ -377,7 +369,7 @@ struct LevelConfigTests {
         #expect(merged["room_count"] as? Int == 100)
         let room = merged["room"] as? [String: Any]
         #expect(room?["pit_chance"] as? Double == 0.9)
-        #expect(room?["gate_chance"] as? Double == 0.5)
+        #expect(room?["partition_gate_chance"] as? Double == 0.5)
     }
 
     @Test func catalogLoadsPlayableLevelsFromBundle() throws {
@@ -475,7 +467,7 @@ struct LevelConfigTests {
         #expect(level.sprite?.chromaKeyTolerance == 2)
     }
 
-    @Test func decodesGatePuzzleConfigWithDefaultsWhenOmitted() throws {
+    @Test func decodesGateConfigWithDefaultsWhenOmitted() throws {
         let level = try LevelConfig.decode(from: """
         name: Level 1
         width: 20
@@ -487,13 +479,12 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         """)
-        #expect(level.gate == GatePuzzleConfig.fallback)
+        #expect(level.gate == GateConfig.fallback)
     }
 
-    @Test func decodesGatePuzzleConfigFromYAML() throws {
+    @Test func decodesGateSpellingMinigameFromYAML() throws {
         let yaml = """
         name: Level 1
         width: 20
@@ -505,18 +496,24 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
-          timer_seconds: 15
-          words: [CAT, Dog]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              timer_seconds: 15
+              words: [CAT, Dog]
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.gate.timerSeconds == 15)
-        #expect(level.gate.wordIDs == ["cat", "dog"])
-        #expect(level.gate.words.map(\.word) == ["cat", "dog"])
-        #expect(level.gate.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
-        #expect(level.gate.words[0].progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
+        guard case .spelling(let spelling) = level.gate.minigames.first else {
+            Issue.record("expected spelling minigame")
+            return
+        }
+        #expect(spelling.timerSeconds == 15)
+        #expect(spelling.wordIDs == ["cat", "dog"])
+        #expect(spelling.words.map(\.word) == ["cat", "dog"])
+        #expect(spelling.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
+        #expect(spelling.words[0].progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
     }
 
     @Test func inheritsGateConfigFromBase() throws {
@@ -539,8 +536,11 @@ struct LevelConfigTests {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
-          timer_seconds: 22
-          words: [moon, sun]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              timer_seconds: 22
+              words: [moon, sun]
         """
         let child = """
         inherits: base_level
@@ -551,8 +551,12 @@ struct LevelConfigTests {
             parents: ["base_level": base],
             wordCatalog: catalog
         )
-        #expect(level.gate.timerSeconds == 22)
-        #expect(level.gate.words.map(\.word) == ["moon", "sun"])
+        guard case .spelling(let spelling) = level.gate.minigames.first else {
+            Issue.record("expected spelling minigame")
+            return
+        }
+        #expect(spelling.timerSeconds == 22)
+        #expect(spelling.words.map(\.word) == ["moon", "sun"])
     }
 
     @Test func childCanOverrideInheritedGateWordIDs() throws {
@@ -583,30 +587,40 @@ struct LevelConfigTests {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
-          timer_seconds: 22
-          words: [moon]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              timer_seconds: 22
+              words: [moon]
         """
         let child = """
         inherits: base_level
         name: Level 1
         gate:
-          words: [nova, beam]
+          minigames:
+            - type: spelling
+              timer_seconds: 22
+              words: [nova, beam]
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": base],
             wordCatalog: catalog
         )
-        #expect(level.gate.timerSeconds == 22)
-        // Word id lists replace (not deep-merge) on inherit.
-        #expect(level.gate.words.map(\.word) == ["beam", "nova"])
-        #expect(level.gate.words.map(\.spelling) == [
+        guard case .spelling(let spelling) = level.gate.minigames.first else {
+            Issue.record("expected spelling minigame")
+            return
+        }
+        // `minigames` lists replace on inherit (not deep-merged per entry).
+        #expect(spelling.timerSeconds == 22)
+        #expect(spelling.words.map(\.word) == ["beam", "nova"])
+        #expect(spelling.words.map(\.spelling) == [
             "sfx_word_beam",
             "sfx_word_nova",
         ])
     }
 
-    @Test func rejectsInvalidGateTimer() {
+    @Test func rejectsInvalidGateSpellingTimer() {
         let yaml = """
         name: Level 1
         width: 20
@@ -618,18 +632,20 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
-          timer_seconds: 0
-          words: [cat]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              timer_seconds: 0
+              words: [cat]
         """
         #expect(throws: WorldSeedError.invalidGateTimer(0)) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsEmptyGateWords() {
+    @Test func rejectsEmptyGateSpellingWords() {
         let yaml = """
         name: Level 1
         width: 20
@@ -641,17 +657,19 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
-          words: []
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              words: []
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsUnknownGateWordID() {
+    @Test func rejectsUnknownGateSpellingWordID() {
         let yaml = """
         name: Level 1
         width: 20
@@ -663,10 +681,12 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         gate:
-          words: [not_a_real_word]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
             try LevelConfig.decode(from: yaml)
@@ -678,12 +698,18 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.gate.timerSeconds == 30)
-        #expect(tython.gate.fx.trackID(for: "win") == nil)
         #expect(tython.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
-        #expect(tython.gate.numPaddingLetters == 6)
-        #expect(tython.gate.words.map(\.word).contains("gate"))
-        #expect(tython.gate.words.contains {
+        #expect(!tython.gate.minigames.isEmpty)
+        let spellingConfigs = tython.gate.minigames.compactMap { minigame -> GateSpellingConfig? in
+            if case .spelling(let c) = minigame { return c }
+            return nil
+        }
+        #expect(!spellingConfigs.isEmpty)
+        let spelling = spellingConfigs[0]
+        #expect(spelling.timerSeconds == 30)
+        #expect(spelling.numPaddingLetters == 6)
+        #expect(spelling.words.map(\.word).contains("gate"))
+        #expect(spelling.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
                 && $0.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca"
@@ -719,23 +745,30 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         pit:
           fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
           words: [cat]
         gate:
-          fx: { win: sfx_gate_win_alt, opened: sfx_gate_opened }
-          words: [dog]
-        destructible_wall:
-          fx: { correct: sfx_wall_correct_alt, destroyed: sfx_wall_destroyed }
-          letters: [a]
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              fx: { win: sfx_gate_win_alt }
+              words: [dog]
+            - type: letter_match
+              fx: { correct: sfx_wall_correct_alt }
+              letters: [a]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.pit.fx.trackID(for: "win") == "sfx_pit_win_alt")
         #expect(level.pit.fx.trackID(for: "lose") == "sfx_pit_lose_alt")
-        #expect(level.gate.fx.trackID(for: "win") == "sfx_gate_win_alt")
-        #expect(level.destructibleWall.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
+        #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
+        if case .spelling(let spelling) = level.gate.minigames.first {
+            #expect(spelling.fx.trackID(for: "win") == "sfx_gate_win_alt")
+        }
+        if case .letterMatch(let letterMatch) = level.gate.minigames.last {
+            #expect(letterMatch.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
+        }
     }
 
     @Test func decodesPitWordIDsFromCatalog() throws {
@@ -750,8 +783,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
         pit:
           timer_seconds: 25
           words: [star, open]
@@ -773,8 +804,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
         pit:
           timer_seconds: 0
           words: [cat]
@@ -796,8 +825,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
         pit:
           words: []
         """
@@ -818,8 +845,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
         pit:
           words: [not_a_real_word]
         """
@@ -828,7 +853,7 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func decodesDestructibleWallPuzzleConfigWithDefaultsWhenOmitted() throws {
+    @Test func decodesGateLetterMatchConfigWithDefaultsWhenOmitted() throws {
         let level = try LevelConfig.decode(from: """
         name: Level 1
         width: 20
@@ -840,13 +865,12 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         """)
-        #expect(level.destructibleWall == DestructibleWallPuzzleConfig.fallback)
+        #expect(level.gate == GateConfig.fallback)
     }
 
-    @Test func decodesDestructibleWallPuzzleConfigFromYAML() throws {
+    @Test func decodesGateLetterMatchConfigFromYAML() throws {
         let yaml = """
         name: Level 1
         width: 20
@@ -858,39 +882,48 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
+          partition_gate_chance: 0
         letter_sound_repeat_seconds: 8
-        destructible_wall:
-          timer_seconds: 15
-          incorrect_replay_delay_seconds: 2
-          letter_count_min: 2
-          letter_count_max: 3
-          letters: [B, a]
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              timer_seconds: 15
+              incorrect_replay_delay_seconds: 2
+              letter_count_min: 2
+              letter_count_max: 3
+              letters: [B, a]
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.destructibleWall.timerSeconds == 15)
         #expect(level.letterSoundRepeatSeconds == 8)
-        #expect(level.destructibleWall.incorrectReplayDelaySeconds == 2)
-        #expect(level.destructibleWall.letterCountMin == 2)
-        #expect(level.destructibleWall.letterCountMax == 3)
-        #expect(level.destructibleWall.letterIDs == ["b", "a"])
-        #expect(level.destructibleWall.letters.map(\.letter) == ["a", "b"])
-        #expect(level.destructibleWall.letters.map(\.pronunciation) == [
+        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+            Issue.record("expected letter_match minigame")
+            return
+        }
+        #expect(lm.timerSeconds == 15)
+        #expect(lm.incorrectReplayDelaySeconds == 2)
+        #expect(lm.letterCountMin == 2)
+        #expect(lm.letterCountMax == 3)
+        #expect(lm.letterIDs == ["b", "a"])
+        #expect(lm.letters.map(\.letter) == ["a", "b"])
+        #expect(lm.letters.map(\.pronunciation) == [
             "sfx_letter_a_pronunciation",
             "sfx_letter_b_pronunciation",
         ])
     }
 
-    @Test func inheritsDestructibleWallConfigFromBase() throws {
+    @Test func inheritsGateLetterMatchConfigFromBase() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         letter_sound_repeat_seconds: 6
-        destructible_wall:
-          timer_seconds: 22
-          letter_count_min: 1
-          letter_count_max: 2
-          letters: [a, c]
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              timer_seconds: 22
+              letter_count_min: 1
+              letter_count_max: 2
+              letters: [a, c]
         """
         let child = """
         inherits: base_level
@@ -900,39 +933,50 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": base]
         )
-        #expect(level.destructibleWall.timerSeconds == 22)
         #expect(level.letterSoundRepeatSeconds == 6)
-        #expect(level.destructibleWall.letterCountMin == 1)
-        #expect(level.destructibleWall.letterCountMax == 2)
-        #expect(level.destructibleWall.letters.map(\.letter) == ["a", "c"])
+        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+            Issue.record("expected letter_match minigame")
+            return
+        }
+        #expect(lm.timerSeconds == 22)
+        #expect(lm.letterCountMin == 1)
+        #expect(lm.letterCountMax == 2)
+        #expect(lm.letters.map(\.letter) == ["a", "c"])
     }
 
-    @Test func childCanOverrideInheritedDestructibleWallLetterIDs() throws {
+    @Test func childCanOverrideInheritedGateLetterMatchLetterIDs() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         letter_sound_repeat_seconds: 6
-        destructible_wall:
-          timer_seconds: 22
-          letters: [a]
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              timer_seconds: 22
+              letters: [a]
         """
         let child = """
         inherits: base_level
         name: Level 1
         letter_sound_repeat_seconds: 12
-        destructible_wall:
-          letters: [b]
+        gate:
+          minigames:
+            - type: letter_match
+              letters: [b]
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": base]
         )
-        #expect(level.destructibleWall.timerSeconds == 22)
         #expect(level.letterSoundRepeatSeconds == 12)
-        // Letter id lists replace (not deep-merge) on inherit.
-        #expect(level.destructibleWall.letters.map(\.letter) == ["b"])
+        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+            Issue.record("expected letter_match minigame")
+            return
+        }
+        #expect(lm.letters.map(\.letter) == ["b"])
     }
 
-    @Test func rejectsInvalidDestructibleWallTimer() {
+    @Test func rejectsInvalidGateLetterMatchTimer() {
         let yaml = """
         name: Level 1
         width: 20
@@ -944,18 +988,20 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        destructible_wall:
-          timer_seconds: 0
-          letters: [a]
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              timer_seconds: 0
+              letters: [a]
         """
-        #expect(throws: WorldSeedError.invalidDestructibleWallTimer(0)) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchTimer(0)) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsInvalidDestructibleWallLetterCountRange() {
+    @Test func rejectsInvalidGateLetterMatchLetterCountRange() {
         let yaml = """
         name: Level 1
         width: 20
@@ -967,19 +1013,21 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        destructible_wall:
-          letter_count_min: 4
-          letter_count_max: 2
-          letters: [a]
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              letter_count_min: 4
+              letter_count_max: 2
+              letters: [a]
         """
-        #expect(throws: WorldSeedError.invalidDestructibleWallLetterCountRange(min: 4, max: 2)) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetterCountRange(min: 4, max: 2)) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsEmptyDestructibleWallLetters() {
+    @Test func rejectsEmptyGateLetterMatchLetters() {
         let yaml = """
         name: Level 1
         width: 20
@@ -991,17 +1039,19 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        destructible_wall:
-          letters: []
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              letters: []
         """
-        #expect(throws: WorldSeedError.invalidDestructibleWallLetters) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsUnknownDestructibleWallLetterID() {
+    @Test func rejectsUnknownGateLetterMatchLetterID() {
         let yaml = """
         name: Level 1
         width: 20
@@ -1013,29 +1063,34 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        destructible_wall:
-          letters: [z]
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              letters: [z]
         """
-        #expect(throws: WorldSeedError.invalidDestructibleWallLetters) {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func bundleBaseLevelProvidesDestructibleWallDefaults() throws {
+    @Test func bundleBaseLevelProvidesGateLetterMatchDefaults() throws {
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.destructibleWall.timerSeconds == 30)
-        #expect(tython.letterSoundRepeatSeconds == 3)
-        #expect(tython.destructibleWall.incorrectReplayDelaySeconds == 1)
-        #expect(tython.destructibleWall.letterCountMin == 4)
-        #expect(tython.destructibleWall.letterCountMax == 8)
-        #expect(tython.destructibleWall.fx.trackID(for: "correct") == nil)
-        #expect(tython.destructibleWall.fx.trackID(for: "destroyed") == "sfx_wall_destroyed")
-        #expect(tython.destructibleWall.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+        let letterMatchConfigs = tython.gate.minigames.compactMap { minigame -> GateLetterMatchConfig? in
+            if case .letterMatch(let c) = minigame { return c }
+            return nil
+        }
+        #expect(!letterMatchConfigs.isEmpty)
+        let lm = letterMatchConfigs[0]
+        #expect(lm.timerSeconds == 30)
+        #expect(lm.incorrectReplayDelaySeconds == 1)
+        #expect(lm.letterCountMin == 4)
+        #expect(lm.letterCountMax == 8)
+        #expect(lm.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
         #expect(tython.artifact == "leaf.fill")
     }
 
@@ -1052,10 +1107,12 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 8
           pit_chance: 0
-          wall_destructible_chance: 0
-          gate_chance: 0
-        destructible_wall:
-          letters: [a]
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: letter_match
+              letters: [a]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.letterSoundRepeatSeconds == 3)
@@ -1073,8 +1130,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         enemies:
           types: [spider, ice_monster]
           spawn_chance_per_room: 0.8
@@ -1099,8 +1154,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         enemies:
           type: spider
           spawn_chance_per_room: 1.5
@@ -1123,8 +1176,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         pickups:
           health:
             spawn_chance_per_room: 0.8
@@ -1150,8 +1201,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         pickups:
           health:
             spawn_chance_per_room: -0.1
@@ -1176,8 +1225,6 @@ struct LevelConfigTests {
           pit_chance: 0.2
           pit_mean_size: 6
           pit_max_size: 5
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         """
 
         #expect(throws: WorldSeedError.invalidRoomPitSize(mean: 6, max: 5)) {
@@ -1185,7 +1232,7 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func rejectsInvalidGateChance() throws {
+    @Test func rejectsInvalidPartitionGateChance() throws {
         let yaml = """
         name: Level
         width: 10
@@ -1197,11 +1244,10 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 1.5
+          partition_gate_chance: 1.5
         """
 
-        #expect(throws: WorldSeedError.invalidRoomGateChance(1.5)) {
+        #expect(throws: WorldSeedError.invalidRoomPartitionGateChance(1.5)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1218,8 +1264,6 @@ struct LevelConfigTests {
           min_room_size: 4
           max_room_size: 12
           pit_chance: 0.0
-          wall_destructible_chance: 0.0
-          gate_chance: 0.0
         """
 
         #expect(throws: WorldSeedError.corridorTooNarrow(1)) {

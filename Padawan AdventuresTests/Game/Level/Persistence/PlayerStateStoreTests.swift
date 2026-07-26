@@ -100,7 +100,6 @@ struct PlayerStateStoreTests {
         state.levels["level_2"]?.starsCurrent = 4
         state.totalStars = 2
         state.stats.gatesOpened = 3
-        state.stats.wallsBlownUp = 1
         state.stats.pitsCrossed = 4
         state.stats.enemiesKilled = 7
         state.stats.extras["secretsFound"] = 2

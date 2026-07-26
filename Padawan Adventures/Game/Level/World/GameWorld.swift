@@ -114,29 +114,6 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         setPlayerPosition(spawn)
     }
 
-    /// Opens a destructible wall cell and every orthogonally contiguous soft wall in its group.
-    @discardableResult
-    mutating func destroyWall(at coord: GridCoord) -> Bool {
-        guard tile(at: coord)?.isDestructibleWall == true else { return false }
-        var queue = [coord]
-        var visited: Set<GridCoord> = [coord]
-        var head = 0
-        while head < queue.count {
-            let current = queue[head]
-            head += 1
-            setTile(Tile(kind: .floor(isPit: false)), at: current)
-            for (dx, dy) in GridCoord.cardinals {
-                let next = current.neighbor(dx: dx, dy: dy)
-                guard isInBounds(next), !visited.contains(next) else { continue }
-                guard tile(at: next)?.isDestructibleWall == true else { continue }
-                visited.insert(next)
-                queue.append(next)
-            }
-        }
-        retileFloors(around: Array(visited))
-        return true
-    }
-
     /// Opens a gate cell and every orthogonally contiguous gate in its barrier strip.
     @discardableResult
     mutating func openGate(at coord: GridCoord) -> Bool {
@@ -236,24 +213,24 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         switch tile.kind {
         case .floor, .gate:
             return true
-        case .wall(let destructible):
-            return destructible
+        case .wall:
+            return false
         }
     }
 
-    /// Walkable for path edges: enterable tiles (including pits, gates, destructible walls).
+    /// Walkable for path edges: enterable tiles (including pits, gates).
     func isWalkable(at coord: GridCoord) -> Bool {
         isEnterable(at: coord)
     }
 
-    /// Valid tap / movement destination: floors, destructible walls, and gates.
+    /// Valid tap / movement destination: floors and gates.
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
         case .floor, .gate:
             return true
-        case .wall(let destructible):
-            return destructible
+        case .wall:
+            return false
         }
     }
 
@@ -487,8 +464,8 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         switch tile.kind {
         case .floor(let isPit):
             return isPit ? "F*" : "F"
-        case .wall(let destructible):
-            return "W\(destructible ? "d" : "")"
+        case .wall:
+            return "W"
         case .gate:
             return "G"
         }

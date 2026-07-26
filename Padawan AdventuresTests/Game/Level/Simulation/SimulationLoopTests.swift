@@ -80,9 +80,9 @@ struct SimulationLoopTests {
 
     @Test func unreachableGoalPathsClosestViaControls() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 0, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
-        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 0, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 2, story: 0))
 
         var movement = MovementSystem()
         var pendingInput = PendingInput()
@@ -161,35 +161,6 @@ struct SimulationLoopTests {
 
         #expect(result.gateCoord == gate)
         #expect(result.gateApproachCoord == start)
-        #expect(result.hasEncounterContact)
-    }
-
-    @Test func boomContactSurfacesApproachCoord() {
-        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        let start = GridCoord(x: 0, y: 1, story: 0)
-        let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: true)), at: wall)
-        world.setPlayerPosition(start)
-
-        var movement = MovementSystem(tilesPerSecond: 1.0)
-        var pendingInput = PendingInput()
-        var loop = SimulationLoop()
-        movement.begin(path: [start, wall])
-
-        var result = SimulationTickResult()
-        var tickCount: UInt64 = 1
-        while result.boomCoord == nil, tickCount < 100 {
-            result = loop.tick(
-                world: &world,
-                movement: &movement,
-                pendingInput: &pendingInput,
-                tickCount: tickCount
-            )
-            tickCount += 1
-        }
-
-        #expect(result.boomCoord == wall)
-        #expect(result.boomApproachCoord == start)
         #expect(result.hasEncounterContact)
     }
 }

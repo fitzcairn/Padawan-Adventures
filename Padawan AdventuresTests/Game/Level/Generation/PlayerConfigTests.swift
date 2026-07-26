@@ -70,8 +70,7 @@ struct PlayerConfigTests {
                     minRoomSize: 4,
                     maxRoomSize: 8,
                     pitChance: 0,
-                    wallDestructibleChance: 0,
-                    gateChance: 0.0
+                    partitionGateChance: 0
                 )
             )
         )

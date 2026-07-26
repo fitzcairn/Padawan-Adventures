@@ -76,10 +76,6 @@ final class GameViewController: LandscapeHostingController {
             self?.playPlayerFx("pit")
             self?.presentPit(approach: approach)
         }
-        scene.onBoomEntered = { [weak self] wall, approach in
-            self?.playPlayerFx("boom")
-            self?.presentDestructibleWall(at: wall, approach: approach)
-        }
         scene.onGateEntered = { [weak self] gate, approach in
             self?.playPlayerFx("gate")
             self?.presentGate(at: gate, approach: approach)
@@ -366,67 +362,23 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
-    private func presentDestructibleWall(at coord: GridCoord, approach: GridCoord) {
-        let puzzleConfig = session.selectedDestructibleWallConfig
-        let playerFx = session.playerConfig.fx
-        let hudConfig = loadHudConfig()
-        let outcomeBox = DestructibleWallOutcomeBox()
-
-        BackgroundMusicController.shared.apply(session.selectedGameMusic.destructibleWallCue)
-
-        overlayPresenter.present(
-            fadeWorldOut: true,
-            makeViewController: {
-                self.makeOverlayHost { finish in
-                    DestructibleWallMinigameView(
-                        puzzleConfig: puzzleConfig,
-                        playerFx: playerFx,
-                        hudConfig: hudConfig,
-                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
-                        onFinished: { outcome in
-                            outcomeBox.outcome = outcome
-                            finish()
-                        }
-                    )
-                }
-            },
-            onResolved: { [weak self] done in
-                guard let self, let scene = self.gameScene else {
-                    done()
-                    return
-                }
-                BackgroundMusicController.shared.apply(
-                    MusicCue.parse(self.session.selectedLevelMusic)
-                )
-                switch outcomeBox.outcome {
-                case let .won(starsAwarded):
-                    Task {
-                        await self.session.recordStat { $0.wallsBlownUp += 1 }
-                        await self.awardLevelStars(count: starsAwarded)
-                    }
-                    scene.resolveBoomEncounter(at: coord, completion: done)
-                case .lost, .none:
-                    scene.resolveBoomTimeout(approach: approach, completion: done)
-                }
-            }
-        )
-    }
-
-    @MainActor
     private func presentGate(at coord: GridCoord, approach: GridCoord) {
-        let puzzleConfig = session.selectedGateConfig
+        let gateConfig = session.selectedGateConfig
+        var rng = SystemRandomNumberGenerator()
+        let chosen = gateConfig.pickMinigame(using: &rng)
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
         let outcomeBox = GateOutcomeBox()
 
-        BackgroundMusicController.shared.apply(session.selectedGameMusic.gateCue)
+        let musicName = chosen.music ?? session.selectedGameMusic.gate
+        BackgroundMusicController.shared.apply(MusicCue.parse(musicName))
 
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
                 self.makeOverlayHost { finish in
-                    GateMinigameView(
-                        puzzleConfig: puzzleConfig,
+                    GateMinigameFactory.makeView(
+                        config: chosen,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
                         letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
@@ -551,8 +503,4 @@ private final class PitOutcomeBox {
 /// Captures gate puzzle result across the overlay finish callback.
 private final class GateOutcomeBox {
     var outcome: GateOutcome?
-}
-
-private final class DestructibleWallOutcomeBox {
-    var outcome: DestructibleWallOutcome?
 }

@@ -17,10 +17,12 @@ struct LevelSelectView: View {
     @State private var canScrollRight = false
     @State private var inventoryIcons: [String: UIImage] = [:]
 
-    /// Previous diameter was 96; +30% → 124.8.
-    private let planetDiameter: CGFloat = 124.8
-    /// Previous spacing was 28; +40% → 39.2.
-    private let planetSpacing: CGFloat = 39.2
+    /// Planet diameter as a fraction of available content width (~18% ≈ 150pt on phone landscape).
+    private static let planetDiameterFraction: CGFloat = 0.18
+    /// Gap between planets relative to planet diameter (keeps strip density consistent across sizes).
+    private static let planetSpacingToDiameter: CGFloat = 0.26
+    /// Vertical jitter half-range relative to planet diameter.
+    private static let planetJitterToDiameter: CGFloat = 0.32
     private let inventoryIconSide: CGFloat = 52
 
     init(
@@ -156,10 +158,10 @@ struct LevelSelectView: View {
             DadModePasswordView(
                 expectedPassword: session.appConfig.dadModePassword,
                 onSuccess: {
-                    showPassword = false
-                    Task {
+                    Task { @MainActor in
                         await session.unlockDadMode()
                         progressionEpoch += 1
+                        showPassword = false
                         messageOverlay = .dadModeUnlocked
                     }
                 },
@@ -185,18 +187,23 @@ struct LevelSelectView: View {
     }
 
     private var planetStrip: some View {
-        ZStack {
+        GeometryReader { geo in
+            let diameter = geo.size.width * Self.planetDiameterFraction
+            let spacing = diameter * Self.planetSpacingToDiameter
+            let jitterBand = diameter * Self.planetJitterToDiameter
+
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .center, spacing: planetSpacing) {
+                HStack(alignment: .center, spacing: spacing) {
                     ForEach(levels, id: \.resourceName) { level in
-                        planetSprite(for: level)
-                            .offset(y: verticalOffset(for: level.resourceName))
+                        planetSprite(for: level, diameter: diameter)
+                            .offset(y: verticalOffset(for: level.resourceName, band: jitterBand))
                     }
                 }
                 // Internal scroll content inset (planet-to-edge breathing room), not screen margin.
-                .padding(.horizontal, planetSpacing)
+                .padding(.horizontal, spacing)
                 .frame(maxHeight: .infinity)
             }
+            .frame(width: geo.size.width, height: geo.size.height)
             .onScrollGeometryChange(for: ScrollOverflow.self) { geometry in
                 let leading = geometry.contentOffset.x
                 let trailing = geometry.contentSize.width - geometry.containerSize.width - geometry.contentOffset.x
@@ -221,7 +228,7 @@ struct LevelSelectView: View {
             .accessibilityHidden(true)
     }
 
-    private func planetSprite(for level: LevelDescriptor) -> some View {
+    private func planetSprite(for level: LevelDescriptor, diameter: CGFloat) -> some View {
         let state = LevelProgression.unlockState(
             for: level.resourceName,
             orderedLevels: orderedResourceNames,
@@ -233,6 +240,8 @@ struct LevelSelectView: View {
         let planetImage = level.sprite != nil
             ? session.spriteLibrary.uiImage(id: level.resourceName, named: "idle")
             : nil
+        let lockIconSize = diameter * 0.19
+        let completedStroke = max(2, diameter * 0.027)
 
         return Button {
             handleLevelTap(level)
@@ -247,18 +256,18 @@ struct LevelSelectView: View {
                         Circle().fill(fill)
                     }
                 }
-                .frame(width: planetDiameter, height: planetDiameter)
+                .frame(width: diameter, height: diameter)
                 .overlay {
                     if state == .completed {
                         Circle()
-                            .stroke(Color.green, lineWidth: 4)
+                            .stroke(Color.green, lineWidth: completedStroke)
                     }
                 }
                 .opacity(isLocked ? 0.5 : 1)
 
                 if isLocked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: lockIconSize, weight: .semibold))
                         .foregroundStyle(AppChrome.primaryTextColor)
                         .shadow(color: .black.opacity(0.6), radius: 3, y: 1)
                         .opacity(1)
@@ -271,13 +280,12 @@ struct LevelSelectView: View {
     }
 
     /// Stable pseudo-random vertical jitter so planets don't share one baseline.
-    private func verticalOffset(for resourceName: String) -> CGFloat {
+    private func verticalOffset(for resourceName: String, band: CGFloat) -> CGFloat {
         var hash: UInt64 = 1469598103934665603
         for byte in resourceName.utf8 {
             hash ^= UInt64(byte)
             hash = hash &* 1099511628211
         }
-        let band: CGFloat = 48
         let unit = Double(hash % 1001) / 1000.0
         return CGFloat(unit * 2 - 1) * band
     }
@@ -314,32 +322,28 @@ struct LevelSelectView: View {
     }
 
     private var inventorySection: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .stroke(AppChrome.secondaryTextColor, lineWidth: 2)
-            .frame(height: 72)
-            .overlay {
-                HStack(spacing: 16) {
-                    ForEach(inventoryLevels, id: \.resourceName) { level in
-                        inventoryIcon(for: level)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 16)
+        HStack(spacing: 16) {
+            ForEach(inventoryLevels, id: \.resourceName) { level in
+                inventoryIcon(for: level)
             }
-            .task(id: inventoryTreasureIDs) {
-                let ids = inventoryTreasureIDs
-                await session.ensureTreasureIconsLoaded(ids: ids)
-                var icons: [String: UIImage] = [:]
-                for id in ids {
-                    if let image = session.treasureIcons.uiImage(id: id) {
-                        icons[id] = image
-                    }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 72)
+        .task(id: inventoryTreasureIDs) {
+            let ids = inventoryTreasureIDs
+            await session.ensureTreasureIconsLoaded(ids: ids)
+            var icons: [String: UIImage] = [:]
+            for id in ids {
+                if let image = session.treasureIcons.uiImage(id: id) {
+                    icons[id] = image
                 }
-                inventoryIcons = icons
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("levelSelect.inventory")
-            .accessibilityLabel("Inventory")
+            inventoryIcons = icons
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("levelSelect.inventory")
+        .accessibilityLabel("Inventory")
     }
 
     @ViewBuilder

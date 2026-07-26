@@ -278,12 +278,9 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
                 max: generation.room.pitMaxSize
             )
         }
-        guard generation.room.wallDestructibleChance >= 0,
-              generation.room.wallDestructibleChance <= 1 else {
-            throw WorldSeedError.invalidRoomWallDestructibleChance(generation.room.wallDestructibleChance)
-        }
-        guard generation.room.gateChance >= 0, generation.room.gateChance <= 1 else {
-            throw WorldSeedError.invalidRoomGateChance(generation.room.gateChance)
+        guard generation.room.partitionGateChance >= 0,
+              generation.room.partitionGateChance <= 1 else {
+            throw WorldSeedError.invalidRoomPartitionGateChance(generation.room.partitionGateChance)
         }
         if let enemies {
             guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {
@@ -317,18 +314,17 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidRoomSizeRange
     case invalidRoomPitChance(Double)
     case invalidRoomPitSize(mean: Double, max: Int)
-    case invalidRoomWallDestructibleChance(Double)
-    case invalidRoomGateChance(Double)
+    case invalidRoomPartitionGateChance(Double)
     case invalidGateTimer(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
     case invalidPitTimer(Double)
     case invalidPitWords
-    case invalidDestructibleWallTimer(Double)
-    case invalidDestructibleWallLetterSoundRepeat(Double)
-    case invalidDestructibleWallIncorrectReplayDelay(Double)
-    case invalidDestructibleWallLetterCountRange(min: Int, max: Int)
-    case invalidDestructibleWallLetters
+    case invalidGateLetterMatchTimer(Double)
+    case invalidLetterSoundRepeat(Double)
+    case invalidGateLetterMatchIncorrectReplayDelay(Double)
+    case invalidGateLetterMatchLetterCountRange(min: Int, max: Int)
+    case invalidGateLetterMatchLetters
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)
@@ -346,6 +342,5 @@ nonisolated enum WorldSeedError: Error, Equatable {
 nonisolated enum RequiredInteractable: String, Equatable, Sendable, CaseIterable {
     case gate
     case pit
-    case destructibleWall
     case enemy
 }

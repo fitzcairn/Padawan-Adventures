@@ -2,7 +2,7 @@ import Testing
 @testable import Padawan_Adventures
 
 struct MovementGoalTests {
-    @Test func validGoalsIncludeFloorsPitsGatesAndDestructible() {
+    @Test func validGoalsIncludeFloorsPitsAndGates() {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 3)
         let floor = GridCoord(x: 0, y: 0, story: 0)
         let pit = GridCoord(x: 1, y: 0, story: 0)
@@ -11,8 +11,8 @@ struct MovementGoalTests {
         let gate = GridCoord(x: 0, y: 1, story: 0)
 
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
-        world.setTile(Tile(kind: .wall(destructible: true)), at: soft)
+        world.setTile(Tile(kind: .wall), at: wall)
+        world.setTile(Tile(kind: .gate), at: soft)
         world.setTile(Tile(kind: .gate), at: gate)
 
         #expect(world.isValidMovementGoal(at: floor))
@@ -25,7 +25,7 @@ struct MovementGoalTests {
     @Test func nearestValidMovementGoalSnapsFromSolidWall() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let wall = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
+        world.setTile(Tile(kind: .wall), at: wall)
 
         let goal = world.nearestValidMovementGoal(from: wall)
         #expect(goal != nil)

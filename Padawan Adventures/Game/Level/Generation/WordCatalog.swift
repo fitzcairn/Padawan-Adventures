@@ -25,7 +25,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     ])
 
     nonisolated init(words: [GateWord]) {
-        self.words = GatePuzzleConfig.normalizedWords(words)
+        self.words = GateSpellingConfig.normalizedWords(words)
     }
 
     func word(named id: String) -> GateWord? {
@@ -50,7 +50,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
             }
             resolved.append(entry)
         }
-        return GatePuzzleConfig.normalizedWords(resolved)
+        return GateSpellingConfig.normalizedWords(resolved)
     }
 
     func validate() throws {

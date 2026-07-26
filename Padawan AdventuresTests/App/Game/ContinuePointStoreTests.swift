@@ -144,15 +144,15 @@ struct ContinuePointStoreTests {
             enemyAt: GridCoord(x: 2, y: 1, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false)),
+            Tile(kind: .wall),
             at: GridCoord(x: 1, y: 0, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false)),
+            Tile(kind: .wall),
             at: GridCoord(x: 1, y: 1, story: 0)
         )
         world.setTile(
-            Tile(kind: .wall(destructible: false)),
+            Tile(kind: .wall),
             at: GridCoord(x: 1, y: 2, story: 0)
         )
         world.energyCount = 0

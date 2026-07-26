@@ -126,15 +126,15 @@ struct SoundEffectTableTests {
 
     @Test func mergingOverridesPerEvent() {
         let base = SoundEffectTable(events: [
-            "wall_destroyed": "sfx_wall_destroyed",
             "gate_opened": "sfx_gate_opened",
+            "pickup": "sfx_pickup",
         ])
         let overrides = SoundEffectTable(events: [
-            "wall_destroyed": "sfx_wall_destroyed_alt",
+            "gate_opened": "sfx_gate_opened_alt",
         ])
         let merged = base.merging(overrides)
-        #expect(merged.trackID(for: "wall_destroyed") == "sfx_wall_destroyed_alt")
-        #expect(merged.trackID(for: "gate_opened") == "sfx_gate_opened")
+        #expect(merged.trackID(for: "gate_opened") == "sfx_gate_opened_alt")
+        #expect(merged.trackID(for: "pickup") == "sfx_pickup")
     }
 
     @Test func mergingEmptyOverridesIsIdentity() {
