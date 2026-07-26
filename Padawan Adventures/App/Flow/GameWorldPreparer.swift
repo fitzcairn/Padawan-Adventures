@@ -28,14 +28,17 @@ enum GameWorldPreparer {
 
         // Warm sprite cache once per session before the world is presented.
         await session.ensurePlayerSpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.02, to: 0.22))
+            report(LoadProgress.map(local, from: 0.02, to: 0.18))
         }
         await session.ensureItemSpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.22, to: 0.38))
+            report(LoadProgress.map(local, from: 0.18, to: 0.26))
+        }
+        await session.ensureEnemySpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.26, to: 0.40))
         }
         // Level engine backgrounds (main scene + minigames) for the selected level.
         await session.ensureEngineBackgroundsLoaded { local in
-            report(LoadProgress.map(local, from: 0.38, to: assetsEnd))
+            report(LoadProgress.map(local, from: 0.40, to: assetsEnd))
         }
         report(assetsEnd)
 

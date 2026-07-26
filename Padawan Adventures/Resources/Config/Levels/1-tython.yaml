@@ -1,6 +1,7 @@
 # Terrain: Heavy primordial forest
 # Monsters:
-# - horranth: Quadrupedal reptilian carnivores with short, stubby legs and an array of horns across their backs.
+# - dino: Large ground predator.
+# - treant: Walking tree creature.
 inherits: _defaults
 name: Tython
 order: 1
@@ -21,5 +22,5 @@ floor_sprites:
   - dirt-sprout
   - plank
 enemies:
-  types: [horranth]
+  types: [dino, treant]
   spawn_chance_per_room: 0.8

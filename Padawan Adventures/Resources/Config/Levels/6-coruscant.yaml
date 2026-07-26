@@ -1,7 +1,7 @@
 # Terrain: A massive ecumenopolis — a single, planet-wide city of towering skyscrapers, complex sky-lane traffic, and endless levels of urban infrastructure.
 # Monsters:
-# - security_droid: Security Droids on the lower levels.
-# - armored_rat: Armored rats on the lower levels.
+# - drone: Security drone of the lower levels.
+# - robot: Armored robot patrol unit.
 inherits: _defaults
 name: Coruscant
 order: 6
@@ -25,5 +25,5 @@ floor_sprites:
   - reflect
   - plank
 enemies:
-  types: [security_droid, armored_rat]
+  types: [drone, robot]
   spawn_chance_per_room: 0.8

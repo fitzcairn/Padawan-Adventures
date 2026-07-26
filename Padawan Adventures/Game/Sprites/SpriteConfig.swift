@@ -2,7 +2,11 @@ import Foundation
 
 /// Shared sprite definition used by player, enemies, UI, and other visual elements.
 nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
-    /// Bundle subdirectory prefix for sheet/atlas basenames (e.g. `Sprites/Player`).
+    /// Bundle-relative subdirectory for sheet/atlas basenames.
+    ///
+    /// Shape depends on whether the folder is listed in the Xcode project's
+    /// `explicitFolders`: non-explicit folders flatten (e.g. `Sprites/Player`),
+    /// while explicit ones keep their last path component (e.g. `Enemies/Spider`).
     var root: String
     /// Hex RGB color removed from sheets when slicing frames (e.g. `#000000`).
     var chromaKey: String?
@@ -18,6 +22,8 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     var anchorCorrection: Double
     /// Animation name → sheet source or horizontal flip of another animation.
     var animations: [String: SpriteAnimationSource]
+    /// When false, keeps atlas frame rects as-is instead of cropping to shared opaque bounds.
+    var trim: Bool
 
     enum CodingKeys: String, CodingKey {
         case root
@@ -29,6 +35,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         case scale
         case anchorCorrection = "anchor_correction"
         case animations
+        case trim
     }
 
     /// Named chroma presets for YAML `chroma:` (explicit `chroma_key*` still override).
@@ -52,7 +59,8 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         chromaKeySmooth: Int = 0,
         scale: Double = 1,
         anchorCorrection: Double = 0,
-        animations: [String: SpriteAnimationSource] = [:]
+        animations: [String: SpriteAnimationSource] = [:],
+        trim: Bool = true
     ) {
         self.root = root
         self.chromaKey = chromaKey
@@ -62,6 +70,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         self.scale = scale
         self.anchorCorrection = anchorCorrection
         self.animations = animations
+        self.trim = trim
     }
 
     init(from decoder: Decoder) throws {
@@ -103,6 +112,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         scale = try container.decodeIfPresent(Double.self, forKey: .scale) ?? 1
         anchorCorrection = try container.decodeIfPresent(Double.self, forKey: .anchorCorrection) ?? 0
         animations = try container.decodeIfPresent([String: SpriteAnimationSource].self, forKey: .animations) ?? [:]
+        trim = try container.decodeIfPresent(Bool.self, forKey: .trim) ?? true
     }
 
     func encode(to encoder: Encoder) throws {
@@ -115,6 +125,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         try container.encode(scale, forKey: .scale)
         try container.encode(anchorCorrection, forKey: .anchorCorrection)
         try container.encode(animations, forKey: .animations)
+        try container.encode(trim, forKey: .trim)
     }
 }
 

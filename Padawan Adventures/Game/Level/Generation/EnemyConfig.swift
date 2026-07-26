@@ -56,6 +56,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var shotTypes: [String: EnemyShotTypeConfig]
     /// Event key → sound track basename (`Resources/Audio/FX/`).
     var fx: SoundEffectTable
+    /// Shared sprite id from the file's `sprites:` map; nil renders the placeholder shape.
+    var sprite: String?
 
     enum CodingKeys: String, CodingKey {
         case letter
@@ -67,6 +69,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         case starsToWin = "stars_to_win"
         case shotTypes = "shot_types"
         case fx
+        case sprite
     }
 
     init(
@@ -78,7 +81,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         shotTravelSeconds: Double = 3.2,
         starsToWin: Int = 10,
         shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.fallbackShotTypes,
-        fx: SoundEffectTable = .empty
+        fx: SoundEffectTable = .empty,
+        sprite: String? = nil
     ) {
         self.letter = letter
         self.color = color
@@ -89,6 +93,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         self.starsToWin = starsToWin
         self.shotTypes = shotTypes
         self.fx = fx
+        self.sprite = sprite
     }
 
     init(from decoder: Decoder) throws {
@@ -103,6 +108,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         shotTypes = try container.decodeIfPresent([String: EnemyShotTypeConfig].self, forKey: .shotTypes)
             ?? EnemyTypeConfig.fallbackShotTypes
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
+        sprite = try container.decodeIfPresent(String.self, forKey: .sprite)
     }
 
     /// Fallback A/B/C letter-name shots used by hand-built configs / tests.
@@ -160,10 +166,13 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     /// Max seconds a combat slash stays active after the initial tap.
     var slashMaxSeconds: Double
     var enemies: [String: EnemyTypeConfig]
+    /// Shared sprite definitions referenced by `EnemyTypeConfig.sprite`.
+    var sprites: [String: SpriteConfig]
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
         case enemies
+        case sprites
     }
 
     nonisolated static let fallbackSlashMaxSeconds: Double = 0.5
@@ -171,7 +180,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     nonisolated static let fallback = EnemyConfig(
         slashMaxSeconds: fallbackSlashMaxSeconds,
         enemies: [
-            "horranth": EnemyTypeConfig(
+            "spider": EnemyTypeConfig(
                 letter: "E",
                 color: "#FF0000",
                 tilesPerSecond: 1.0,
@@ -187,10 +196,12 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 
     init(
         slashMaxSeconds: Double = fallbackSlashMaxSeconds,
-        enemies: [String: EnemyTypeConfig]
+        enemies: [String: EnemyTypeConfig],
+        sprites: [String: SpriteConfig] = [:]
     ) {
         self.slashMaxSeconds = slashMaxSeconds
         self.enemies = enemies
+        self.sprites = sprites
     }
 
     init(from decoder: Decoder) throws {
@@ -198,6 +209,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         slashMaxSeconds = try container.decodeIfPresent(Double.self, forKey: .slashMaxSeconds)
             ?? Self.fallbackSlashMaxSeconds
         enemies = try container.decode([String: EnemyTypeConfig].self, forKey: .enemies)
+        sprites = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .sprites) ?? [:]
     }
 
     func validate() throws {
@@ -209,11 +221,21 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         }
         for (id, type) in enemies {
             try type.validate(typeID: id)
+            if let spriteID = type.sprite, sprites[spriteID] == nil {
+                throw EnemyConfigError.invalid("\(id).sprite references unknown sprite '\(spriteID)'")
+            }
         }
     }
 
     func type(named id: String) -> EnemyTypeConfig? {
         enemies[id]
+    }
+
+    /// Resolves an enemy type's shared sprite entry from the `sprites:` map.
+    func spriteConfig(for typeID: String) -> (id: String, config: SpriteConfig)? {
+        guard let spriteID = enemies[typeID]?.sprite,
+              let config = sprites[spriteID] else { return nil }
+        return (spriteID, config)
     }
 
     static func loadFromBundle(
@@ -307,16 +329,19 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
     var slashMaxSeconds: Double?
     var enemies: [String: EnemyTypeConfigDTO]
+    var sprites: [String: SpriteConfig]?
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
         case enemies
+        case sprites
     }
 
     nonisolated func asEnemyConfig() -> EnemyConfig {
         EnemyConfig(
             slashMaxSeconds: slashMaxSeconds ?? EnemyConfig.fallbackSlashMaxSeconds,
-            enemies: enemies.mapValues { $0.asEnemyTypeConfig() }
+            enemies: enemies.mapValues { $0.asEnemyTypeConfig() },
+            sprites: sprites ?? [:]
         )
     }
 }
@@ -331,6 +356,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
     var starsToWin: Int?
     var shotTypes: [String: EnemyShotTypeConfig]?
     var fx: SoundEffectTable?
+    var sprite: String?
 
     enum CodingKeys: String, CodingKey {
         case letter
@@ -342,6 +368,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
         case starsToWin = "stars_to_win"
         case shotTypes = "shot_types"
         case fx
+        case sprite
     }
 
     nonisolated func asEnemyTypeConfig() -> EnemyTypeConfig {
@@ -354,7 +381,8 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
             shotTravelSeconds: shotTravelSeconds ?? 3.2,
             starsToWin: starsToWin ?? 10,
             shotTypes: shotTypes ?? EnemyTypeConfig.fallbackShotTypes,
-            fx: fx ?? .empty
+            fx: fx ?? .empty,
+            sprite: sprite
         )
     }
 }

@@ -30,7 +30,7 @@ struct AppSessionTests {
         let app = AppSession.fallbackAppConfig()
         let level = LevelConfig.fallback
         #expect(app.world.stories == 1)
-        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
     }
 

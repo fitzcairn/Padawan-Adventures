@@ -54,7 +54,8 @@ final class SpriteLibrary {
                     chromaKeyTolerance: config.chromaKeyTolerance,
                     chromaKeyFeather: config.chromaKeyFeather,
                     chromaKeySmooth: config.chromaKeySmooth,
-                    bundle: bundle
+                    bundle: bundle,
+                    trim: config.trim
                 )
             } catch {
                 // Missing assets are skipped so worlds still load while sheets arrive.

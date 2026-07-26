@@ -1,7 +1,7 @@
 # Terrain: A rocky, arid desert planet known for its tall, spire-like natural formations and a massive ring of asteroid debris.
 # Monsters:
-# - geonosian: Native Geonosian warriors.
-# - battle_droid: Advanced Battle Droid armies.
+# - centipede: Desert centipede predator.
+# - snake: Arid-world snake.
 inherits: _defaults
 name: Geonosis
 order: 8
@@ -21,5 +21,5 @@ floor_sprites:
   - dirt-arid
   - dirt-cracked
 enemies:
-  types: [geonosian, battle_droid]
+  types: [centipede, snake]
   spawn_chance_per_room: 0.8

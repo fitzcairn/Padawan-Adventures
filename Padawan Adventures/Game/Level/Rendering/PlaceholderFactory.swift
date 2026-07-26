@@ -303,7 +303,8 @@ enum PlaceholderFactory {
         fillColor: UIColor? = nil,
         spriteLibrary: SpriteLibrary? = nil,
         spriteConfig: SpriteConfig? = nil,
-        itemsConfig: ItemsConfig? = nil
+        itemsConfig: ItemsConfig? = nil,
+        enemySprite: (id: String, config: SpriteConfig)? = nil
     ) -> SKNode {
         if let kind = entity.pickupKind {
             return pickupNode(
@@ -320,6 +321,22 @@ enum PlaceholderFactory {
            let spriteConfig,
            library.animation(named: CompassDirection.down.animationName(locomotion: .idle)) != nil {
             return playerSpriteNode(config: config, library: library, spriteConfig: spriteConfig)
+        }
+
+        if entity.isEnemy,
+           let library = spriteLibrary,
+           let enemySprite,
+           library.animation(
+               id: enemySprite.id,
+               named: CompassDirection.down.animationName(locomotion: .idle)
+           ) != nil {
+            return enemySpriteNode(
+                entityID: entity.id,
+                config: config,
+                library: library,
+                spriteConfig: enemySprite.config,
+                libraryID: enemySprite.id
+            )
         }
 
         let container = SKNode()
@@ -372,6 +389,36 @@ enum PlaceholderFactory {
 
         let idleName = CompassDirection.down.animationName(locomotion: .idle)
         sprite.play(name: idleName, library: library)
+        return container
+    }
+
+    /// Enemy container hosting an `AnimatedSpriteNode`, keyed to `libraryID` in the sprite library.
+    @MainActor
+    static func enemySpriteNode(
+        entityID: UUID,
+        config: IsometricConfig,
+        library: SpriteLibrary,
+        spriteConfig: SpriteConfig,
+        libraryID: String
+    ) -> SKNode {
+        let container = SKNode()
+        container.name = "entity-\(entityID.uuidString)"
+        container.userData = NSMutableDictionary(dictionary: ["usesSpriteAnimation": true])
+
+        let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
+        let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
+        sprite.targetHeight = height
+        sprite.zPosition = entityBodyZ
+        // Shift toward bottom of screen by anchor_correction % of scaled height.
+        let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
+        sprite.position = CGPoint(x: 0, y: -correction)
+        container.addChild(sprite)
+
+        sprite.play(
+            name: CompassDirection.down.animationName(locomotion: .idle),
+            library: library,
+            libraryID: libraryID
+        )
         return container
     }
 

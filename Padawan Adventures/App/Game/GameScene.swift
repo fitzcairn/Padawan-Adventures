@@ -26,6 +26,8 @@ final class GameScene: SKScene {
     private var continuePoint: ContinuePointStore
     /// Last movement facing; drives idle when the player stops.
     private var playerFacing: CompassDirection = .down
+    /// Last known facing per enemy so a stopped enemy keeps facing where it walked.
+    private var enemyFacings: [UUID: CompassDirection] = [:]
 
     /// Called when the player contacts an enemy (same occupancy tile).
     var onEnemyContact: ((UUID) -> Void)?
@@ -453,6 +455,7 @@ final class GameScene: SKScene {
 
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
         updatePlayerSpriteAnimation()
+        updateEnemySpriteAnimations(poses: result.enemyDisplayPoses)
     }
 
     private func updatePlayerSpriteAnimation() {
@@ -479,6 +482,37 @@ final class GameScene: SKScene {
         if sprite.currentAnimationName != name {
             let idleName = playerFacing.animationName(locomotion: .idle)
             sprite.play(name: idleName, library: library)
+        }
+    }
+
+    private func updateEnemySpriteAnimations(poses: [EntityDisplayPose]) {
+        guard let library = spriteLibrary else { return }
+
+        let liveIDs = Set(poses.map(\.entityID))
+        enemyFacings = enemyFacings.filter { liveIDs.contains($0.key) }
+
+        for pose in poses {
+            guard let entity = world.entity(id: pose.entityID),
+                  let typeID = entity.enemyTypeID,
+                  let resolved = enemyConfig.spriteConfig(for: typeID),
+                  let sprite = renderer.enemyAnimatedSprite(id: pose.entityID) else { continue }
+
+            if let facing = pose.facing {
+                enemyFacings[pose.entityID] = facing
+            }
+            let facing = enemyFacings[pose.entityID] ?? .down
+            let locomotion: SpriteLocomotion = pose.isMoving ? .walk : .idle
+
+            let name = facing.animationName(locomotion: locomotion)
+            sprite.play(name: name, library: library, libraryID: resolved.id)
+            // Fall back to the same facing's idle clip when a walk sheet is missing.
+            if sprite.currentAnimationName != name {
+                sprite.play(
+                    name: facing.animationName(locomotion: .idle),
+                    library: library,
+                    libraryID: resolved.id
+                )
+            }
         }
     }
 

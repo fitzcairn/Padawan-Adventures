@@ -84,7 +84,7 @@ struct RestoreEnemySeparationTests {
             letter: "E",
             position: enemyAt,
             isPlayer: false,
-            enemyTypeID: "horranth"
+            enemyTypeID: "spider"
         )
         return GameWorld(
             width: world.width,

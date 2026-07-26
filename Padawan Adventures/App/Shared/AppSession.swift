@@ -151,6 +151,32 @@ final class AppSession {
         onProgress?(1)
     }
 
+    /// Ensures enemy sprite animations for the selected level's spawn list are loaded.
+    ///
+    /// Scoped rather than loading every catalog sprite: the full set is ~160 sheets.
+    func ensureEnemySpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let typeIDs = generationConfig.enemies?.types ?? []
+        let spriteIDs = Set(typeIDs.compactMap { enemyConfig.enemies[$0]?.sprite })
+        // Sorted so progress reporting is deterministic across launches.
+        let entries = enemyConfig.sprites
+            .filter { spriteIDs.contains($0.key) }
+            .sorted { $0.key < $1.key }
+        guard !entries.isEmpty else {
+            onProgress?(1)
+            return
+        }
+
+        let total = entries.count
+        for (index, entry) in entries.enumerated() {
+            let start = Double(index) / Double(total)
+            let end = Double(index + 1) / Double(total)
+            await spriteLibrary.ensureLoaded(entry.value, id: entry.key) { local in
+                onProgress?(LoadProgress.map(local, from: start, to: end))
+            }
+        }
+        onProgress?(1)
+    }
+
     /// Ensures level-select planet sprites are loaded for this session.
     func ensureUISpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
         let entries = LevelCatalog.loadFromBundle().compactMap { level -> (String, SpriteConfig)? in

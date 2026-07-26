@@ -1,6 +1,6 @@
 # Terrain: A volatile, young planet characterized by active volcanic mountain ranges, massive rivers of molten lava, and jagged, obsidian rock formations.
 # Monsters:
-# - lava_flea: Native Lava Fleas that live in magma rivers and can be dangerous when agitated.
+# - lava_lizard: Native lava lizard that lives near magma rivers.
 inherits: _defaults
 name: Mustafar
 order: 7
@@ -18,5 +18,5 @@ floor_sprites:
   - dirt-dark
   - pit
 enemies:
-  types: [lava_flea]
+  types: [lava_lizard]
   spawn_chance_per_room: 0.8

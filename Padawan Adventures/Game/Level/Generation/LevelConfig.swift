@@ -598,7 +598,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             wallDestructibleChance: 0.8,
             gateChance: 0.5
         ),
-        enemies: .init(types: ["horranth"], spawnChancePerRoom: 0.8),
+        enemies: .init(types: ["spider"], spawnChancePerRoom: 0.8),
         pickups: .init(
             health: .init(spawnChancePerRoom: 0.8),
             energy: .init(spawnChancePerRoom: 0.8)

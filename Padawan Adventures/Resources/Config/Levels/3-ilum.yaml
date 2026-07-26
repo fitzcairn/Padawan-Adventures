@@ -1,6 +1,6 @@
 # Terrain: A desolate planet entirely covered in ice, massive glaciers, and snow-capped mountain ranges.
 # Monsters:
-# - ice_spider: Carnivorous ice spider — a massive ice creature that uses camouflage to stalk its prey.
+# - ice_monster: Carnivorous ice creature that uses camouflage to stalk its prey.
 inherits: _defaults
 name: Ilum
 order: 3
@@ -19,5 +19,5 @@ floor_sprites:
   - water-bright
   - reflect
 enemies:
-  types: [ice_spider]
+  types: [ice_monster]
   spawn_chance_per_room: 0.8

@@ -316,7 +316,7 @@ struct FloorSpriteSystemTests {
             floorAccentProb: 1.0,
             cornerSpecialProb: 1.0
         )
-        config.enemies = .init(types: ["horranth"], spawnChancePerRoom: 1.0)
+        config.enemies = .init(types: ["spider"], spawnChancePerRoom: 1.0)
         let placement = TerrainPlacementTable(
             accents: ["grass": ["flowers"]],
             specials: ["grass": ["foliage"]]

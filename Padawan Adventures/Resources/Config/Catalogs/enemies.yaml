@@ -6,10 +6,238 @@
 version: 1
 slash_max_seconds: 0.5
 
+# Shared enemy sprite sheets, referenced by id from each type's `sprite:`.
+# Sheets already carry an alpha channel, so no `chroma:` / `chroma_key:`.
+# Atlas rects share one crop per enemy, so `trim: false` keeps the sprite from
+# changing size between facings and between idle/walk.
+# `scale` is proportional to the source art (0.60 x cropHeight / 105) so relative
+# creature sizes survive height normalization. Display height = wall_height x scale.
+sprites:
+  centipede:
+    root: Enemies/Centipede
+    trim: false
+    scale: 0.86
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: centipede-idle_up-spritesheet, atlas: centipede-idle_up-atlas }
+      idle_northeast: { sheet: centipede-idle_northeast-spritesheet, atlas: centipede-idle_northeast-atlas }
+      idle_right: { sheet: centipede-idle_right-spritesheet, atlas: centipede-idle_right-atlas }
+      idle_southeast: { sheet: centipede-idle_southeast-spritesheet, atlas: centipede-idle_southeast-atlas }
+      idle_down: { sheet: centipede-idle_down-spritesheet, atlas: centipede-idle_down-atlas }
+      idle_southwest: { sheet: centipede-idle_southwest-spritesheet, atlas: centipede-idle_southwest-atlas }
+      idle_left: { sheet: centipede-idle_left-spritesheet, atlas: centipede-idle_left-atlas }
+      idle_northwest: { sheet: centipede-idle_northwest-spritesheet, atlas: centipede-idle_northwest-atlas }
+      walk_up: { sheet: centipede-walk_up-spritesheet, atlas: centipede-walk_up-atlas }
+      walk_northeast: { sheet: centipede-walk_northeast-spritesheet, atlas: centipede-walk_northeast-atlas }
+      walk_right: { sheet: centipede-walk_right-spritesheet, atlas: centipede-walk_right-atlas }
+      walk_southeast: { sheet: centipede-walk_southeast-spritesheet, atlas: centipede-walk_southeast-atlas }
+      walk_down: { sheet: centipede-walk_down-spritesheet, atlas: centipede-walk_down-atlas }
+      walk_southwest: { sheet: centipede-walk_southwest-spritesheet, atlas: centipede-walk_southwest-atlas }
+      walk_left: { sheet: centipede-walk_left-spritesheet, atlas: centipede-walk_left-atlas }
+      walk_northwest: { sheet: centipede-walk_northwest-spritesheet, atlas: centipede-walk_northwest-atlas }
+  dino:
+    root: Enemies/Dino
+    trim: false
+    scale: 1.10
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: dino-idle_up-spritesheet, atlas: dino-idle_up-atlas }
+      idle_northeast: { sheet: dino-idle_northeast-spritesheet, atlas: dino-idle_northeast-atlas }
+      idle_right: { sheet: dino-idle_right-spritesheet, atlas: dino-idle_right-atlas }
+      idle_southeast: { sheet: dino-idle_southeast-spritesheet, atlas: dino-idle_southeast-atlas }
+      idle_down: { sheet: dino-idle_down-spritesheet, atlas: dino-idle_down-atlas }
+      idle_southwest: { sheet: dino-idle_southwest-spritesheet, atlas: dino-idle_southwest-atlas }
+      idle_left: { sheet: dino-idle_left-spritesheet, atlas: dino-idle_left-atlas }
+      idle_northwest: { sheet: dino-idle_northwest-spritesheet, atlas: dino-idle_northwest-atlas }
+      walk_up: { sheet: dino-walk_up-spritesheet, atlas: dino-walk_up-atlas }
+      walk_northeast: { sheet: dino-walk_northeast-spritesheet, atlas: dino-walk_northeast-atlas }
+      walk_right: { sheet: dino-walk_right-spritesheet, atlas: dino-walk_right-atlas }
+      walk_southeast: { sheet: dino-walk_southeast-spritesheet, atlas: dino-walk_southeast-atlas }
+      walk_down: { sheet: dino-walk_down-spritesheet, atlas: dino-walk_down-atlas }
+      walk_southwest: { sheet: dino-walk_southwest-spritesheet, atlas: dino-walk_southwest-atlas }
+      walk_left: { sheet: dino-walk_left-spritesheet, atlas: dino-walk_left-atlas }
+      walk_northwest: { sheet: dino-walk_northwest-spritesheet, atlas: dino-walk_northwest-atlas }
+  drone:
+    root: Enemies/Drone
+    trim: false
+    scale: 0.87
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: drone-idle_up-spritesheet, atlas: drone-idle_up-atlas }
+      idle_northeast: { sheet: drone-idle_northeast-spritesheet, atlas: drone-idle_northeast-atlas }
+      idle_right: { sheet: drone-idle_right-spritesheet, atlas: drone-idle_right-atlas }
+      idle_southeast: { sheet: drone-idle_southeast-spritesheet, atlas: drone-idle_southeast-atlas }
+      idle_down: { sheet: drone-idle_down-spritesheet, atlas: drone-idle_down-atlas }
+      idle_southwest: { sheet: drone-idle_southwest-spritesheet, atlas: drone-idle_southwest-atlas }
+      idle_left: { sheet: drone-idle_left-spritesheet, atlas: drone-idle_left-atlas }
+      idle_northwest: { sheet: drone-idle_northwest-spritesheet, atlas: drone-idle_northwest-atlas }
+      walk_up: { sheet: drone-walk_up-spritesheet, atlas: drone-walk_up-atlas }
+      walk_northeast: { sheet: drone-walk_northeast-spritesheet, atlas: drone-walk_northeast-atlas }
+      walk_right: { sheet: drone-walk_right-spritesheet, atlas: drone-walk_right-atlas }
+      walk_southeast: { sheet: drone-walk_southeast-spritesheet, atlas: drone-walk_southeast-atlas }
+      walk_down: { sheet: drone-walk_down-spritesheet, atlas: drone-walk_down-atlas }
+      walk_southwest: { sheet: drone-walk_southwest-spritesheet, atlas: drone-walk_southwest-atlas }
+      walk_left: { sheet: drone-walk_left-spritesheet, atlas: drone-walk_left-atlas }
+      walk_northwest: { sheet: drone-walk_northwest-spritesheet, atlas: drone-walk_northwest-atlas }
+  ice_monster:
+    root: Enemies/IceMonster
+    trim: false
+    scale: 0.87
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: ice_monster-idle_up-spritesheet, atlas: ice_monster-idle_up-atlas }
+      idle_northeast: { sheet: ice_monster-idle_northeast-spritesheet, atlas: ice_monster-idle_northeast-atlas }
+      idle_right: { sheet: ice_monster-idle_right-spritesheet, atlas: ice_monster-idle_right-atlas }
+      idle_southeast: { sheet: ice_monster-idle_southeast-spritesheet, atlas: ice_monster-idle_southeast-atlas }
+      idle_down: { sheet: ice_monster-idle_down-spritesheet, atlas: ice_monster-idle_down-atlas }
+      idle_southwest: { sheet: ice_monster-idle_southwest-spritesheet, atlas: ice_monster-idle_southwest-atlas }
+      idle_left: { sheet: ice_monster-idle_left-spritesheet, atlas: ice_monster-idle_left-atlas }
+      idle_northwest: { sheet: ice_monster-idle_northwest-spritesheet, atlas: ice_monster-idle_northwest-atlas }
+      walk_up: { sheet: ice_monster-walk_up-spritesheet, atlas: ice_monster-walk_up-atlas }
+      walk_northeast: { sheet: ice_monster-walk_northeast-spritesheet, atlas: ice_monster-walk_northeast-atlas }
+      walk_right: { sheet: ice_monster-walk_right-spritesheet, atlas: ice_monster-walk_right-atlas }
+      walk_southeast: { sheet: ice_monster-walk_southeast-spritesheet, atlas: ice_monster-walk_southeast-atlas }
+      walk_down: { sheet: ice_monster-walk_down-spritesheet, atlas: ice_monster-walk_down-atlas }
+      walk_southwest: { sheet: ice_monster-walk_southwest-spritesheet, atlas: ice_monster-walk_southwest-atlas }
+      walk_left: { sheet: ice_monster-walk_left-spritesheet, atlas: ice_monster-walk_left-atlas }
+      walk_northwest: { sheet: ice_monster-walk_northwest-spritesheet, atlas: ice_monster-walk_northwest-atlas }
+  lava_lizard:
+    root: Enemies/LavaLizard
+    trim: false
+    scale: 0.94
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: lava_lizard-idle_up-spritesheet, atlas: lava_lizard-idle_up-atlas }
+      idle_northeast: { sheet: lava_lizard-idle_northeast-spritesheet, atlas: lava_lizard-idle_northeast-atlas }
+      idle_right: { sheet: lava_lizard-idle_right-spritesheet, atlas: lava_lizard-idle_right-atlas }
+      idle_southeast: { sheet: lava_lizard-idle_southeast-spritesheet, atlas: lava_lizard-idle_southeast-atlas }
+      idle_down: { sheet: lava_lizard-idle_down-spritesheet, atlas: lava_lizard-idle_down-atlas }
+      idle_southwest: { sheet: lava_lizard-idle_southwest-spritesheet, atlas: lava_lizard-idle_southwest-atlas }
+      idle_left: { sheet: lava_lizard-idle_left-spritesheet, atlas: lava_lizard-idle_left-atlas }
+      idle_northwest: { sheet: lava_lizard-idle_northwest-spritesheet, atlas: lava_lizard-idle_northwest-atlas }
+      walk_up: { sheet: lava_lizard-walk_up-spritesheet, atlas: lava_lizard-walk_up-atlas }
+      walk_northeast: { sheet: lava_lizard-walk_northeast-spritesheet, atlas: lava_lizard-walk_northeast-atlas }
+      walk_right: { sheet: lava_lizard-walk_right-spritesheet, atlas: lava_lizard-walk_right-atlas }
+      walk_southeast: { sheet: lava_lizard-walk_southeast-spritesheet, atlas: lava_lizard-walk_southeast-atlas }
+      walk_down: { sheet: lava_lizard-walk_down-spritesheet, atlas: lava_lizard-walk_down-atlas }
+      walk_southwest: { sheet: lava_lizard-walk_southwest-spritesheet, atlas: lava_lizard-walk_southwest-atlas }
+      walk_left: { sheet: lava_lizard-walk_left-spritesheet, atlas: lava_lizard-walk_left-atlas }
+      walk_northwest: { sheet: lava_lizard-walk_northwest-spritesheet, atlas: lava_lizard-walk_northwest-atlas }
+  moth:
+    root: Enemies/Moth
+    trim: false
+    scale: 0.96
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: moth-idle_up-spritesheet, atlas: moth-idle_up-atlas }
+      idle_northeast: { sheet: moth-idle_northeast-spritesheet, atlas: moth-idle_northeast-atlas }
+      idle_right: { sheet: moth-idle_right-spritesheet, atlas: moth-idle_right-atlas }
+      idle_southeast: { sheet: moth-idle_southeast-spritesheet, atlas: moth-idle_southeast-atlas }
+      idle_down: { sheet: moth-idle_down-spritesheet, atlas: moth-idle_down-atlas }
+      idle_southwest: { sheet: moth-idle_southwest-spritesheet, atlas: moth-idle_southwest-atlas }
+      idle_left: { sheet: moth-idle_left-spritesheet, atlas: moth-idle_left-atlas }
+      idle_northwest: { sheet: moth-idle_northwest-spritesheet, atlas: moth-idle_northwest-atlas }
+      walk_up: { sheet: moth-walk_up-spritesheet, atlas: moth-walk_up-atlas }
+      walk_northeast: { sheet: moth-walk_northeast-spritesheet, atlas: moth-walk_northeast-atlas }
+      walk_right: { sheet: moth-walk_right-spritesheet, atlas: moth-walk_right-atlas }
+      walk_southeast: { sheet: moth-walk_southeast-spritesheet, atlas: moth-walk_southeast-atlas }
+      walk_down: { sheet: moth-walk_down-spritesheet, atlas: moth-walk_down-atlas }
+      walk_southwest: { sheet: moth-walk_southwest-spritesheet, atlas: moth-walk_southwest-atlas }
+      walk_left: { sheet: moth-walk_left-spritesheet, atlas: moth-walk_left-atlas }
+      walk_northwest: { sheet: moth-walk_northwest-spritesheet, atlas: moth-walk_northwest-atlas }
+  robot:
+    root: Enemies/Robot
+    trim: false
+    scale: 0.86
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: robot-idle_up-spritesheet, atlas: robot-idle_up-atlas }
+      idle_northeast: { sheet: robot-idle_northeast-spritesheet, atlas: robot-idle_northeast-atlas }
+      idle_right: { sheet: robot-idle_right-spritesheet, atlas: robot-idle_right-atlas }
+      idle_southeast: { sheet: robot-idle_southeast-spritesheet, atlas: robot-idle_southeast-atlas }
+      idle_down: { sheet: robot-idle_down-spritesheet, atlas: robot-idle_down-atlas }
+      idle_southwest: { sheet: robot-idle_southwest-spritesheet, atlas: robot-idle_southwest-atlas }
+      idle_left: { sheet: robot-idle_left-spritesheet, atlas: robot-idle_left-atlas }
+      idle_northwest: { sheet: robot-idle_northwest-spritesheet, atlas: robot-idle_northwest-atlas }
+      walk_up: { sheet: robot-walk_up-spritesheet, atlas: robot-walk_up-atlas }
+      walk_northeast: { sheet: robot-walk_northeast-spritesheet, atlas: robot-walk_northeast-atlas }
+      walk_right: { sheet: robot-walk_right-spritesheet, atlas: robot-walk_right-atlas }
+      walk_southeast: { sheet: robot-walk_southeast-spritesheet, atlas: robot-walk_southeast-atlas }
+      walk_down: { sheet: robot-walk_down-spritesheet, atlas: robot-walk_down-atlas }
+      walk_southwest: { sheet: robot-walk_southwest-spritesheet, atlas: robot-walk_southwest-atlas }
+      walk_left: { sheet: robot-walk_left-spritesheet, atlas: robot-walk_left-atlas }
+      walk_northwest: { sheet: robot-walk_northwest-spritesheet, atlas: robot-walk_northwest-atlas }
+  snake:
+    root: Enemies/Snake
+    trim: false
+    scale: 1.00
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: snake-idle_up-spritesheet, atlas: snake-idle_up-atlas }
+      idle_northeast: { sheet: snake-idle_northeast-spritesheet, atlas: snake-idle_northeast-atlas }
+      idle_right: { sheet: snake-idle_right-spritesheet, atlas: snake-idle_right-atlas }
+      idle_southeast: { sheet: snake-idle_southeast-spritesheet, atlas: snake-idle_southeast-atlas }
+      idle_down: { sheet: snake-idle_down-spritesheet, atlas: snake-idle_down-atlas }
+      idle_southwest: { sheet: snake-idle_southwest-spritesheet, atlas: snake-idle_southwest-atlas }
+      idle_left: { sheet: snake-idle_left-spritesheet, atlas: snake-idle_left-atlas }
+      idle_northwest: { sheet: snake-idle_northwest-spritesheet, atlas: snake-idle_northwest-atlas }
+      walk_up: { sheet: snake-walk_up-spritesheet, atlas: snake-walk_up-atlas }
+      walk_northeast: { sheet: snake-walk_northeast-spritesheet, atlas: snake-walk_northeast-atlas }
+      walk_right: { sheet: snake-walk_right-spritesheet, atlas: snake-walk_right-atlas }
+      walk_southeast: { sheet: snake-walk_southeast-spritesheet, atlas: snake-walk_southeast-atlas }
+      walk_down: { sheet: snake-walk_down-spritesheet, atlas: snake-walk_down-atlas }
+      walk_southwest: { sheet: snake-walk_southwest-spritesheet, atlas: snake-walk_southwest-atlas }
+      walk_left: { sheet: snake-walk_left-spritesheet, atlas: snake-walk_left-atlas }
+      walk_northwest: { sheet: snake-walk_northwest-spritesheet, atlas: snake-walk_northwest-atlas }
+  spider:
+    root: Enemies/Spider
+    trim: false
+    scale: 0.60
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: spider-idle_up-spritesheet, atlas: spider-idle_up-atlas }
+      idle_northeast: { sheet: spider-idle_northeast-spritesheet, atlas: spider-idle_northeast-atlas }
+      idle_right: { sheet: spider-idle_right-spritesheet, atlas: spider-idle_right-atlas }
+      idle_southeast: { sheet: spider-idle_southeast-spritesheet, atlas: spider-idle_southeast-atlas }
+      idle_down: { sheet: spider-idle_down-spritesheet, atlas: spider-idle_down-atlas }
+      idle_southwest: { sheet: spider-idle_southwest-spritesheet, atlas: spider-idle_southwest-atlas }
+      idle_left: { sheet: spider-idle_left-spritesheet, atlas: spider-idle_left-atlas }
+      idle_northwest: { sheet: spider-idle_northwest-spritesheet, atlas: spider-idle_northwest-atlas }
+      walk_up: { sheet: spider-walk_up-spritesheet, atlas: spider-walk_up-atlas }
+      walk_northeast: { sheet: spider-walk_northeast-spritesheet, atlas: spider-walk_northeast-atlas }
+      walk_right: { sheet: spider-walk_right-spritesheet, atlas: spider-walk_right-atlas }
+      walk_southeast: { sheet: spider-walk_southeast-spritesheet, atlas: spider-walk_southeast-atlas }
+      walk_down: { sheet: spider-walk_down-spritesheet, atlas: spider-walk_down-atlas }
+      walk_southwest: { sheet: spider-walk_southwest-spritesheet, atlas: spider-walk_southwest-atlas }
+      walk_left: { sheet: spider-walk_left-spritesheet, atlas: spider-walk_left-atlas }
+      walk_northwest: { sheet: spider-walk_northwest-spritesheet, atlas: spider-walk_northwest-atlas }
+  treant:
+    root: Enemies/Treant
+    trim: false
+    scale: 0.91
+    anchor_correction: 0
+    animations:
+      idle_up: { sheet: treant-idle_up-spritesheet, atlas: treant-idle_up-atlas }
+      idle_northeast: { sheet: treant-idle_northeast-spritesheet, atlas: treant-idle_northeast-atlas }
+      idle_right: { sheet: treant-idle_right-spritesheet, atlas: treant-idle_right-atlas }
+      idle_southeast: { sheet: treant-idle_southeast-spritesheet, atlas: treant-idle_southeast-atlas }
+      idle_down: { sheet: treant-idle_down-spritesheet, atlas: treant-idle_down-atlas }
+      idle_southwest: { sheet: treant-idle_southwest-spritesheet, atlas: treant-idle_southwest-atlas }
+      idle_left: { sheet: treant-idle_left-spritesheet, atlas: treant-idle_left-atlas }
+      idle_northwest: { sheet: treant-idle_northwest-spritesheet, atlas: treant-idle_northwest-atlas }
+      walk_up: { sheet: treant-walk_up-spritesheet, atlas: treant-walk_up-atlas }
+      walk_northeast: { sheet: treant-walk_northeast-spritesheet, atlas: treant-walk_northeast-atlas }
+      walk_right: { sheet: treant-walk_right-spritesheet, atlas: treant-walk_right-atlas }
+      walk_southeast: { sheet: treant-walk_southeast-spritesheet, atlas: treant-walk_southeast-atlas }
+      walk_down: { sheet: treant-walk_down-spritesheet, atlas: treant-walk_down-atlas }
+      walk_southwest: { sheet: treant-walk_southwest-spritesheet, atlas: treant-walk_southwest-atlas }
+      walk_left: { sheet: treant-walk_left-spritesheet, atlas: treant-walk_left-atlas }
+      walk_northwest: { sheet: treant-walk_northwest-spritesheet, atlas: treant-walk_northwest-atlas }
+
 defaults:
   letter: E
   color: "#FF0000"
-  tiles_per_second: 0.5
+  tiles_per_second: 0.7
   forget_seconds: 3.0
   combat_timer_seconds: 30
   shot_travel_seconds: 8
@@ -18,16 +246,15 @@ defaults:
   fx:
     contact: sfx_enemy_contact
 
+# Each type inherits everything from `defaults:`; any same-name key here wins.
 enemies:
-  horranth:
-  krayt_dragon:
-  tusken_raider:
-  ice_spider:
-  katarn:
-  kinrath:
-  dragonsnake:
-  security_droid:
-  armored_rat:
-  lava_flea:
-  geonosian:
-  battle_droid:
+  centipede:   { sprite: centipede }
+  dino:        { sprite: dino }
+  drone:       { sprite: drone }
+  ice_monster: { sprite: ice_monster }
+  lava_lizard: { sprite: lava_lizard }
+  moth:        { sprite: moth }
+  robot:       { sprite: robot }
+  snake:       { sprite: snake }
+  spider:      { sprite: spider }
+  treant:      { sprite: treant }

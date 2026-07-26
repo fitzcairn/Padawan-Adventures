@@ -13,7 +13,8 @@ enum SpriteSheetLoader {
         chromaKeyTolerance: UInt8 = 0,
         chromaKeyFeather: UInt8 = 0,
         chromaKeySmooth: Int = 0,
-        bundle: Bundle = .main
+        bundle: Bundle = .main,
+        trim: Bool = true
     ) throws -> SpriteAnimation {
         let sheetURL = try resourceURL(
             named: sheet,
@@ -94,7 +95,7 @@ enum SpriteSheetLoader {
 
         // Shared opaque trim: feet sit on the texture edge (anchor) and fitHeight
         // sizes the character, not the padded 256×256 atlas cell.
-        let trimmedFrames = trimToSharedOpaqueBounds(croppedFrames)
+        let trimmedFrames = trim ? trimToSharedOpaqueBounds(croppedFrames) : croppedFrames
 
         var frames: [SpriteFrame] = []
         frames.reserveCapacity(trimmedFrames.count)

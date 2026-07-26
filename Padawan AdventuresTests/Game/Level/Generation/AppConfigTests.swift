@@ -153,7 +153,7 @@ struct AppConfigTests {
         let generation = WorldGenerationConfig.compose(app: app, level: level)
         #expect(level.worldFx.trackID(for: "wall_destroyed") == "sfx_wall_destroyed")
         #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
-        #expect(generation.enemies?.type == "horranth")
+        #expect(generation.enemies?.type == "spider")
         #expect(generation.enemies?.spawnChancePerRoom == 0.8)
     }
 }

@@ -140,6 +140,7 @@ nonisolated enum ConfigStore {
         "defaults",
         "inherits",
         "sprite",
+        "sprites",
         "slash_max_seconds",
         "fade_seconds",
         "fx",

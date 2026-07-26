@@ -17,10 +17,10 @@ struct LevelDetailOverlayTests {
 
     @Test func multiTypeSpawnConfigPreservesOrder() {
         let config = LevelConfig.EnemiesSpawnConfig(
-            types: ["krayt_dragon", "tusken_raider"],
+            types: ["dino", "treant"],
             spawnChancePerRoom: 0.8
         )
-        #expect(config.types == ["krayt_dragon", "tusken_raider"])
-        #expect(config.type == "krayt_dragon")
+        #expect(config.types == ["dino", "treant"])
+        #expect(config.type == "dino")
     }
 }

@@ -91,7 +91,7 @@ destructible_wall:
   fx: { destroyed: sfx_wall_destroyed }
 
 enemies:
-  types: [horranth]
+  types: [spider]
   spawn_chance_per_room: 0.8
 
 pickups:

@@ -311,7 +311,8 @@ final class IsometricRenderer {
                     fillColor: fillColor(for: entity),
                     spriteLibrary: spriteLibrary,
                     spriteConfig: entity.isPlayer ? playerSpriteConfig : nil,
-                    itemsConfig: itemsConfig
+                    itemsConfig: itemsConfig,
+                    enemySprite: enemySprite(for: entity)
                 )
                 entityNodes[entity.id] = node
                 occlusionLayer.addChild(node)
@@ -423,6 +424,15 @@ final class IsometricRenderer {
             return nil
         }
         return player.childNode(withName: AnimatedSpriteNode.nodeName) as? AnimatedSpriteNode
+    }
+
+    private func enemySprite(for entity: GameEntity) -> (id: String, config: SpriteConfig)? {
+        guard entity.isEnemy, let typeID = entity.enemyTypeID else { return nil }
+        return enemyConfig.spriteConfig(for: typeID)
+    }
+
+    func enemyAnimatedSprite(id: UUID) -> AnimatedSpriteNode? {
+        entityNodes[id]?.childNode(withName: AnimatedSpriteNode.nodeName) as? AnimatedSpriteNode
     }
 
     var sceneViewCenter: CGPoint {

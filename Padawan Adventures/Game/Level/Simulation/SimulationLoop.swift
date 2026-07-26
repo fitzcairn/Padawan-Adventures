@@ -5,6 +5,9 @@ nonisolated struct EntityDisplayPose: Sendable {
     var entityID: UUID
     var occupancy: GridCoord
     var screenPosition: CGPoint
+    /// On-screen facing from the active movement segment; nil when idle or ambiguous.
+    var facing: CompassDirection? = nil
+    var isMoving: Bool = false
 }
 
 nonisolated struct SimulationTickResult: Sendable {
@@ -166,8 +169,11 @@ struct SimulationLoop: Sendable {
         world.entities.compactMap { entity in
             guard entity.isEnemy else { return nil }
             let occupancy = entity.position
+            let movement = enemyMovements[entity.id]
+            let isMoving = movement?.isMoving ?? false
+
             let screen: CGPoint
-            if let movement = enemyMovements[entity.id], movement.isMoving {
+            if let movement, isMoving {
                 screen = movement.interpolatedScreenPosition(
                     in: world,
                     entityID: entity.id,
@@ -176,10 +182,20 @@ struct SimulationLoop: Sendable {
             } else {
                 screen = IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
             }
+
+            var facing: CompassDirection?
+            if let movement, isMoving,
+               let start = movement.segmentStart,
+               let end = movement.segmentEnd {
+                facing = CompassDirection(dx: end.x - start.x, dy: end.y - start.y)
+            }
+
             return EntityDisplayPose(
                 entityID: entity.id,
                 occupancy: occupancy,
-                screenPosition: screen
+                screenPosition: screen,
+                facing: facing,
+                isMoving: isMoving
             )
         }
     }

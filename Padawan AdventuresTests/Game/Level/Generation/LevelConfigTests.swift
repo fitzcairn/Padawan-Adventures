@@ -28,7 +28,7 @@ struct LevelConfigTests {
         destructible_wall:
           fx: { destroyed: sfx_wall_destroyed }
         enemies:
-          type: horranth
+          type: spider
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -60,7 +60,7 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.8
           gate_chance: 0.5
         enemies:
-          type: horranth
+          type: spider
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -86,7 +86,7 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.8
           gate_chance: 0.5
         enemies:
-          type: horranth
+          type: spider
           spawn_chance_per_room: 0.8
         pickups:
           health:
@@ -108,7 +108,7 @@ struct LevelConfigTests {
         #expect(level.room.pitMaxSize == 5)
         #expect(level.room.wallDestructibleChance == 0.8)
         #expect(level.room.gateChance == 0.5)
-        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
@@ -296,7 +296,7 @@ struct LevelConfigTests {
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
         #expect(level.room.wallDestructibleChance == 0.8)
-        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
     }
@@ -392,7 +392,7 @@ struct LevelConfigTests {
         #expect(tython.sprite?.root == "Sprites/UI/Levels")
         #expect(tython.sprite?.chromaKey == "#000000")
         #expect(tython.sprite?.chromaKeyTolerance == 2)
-        #expect(tython.enemies?.types == ["horranth"])
+        #expect(tython.enemies?.types == ["dino", "treant"])
         #expect(tython.width == 20)
         #expect(tython.roomCount == 5)
     }
@@ -403,13 +403,13 @@ struct LevelConfigTests {
             inherits: base_level
             name: Tatooine
             enemies:
-              types: [krayt_dragon, tusken_raider]
+              types: [dino, treant]
               spawn_chance_per_room: 0.5
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(withTypes.enemies?.types == ["krayt_dragon", "tusken_raider"])
-        #expect(withTypes.enemies?.type == "krayt_dragon")
+        #expect(withTypes.enemies?.types == ["dino", "treant"])
+        #expect(withTypes.enemies?.type == "dino")
         #expect(withTypes.enemies?.spawnChancePerRoom == 0.5)
 
         let withLegacy = try LevelConfig.decode(
@@ -417,13 +417,13 @@ struct LevelConfigTests {
             inherits: base_level
             name: Tython
             enemies:
-              type: ice_spider
+              type: ice_monster
               spawn_chance_per_room: 0.25
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(withLegacy.enemies?.types == ["ice_spider"])
-        #expect(withLegacy.enemies?.type == "ice_spider")
+        #expect(withLegacy.enemies?.types == ["ice_monster"])
+        #expect(withLegacy.enemies?.type == "ice_monster")
     }
 
     @Test func decodesOrderAndColor() throws {
@@ -1063,13 +1063,13 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.0
           gate_chance: 0.0
         enemies:
-          types: [horranth, ice_spider]
+          types: [spider, ice_monster]
           spawn_chance_per_room: 0.8
         """
 
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.enemies?.types == ["horranth", "ice_spider"])
-        #expect(level.enemies?.type == "horranth")
+        #expect(level.enemies?.types == ["spider", "ice_monster"])
+        #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         try level.validate()
     }
@@ -1089,7 +1089,7 @@ struct LevelConfigTests {
           wall_destructible_chance: 0.0
           gate_chance: 0.0
         enemies:
-          type: horranth
+          type: spider
           spawn_chance_per_room: 1.5
         """
 

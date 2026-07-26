@@ -1,6 +1,7 @@
 # Terrain: A murky, low-lying world defined by expansive, misty swamps, dense bogs, and gnarled, ancient trees.
 # Monsters:
-# - dragonsnake: Aquatic predator — the giant Dragonsnake of the swamps.
+# - snake: Swamp snake predator.
+# - treant: Walking tree creature of the bogs.
 inherits: _defaults
 name: Dagobah
 order: 5
@@ -21,5 +22,5 @@ floor_sprites:
   - swamp-glow
   - water-green
 enemies:
-  types: [dragonsnake]
+  types: [snake, treant]
   spawn_chance_per_room: 0.8

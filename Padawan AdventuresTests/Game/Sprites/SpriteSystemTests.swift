@@ -512,6 +512,53 @@ struct SpriteSystemTests {
         }
     }
 
+    @Test func spriteConfigTrimDefaultsToTrue() throws {
+        let config = try YAMLDecoder().decode(
+            SpriteConfig.self,
+            from: Data("""
+            root: Sprites/Player
+            """.utf8)
+        )
+        #expect(config.trim == true)
+        #expect(SpriteConfig(root: "Sprites/Player").trim == true)
+    }
+
+    @Test func loadAnimationTrimFalseKeepsAtlasRectSize() throws {
+        let atlasURL = try #require(
+            Bundle.main.url(
+                forResource: "idle_northeast-atlas",
+                withExtension: "json",
+                subdirectory: "Sprites/Player"
+            ) ?? Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        )
+        let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
+        let frame = try #require(atlas.orderedFrames.first?.frame)
+
+        let trimmed = try SpriteSheetLoader.loadAnimation(
+            sheet: "idle_northeast-spritesheet",
+            atlas: "idle_northeast-atlas",
+            root: "Sprites/Player",
+            chromaKey: "#000000",
+            trim: true
+        )
+        let untrimmed = try SpriteSheetLoader.loadAnimation(
+            sheet: "idle_northeast-spritesheet",
+            atlas: "idle_northeast-atlas",
+            root: "Sprites/Player",
+            chromaKey: "#000000",
+            trim: false
+        )
+
+        let untrimmedSize = untrimmed.frames[0].texture.size()
+        #expect(Int(untrimmedSize.width.rounded()) == frame.w)
+        #expect(Int(untrimmedSize.height.rounded()) == frame.h)
+
+        let trimmedSize = trimmed.frames[0].texture.size()
+        #expect(trimmedSize.width <= untrimmedSize.width)
+        #expect(trimmedSize.height <= untrimmedSize.height)
+        #expect(trimmedSize != untrimmedSize)
+    }
+
     @Test func playerConfigDecodesSpriteSection() throws {
         let yaml = """
         letter: P
