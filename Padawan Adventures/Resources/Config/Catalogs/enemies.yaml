@@ -84,7 +84,7 @@ sprites:
   ice_monster:
     root: Enemies/IceMonster
     trim: false
-    scale: 0.87
+    scale: 1.2
     anchor_correction: 0
     animations:
       idle_up: { sheet: ice_monster-idle_up-spritesheet, atlas: ice_monster-idle_up-atlas }

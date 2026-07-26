@@ -192,6 +192,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var pickups: LevelConfig.PickupsSpawnConfig?
     var floorSet: String
     var decorProb: Double
+    /// Distinct gate minigame kinds available for this level (first-seen order).
+    var gateMinigameKinds: [GateMinigameKind]
 
     nonisolated struct MapSize: Equatable, Sendable {
         var width: Int
@@ -206,7 +208,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         enemies: LevelConfig.EnemiesSpawnConfig? = nil,
         pickups: LevelConfig.PickupsSpawnConfig? = nil,
         floorSet: String = LevelConfig.fallbackFloor.set,
-        decorProb: Double = LevelConfig.fallbackFloor.decorProb
+        decorProb: Double = LevelConfig.fallbackFloor.decorProb,
+        gateMinigameKinds: [GateMinigameKind] = GateConfig.fallback.distinctMinigameKinds
     ) {
         self.seed = seed
         self.world = world
@@ -215,10 +218,13 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.pickups = pickups
         self.floorSet = floorSet
         self.decorProb = decorProb
+        let kinds = gateMinigameKinds
+        self.gateMinigameKinds = kinds.isEmpty ? [.spelling] : kinds
     }
 
     static func compose(app: AppConfig, level: LevelConfig) -> WorldGenerationConfig {
-        WorldGenerationConfig(
+        let kinds = level.gate.distinctMinigameKinds
+        return WorldGenerationConfig(
             seed: app.seed,
             world: MapSize(
                 width: level.width,
@@ -229,7 +235,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             enemies: level.enemies,
             pickups: level.pickups,
             floorSet: level.floor.set,
-            decorProb: level.floor.decorProb
+            decorProb: level.floor.decorProb,
+            gateMinigameKinds: kinds.isEmpty ? [.spelling] : kinds
         )
     }
 

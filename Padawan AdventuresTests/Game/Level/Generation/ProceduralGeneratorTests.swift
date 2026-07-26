@@ -64,7 +64,7 @@ struct ProceduralGeneratorTests {
                     guard !room.cells.contains(neighbor) else { continue }
                     guard let tile = world.tile(at: neighbor) else { continue }
                     switch tile.kind {
-                    case .floor, .gate:
+                    case .floor(_), .gate(_):
                         return true
                     case .wall:
                         break
@@ -246,7 +246,7 @@ struct ProceduralGeneratorTests {
                         }
                         let ok: Bool
                         switch tile.kind {
-                        case .floor, .gate, .wall:
+                        case .floor(_), .gate(_), .wall:
                             ok = true
                         }
                         #expect(ok, "Room \(room.id) invalid edge at \(neighbor.x),\(neighbor.y) (seed \(seed))")
@@ -478,6 +478,27 @@ struct ProceduralGeneratorTests {
                 }
             }
         }
+    }
+
+    @Test func generationPlacesBothGateMinigameKindsAcrossSeeds() throws {
+        var sawSpelling = false
+        var sawLetterMatch = false
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            let config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            #expect(config.gateMinigameKinds.contains(.spelling))
+            #expect(config.gateMinigameKinds.contains(.letterMatch))
+            let world = try ProceduralGenerator().generate(from: config)
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    guard let kind = world.tile(at: GridCoord(x: x, y: y, story: 0))?.gateMinigame
+                    else { continue }
+                    if kind == .spelling { sawSpelling = true }
+                    if kind == .letterMatch { sawLetterMatch = true }
+                }
+            }
+        }
+        #expect(sawSpelling, "expected at least one spelling gate across seeds")
+        #expect(sawLetterMatch, "expected at least one letterMatch gate across seeds")
     }
 
     @Test func zeroPartitionChanceStillPlacesJoinGates() throws {

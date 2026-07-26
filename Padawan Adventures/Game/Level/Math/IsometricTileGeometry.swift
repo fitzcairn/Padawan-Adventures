@@ -128,7 +128,7 @@ enum IsometricTileGeometry {
     /// Walls and gates draw solid blocks that can hide sprites behind them.
     static func isOpaqueOccluder(_ tile: Tile) -> Bool {
         switch tile.kind {
-        case .wall, .gate:
+        case .wall, .gate(_):
             return true
         case .floor:
             return false

@@ -8,8 +8,17 @@ enum PlaceholderFactory {
     static let pitColor = UIColor(red: 0.28, green: 0.14, blue: 0.06, alpha: 1)
     /// Brighter gray so 1-tile partitions stay readable at fit-scale overview.
     static let wallColor = UIColor(white: 0.72, alpha: 1)
-    /// Light green multi-tile gate barriers.
-    static let gateColor = UIColor(red: 0.55, green: 0.9, blue: 0.55, alpha: 1)
+    /// Spelling gate (legacy single gate color).
+    static let spellingGateColor = UIColor(red: 0.55, green: 0.9, blue: 0.55, alpha: 1)
+    /// Letter-match gate.
+    static let letterMatchGateColor = UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
+
+    static func gateColor(for minigame: GateMinigameKind) -> UIColor {
+        switch minigame {
+        case .spelling: spellingGateColor
+        case .letterMatch: letterMatchGateColor
+        }
+    }
     /// Raised roof fill between wall tops.
     static let ceilingColor = UIColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
     /// Screen-space Y drop for pit tiles so voids read below the surrounding floor.
@@ -77,11 +86,13 @@ enum PlaceholderFactory {
         case .wall:
             break
 
-        case .gate:
+        case .gate(let minigame):
             container.position = IsometricMath.gridToScreen(coord, config: config)
             container.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
             let faces = world.map { IsometricTileGeometry.visibleFaces(at: coord, in: $0) } ?? .all
-            container.addChild(perspectiveWallNode(color: gateColor, faces: faces, config: config))
+            container.addChild(
+                perspectiveWallNode(color: gateColor(for: minigame), faces: faces, config: config)
+            )
         }
 
         return container
@@ -159,9 +170,9 @@ enum PlaceholderFactory {
         switch tile.kind {
         case .wall:
             return nil
-        case .gate:
+        case .gate(let minigame):
             let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
-            return "gate|\(faces.rawValue)"
+            return "gate|\(minigame.rawValue)|\(faces.rawValue)"
         case .floor:
             return nil
         }
@@ -401,9 +412,12 @@ enum PlaceholderFactory {
         // Treasure art is per-level; health/energy keep their PickupKind id.
         let itemID = (kind == .treasure ? treasureItemID : nil) ?? kind.rawValue
 
+        let spriteConfig = itemsConfig?.spriteConfig(id: itemID)
+
         if let library = spriteLibrary,
-           let spriteConfig = itemsConfig?.spriteConfig(id: itemID),
+           let spriteConfig,
            library.animation(id: itemID, named: "idle") != nil {
+            // Display height = wall_height × items.yaml `sprite.scale`.
             let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
             let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
             if let highlight = itemsConfig?.highlight(id: itemID) {
@@ -418,27 +432,32 @@ enum PlaceholderFactory {
                 container.addChild(glow)
             }
             let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
-            sprite.targetHeight = height
             sprite.zPosition = entityBodyZ
             // Feet (bottom-middle) on the tile center; optional anchor_correction nudge.
             sprite.position = CGPoint(x: 0, y: -correction)
             container.addChild(sprite)
+            // Lock height before play so the first texture assign cannot stick at
+            // native frame pixels; re-fit after play in case animate resets size.
+            sprite.fitHeight(height)
             sprite.play(name: "idle", library: library, libraryID: itemID)
+            sprite.fitHeight(height)
             return container
         }
 
+        // SF Symbol fallback still honors items.yaml scale when present.
+        let iconSide = pickupIconSize * CGFloat(spriteConfig?.scale ?? 1)
         let iconY = config.tileHeight * 0.35
         if let highlight = itemsConfig?.highlight(id: itemID) {
             let glow = SparkleEmitterFactory.makeNode(
                 config: highlight,
-                referenceHeight: pickupIconSize
+                referenceHeight: iconSide
             )
             glow.position = CGPoint(x: 0, y: iconY)
             container.addChild(glow)
         }
 
-        let sprite = SKSpriteNode(texture: pickupTexture(kind: kind))
-        sprite.size = CGSize(width: pickupIconSize, height: pickupIconSize)
+        let sprite = SKSpriteNode(texture: pickupTexture(kind: kind, side: iconSide))
+        sprite.size = CGSize(width: iconSide, height: iconSide)
         // Lift slightly above the tile center so the icon sits on the floor diamond.
         sprite.position = CGPoint(x: 0, y: iconY)
         sprite.zPosition = entityBodyZ
@@ -448,7 +467,7 @@ enum PlaceholderFactory {
         return container
     }
 
-    static func pickupTexture(kind: PickupKind) -> SKTexture {
+    static func pickupTexture(kind: PickupKind, side: CGFloat = pickupIconSize) -> SKTexture {
         let systemName: String
         let tint: UIColor
         switch kind {
@@ -465,11 +484,12 @@ enum PlaceholderFactory {
 
         // Bake the tint into a bitmap — SKTexture ignores UIImage dynamic tints and
         // otherwise draws SF Symbols as black template images.
-        let config = UIImage.SymbolConfiguration(pointSize: pickupIconSize, weight: .bold)
+        let pointSize = max(side, 1)
+        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
         guard let symbol = UIImage(systemName: systemName, withConfiguration: config) else {
             return SKTexture()
         }
-        let size = CGSize(width: pickupIconSize, height: pickupIconSize)
+        let size = CGSize(width: pointSize, height: pointSize)
         let image = UIGraphicsImageRenderer(size: size).image { _ in
             symbol
                 .withTintColor(tint, renderingMode: .alwaysOriginal)

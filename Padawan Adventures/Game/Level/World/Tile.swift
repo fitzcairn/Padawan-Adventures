@@ -3,7 +3,7 @@ import Foundation
 nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
     case floor(isPit: Bool)
     case wall
-    case gate
+    case gate(minigame: GateMinigameKind)
 
     private enum KindType: String, Codable {
         case floor
@@ -22,6 +22,7 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
         case partner
         case otherStory
         case lowerStory
+        case minigame
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -32,7 +33,9 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
         case .floor:
             self = .floor(isPit: try container.decode(Bool.self, forKey: .isPit))
         case .gate:
-            self = .gate
+            let kind = try container.decodeIfPresent(GateMinigameKind.self, forKey: .minigame)
+                ?? .spelling
+            self = .gate(minigame: kind)
         case .wall:
             // Legacy `hasLadder` is ignored if present.
             _ = try container.decodeIfPresent(Bool.self, forKey: .hasLadder)
@@ -40,8 +43,8 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
             if try container.decodeIfPresent(Bool.self, forKey: .hasDoor) == true {
                 self = .floor(isPit: false)
             } else if try container.decodeIfPresent(Bool.self, forKey: .destructible) == true {
-                // Legacy destructible walls become gates.
-                self = .gate
+                // Legacy destructible walls become spelling gates.
+                self = .gate(minigame: .spelling)
             } else {
                 self = .wall
             }
@@ -60,8 +63,9 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
             try container.encode(isPit, forKey: .isPit)
         case .wall:
             try container.encode(KindType.wall, forKey: .type)
-        case .gate:
+        case .gate(let minigame):
             try container.encode(KindType.gate, forKey: .type)
+            try container.encode(minigame, forKey: .minigame)
         }
     }
 }
@@ -89,6 +93,11 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     var isGate: Bool {
         if case .gate = kind { return true }
         return false
+    }
+
+    var gateMinigame: GateMinigameKind? {
+        if case .gate(let minigame) = kind { return minigame }
+        return nil
     }
 
     private enum CodingKeys: String, CodingKey {

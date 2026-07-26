@@ -1118,6 +1118,28 @@ struct LevelConfigTests {
         #expect(level.letterSoundRepeatSeconds == 3)
     }
 
+    @Test func gateConfigLooksUpMinigameByKind() {
+        let config = GateConfig.fallback
+        #expect(config.distinctMinigameKinds == [.spelling, .letterMatch])
+        guard case .letterMatch = config.minigame(for: .letterMatch) else {
+            Issue.record("expected letter_match config")
+            return
+        }
+        guard case .spelling = config.minigame(for: .spelling) else {
+            Issue.record("expected spelling config")
+            return
+        }
+        let duplicated = GateConfig(
+            fx: config.fx,
+            minigames: [
+                .spelling(.fallback),
+                .letterMatch(.fallback),
+                .spelling(.fallback),
+            ]
+        )
+        #expect(duplicated.distinctMinigameKinds == [.spelling, .letterMatch])
+    }
+
     @Test func decodesEnemiesSpawnBlock() throws {
         let yaml = """
         name: Level

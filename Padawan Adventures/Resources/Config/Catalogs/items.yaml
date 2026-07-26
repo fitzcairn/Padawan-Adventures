@@ -1,4 +1,6 @@
 # Item sprite definitions. Top-level keys match pickup ids in level YAML (`pickups:`).
+# `sprite.scale` is display height as a fraction of app.yaml `display.wall_height`
+# (defaults to max(tile_width, tile_height) when omitted). Rebuild to pick up changes.
 
 energy:
   sprite:

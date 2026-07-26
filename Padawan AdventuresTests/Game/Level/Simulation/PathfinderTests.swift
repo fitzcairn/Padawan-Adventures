@@ -45,8 +45,8 @@ struct PathfinderTests {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         let gate = GridCoord(x: 1, y: 1, story: 0)
         let soft = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate), at: gate)
-        world.setTile(Tile(kind: .gate), at: soft)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: gate)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: soft)
 
         let start = GridCoord(x: 0, y: 1, story: 0)
         let goal = GridCoord(x: 4, y: 1, story: 0)
@@ -104,7 +104,7 @@ struct PathfinderTests {
     @Test func openGateConvertsGateToFloor() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let soft = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate), at: soft)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: soft)
 
         let opened = world.openGate(at: soft)
         #expect(opened)
@@ -121,8 +121,8 @@ struct PathfinderTests {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
         let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate), at: a)
-        world.setTile(Tile(kind: .gate), at: b)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
 
         let opened = world.openGate(at: a)
         #expect(opened)
@@ -136,8 +136,8 @@ struct PathfinderTests {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
         let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate), at: a)
-        world.setTile(Tile(kind: .gate), at: b)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
 
         let opened = world.openGate(at: a)
         #expect(opened)
@@ -145,5 +145,18 @@ struct PathfinderTests {
         #expect(world.tile(at: b)?.isGate == false)
         #expect(world.isEnterable(at: a))
         #expect(world.isEnterable(at: b))
+    }
+
+    @Test func openGateClearsOnlySameMinigameKind() {
+        var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
+        let spelling = GridCoord(x: 1, y: 1, story: 0)
+        let letterMatch = GridCoord(x: 2, y: 1, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: spelling)
+        world.setTile(Tile(kind: .gate(minigame: .letterMatch)), at: letterMatch)
+
+        let opened = world.openGate(at: spelling)
+        #expect(opened)
+        #expect(world.tile(at: spelling)?.isGate == false)
+        #expect(world.tile(at: letterMatch)?.gateMinigame == .letterMatch)
     }
 }

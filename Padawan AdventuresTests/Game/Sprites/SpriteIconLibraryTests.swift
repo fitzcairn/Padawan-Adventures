@@ -51,4 +51,48 @@ struct SpriteIconLibraryTests {
         )
         #expect(animated.currentAnimationName == "idle")
     }
+
+    @Test @MainActor
+    func pickupNodeHeightTracksItemSpriteScale() async throws {
+        let base = try ItemsConfig.loadFromBundle()
+        let emitter = try #require(base.spriteConfig(id: "emitter"))
+        let library = SpriteLibrary()
+        await library.ensureLoaded(emitter, id: "emitter")
+
+        let iso = AppConfig.DisplayParams(tileWidth: 80, tileHeight: 49).makeIsometricConfig()
+        #expect(abs(iso.wallHeight - 80) < 0.001)
+
+        func makePickup(scale: Double) throws -> AnimatedSpriteNode {
+            var sprite = emitter
+            sprite.scale = scale
+            let items = ItemsConfig(items: ["emitter": ItemDefinition(sprite: sprite)])
+            let node = PlaceholderFactory.pickupNode(
+                kind: .treasure,
+                entityID: UUID(),
+                config: iso,
+                spriteLibrary: library,
+                itemsConfig: items,
+                treasureItemID: "emitter"
+            )
+            return try #require(node.children.compactMap { $0 as? AnimatedSpriteNode }.first)
+        }
+
+        let full = try makePickup(scale: 1.0)
+        let half = try makePickup(scale: 0.5)
+        #expect(abs(full.size.height - 80) < 0.5)
+        #expect(abs(half.size.height - 40) < 0.5)
+        #expect(abs(full.size.width - 80 * (50.0 / 125.0)) < 1.0)
+        #expect(abs(half.size.width - 40 * (50.0 / 125.0)) < 1.0)
+
+        // Live SKView: animate(resize:false) must keep the YAML-driven size.
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
+        let scene = SKScene(size: CGSize(width: 200, height: 200))
+        view.presentScene(scene)
+        scene.addChild(full)
+        let deadline = Date().addingTimeInterval(0.35)
+        while Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.016))
+        }
+        #expect(abs(full.size.height - 80) < 0.5, "after animate \(full.size)")
+    }
 }

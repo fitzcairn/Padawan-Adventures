@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppChrome {
     static let backgroundColor = Color.black
@@ -12,6 +13,22 @@ enum AppChrome {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
         return "v\(version) (\(build))"
+    }
+}
+
+enum AppFont {
+    /// PostScript name — use for UIFont, Font.custom, and SKLabelNode.fontName.
+    static let name = "Conthrax-SemiBold"
+
+    /// SwiftUI text. `weight` is ignored (single face); kept so call sites can mirror old `.system(size:weight:)` shape.
+    static func swiftUI(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        _ = weight
+        return .custom(name, size: size)
+    }
+
+    /// UIKit labels / attributed strings / button transformers.
+    static func uiKit(size: CGFloat, weight: UIFont.Weight = .regular) -> UIFont {
+        UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight)
     }
 }
 
@@ -35,7 +52,7 @@ struct AppTitleText: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: size, weight: weight))
+            .font(AppFont.swiftUI(size: size, weight: weight))
             .foregroundStyle(color)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)

@@ -12,8 +12,8 @@ struct MovementGoalTests {
 
         world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
         world.setTile(Tile(kind: .wall), at: wall)
-        world.setTile(Tile(kind: .gate), at: soft)
-        world.setTile(Tile(kind: .gate), at: gate)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: soft)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: gate)
 
         #expect(world.isValidMovementGoal(at: floor))
         #expect(world.isValidMovementGoal(at: pit))

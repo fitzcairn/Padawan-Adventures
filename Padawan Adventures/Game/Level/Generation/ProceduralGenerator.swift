@@ -245,13 +245,22 @@ nonisolated struct ProceduralGenerator: Sendable {
             doorOpenings,
             rooms: rooms,
             tiles: &tiles,
-            story: 0
+            story: 0,
+            gateMinigameKinds: config.gateMinigameKinds,
+            rng: &rng
         )
-        sealUngatedRoomPassages(rooms: rooms, tiles: &tiles, story: 0)
+        sealUngatedRoomPassages(
+            rooms: rooms,
+            tiles: &tiles,
+            story: 0,
+            gateMinigameKinds: config.gateMinigameKinds,
+            rng: &rng
+        )
         placePartitionGates(
             rooms: rooms,
             in: &tiles[0],
             chance: params.room.partitionGateChance,
+            gateMinigameKinds: config.gateMinigameKinds,
             rng: &rng
         )
         phase(2)
@@ -391,10 +400,17 @@ nonisolated struct ProceduralGenerator: Sendable {
                 doorOpenings: doorOpenings,
                 rooms: rooms,
                 tiles: &tiles,
-                story: 0
+                story: 0,
+                gateMinigameKinds: config.gateMinigameKinds,
+                rng: &rng
             )
             if !placed {
-                forceOnePartitionGate(rooms: rooms, in: &tiles[0])
+                forceOnePartitionGate(
+                    rooms: rooms,
+                    in: &tiles[0],
+                    gateMinigameKinds: config.gateMinigameKinds,
+                    rng: &rng
+                )
             }
         }
 
@@ -432,7 +448,9 @@ nonisolated struct ProceduralGenerator: Sendable {
         doorOpenings: [DoorOpening],
         rooms: [GeneratedRoom],
         tiles: inout [[[Tile]]],
-        story: Int
+        story: Int,
+        gateMinigameKinds: [GateMinigameKind],
+        rng: inout SeededGenerator
     ) -> Bool {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
             for cell in room.cells {
@@ -461,8 +479,9 @@ nonisolated struct ProceduralGenerator: Sendable {
             guard let pair = roomPartitionInfo(gateCells[0], roomByCell: roomByCell)?.pair else { continue }
             guard !gatedPairs.contains(pair) else { continue }
 
+            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in gateCells {
-                tiles[story][cell.y][cell.x] = Tile(kind: .gate)
+                tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
             }
             return true
         }
@@ -473,7 +492,9 @@ nonisolated struct ProceduralGenerator: Sendable {
     @discardableResult
     private func forceOnePartitionGate(
         rooms: [GeneratedRoom],
-        in story: inout [[Tile]]
+        in story: inout [[Tile]],
+        gateMinigameKinds: [GateMinigameKind],
+        rng: inout SeededGenerator
     ) -> Bool {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
             for cell in room.cells {
@@ -497,8 +518,9 @@ nonisolated struct ProceduralGenerator: Sendable {
                 in: story
             ) else { continue }
 
+            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in segment {
-                story[cell.y][cell.x] = Tile(kind: .gate)
+                story[cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
             }
             return true
         }
@@ -804,7 +826,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         switch tiles[0][cell.y][cell.x].kind {
         case .floor(let isPit):
             return !isPit
-        case .gate, .wall:
+        case .gate(_), .wall:
             return false
         }
     }
@@ -1587,7 +1609,9 @@ nonisolated struct ProceduralGenerator: Sendable {
         _ openings: [DoorOpening],
         rooms: [GeneratedRoom],
         tiles: inout [[[Tile]]],
-        story: Int
+        story: Int,
+        gateMinigameKinds: [GateMinigameKind],
+        rng: inout SeededGenerator
     ) {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
             for cell in room.cells {
@@ -1619,8 +1643,9 @@ nonisolated struct ProceduralGenerator: Sendable {
             let pair = roomPartitionInfo(gateCells[0], roomByCell: roomByCell)?.pair
                 ?? roomPairForOpening(gateCells, roomByCell: roomByCell)
             if let pair, gatedPairs.contains(pair) { continue }
+            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in gateCells {
-                tiles[story][cell.y][cell.x] = Tile(kind: .gate)
+                tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
             }
             if let pair {
                 gatedPairs.insert(pair)
@@ -1646,7 +1671,9 @@ nonisolated struct ProceduralGenerator: Sendable {
     private func sealUngatedRoomPassages(
         rooms: [GeneratedRoom],
         tiles: inout [[[Tile]]],
-        story: Int
+        story: Int,
+        gateMinigameKinds: [GateMinigameKind],
+        rng: inout SeededGenerator
     ) {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
             for cell in room.cells {
@@ -1660,10 +1687,11 @@ nonisolated struct ProceduralGenerator: Sendable {
                 tiles: tiles[story],
                 roomByCell: roomByCell
             ) else { return }
+            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in cut {
                 guard cell.y >= 0, cell.y < tiles[story].count else { continue }
                 guard cell.x >= 0, cell.x < tiles[story][cell.y].count else { continue }
-                tiles[story][cell.y][cell.x] = Tile(kind: .gate)
+                tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
             }
         }
     }
@@ -1792,6 +1820,7 @@ nonisolated struct ProceduralGenerator: Sendable {
         rooms: [GeneratedRoom],
         in story: inout [[Tile]],
         chance: Double,
+        gateMinigameKinds: [GateMinigameKind],
         rng: inout SeededGenerator
     ) {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
@@ -1825,12 +1854,21 @@ nonisolated struct ProceduralGenerator: Sendable {
                 in: story
             ) else { continue }
             guard rng.nextBool(probability: chance) else { continue }
+            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
             for cell in segment {
-                story[cell.y][cell.x] = Tile(kind: .gate)
+                story[cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
                 claimed.insert(cell)
             }
             occupiedPairs.insert(info.pair)
         }
+    }
+
+    private func pickGateMinigameKind(
+        from kinds: [GateMinigameKind],
+        rng: inout SeededGenerator
+    ) -> GateMinigameKind {
+        let pool = kinds.isEmpty ? [GateMinigameKind.spelling] : kinds
+        return pool[Int.random(in: 0..<pool.count, using: &rng)]
     }
 
     /// True when the cells immediately before/after the segment along the wall are solid walls.
@@ -2029,7 +2067,7 @@ nonisolated struct ProceduralGenerator: Sendable {
     /// Generation reachability treats gates as passable (walls block).
     private func isGenerationPassable(_ tile: Tile) -> Bool {
         switch tile.kind {
-        case .floor, .gate:
+        case .floor(_), .gate(_):
             return true
         case .wall:
             return false

@@ -157,10 +157,10 @@ struct PlaceholderFactoryTests {
             && abs(ab - eb) < 0.001 && abs(aa - ea) < 0.001
     }
 
-    @Test func gateUsesGreenColor() {
+    @Test func spellingGateUsesGreenColor() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .gate),
+            for: Tile(kind: .gate(minigame: .spelling)),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
@@ -176,23 +176,23 @@ struct PlaceholderFactoryTests {
         #expect(sawGreenFamily)
     }
 
-    @Test func gateUsesLightGreen() {
+    @Test func letterMatchGateUsesLightBlueColor() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .gate),
+            for: Tile(kind: .gate(minigame: .letterMatch)),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
         let faces = node.children.first?.children.compactMap { $0 as? SKShapeNode } ?? []
         #expect(!faces.isEmpty)
-        var sawGreenFamily = false
+        var sawBlueFamily = false
         for face in faces {
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), g > r, g > 0.5 {
-                sawGreenFamily = true
+            if face.fillColor.getRed(&r, green: &g, blue: &b, alpha: &a), b > r, b > 0.5 {
+                sawBlueFamily = true
             }
         }
-        #expect(sawGreenFamily)
+        #expect(sawBlueFamily)
     }
 
     @Test func drawnPitDoesNotNeedCeiling() {
@@ -240,7 +240,7 @@ struct PlaceholderFactoryTests {
     @Test func wallIdentityTracksKindAndFaces() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
 
         let solid = PlaceholderFactory.wallIdentity(
             for: Tile(kind: .wall),
@@ -248,22 +248,30 @@ struct PlaceholderFactoryTests {
             in: world
         )
         let gate = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate),
+            for: Tile(kind: .gate(minigame: .spelling)),
             at: a,
             in: world
         )
         #expect(solid == nil)
-        #expect(gate == "gate|\(WallFaceSet.all.rawValue)")
+        #expect(gate == "gate|spelling|\(WallFaceSet.all.rawValue)")
+
+        let letterMatch = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .gate(minigame: .letterMatch)),
+            at: a,
+            in: world
+        )
+        #expect(letterMatch == "gate|letter_match|\(WallFaceSet.all.rawValue)")
+        #expect(letterMatch != gate)
 
         // Face culling applies to gates (east opaque neighbor hides .right).
         world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
         let culled = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate),
+            for: Tile(kind: .gate(minigame: .spelling)),
             at: a,
             in: world
         )
         #expect(culled != gate)
-        #expect(culled == "gate|\(WallFaceSet([.left, .top]).rawValue)")
+        #expect(culled == "gate|spelling|\(WallFaceSet([.left, .top]).rawValue)")
     }
 
     @Test func solidWallTileNodeDrawsNothing() {
@@ -317,7 +325,7 @@ struct PlaceholderFactoryTests {
 
     @Test func gateToTheEastOccludesPickupFloor() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 1, story: 0))
         let cell = GridCoord(x: 1, y: 1, story: 0)
         #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: world.tiles[0]))
         #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: world))

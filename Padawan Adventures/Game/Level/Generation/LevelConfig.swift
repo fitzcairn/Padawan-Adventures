@@ -328,10 +328,23 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     }
 }
 
+/// Discriminator for which gate puzzle a tile/strip runs. YAML raw values match minigame `type:`.
+nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
+    case spelling
+    case letterMatch = "letter_match"
+}
+
 /// Discriminated union over the gate minigame entries in level YAML.
 nonisolated enum GateMinigameConfig: Equatable, Sendable {
     case spelling(GateSpellingConfig)
     case letterMatch(GateLetterMatchConfig)
+
+    var kind: GateMinigameKind {
+        switch self {
+        case .spelling: .spelling
+        case .letterMatch: .letterMatch
+        }
+    }
 
     var music: String? {
         switch self {
@@ -375,8 +388,27 @@ nonisolated struct GateConfig: Equatable, Sendable {
         }
     }
 
-    func pickMinigame(using rng: inout some RandomNumberGenerator) -> GateMinigameConfig {
-        minigames[Int.random(in: 0..<minigames.count, using: &rng)]
+    /// Unique kinds in `minigames`, first-seen order.
+    var distinctMinigameKinds: [GateMinigameKind] {
+        var seen = Set<GateMinigameKind>()
+        var ordered: [GateMinigameKind] = []
+        for entry in minigames {
+            if seen.insert(entry.kind).inserted {
+                ordered.append(entry.kind)
+            }
+        }
+        return ordered
+    }
+
+    func minigame(for kind: GateMinigameKind) -> GateMinigameConfig? {
+        minigames.first { $0.kind == kind }
+    }
+
+    /// Uniform pick among distinct kinds (generation only).
+    func pickMinigameKind(using rng: inout some RandomNumberGenerator) -> GateMinigameKind {
+        let kinds = distinctMinigameKinds
+        precondition(!kinds.isEmpty)
+        return kinds[Int.random(in: 0..<kinds.count, using: &rng)]
     }
 
     mutating func resolveMinigames(

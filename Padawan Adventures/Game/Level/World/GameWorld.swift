@@ -114,10 +114,10 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         setPlayerPosition(spawn)
     }
 
-    /// Opens a gate cell and every orthogonally contiguous gate in its barrier strip.
+    /// Opens a gate cell and every orthogonally contiguous gate of the same minigame kind.
     @discardableResult
     mutating func openGate(at coord: GridCoord) -> Bool {
-        guard tile(at: coord)?.isGate == true else { return false }
+        guard let startKind = tile(at: coord)?.gateMinigame else { return false }
         var queue = [coord]
         var visited: Set<GridCoord> = [coord]
         var head = 0
@@ -128,7 +128,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
             for (dx, dy) in GridCoord.cardinals {
                 let next = current.neighbor(dx: dx, dy: dy)
                 guard isInBounds(next), !visited.contains(next) else { continue }
-                guard tile(at: next)?.isGate == true else { continue }
+                guard tile(at: next)?.gateMinigame == startKind else { continue }
                 visited.insert(next)
                 queue.append(next)
             }
@@ -211,7 +211,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     func isEnterable(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
-        case .floor, .gate:
+        case .floor(_), .gate(_):
             return true
         case .wall:
             return false
@@ -227,7 +227,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     func isValidMovementGoal(at coord: GridCoord) -> Bool {
         guard let tile = tile(at: coord) else { return false }
         switch tile.kind {
-        case .floor, .gate:
+        case .floor(_), .gate(_):
             return true
         case .wall:
             return false
@@ -466,8 +466,8 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
             return isPit ? "F*" : "F"
         case .wall:
             return "W"
-        case .gate:
-            return "G"
+        case .gate(let minigame):
+            return "G:\(minigame.rawValue)"
         }
     }
 }

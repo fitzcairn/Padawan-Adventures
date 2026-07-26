@@ -13,7 +13,7 @@ struct GameSaveTests {
 
     @Test func roundTripPreservesWorld() async throws {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
-        world.setTile(Tile(kind: .gate), at: GridCoord(x: 2, y: 2, story: 0))
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 2, story: 0))
         _ = world.openGate(at: GridCoord(x: 2, y: 2, story: 0))
         world.setPlayerPosition(GridCoord(x: 3, y: 1, story: 0))
 
@@ -72,9 +72,9 @@ struct GameSaveTests {
         let kinds: [TileKind] = [
             .floor(isPit: false),
             .floor(isPit: true),
-            .gate,
+            .gate(minigame: .spelling),
             .wall,
-            .gate,
+            .gate(minigame: .letterMatch),
         ]
 
         for kind in kinds {
@@ -83,6 +83,13 @@ struct GameSaveTests {
             let decoded = try decoder.decode(Tile.self, from: data)
             #expect(decoded == tile)
         }
+
+        // Legacy bare gate (no minigame key) migrates to spelling.
+        let legacyGateJSON = """
+        {"kind":{"type":"gate"}}
+        """.data(using: .utf8)!
+        let legacyGate = try JSONDecoder().decode(Tile.self, from: legacyGateJSON)
+        #expect(legacyGate.gateMinigame == .spelling)
 
         let withTile = Tile(kind: .floor(isPit: false), floorTileID: "r00c03")
         let tileData = try encoder.encode(withTile)

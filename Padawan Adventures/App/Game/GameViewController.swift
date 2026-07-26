@@ -363,9 +363,9 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentGate(at coord: GridCoord, approach: GridCoord) {
+        let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .spelling
         let gateConfig = session.selectedGateConfig
-        var rng = SystemRandomNumberGenerator()
-        let chosen = gateConfig.pickMinigame(using: &rng)
+        let chosen = gateConfig.minigame(for: kind) ?? gateConfig.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
         let outcomeBox = GateOutcomeBox()
