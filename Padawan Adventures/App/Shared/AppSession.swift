@@ -1,8 +1,10 @@
 import Foundation
+import UIKit
 
 /// Shared bootstrap state loaded before the menu appears.
 @MainActor
 final class AppSession {
+    private var memoryWarningObserver: NSObjectProtocol?
     private(set) var appConfig: AppConfig
     /// Full selected level (map size, generation, floors, puzzles, music, …).
     private(set) var selectedLevel: LevelConfig
@@ -14,10 +16,6 @@ final class AppSession {
     private(set) var selectedLevelMusic: String?
     /// Per-minigame music for the selected level.
     private(set) var selectedGameMusic: GameMusicConfig
-    /// Still background basename for the selected level's main game scene.
-    private(set) var selectedLevelBackground: String?
-    /// Per-minigame still backgrounds for the selected level.
-    private(set) var selectedGameBackground: GameBackgroundConfig
     /// Pit puzzle knobs for the selected level.
     private(set) var selectedPitConfig: PitPuzzleConfig
     /// Gate puzzle knobs for the selected level.
@@ -46,7 +44,7 @@ final class AppSession {
     let terrainCatalog: TerrainCatalog
     /// Session-scoped floor tile animation cache (all terrains sliced at game open).
     let floorSpriteLibrary: FloorSpriteLibrary
-    /// Session-scoped still background cache (screen BGs at game open; engine BGs at level start).
+    /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
     let treasureIcons: SpriteIconLibrary
@@ -59,8 +57,6 @@ final class AppSession {
         selectedLevelArtifact: String? = nil,
         selectedLevelMusic: String? = nil,
         selectedGameMusic: GameMusicConfig? = nil,
-        selectedLevelBackground: String? = nil,
-        selectedGameBackground: GameBackgroundConfig? = nil,
         selectedPitConfig: PitPuzzleConfig? = nil,
         selectedGateConfig: GatePuzzleConfig? = nil,
         selectedDestructibleWallConfig: DestructibleWallPuzzleConfig? = nil,
@@ -87,8 +83,6 @@ final class AppSession {
         self.selectedLevelArtifact = selectedLevelArtifact ?? selectedLevel.artifact
         self.selectedLevelMusic = selectedLevelMusic ?? selectedLevel.music
         self.selectedGameMusic = selectedGameMusic ?? selectedLevel.gameMusic
-        self.selectedLevelBackground = selectedLevelBackground ?? selectedLevel.background
-        self.selectedGameBackground = selectedGameBackground ?? selectedLevel.gameBackground
         self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
         self.selectedDestructibleWallConfig = selectedDestructibleWallConfig
@@ -177,6 +171,43 @@ final class AppSession {
         }
     }
 
+    /// Tier 0 + Tier 1 sprite ids: level-select planets, the player, and the
+    /// pickups every level uses. Enemy and treasure sprites are level-scoped.
+    private var persistentSpriteIDs: Set<String> {
+        var ids: Set<String> = ["player", "energy", "health"]
+        ids.formUnion(LevelCatalog.loadFromBundle().map(\.resourceName))
+        return ids
+    }
+
+    /// Frees enemy and per-level treasure textures after leaving a level.
+    func releaseLevelScopedSprites() {
+        spriteLibrary.retain(ids: persistentSpriteIDs)
+    }
+
+    /// Drops level-scoped textures under memory pressure.
+    ///
+    /// Safe outside a level; during play the enemy sprites are in use, so this is
+    /// registered only while no game is presented.
+    func startObservingMemoryPressure() {
+        guard memoryWarningObserver == nil else { return }
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.releaseLevelScopedSprites()
+            }
+        }
+    }
+
+    func stopObservingMemoryPressure() {
+        if let memoryWarningObserver {
+            NotificationCenter.default.removeObserver(memoryWarningObserver)
+        }
+        memoryWarningObserver = nil
+    }
+
     /// Ensures enemy sprite animations for the selected level's spawn list are loaded.
     ///
     /// Scoped rather than loading every catalog sprite: the full set is ~160 sheets.
@@ -223,16 +254,6 @@ final class AppSession {
             }
         }
         onProgress?(1)
-    }
-
-    /// Ensures engine backgrounds for the selected level are loaded into the session cache.
-    func ensureEngineBackgroundsLoaded(onProgress: ((Double) -> Void)? = nil) async {
-        var names: [String] = []
-        if let selectedLevelBackground {
-            names.append(selectedLevelBackground)
-        }
-        names.append(contentsOf: selectedGameBackground.backgroundNames)
-        await backgroundLibrary.ensureLoaded(names: names, onProgress: onProgress)
     }
 
     nonisolated static func fallbackAppConfig() -> AppConfig {
@@ -452,8 +473,6 @@ final class AppSession {
         selectedLevelArtifact = level.artifact
         selectedLevelMusic = level.music
         selectedGameMusic = level.gameMusic
-        selectedLevelBackground = level.background
-        selectedGameBackground = level.gameBackground
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
         selectedDestructibleWallConfig = level.destructibleWall

@@ -4,7 +4,11 @@ import SpriteKit
 import UIKit
 
 enum SpriteSheetLoader {
-    /// Loads a spritesheet + atlas and returns chroma-keyed animation frames.
+    /// Loads a spritesheet + atlas and returns animation frames.
+    ///
+    /// Prefers offline-baked sheets under a `Baked/` subdirectory. Baked loads skip
+    /// chroma keying, trim, and `flipAroundXAxis` (baker already applied them); source
+    /// fallbacks still run that pixel processing so unbaked sheets keep working.
     static func loadAnimation(
         sheet: String,
         atlas: String,
@@ -28,6 +32,7 @@ enum SpriteSheetLoader {
             root: root,
             bundle: bundle
         )
+        let isBaked = isBakedResource(at: sheetURL)
 
         let atlasData = try Data(contentsOf: atlasURL)
         let atlasDoc = try SpriteAtlas.decode(from: atlasData)
@@ -38,8 +43,11 @@ enum SpriteSheetLoader {
             throw SpriteLoadError.invalidImage(sheet)
         }
 
+        // Baked sheets are already keyed/trimmed/SK-oriented; skip pixel processing.
         let keyedImage: CGImage
-        if let chromaKey, let rgb = parseHexRGB(chromaKey) {
+        if isBaked {
+            keyedImage = cgImage
+        } else if let chromaKey, let rgb = parseHexRGB(chromaKey) {
             keyedImage = applyChromaKey(
                 to: cgImage,
                 key: rgb,
@@ -57,20 +65,25 @@ enum SpriteSheetLoader {
             throw SpriteLoadError.invalidImage(sheet)
         }
 
-        // Prefer atlas meta size when present so frame rects match the sheet the atlas describes.
-        if let metaSize = atlasDoc.meta.size,
-           metaSize.w > 0, metaSize.h > 0,
-           (sheetWidth != metaSize.w || sheetHeight != metaSize.h) {
-            // Still allow load (assets may be resized), but frame rects are in atlas space.
-        }
-
-        let durations = atlasDoc.frameDurationsSeconds()
         let ordered = atlasDoc.orderedFrames
         guard !ordered.isEmpty else {
             throw SpriteLoadError.noFrames(atlas)
         }
-        guard durations.count == ordered.count else {
-            throw SpriteLoadError.noFrames(atlas)
+        let durations = atlasDoc.frameDurationsSeconds(ordered: ordered.map(\.frame))
+
+        // Runtime trim needs per-frame CGImage crops. Otherwise share one parent texture
+        // and slice frames with normalized SKTexture(rect:in:) sub-rects.
+        let appliesRuntimeTrim = !isBaked && trim
+        if !appliesRuntimeTrim {
+            return try loadAnimationFromParentSubrects(
+                keyedImage: keyedImage,
+                sheetWidth: sheetWidth,
+                sheetHeight: sheetHeight,
+                ordered: ordered,
+                durations: durations,
+                atlas: atlas,
+                applySpriteKitPrepFlip: !isBaked
+            )
         }
 
         var croppedFrames: [CGImage] = []
@@ -95,16 +108,223 @@ enum SpriteSheetLoader {
 
         // Shared opaque trim: feet sit on the texture edge (anchor) and fitHeight
         // sizes the character, not the padded 256×256 atlas cell.
-        let trimmedFrames = trim ? trimToSharedOpaqueBounds(croppedFrames) : croppedFrames
+        let trimmedFrames = trimToSharedOpaqueBounds(croppedFrames)
 
         var frames: [SpriteFrame] = []
         frames.reserveCapacity(trimmedFrames.count)
         for (index, image) in trimmedFrames.enumerated() {
-            // After atlas/chroma/trim are finalized, flip around X for SpriteKit display.
+            // Source path: flip around X for SpriteKit after chroma/trim.
             let displayImage = flipAroundXAxis(image)
             frames.append(
                 SpriteFrame(
                     texture: makeFrameTexture(from: displayImage),
+                    duration: max(durations[index], 0.000_001)
+                )
+            )
+        }
+        return SpriteAnimation(frames: frames)
+    }
+
+    /// Loads named frames (e.g. floor terrains) from a spritesheet + atlas.
+    ///
+    /// Prefers offline-baked sheets under `Baked/`. Baked loads (and frames with
+    /// atlas anchors) use parent sub-rects; unbaked frames without anchors still
+    /// run isolate + trim. Missing or out-of-bounds frame keys are skipped so one
+    /// bad terrain does not abort the whole load.
+    ///
+    /// `onProgress` receives a 0...1 fraction after sheet prep and after each key.
+    static func loadNamedFrameAnimations(
+        sheet: String,
+        atlas: String,
+        root: String,
+        frameKeys: [String],
+        chromaKey: String?,
+        chromaKeyTolerance: UInt8 = 0,
+        chromaKeyFeather: UInt8 = 0,
+        chromaKeySmooth: Int = 0,
+        atlasRoot: String? = nil,
+        bundle: Bundle = .main,
+        flipsHorizontally: Bool = true,
+        onProgress: (@MainActor @Sendable (Double) -> Void)? = nil
+    ) async throws -> (animations: [String: SpriteAnimation], anchors: [String: FloorAnchor]) {
+        let sheetRoot = root
+        let jsonRoot = atlasRoot ?? root
+        let totalUnits = max(frameKeys.count + 1, 1)
+        await reportProgress(onProgress, 0)
+
+        let sheetURL = try resourceURL(
+            named: sheet,
+            extensions: ["png", "jpg", "jpeg"],
+            root: sheetRoot,
+            bundle: bundle
+        )
+        let atlasURL = try resourceURL(
+            named: atlas,
+            extensions: ["json"],
+            root: jsonRoot,
+            bundle: bundle
+        )
+        let isBaked = isBakedResource(at: sheetURL)
+
+        let atlasDoc = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
+        let sheetData = try Data(contentsOf: sheetURL)
+        guard let uiImage = UIImage(contentsOfFile: sheetURL.path) ?? UIImage(data: sheetData),
+              let cgImage = uiImage.cgImage else {
+            throw SpriteLoadError.invalidImage(sheet)
+        }
+
+        let keyedImage: CGImage
+        if isBaked {
+            keyedImage = cgImage
+        } else if let chromaKey, let rgb = parseHexRGB(chromaKey) {
+            keyedImage = applyChromaKey(
+                to: cgImage,
+                key: rgb,
+                tolerance: chromaKeyTolerance,
+                feather: chromaKeyFeather,
+                smoothRadius: chromaKeySmooth
+            )
+        } else {
+            keyedImage = cgImage
+        }
+
+        let sheetWidth = keyedImage.width
+        let sheetHeight = keyedImage.height
+        guard sheetWidth > 0, sheetHeight > 0 else {
+            throw SpriteLoadError.invalidImage(sheet)
+        }
+
+        // Shared parent for frames that do not need runtime isolate/trim.
+        let parent = SKTexture(image: UIImage(cgImage: keyedImage, scale: 1, orientation: .up))
+        prepareTextureForScaledDisplay(parent)
+
+        var completedUnits = 1
+        await reportProgress(onProgress, Double(completedUnits) / Double(totalUnits))
+
+        var animations: [String: SpriteAnimation] = [:]
+        animations.reserveCapacity(frameKeys.count)
+        var anchors: [String: FloorAnchor] = [:]
+        anchors.reserveCapacity(frameKeys.count)
+
+        for id in frameKeys {
+            defer {
+                completedUnits += 1
+            }
+            guard let atlasFrame = atlasDoc.frames[id],
+                  let rect = atlasDoc.frameRect(named: id) else {
+                await reportProgress(onProgress, Double(completedUnits + 1) / Double(totalUnits))
+                continue
+            }
+            let x = Int(rect.minX)
+            let y = Int(rect.minY)
+            let w = Int(rect.width)
+            let h = Int(rect.height)
+            guard rect.minX >= 0, rect.minY >= 0,
+                  rect.maxX <= CGFloat(sheetWidth) + 0.5,
+                  rect.maxY <= CGFloat(sheetHeight) + 0.5 else {
+                await reportProgress(onProgress, Double(completedUnits + 1) / Double(totalUnits))
+                continue
+            }
+
+            // Subrects when crop is final (baked sheet or offline-tightened atlas with anchor).
+            // Legacy path still needs CGImage isolate + trim.
+            let texture: SKTexture?
+            if isBaked || atlasFrame.anchor != nil {
+                texture = makeSubrectTexture(
+                    x: x,
+                    y: y,
+                    w: w,
+                    h: h,
+                    sheetWidth: sheetWidth,
+                    sheetHeight: sheetHeight,
+                    parent: parent
+                )
+                if let bakedAnchor = atlasFrame.anchor {
+                    anchors[id] = bakedAnchor
+                }
+            } else if let piece = keyedImage.cropping(to: rect) {
+                let isolated = keepPrimaryOpaqueComponent(piece)
+                let trimmed = trimToSharedOpaqueBounds([isolated])
+                texture = makeFrameTexture(from: trimmed[0])
+            } else {
+                texture = nil
+            }
+
+            if let texture {
+                // Floors are static tiles: one frame, duration 0 (no loop timing).
+                // Mirror via node xScale instead of rewriting pixels.
+                animations[id] = SpriteAnimation(
+                    frames: [SpriteFrame(texture: texture, duration: 0)],
+                    flipsHorizontally: flipsHorizontally
+                )
+            }
+            await reportProgress(onProgress, Double(completedUnits + 1) / Double(totalUnits))
+        }
+
+        return (animations, anchors)
+    }
+
+    private static func reportProgress(
+        _ onProgress: (@MainActor @Sendable (Double) -> Void)?,
+        _ fraction: Double
+    ) async {
+        if let onProgress {
+            await MainActor.run {
+                onProgress(fraction)
+            }
+        }
+        await Task.yield()
+    }
+
+    /// One parent `SKTexture` plus normalized sub-rects (SpriteKit origin is bottom-left).
+    ///
+    /// When `applySpriteKitPrepFlip` is true (unbaked, no trim), the sheet is X-flipped once
+    /// so frame pixels match the trim-path prep that `AnimatedSpriteNode` undoes with yScale=-1.
+    /// Baked sheets are already SK-oriented, so flip is skipped and atlas rects map directly.
+    private static func loadAnimationFromParentSubrects(
+        keyedImage: CGImage,
+        sheetWidth: Int,
+        sheetHeight: Int,
+        ordered: [(key: String, frame: SpriteAtlas.SpriteAtlasFrame)],
+        durations: [TimeInterval],
+        atlas: String,
+        applySpriteKitPrepFlip: Bool
+    ) throws -> SpriteAnimation {
+        let parentImage = applySpriteKitPrepFlip ? flipAroundXAxis(keyedImage) : keyedImage
+        let parent = SKTexture(image: UIImage(cgImage: parentImage, scale: 1, orientation: .up))
+        prepareTextureForScaledDisplay(parent)
+
+        var frames: [SpriteFrame] = []
+        frames.reserveCapacity(ordered.count)
+        for (index, entry) in ordered.enumerated() {
+            let rect = entry.frame
+            let x = rect.x
+            let y = rect.y
+            let w = rect.w
+            let h = rect.h
+            guard x >= 0, y >= 0, w > 0, h > 0,
+                  x + w <= sheetWidth,
+                  y + h <= sheetHeight else {
+                throw SpriteLoadError.frameOutOfBounds(
+                    atlas: atlas,
+                    frame: entry.key,
+                    rect: "(\(x),\(y),\(w),\(h))"
+                )
+            }
+            // Atlas y is top-left. After optional X-flip, top-left y becomes sheetH - y - h.
+            let topLeftY = applySpriteKitPrepFlip ? (sheetHeight - y - h) : y
+            let frameTex = makeSubrectTexture(
+                x: x,
+                y: topLeftY,
+                w: w,
+                h: h,
+                sheetWidth: sheetWidth,
+                sheetHeight: sheetHeight,
+                parent: parent
+            )
+            frames.append(
+                SpriteFrame(
+                    texture: frameTex,
                     duration: max(durations[index], 0.000_001)
                 )
             )
@@ -222,13 +442,29 @@ enum SpriteSheetLoader {
                     sumX += cx
                     sumY += cy
                     count += 1
-                    let neighbors = [ci - 1, ci + 1, ci - width, ci + width]
-                    for ni in neighbors {
-                        guard ni >= 0, ni < width * height else { continue }
-                        let nx = ni % width
-                        let ny = ni / width
-                        // Reject wrap-around on horizontal edges.
-                        if abs(nx - cx) + abs(ny - cy) != 1 { continue }
+                    if cx > 0 {
+                        let ni = ci - 1
+                        if data[ni * bytesPerPixel + 3] >= alphaThreshold, labels[ni] == 0 {
+                            labels[ni] = nextLabel
+                            queue.append(ni)
+                        }
+                    }
+                    if cx < width - 1 {
+                        let ni = ci + 1
+                        if data[ni * bytesPerPixel + 3] >= alphaThreshold, labels[ni] == 0 {
+                            labels[ni] = nextLabel
+                            queue.append(ni)
+                        }
+                    }
+                    if cy > 0 {
+                        let ni = ci - width
+                        if data[ni * bytesPerPixel + 3] >= alphaThreshold, labels[ni] == 0 {
+                            labels[ni] = nextLabel
+                            queue.append(ni)
+                        }
+                    }
+                    if cy < height - 1 {
+                        let ni = ci + width
                         if data[ni * bytesPerPixel + 3] >= alphaThreshold, labels[ni] == 0 {
                             labels[ni] = nextLabel
                             queue.append(ni)
@@ -365,6 +601,27 @@ enum SpriteSheetLoader {
     /// Builds a frame texture from an atlas crop (exact pixels, no extra redraw pass).
     static func makeFrameTexture(from image: CGImage) -> SKTexture {
         let texture = SKTexture(image: UIImage(cgImage: image, scale: 1, orientation: .up))
+        prepareTextureForScaledDisplay(texture)
+        return texture
+    }
+
+    /// Normalized sub-rect of `parent` for an atlas pixel rect (top-left origin → SpriteKit bottom-left).
+    static func makeSubrectTexture(
+        x: Int,
+        y: Int,
+        w: Int,
+        h: Int,
+        sheetWidth: Int,
+        sheetHeight: Int,
+        parent: SKTexture
+    ) -> SKTexture {
+        let normalized = CGRect(
+            x: CGFloat(x) / CGFloat(sheetWidth),
+            y: 1.0 - CGFloat(y + h) / CGFloat(sheetHeight),
+            width: CGFloat(w) / CGFloat(sheetWidth),
+            height: CGFloat(h) / CGFloat(sheetHeight)
+        )
+        let texture = SKTexture(rect: normalized, in: parent)
         prepareTextureForScaledDisplay(texture)
         return texture
     }
@@ -536,7 +793,7 @@ enum SpriteSheetLoader {
         )
     }
 
-    /// Resolves sheet/atlas basenames under `root`, including per-animation subfolders.
+    /// Resolves sheet/atlas basenames under `root`, preferring `Baked/` subdirectories.
     private static func resourceURL(
         named name: String,
         extensions: [String],
@@ -544,12 +801,25 @@ enum SpriteSheetLoader {
         bundle: Bundle
     ) throws -> URL {
         let folderHint = animationFolderName(from: name)
-        var subdirectories = [
-            root,
-            "\(root)/\(folderHint)",
-            folderHint,
-            "",
-        ]
+        // Enemy YAML roots are `Enemies/<Type>`; with `Resources/Sprites` as an
+        // explicit folder those assets live under `Sprites/Enemies/<Type>`.
+        let searchRoots: [String]
+        if root == "Enemies" || root.hasPrefix("Enemies/") {
+            searchRoots = ["Sprites/\(root)", root]
+        } else {
+            searchRoots = [root]
+        }
+
+        var subdirectories: [String] = []
+        for searchRoot in searchRoots {
+            subdirectories.append("\(searchRoot)/Baked")
+            subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
+            subdirectories.append(searchRoot)
+            subdirectories.append("\(searchRoot)/\(folderHint)")
+        }
+        subdirectories.append(folderHint)
+        subdirectories.append("")
+
         var seen = Set<String>()
         subdirectories = subdirectories.filter { seen.insert($0).inserted }
 
@@ -569,6 +839,11 @@ enum SpriteSheetLoader {
             }
         }
         throw SpriteLoadError.missingResource("\(root)/\(name)")
+    }
+
+    /// True when the resolved URL lives under a `Baked` path component.
+    static func isBakedResource(at url: URL) -> Bool {
+        url.pathComponents.contains("Baked")
     }
 
     private static func animationFolderName(from resourceName: String) -> String {

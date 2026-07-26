@@ -17,7 +17,7 @@ struct PlaceholderFactoryTests {
     @Test func wallTileIsTallerThanFloor() {
         let config = IsometricConfig(tileWidth: 64, tileHeight: 32, wallHeight: 48)
         let floor = PlaceholderFactory.horizontalFloorNode(isPit: false, config: config)
-        let wall = PlaceholderFactory.verticalWallNode(destructible: false, config: config)
+        let wall = PlaceholderFactory.perspectiveWallNode(faces: .all, config: config)
         let floorBounds = floor.path?.boundingBox ?? .zero
         let wallBounds = wall.calculateAccumulatedFrame()
 
@@ -190,6 +190,63 @@ struct PlaceholderFactoryTests {
         world.setTile(Tile(kind: .wall(destructible: false)), at: wall)
         #expect(IsometricTileGeometry.shouldRenderWall(at: wall, in: world))
         #expect(!IsometricTileGeometry.needsCeiling(at: wall, in: world))
+    }
+
+    @Test func wallIdentityTracksKindDestructibleAndFaces() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let a = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .wall(destructible: false)), at: a)
+
+        let solid = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .wall(destructible: false)),
+            at: a,
+            in: world
+        )
+        let soft = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .wall(destructible: true)),
+            at: a,
+            in: world
+        )
+        let gate = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .gate),
+            at: a,
+            in: world
+        )
+        #expect(solid == "wall|0|\(WallFaceSet.all.rawValue)")
+        #expect(soft == "wall|1|\(WallFaceSet.all.rawValue)")
+        #expect(gate == "gate|\(WallFaceSet.all.rawValue)")
+        #expect(solid != soft)
+        #expect(solid != gate)
+
+        world.setTile(Tile(kind: .wall(destructible: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        let culled = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .wall(destructible: false)),
+            at: a,
+            in: world
+        )
+        #expect(culled != solid)
+        #expect(culled == "wall|0|\(WallFaceSet([.left, .top]).rawValue)")
+    }
+
+    @Test func wallIdentityNilForUnrenderedInteriorWall() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        for y in 0..<3 {
+            for x in 0..<3 {
+                world.setTile(
+                    Tile(kind: .wall(destructible: false)),
+                    at: GridCoord(x: x, y: y, story: 0)
+                )
+            }
+        }
+        let center = GridCoord(x: 1, y: 1, story: 0)
+        #expect(
+            PlaceholderFactory.wallIdentity(
+                for: Tile(kind: .wall(destructible: false)),
+                at: center,
+                in: world
+            ) == nil
+        )
+        #expect(PlaceholderFactory.ceilingIdentity(at: center, in: world) == "ceiling")
     }
 
     @Test func floorBehindFrontWallIsOccludedForPickups() {

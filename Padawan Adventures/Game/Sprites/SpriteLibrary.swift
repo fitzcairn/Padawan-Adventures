@@ -7,10 +7,33 @@ import UIKit
 final class SpriteLibrary {
     private var loadedIDs: Set<String> = []
     private var animationsByID: [String: [String: SpriteAnimation]] = [:]
+    private var bytesByID: [String: Int] = [:]
+    private var uiImageCache: [String: UIImage] = [:]
+    private var actionCache: [String: SKAction] = [:]
     private let bundle: Bundle
 
     init(bundle: Bundle = .main) {
         self.bundle = bundle
+    }
+
+    /// Approximate resident texture bytes (RGBA8), for eviction and diagnostics.
+    var residentBytes: Int {
+        bytesByID.values.reduce(0, +)
+    }
+
+    /// RGBA8 bytes for a set of animations, counting each texture once.
+    ///
+    /// `flip_of` animations share their source's textures, so a naive sum double-counts.
+    private static func textureBytes(of animations: [String: SpriteAnimation]) -> Int {
+        var seen = Set<ObjectIdentifier>()
+        var bytes = 0
+        for animation in animations.values {
+            for frame in animation.frames where seen.insert(ObjectIdentifier(frame.texture)).inserted {
+                let size = frame.texture.size()
+                bytes += Int(size.width * size.height) * 4
+            }
+        }
+        return bytes
     }
 
     /// Loads all animations for `config` under `id` if not already loaded.
@@ -59,6 +82,7 @@ final class SpriteLibrary {
                 )
             } catch {
                 // Missing assets are skipped so worlds still load while sheets arrive.
+                print("SpriteLibrary: failed to load \(entry.name) for \(id) — \(error)")
             }
             onProgress?(Double(index + 1) / Double(total))
             await Task.yield()
@@ -67,7 +91,10 @@ final class SpriteLibrary {
         Self.resolveFlipAnimations(into: &loaded, flipSources: flipSources)
 
         animationsByID[id] = loaded
-        loadedIDs.insert(id)
+        bytesByID[id] = Self.textureBytes(of: loaded)
+        if !loaded.isEmpty || config.animations.isEmpty {
+            loadedIDs.insert(id)
+        }
         onProgress?(1)
     }
 
@@ -95,7 +122,42 @@ final class SpriteLibrary {
     /// Testing seam: mark `id` loaded without reading the bundle.
     func seedForTesting(id: String, animations: [String: SpriteAnimation]) {
         animationsByID[id] = animations
+        bytesByID[id] = Self.textureBytes(of: animations)
         loadedIDs.insert(id)
+    }
+
+    /// Drops every loaded id outside `keep`, freeing its textures.
+    ///
+    /// Declarative on purpose: callers state what the current context needs rather
+    /// than remembering to release what it no longer needs.
+    func retain(ids keep: Set<String>) {
+        for id in loadedIDs where !keep.contains(id) {
+            animationsByID[id] = nil
+            bytesByID[id] = nil
+        }
+        loadedIDs.formIntersection(keep)
+        uiImageCache = uiImageCache.filter { entry in
+            guard let id = entry.key.split(separator: "|").first else { return false }
+            return keep.contains(String(id))
+        }
+        actionCache = actionCache.filter { entry in
+            guard let id = entry.key.split(separator: "|").first else { return false }
+            return keep.contains(String(id))
+        }
+    }
+
+    /// Every distinct texture currently resident, for GPU pre-upload.
+    func allTextures() -> [SKTexture] {
+        var seen = Set<ObjectIdentifier>()
+        var textures: [SKTexture] = []
+        for animations in animationsByID.values {
+            for animation in animations.values {
+                for frame in animation.frames where seen.insert(ObjectIdentifier(frame.texture)).inserted {
+                    textures.append(frame.texture)
+                }
+            }
+        }
+        return textures
     }
 
     func isLoaded(id: String) -> Bool {
@@ -115,15 +177,36 @@ final class SpriteLibrary {
         animationsByID[id]?.count ?? 0
     }
 
+    /// Cached looping `SKAction` for a multi-frame animation, shared across nodes.
+    func action(id: String, named name: String) -> SKAction? {
+        let key = "\(id)|\(name)"
+        if let cached = actionCache[key] {
+            return cached
+        }
+        guard let animation = animation(id: id, named: name),
+              animation.frames.count > 1 else {
+            return nil
+        }
+        let built = AnimatedSpriteNode.makeLoopingAction(for: animation)
+        actionCache[key] = built
+        return built
+    }
+
     /// First frame as a UIKit image oriented for SwiftUI / UIKit.
     ///
     /// Undoes the SpriteKit prep flip applied in `SpriteSheetLoader.loadAnimation`.
     func uiImage(id: String, named name: String = "idle") -> UIImage? {
+        let key = "\(id)|\(name)"
+        if let cached = uiImageCache[key] {
+            return cached
+        }
         guard let frame = animation(id: id, named: name)?.frames.first else {
             return nil
         }
         let cgImage = frame.texture.cgImage()
         let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
-        return UIImage(cgImage: upright, scale: 1, orientation: .up)
+        let image = UIImage(cgImage: upright, scale: 1, orientation: .up)
+        uiImageCache[key] = image
+        return image
     }
 }

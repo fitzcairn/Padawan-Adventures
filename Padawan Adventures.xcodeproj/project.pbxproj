@@ -53,7 +53,7 @@
 				Resources/Backgrounds,
 				Resources/Config/Catalogs,
 				Resources/Config/Levels,
-				Resources/Sprites/Enemies,
+				Resources/Sprites,
 			);
 			path = "Padawan Adventures";
 			sourceTree = "<group>";

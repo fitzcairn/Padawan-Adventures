@@ -4,9 +4,10 @@ import Foundation
 nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     /// Bundle-relative subdirectory for sheet/atlas basenames.
     ///
-    /// Shape depends on whether the folder is listed in the Xcode project's
-    /// `explicitFolders`: non-explicit folders flatten (e.g. `Sprites/Player`),
-    /// while explicit ones keep their last path component (e.g. `Enemies/Spider`).
+    /// With `Resources/Sprites` in the Xcode project's `explicitFolders`, paths
+    /// keep the on-disk tree (e.g. `Sprites/Player`, `Sprites/Enemies/Dino/Baked`).
+    /// Enemy YAML may still say `Enemies/<Type>`; the loader also tries
+    /// `Sprites/Enemies/<Type>`.
     var root: String
     /// Hex RGB color removed from sheets when slicing frames (e.g. `#000000`).
     var chromaKey: String?

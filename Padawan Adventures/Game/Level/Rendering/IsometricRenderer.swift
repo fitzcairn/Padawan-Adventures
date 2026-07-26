@@ -23,6 +23,12 @@ final class IsometricRenderer {
     private var floorIdentities: [GridCoord: String] = [:]
     private var floorAccentNodes: [GridCoord: SKNode] = [:]
     private var floorAccentIdentities: [GridCoord: String] = [:]
+    /// Stable wall / gate block nodes keyed by grid coord.
+    private var wallNodes: [GridCoord: SKNode] = [:]
+    private var wallIdentities: [GridCoord: String] = [:]
+    /// Stable ceiling diamonds keyed by grid coord.
+    private var ceilingNodes: [GridCoord: SKNode] = [:]
+    private var ceilingIdentities: [GridCoord: String] = [:]
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
     private var viewSize: CGSize = .zero
@@ -61,6 +67,10 @@ final class IsometricRenderer {
         floorIdentities.removeAll()
         floorAccentNodes.removeAll()
         floorAccentIdentities.removeAll()
+        wallNodes.removeAll()
+        wallIdentities.removeAll()
+        ceilingNodes.removeAll()
+        ceilingIdentities.removeAll()
         visibleStory = 0
         worldScale = 1
 
@@ -87,18 +97,11 @@ final class IsometricRenderer {
     func render(world: GameWorld, focus: CGPoint) {
         visibleStory = world.playerPosition?.story ?? world.spawn.story
 
-        // Keep entity nodes; only rebuild non-floor tiles. Floors reuse cached nodes.
-        let preservedEntities = Dictionary(uniqueKeysWithValues: entityNodes.map { ($0.key, $0.value) })
-        for node in preservedEntities.values {
-            node.removeFromParent()
-        }
-
-        wallLayer.removeAllChildren()
-        entityNodes = preservedEntities
-
         let story = visibleStory
         guard story >= 0, story < world.storyCount else {
             clearFloorNodes()
+            clearWallNodes()
+            clearCeilingNodes()
             syncEntities(world.entities)
             updateViewportFocus(focus)
             return
@@ -106,38 +109,8 @@ final class IsometricRenderer {
 
         syncFloorNodes(world: world, story: story)
         syncFloorAccentNodes(world: world, story: story)
-
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                let coord = GridCoord(x: x, y: y, story: story)
-                let tile = world.tiles[story][y][x]
-                switch tile.kind {
-                case .wall, .gate:
-                    let node = PlaceholderFactory.tileNode(
-                        for: tile,
-                        at: coord,
-                        in: world,
-                        config: config
-                    )
-                    node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                    wallLayer.addChild(node)
-                case .floor:
-                    break
-                }
-            }
-        }
-
-        // CEILING: gray wall-top diamonds over gaps / unrendered wall mass.
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                let coord = GridCoord(x: x, y: y, story: story)
-                guard IsometricTileGeometry.needsCeiling(at: coord, in: world) else { continue }
-                let ceiling = PlaceholderFactory.ceilingNode(config: config)
-                ceiling.position = IsometricMath.gridToScreen(coord, config: config)
-                ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                wallLayer.addChild(ceiling)
-            }
-        }
+        syncWallNodes(world: world, story: story)
+        syncCeilingNodes(world: world, story: story)
 
         syncEntities(world.entities)
         updateViewportFocus(focus)
@@ -256,6 +229,105 @@ final class IsometricRenderer {
         }
         floorAccentNodes.removeAll()
         floorAccentIdentities.removeAll()
+    }
+
+    /// Reuses wall / gate block nodes when kind, destructible flag, and faces are unchanged.
+    private func syncWallNodes(world: GameWorld, story: Int) {
+        var liveCoords = Set<GridCoord>()
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                let tile = world.tiles[story][y][x]
+                guard let identity = PlaceholderFactory.wallIdentity(for: tile, at: coord, in: world) else {
+                    continue
+                }
+                liveCoords.insert(coord)
+
+                if let existing = wallNodes[coord], wallIdentities[coord] == identity {
+                    if existing.parent !== wallLayer {
+                        existing.removeFromParent()
+                        wallLayer.addChild(existing)
+                    }
+                    existing.position = IsometricMath.gridToScreen(coord, config: config)
+                    existing.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                    continue
+                }
+
+                wallNodes[coord]?.removeFromParent()
+                let node = PlaceholderFactory.tileNode(
+                    for: tile,
+                    at: coord,
+                    in: world,
+                    config: config
+                )
+                node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                wallLayer.addChild(node)
+                wallNodes[coord] = node
+                wallIdentities[coord] = identity
+            }
+        }
+
+        for coord in wallNodes.keys where !liveCoords.contains(coord) {
+            wallNodes[coord]?.removeFromParent()
+            wallNodes[coord] = nil
+            wallIdentities[coord] = nil
+        }
+    }
+
+    /// Reuses ceiling diamonds when a cell still needs a roof overlay.
+    private func syncCeilingNodes(world: GameWorld, story: Int) {
+        var liveCoords = Set<GridCoord>()
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: story)
+                guard let identity = PlaceholderFactory.ceilingIdentity(at: coord, in: world) else {
+                    continue
+                }
+                liveCoords.insert(coord)
+
+                if let existing = ceilingNodes[coord], ceilingIdentities[coord] == identity {
+                    if existing.parent !== wallLayer {
+                        existing.removeFromParent()
+                        wallLayer.addChild(existing)
+                    }
+                    existing.position = IsometricMath.gridToScreen(coord, config: config)
+                    existing.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                    continue
+                }
+
+                ceilingNodes[coord]?.removeFromParent()
+                let ceiling = PlaceholderFactory.ceilingNode(config: config)
+                ceiling.position = IsometricMath.gridToScreen(coord, config: config)
+                ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                wallLayer.addChild(ceiling)
+                ceilingNodes[coord] = ceiling
+                ceilingIdentities[coord] = identity
+            }
+        }
+
+        for coord in ceilingNodes.keys where !liveCoords.contains(coord) {
+            ceilingNodes[coord]?.removeFromParent()
+            ceilingNodes[coord] = nil
+            ceilingIdentities[coord] = nil
+        }
+    }
+
+    private func clearWallNodes() {
+        for node in wallNodes.values {
+            node.removeFromParent()
+        }
+        wallNodes.removeAll()
+        wallIdentities.removeAll()
+    }
+
+    private func clearCeilingNodes() {
+        for node in ceilingNodes.values {
+            node.removeFromParent()
+        }
+        ceilingNodes.removeAll()
+        ceilingIdentities.removeAll()
     }
 
     /// Locks uniform world scale (1 = native `IsometricConfig` tile size).

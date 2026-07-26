@@ -362,7 +362,16 @@ nonisolated enum ConfigAudit {
         bundle: Bundle
     ) -> Bool {
         let folderHint = animationFolderName(from: name)
-        var subdirectories = [root, "\(root)/\(folderHint)", folderHint, ""]
+        let searchRoots = bundleSearchRoots(for: root)
+        var subdirectories: [String] = []
+        for searchRoot in searchRoots {
+            subdirectories.append("\(searchRoot)/Baked")
+            subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
+            subdirectories.append(searchRoot)
+            subdirectories.append("\(searchRoot)/\(folderHint)")
+        }
+        subdirectories.append(folderHint)
+        subdirectories.append("")
         var seen = Set<String>()
         subdirectories = subdirectories.filter { seen.insert($0).inserted }
 
@@ -385,17 +394,27 @@ nonisolated enum ConfigAudit {
     }
 
     private static func directoryHasResources(root: String, bundle: Bundle) -> Bool {
-        if let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: root),
-           !urls.isEmpty {
-            return true
-        }
-        for ext in imageExtensions {
-            if let urls = bundle.urls(forResourcesWithExtension: ext, subdirectory: root),
+        for searchRoot in bundleSearchRoots(for: root) {
+            if let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: searchRoot),
                !urls.isEmpty {
                 return true
             }
+            for ext in imageExtensions {
+                if let urls = bundle.urls(forResourcesWithExtension: ext, subdirectory: searchRoot),
+                   !urls.isEmpty {
+                    return true
+                }
+            }
         }
         return false
+    }
+
+    /// Enemy YAML roots are `Enemies/<Type>`; bundled under `Sprites/Enemies/<Type>`.
+    private static func bundleSearchRoots(for root: String) -> [String] {
+        if root == "Enemies" || root.hasPrefix("Enemies/") {
+            return ["Sprites/\(root)", root]
+        }
+        return [root]
     }
 
     private static func animationFolderName(from resourceName: String) -> String {

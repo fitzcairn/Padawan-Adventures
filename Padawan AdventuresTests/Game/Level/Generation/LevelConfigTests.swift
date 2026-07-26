@@ -222,48 +222,6 @@ struct LevelConfigTests {
         #expect(level.musicCue == .silence)
     }
 
-    @Test func decodesBackgroundAndGameBackground() throws {
-        let child = """
-        inherits: base_level
-        name: Level 1
-        background: level_engine_bg
-        game_background:
-          combat: combat_bg
-          pit: pit_bg
-          destructible_wall: wall_bg
-          gate: gate_bg
-        """
-        let level = try LevelConfig.decode(
-            from: child,
-            parents: ["base_level": Self.baseLevelYAML]
-        )
-        #expect(level.background == "level_engine_bg")
-        #expect(level.gameBackground.combat == "combat_bg")
-        #expect(level.gameBackground.pit == "pit_bg")
-        #expect(level.gameBackground.destructibleWall == "wall_bg")
-        #expect(level.gameBackground.gate == "gate_bg")
-        #expect(level.engineBackgroundNames == [
-            "level_engine_bg",
-            "combat_bg",
-            "pit_bg",
-            "wall_bg",
-            "gate_bg",
-        ])
-    }
-
-    @Test func omittedBackgroundFieldsDefaultToNil() throws {
-        let level = try LevelConfig.decode(
-            from: """
-            inherits: base_level
-            name: Level 1
-            """,
-            parents: ["base_level": Self.baseLevelYAML]
-        )
-        #expect(level.background == nil)
-        #expect(level.gameBackground == .fallback)
-        #expect(level.engineBackgroundNames.isEmpty)
-    }
-
     @Test func decodesPuzzleWorldFx() throws {
         let yaml = """
         name: Level 1

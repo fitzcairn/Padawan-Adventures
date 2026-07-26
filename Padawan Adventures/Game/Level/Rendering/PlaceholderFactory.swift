@@ -53,7 +53,7 @@ enum PlaceholderFactory {
                         terrainID: terrainID,
                         isPit: isPit,
                         config: config,
-                        raiseFraction: floorRaiseFraction(forTerrainID: terrainID, library: library)
+                        anchor: library.anchor(of: terrainID)
                     )
                     sprite.zPosition = 0.02
                     container.addChild(sprite)
@@ -115,33 +115,13 @@ enum PlaceholderFactory {
         return node
     }
 
-    /// Extra screen-up lift as a fraction of wall height (base floors).
-    static let floorSpriteRaiseFraction: CGFloat = 0.10
-    /// Corner specials and accent props sit a bit higher than base floors.
-    static let floorSpecialRaiseFraction: CGFloat = 0.20
-    static let floorAccentRaiseFraction: CGFloat = 0.20
-
-    /// Wall-height raise for a terrain id (`special` / `accent` → 20%, else 10%).
-    static func floorRaiseFraction(
-        forTerrainID terrainID: String,
-        library: FloorSpriteLibrary
-    ) -> CGFloat {
-        switch library.type(of: terrainID) {
-        case .special, .accent:
-            return floorSpecialRaiseFraction
-        case .base, .none:
-            return floorSpriteRaiseFraction
-        }
-    }
-
-    /// Floor terrain / accent sprite. Top-center near the diamond north tip, then raised
-    /// by a fraction of wall height.
+    /// Floor terrain / accent sprite placed from a baked diamond (or prop) anchor.
     static func floorSpriteNode(
         animation: SpriteAnimation,
         terrainID: String,
         isPit: Bool,
         config: IsometricConfig,
-        raiseFraction: CGFloat = floorSpriteRaiseFraction
+        anchor: FloorAnchor? = nil
     ) -> SKNode {
         let container = SKNode()
         container.name = "floor-sprite"
@@ -153,20 +133,33 @@ enum PlaceholderFactory {
         let sprite = AnimatedSpriteNode(
             size: CGSize(width: config.tileWidth, height: config.tileHeight)
         )
-        // Floor art is pre-flipped in the loader; keep positive yScale so content
-        // hangs down from the diamond's north tip (not flipped above the origin).
+        // Floors skip UIImage→SKTexture V-inversion so content stays below the origin.
         sprite.correctsUIImageVInversion = false
-        // Top-center near the diamond north tip, nudged 30% of tile height screen-up,
-        // then raised by `raiseFraction` of wall height.
-        sprite.anchorPoint = CGPoint(x: 0.5, y: 1)
         sprite.zPosition = 0
-        sprite.fitWidth(config.tileWidth)
-        sprite.play(animation: animation, name: terrainID)
-        sprite.fitWidth(config.tileWidth)
-        sprite.position = CGPoint(
-            x: 0,
-            y: config.tileHeight * 0.30 + config.wallHeight * raiseFraction
-        )
+
+        if let anchor {
+            sprite.play(animation: animation, name: terrainID)
+            // Frame pixel size; `play` has installed the texture by this point.
+            let frame = sprite.texture?.size() ?? CGSize(width: config.tileWidth, height: config.tileHeight)
+            // Tiles scale so their diamond spans exactly one tile. Props have no diamond,
+            // so they scale by their declared fraction of tile width instead.
+            let scale: CGFloat = switch anchor.kind {
+            case .tile: config.tileWidth / max(anchor.diamondWidth, 1)
+            case .prop: config.tileWidth * anchor.scale / max(frame.width, 1)
+            }
+            // Anchor fractions are frame-relative; SpriteKit's y runs up, the atlas's runs down.
+            sprite.anchorPoint = CGPoint(x: anchor.x / max(frame.width, 1), y: 1 - anchor.y / max(frame.height, 1))
+            sprite.size = CGSize(width: frame.width * scale, height: frame.height * scale)
+            // The baked anchor is the diamond centre, half a tile below the north tip.
+            sprite.position = CGPoint(x: 0, y: -config.tileHeight / 2)
+        } else {
+            // No baked anchor yet: keep the legacy top-anchored placement verbatim.
+            sprite.anchorPoint = CGPoint(x: 0.5, y: 1)
+            sprite.fitWidth(config.tileWidth)
+            sprite.play(animation: animation, name: terrainID)
+            sprite.fitWidth(config.tileWidth)
+            sprite.position = CGPoint(x: 0, y: config.tileHeight * 0.30 + config.wallHeight * 0.10)
+        }
         container.addChild(sprite)
 
         if isPit {
@@ -210,6 +203,30 @@ enum PlaceholderFactory {
         return tile.accentTerrainID
     }
 
+    /// Identity key for reusing wall / gate block nodes (nil when nothing should draw).
+    static func wallIdentity(for tile: Tile, at coord: GridCoord, in world: GameWorld) -> String? {
+        switch tile.kind {
+        case .wall(let destructible):
+            // Interior solid walls stay unrendered; destructibles always draw.
+            if !destructible && !IsometricTileGeometry.shouldRenderWall(at: coord, in: world) {
+                return nil
+            }
+            let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
+            return "wall|\(destructible ? 1 : 0)|\(faces.rawValue)"
+        case .gate:
+            let faces = IsometricTileGeometry.visibleFaces(at: coord, in: world)
+            return "gate|\(faces.rawValue)"
+        case .floor:
+            return nil
+        }
+    }
+
+    /// Identity key for reusing ceiling diamonds (nil when the cell needs no ceiling).
+    static func ceilingIdentity(at coord: GridCoord, in world: GameWorld) -> String? {
+        guard IsometricTileGeometry.needsCeiling(at: coord, in: world) else { return nil }
+        return "ceiling"
+    }
+
     /// Accent prop drawn in a later pass above all base floor sprites.
     static func floorAccentNode(
         accentID: String,
@@ -223,7 +240,7 @@ enum PlaceholderFactory {
             terrainID: accentID,
             isPit: false,
             config: config,
-            raiseFraction: floorAccentRaiseFraction
+            anchor: library.anchor(of: accentID)
         )
         node.name = "floor-accent"
         node.position = IsometricMath.gridToScreen(coord, config: config)
@@ -232,14 +249,12 @@ enum PlaceholderFactory {
 
     /// Perspective wall block: left/right slanted faces + optional top, based on tile sides.
     static func perspectiveWallNode(
-        destructible: Bool = false,
         color: UIColor? = nil,
         faces: WallFaceSet = .all,
         config: IsometricConfig
     ) -> SKNode {
         let container = SKNode()
         container.name = "wall-block"
-        _ = destructible
 
         let base = color ?? wallColor
         var hue: CGFloat = 0
@@ -286,11 +301,6 @@ enum PlaceholderFactory {
         }
 
         return container
-    }
-
-    /// Backward-compatible helper used by older tests; full perspective wall with all faces.
-    static func verticalWallNode(destructible: Bool, config: IsometricConfig) -> SKNode {
-        perspectiveWallNode(destructible: destructible, faces: .all, config: config)
     }
 
     static let playerFillColor = UIColor(red: 0.15, green: 0.55, blue: 1.0, alpha: 1)

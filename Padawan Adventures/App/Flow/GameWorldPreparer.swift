@@ -1,7 +1,8 @@
 import Foundation
+import SpriteKit
 
 enum GameWorldPreparer {
-    /// Sprite + engine-background warming occupies the first slice; world gen fills the rest.
+    /// Sprite warming occupies the first slice; world gen fills the rest.
     private static let assetsEnd = 0.48
 
     @MainActor
@@ -26,6 +27,10 @@ enum GameWorldPreparer {
         }
         report(0.02)
 
+        // Drop level-scoped textures under memory pressure only while on menus;
+        // stop before loading enemies so a warning mid-level cannot blank them.
+        session.stopObservingMemoryPressure()
+
         // Warm sprite cache once per session before the world is presented.
         await session.ensurePlayerSpritesLoaded { local in
             report(LoadProgress.map(local, from: 0.02, to: 0.18))
@@ -34,11 +39,13 @@ enum GameWorldPreparer {
             report(LoadProgress.map(local, from: 0.18, to: 0.26))
         }
         await session.ensureEnemySpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.26, to: 0.40))
+            report(LoadProgress.map(local, from: 0.26, to: assetsEnd))
         }
-        // Level engine backgrounds (main scene + minigames) for the selected level.
-        await session.ensureEngineBackgroundsLoaded { local in
-            report(LoadProgress.map(local, from: 0.40, to: assetsEnd))
+
+        await withCheckedContinuation { continuation in
+            SKTexture.preload(session.spriteLibrary.allTextures()) {
+                continuation.resume()
+            }
         }
         report(assetsEnd)
 

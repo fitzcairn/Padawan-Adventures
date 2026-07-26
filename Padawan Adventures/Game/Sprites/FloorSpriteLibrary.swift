@@ -1,10 +1,14 @@
 import Foundation
 
 /// Session-scoped cache of floor terrain animations (all tiles loaded at game open).
+///
+/// Thin facade over `SpriteSheetLoader.loadNamedFrameAnimations` so existing call
+/// sites keep `animation(id:)`, anchors, and progress reporting.
 @MainActor
 final class FloorSpriteLibrary {
     private var animations: [String: SpriteAnimation] = [:]
-    private var terrainTypes: [String: TerrainType] = [:]
+    private var anchors: [String: FloorAnchor] = [:]
+    private(set) var terrainIDs: [String] = []
     private(set) var isLoaded = false
     private let bundle: Bundle
 
@@ -22,22 +26,36 @@ final class FloorSpriteLibrary {
             return
         }
         do {
-            animations = try await FloorSpriteLoader.loadAll(
-                catalog: catalog,
+            let sprite = catalog.sprite
+            let frameKeys = catalog.terrains.keys.sorted()
+            let loaded = try await SpriteSheetLoader.loadNamedFrameAnimations(
+                sheet: sprite.sheet,
+                atlas: sprite.atlas,
+                root: sprite.root,
+                frameKeys: frameKeys,
+                chromaKey: sprite.chromaKey,
+                chromaKeyTolerance: sprite.chromaKeyTolerance,
+                chromaKeyFeather: sprite.chromaKeyFeather,
+                chromaKeySmooth: sprite.chromaKeySmooth,
+                atlasRoot: sprite.atlasRoot,
                 bundle: bundle,
+                flipsHorizontally: true,
                 onProgress: { fraction in
                     onProgress?(fraction)
                 }
             )
-            terrainTypes = catalog.terrains.mapValues(\.type)
+            animations = loaded.animations
+            anchors = loaded.anchors
+            terrainIDs = animations.keys.sorted()
             isLoaded = true
             onProgress?(1)
         } catch {
             // Missing assets leave the library empty; floors fall back to shape placeholders.
             print("FloorSpriteLibrary: failed to load terrains — \(error)")
             animations = [:]
-            terrainTypes = [:]
-            isLoaded = true
+            anchors = [:]
+            terrainIDs = []
+            isLoaded = false
             onProgress?(1)
         }
     }
@@ -45,10 +63,11 @@ final class FloorSpriteLibrary {
     /// Testing seam: mark loaded without reading the bundle.
     func seedForTesting(
         _ animations: [String: SpriteAnimation],
-        types: [String: TerrainType] = [:]
+        anchors: [String: FloorAnchor] = [:]
     ) {
         self.animations = animations
-        self.terrainTypes = types
+        self.anchors = anchors
+        self.terrainIDs = animations.keys.sorted()
         isLoaded = true
     }
 
@@ -56,15 +75,11 @@ final class FloorSpriteLibrary {
         animations[id]
     }
 
-    func type(of id: String) -> TerrainType? {
-        terrainTypes[id]
+    func anchor(of id: String) -> FloorAnchor? {
+        anchors[id]
     }
 
     var animationCount: Int {
         animations.count
-    }
-
-    var terrainIDs: [String] {
-        Array(animations.keys).sorted()
     }
 }

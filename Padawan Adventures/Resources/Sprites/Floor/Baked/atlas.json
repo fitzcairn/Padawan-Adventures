@@ -1,0 +1,1440 @@
+{
+  "meta": {
+    "size": {
+      "w": 1661,
+      "h": 2099
+    },
+    "duration_s": 0
+  },
+  "frames": {
+    "sand": {
+      "x": 0,
+      "y": 0,
+      "w": 185,
+      "h": 149,
+      "anchor": {
+        "x": 92.5,
+        "y": 49.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "sand-dune": {
+      "x": 185,
+      "y": 0,
+      "w": 184,
+      "h": 149,
+      "anchor": {
+        "x": 92.0,
+        "y": 49.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "sand-ripple": {
+      "x": 369,
+      "y": 0,
+      "w": 184,
+      "h": 150,
+      "anchor": {
+        "x": 91.0,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "sand-flat": {
+      "x": 553,
+      "y": 0,
+      "w": 183,
+      "h": 151,
+      "anchor": {
+        "x": 91.0,
+        "y": 51.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "sand-warm": {
+      "x": 736,
+      "y": 0,
+      "w": 183,
+      "h": 150,
+      "anchor": {
+        "x": 90.5,
+        "y": 50.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "sand-smooth": {
+      "x": 919,
+      "y": 0,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 91.5,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "sand-drift": {
+      "x": 1103,
+      "y": 0,
+      "w": 183,
+      "h": 150,
+      "anchor": {
+        "x": 91.5,
+        "y": 50.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "sand-shadow": {
+      "x": 1286,
+      "y": 0,
+      "w": 184,
+      "h": 149,
+      "anchor": {
+        "x": 92.0,
+        "y": 50.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "sand-soft": {
+      "x": 1470,
+      "y": 0,
+      "w": 183,
+      "h": 149,
+      "anchor": {
+        "x": 90.5,
+        "y": 49.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "sand-pale": {
+      "x": 0,
+      "y": 151,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 91.5,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "sand-dusty": {
+      "x": 184,
+      "y": 151,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 91.0,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-arid": {
+      "x": 368,
+      "y": 151,
+      "w": 185,
+      "h": 149,
+      "anchor": {
+        "x": 93.0,
+        "y": 45.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-dry": {
+      "x": 553,
+      "y": 151,
+      "w": 187,
+      "h": 147,
+      "anchor": {
+        "x": 91.5,
+        "y": 53.0,
+        "diamond_w": 187.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-cracked": {
+      "x": 740,
+      "y": 151,
+      "w": 187,
+      "h": 155,
+      "anchor": {
+        "x": 95.5,
+        "y": 72.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-hard": {
+      "x": 927,
+      "y": 151,
+      "w": 184,
+      "h": 150,
+      "anchor": {
+        "x": 91.0,
+        "y": 48.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-barren": {
+      "x": 1111,
+      "y": 151,
+      "w": 183,
+      "h": 151,
+      "anchor": {
+        "x": 90.5,
+        "y": 48.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-rough": {
+      "x": 1294,
+      "y": 151,
+      "w": 184,
+      "h": 150,
+      "anchor": {
+        "x": 91.0,
+        "y": 47.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-dark": {
+      "x": 0,
+      "y": 306,
+      "w": 184,
+      "h": 148,
+      "anchor": {
+        "x": 91.5,
+        "y": 43.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-scorched": {
+      "x": 184,
+      "y": 306,
+      "w": 186,
+      "h": 148,
+      "anchor": {
+        "x": 92.0,
+        "y": 47.0,
+        "diamond_w": 186.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-weed": {
+      "x": 370,
+      "y": 306,
+      "w": 194,
+      "h": 139,
+      "anchor": {
+        "x": 98.0,
+        "y": 41.0,
+        "diamond_w": 194.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-sprout": {
+      "x": 564,
+      "y": 306,
+      "w": 178,
+      "h": 149,
+      "anchor": {
+        "x": 87.0,
+        "y": 43.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "dirt-patchy": {
+      "x": 742,
+      "y": 306,
+      "w": 185,
+      "h": 143,
+      "anchor": {
+        "x": 92.5,
+        "y": 39.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "grass": {
+      "x": 927,
+      "y": 306,
+      "w": 184,
+      "h": 171,
+      "anchor": {
+        "x": 91.0,
+        "y": 67.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "grass-lush": {
+      "x": 1111,
+      "y": 306,
+      "w": 185,
+      "h": 175,
+      "anchor": {
+        "x": 91.5,
+        "y": 74.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "grass-thick": {
+      "x": 1296,
+      "y": 306,
+      "w": 185,
+      "h": 157,
+      "anchor": {
+        "x": 91.5,
+        "y": 57.0,
+        "diamond_w": 185.0,
+        "kind": "tile"
+      }
+    },
+    "plank": {
+      "x": 0,
+      "y": 481,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 92.0,
+        "y": 50.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "plank-worn": {
+      "x": 184,
+      "y": 481,
+      "w": 193,
+      "h": 151,
+      "anchor": {
+        "x": 97.0,
+        "y": 48.0,
+        "diamond_w": 193.0,
+        "kind": "tile"
+      }
+    },
+    "grass-tuft": {
+      "x": 377,
+      "y": 481,
+      "w": 186,
+      "h": 161,
+      "anchor": {
+        "x": 92.5,
+        "y": 59.0,
+        "diamond_w": 186.0,
+        "kind": "tile"
+      }
+    },
+    "grass-soft": {
+      "x": 563,
+      "y": 481,
+      "w": 177,
+      "h": 148,
+      "anchor": {
+        "x": 86.5,
+        "y": 49.0,
+        "diamond_w": 177.0,
+        "kind": "tile"
+      }
+    },
+    "grate": {
+      "x": 740,
+      "y": 481,
+      "w": 184,
+      "h": 147,
+      "anchor": {
+        "x": 91.0,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "grate-vent": {
+      "x": 924,
+      "y": 481,
+      "w": 184,
+      "h": 146,
+      "anchor": {
+        "x": 91.0,
+        "y": 50.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "grate-panel": {
+      "x": 1108,
+      "y": 481,
+      "w": 184,
+      "h": 146,
+      "anchor": {
+        "x": 90.5,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "grate-mesh": {
+      "x": 1292,
+      "y": 481,
+      "w": 183,
+      "h": 146,
+      "anchor": {
+        "x": 91.0,
+        "y": 51.0,
+        "diamond_w": 183.0,
+        "kind": "tile"
+      }
+    },
+    "foliage": {
+      "x": 0,
+      "y": 642,
+      "w": 190,
+      "h": 161,
+      "anchor": {
+        "x": 93.5,
+        "y": 54.0,
+        "diamond_w": 189.0,
+        "kind": "tile"
+      }
+    },
+    "foliage-lush": {
+      "x": 190,
+      "y": 642,
+      "w": 192,
+      "h": 185,
+      "anchor": {
+        "x": 91.17,
+        "y": 184.0,
+        "diamond_w": 192.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "foliage-dark": {
+      "x": 382,
+      "y": 642,
+      "w": 186,
+      "h": 150,
+      "anchor": {
+        "x": 85.0,
+        "y": 149.0,
+        "diamond_w": 186.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "mushroom": {
+      "x": 568,
+      "y": 642,
+      "w": 185,
+      "h": 179,
+      "anchor": {
+        "x": 89.33,
+        "y": 178.0,
+        "diamond_w": 183.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "mushroom-blue": {
+      "x": 753,
+      "y": 642,
+      "w": 183,
+      "h": 167,
+      "anchor": {
+        "x": 91.0,
+        "y": 166.0,
+        "diamond_w": 183.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "mushroom-glow": {
+      "x": 936,
+      "y": 642,
+      "w": 185,
+      "h": 172,
+      "anchor": {
+        "x": 91.83,
+        "y": 171.0,
+        "diamond_w": 184.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flora-mixed": {
+      "x": 1121,
+      "y": 642,
+      "w": 183,
+      "h": 170,
+      "anchor": {
+        "x": 91.33,
+        "y": 169.0,
+        "diamond_w": 183.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "metal-rust": {
+      "x": 1304,
+      "y": 642,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 91.5,
+        "y": 51.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "flora-teal": {
+      "x": 0,
+      "y": 827,
+      "w": 186,
+      "h": 140,
+      "anchor": {
+        "x": 67.5,
+        "y": 139.0,
+        "diamond_w": 186.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flora-sparse": {
+      "x": 186,
+      "y": 827,
+      "w": 162,
+      "h": 100,
+      "anchor": {
+        "x": 84.67,
+        "y": 99.0,
+        "diamond_w": 140.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flora-odd": {
+      "x": 348,
+      "y": 827,
+      "w": 183,
+      "h": 140,
+      "anchor": {
+        "x": 76.33,
+        "y": 139.0,
+        "diamond_w": 182.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flowers": {
+      "x": 531,
+      "y": 827,
+      "w": 134,
+      "h": 130,
+      "anchor": {
+        "x": 61.0,
+        "y": 129.0,
+        "diamond_w": 128.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flowers-green": {
+      "x": 665,
+      "y": 827,
+      "w": 127,
+      "h": 123,
+      "anchor": {
+        "x": 59.33,
+        "y": 122.0,
+        "diamond_w": 127.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "flowers-yellow": {
+      "x": 792,
+      "y": 827,
+      "w": 163,
+      "h": 105,
+      "anchor": {
+        "x": 85.33,
+        "y": 104.0,
+        "diamond_w": 146.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "log": {
+      "x": 955,
+      "y": 827,
+      "w": 77,
+      "h": 51,
+      "anchor": {
+        "x": 30.0,
+        "y": 50.0,
+        "diamond_w": 59.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "log-mossy": {
+      "x": 1032,
+      "y": 827,
+      "w": 144,
+      "h": 111,
+      "anchor": {
+        "x": 34.33,
+        "y": 110.0,
+        "diamond_w": 138.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-small": {
+      "x": 1176,
+      "y": 827,
+      "w": 143,
+      "h": 140,
+      "anchor": {
+        "x": 37.33,
+        "y": 139.0,
+        "diamond_w": 142.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-pile": {
+      "x": 1319,
+      "y": 827,
+      "w": 177,
+      "h": 113,
+      "anchor": {
+        "x": 49.17,
+        "y": 112.0,
+        "diamond_w": 177.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-scatter": {
+      "x": 0,
+      "y": 967,
+      "w": 183,
+      "h": 132,
+      "anchor": {
+        "x": 85.83,
+        "y": 131.0,
+        "diamond_w": 177.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-gray": {
+      "x": 183,
+      "y": 967,
+      "w": 130,
+      "h": 129,
+      "anchor": {
+        "x": 68.5,
+        "y": 128.0,
+        "diamond_w": 122.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-dark": {
+      "x": 313,
+      "y": 967,
+      "w": 116,
+      "h": 109,
+      "anchor": {
+        "x": 51.5,
+        "y": 108.0,
+        "diamond_w": 116.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rocks-mixed": {
+      "x": 429,
+      "y": 967,
+      "w": 133,
+      "h": 132,
+      "anchor": {
+        "x": 98.33,
+        "y": 131.0,
+        "diamond_w": 132.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "stump": {
+      "x": 562,
+      "y": 967,
+      "w": 127,
+      "h": 157,
+      "anchor": {
+        "x": 68.17,
+        "y": 156.0,
+        "diamond_w": 121.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "stump-mossy": {
+      "x": 689,
+      "y": 967,
+      "w": 163,
+      "h": 149,
+      "anchor": {
+        "x": 92.67,
+        "y": 148.0,
+        "diamond_w": 153.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "stump-carved": {
+      "x": 852,
+      "y": 967,
+      "w": 157,
+      "h": 152,
+      "anchor": {
+        "x": 83.83,
+        "y": 151.0,
+        "diamond_w": 156.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "stump-small": {
+      "x": 1009,
+      "y": 967,
+      "w": 110,
+      "h": 121,
+      "anchor": {
+        "x": 54.17,
+        "y": 120.0,
+        "diamond_w": 108.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "boulder-red": {
+      "x": 1119,
+      "y": 967,
+      "w": 128,
+      "h": 172,
+      "anchor": {
+        "x": 79.83,
+        "y": 171.0,
+        "diamond_w": 128.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "boulder": {
+      "x": 1247,
+      "y": 967,
+      "w": 144,
+      "h": 180,
+      "anchor": {
+        "x": 73.17,
+        "y": 179.0,
+        "diamond_w": 143.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "boulder-wide": {
+      "x": 1391,
+      "y": 967,
+      "w": 161,
+      "h": 136,
+      "anchor": {
+        "x": 69.67,
+        "y": 135.0,
+        "diamond_w": 161.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "boulder-gray": {
+      "x": 0,
+      "y": 1147,
+      "w": 146,
+      "h": 120,
+      "anchor": {
+        "x": 71.83,
+        "y": 119.0,
+        "diamond_w": 146.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ice-block": {
+      "x": 146,
+      "y": 1147,
+      "w": 156,
+      "h": 140,
+      "anchor": {
+        "x": 49.5,
+        "y": 139.0,
+        "diamond_w": 155.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rock-volcanic": {
+      "x": 302,
+      "y": 1147,
+      "w": 144,
+      "h": 186,
+      "anchor": {
+        "x": 55.17,
+        "y": 185.0,
+        "diamond_w": 144.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "rock-lava": {
+      "x": 446,
+      "y": 1147,
+      "w": 145,
+      "h": 161,
+      "anchor": {
+        "x": 53.67,
+        "y": 160.0,
+        "diamond_w": 145.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ice-cave": {
+      "x": 591,
+      "y": 1147,
+      "w": 168,
+      "h": 171,
+      "anchor": {
+        "x": 83.5,
+        "y": 170.0,
+        "diamond_w": 168.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ice-arch": {
+      "x": 759,
+      "y": 1147,
+      "w": 145,
+      "h": 131,
+      "anchor": {
+        "x": 70.0,
+        "y": 130.0,
+        "diamond_w": 145.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ice-shard": {
+      "x": 904,
+      "y": 1147,
+      "w": 184,
+      "h": 212,
+      "anchor": {
+        "x": 93.0,
+        "y": 49.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "ice-crystal": {
+      "x": 1088,
+      "y": 1147,
+      "w": 184,
+      "h": 151,
+      "anchor": {
+        "x": 93.0,
+        "y": 45.0,
+        "diamond_w": 184.0,
+        "kind": "tile"
+      }
+    },
+    "ice-spire": {
+      "x": 1272,
+      "y": 1147,
+      "w": 168,
+      "h": 133,
+      "anchor": {
+        "x": 82.17,
+        "y": 132.0,
+        "diamond_w": 168.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ice-ridge": {
+      "x": 1440,
+      "y": 1147,
+      "w": 161,
+      "h": 145,
+      "anchor": {
+        "x": 77.67,
+        "y": 144.0,
+        "diamond_w": 161.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "canyon": {
+      "x": 0,
+      "y": 1359,
+      "w": 172,
+      "h": 192,
+      "anchor": {
+        "x": 85.5,
+        "y": 191.0,
+        "diamond_w": 172.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "canyon-mesa": {
+      "x": 172,
+      "y": 1359,
+      "w": 172,
+      "h": 180,
+      "anchor": {
+        "x": 85.5,
+        "y": 179.0,
+        "diamond_w": 172.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "canyon-ridge": {
+      "x": 344,
+      "y": 1359,
+      "w": 172,
+      "h": 161,
+      "anchor": {
+        "x": 85.0,
+        "y": 160.0,
+        "diamond_w": 172.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "meteorite": {
+      "x": 516,
+      "y": 1359,
+      "w": 173,
+      "h": 159,
+      "anchor": {
+        "x": 85.0,
+        "y": 158.0,
+        "diamond_w": 173.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "meteorite-cracked": {
+      "x": 689,
+      "y": 1359,
+      "w": 171,
+      "h": 172,
+      "anchor": {
+        "x": 84.17,
+        "y": 171.0,
+        "diamond_w": 171.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "iceberg": {
+      "x": 860,
+      "y": 1359,
+      "w": 169,
+      "h": 133,
+      "anchor": {
+        "x": 84.0,
+        "y": 132.0,
+        "diamond_w": 169.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "iceberg-tall": {
+      "x": 1029,
+      "y": 1359,
+      "w": 163,
+      "h": 145,
+      "anchor": {
+        "x": 80.0,
+        "y": 144.0,
+        "diamond_w": 163.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "glacier": {
+      "x": 1192,
+      "y": 1359,
+      "w": 168,
+      "h": 126,
+      "anchor": {
+        "x": 82.5,
+        "y": 125.0,
+        "diamond_w": 168.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "glacier-wall": {
+      "x": 1360,
+      "y": 1359,
+      "w": 167,
+      "h": 180,
+      "anchor": {
+        "x": 82.5,
+        "y": 179.0,
+        "diamond_w": 167.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "iceberg-wide": {
+      "x": 0,
+      "y": 1551,
+      "w": 168,
+      "h": 168,
+      "anchor": {
+        "x": 83.67,
+        "y": 167.0,
+        "diamond_w": 168.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "sparkle": {
+      "x": 168,
+      "y": 1551,
+      "w": 13,
+      "h": 13,
+      "anchor": {
+        "x": 6.0,
+        "y": 12.0,
+        "diamond_w": 13.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "sparkle-soft": {
+      "x": 181,
+      "y": 1551,
+      "w": 25,
+      "h": 13,
+      "anchor": {
+        "x": 11.83,
+        "y": 12.0,
+        "diamond_w": 25.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "ember-spark": {
+      "x": 206,
+      "y": 1551,
+      "w": 13,
+      "h": 32,
+      "anchor": {
+        "x": 3.67,
+        "y": 31.0,
+        "diamond_w": 12.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "whirlpool": {
+      "x": 219,
+      "y": 1551,
+      "w": 120,
+      "h": 96,
+      "anchor": {
+        "x": 56.33,
+        "y": 95.0,
+        "diamond_w": 115.0,
+        "kind": "prop",
+        "scale": 1.0
+      }
+    },
+    "swamp": {
+      "x": 339,
+      "y": 1551,
+      "w": 179,
+      "h": 129,
+      "anchor": {
+        "x": 89.0,
+        "y": 48.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-roots": {
+      "x": 518,
+      "y": 1551,
+      "w": 178,
+      "h": 128,
+      "anchor": {
+        "x": 89.0,
+        "y": 46.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-dark": {
+      "x": 696,
+      "y": 1551,
+      "w": 178,
+      "h": 128,
+      "anchor": {
+        "x": 89.0,
+        "y": 46.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-murky": {
+      "x": 874,
+      "y": 1551,
+      "w": 179,
+      "h": 137,
+      "anchor": {
+        "x": 89.5,
+        "y": 55.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-deep": {
+      "x": 1053,
+      "y": 1551,
+      "w": 178,
+      "h": 153,
+      "anchor": {
+        "x": 89.0,
+        "y": 71.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-reed": {
+      "x": 1231,
+      "y": 1551,
+      "w": 178,
+      "h": 128,
+      "anchor": {
+        "x": 88.5,
+        "y": 47.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "metal-floor": {
+      "x": 1409,
+      "y": 1551,
+      "w": 179,
+      "h": 129,
+      "anchor": {
+        "x": 88.5,
+        "y": 46.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "metal-worn": {
+      "x": 0,
+      "y": 1719,
+      "w": 180,
+      "h": 129,
+      "anchor": {
+        "x": 89.5,
+        "y": 47.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "metal-panel": {
+      "x": 180,
+      "y": 1719,
+      "w": 181,
+      "h": 129,
+      "anchor": {
+        "x": 90.0,
+        "y": 47.0,
+        "diamond_w": 181.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-pool": {
+      "x": 361,
+      "y": 1719,
+      "w": 178,
+      "h": 121,
+      "anchor": {
+        "x": 89.0,
+        "y": 45.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-still": {
+      "x": 539,
+      "y": 1719,
+      "w": 178,
+      "h": 121,
+      "anchor": {
+        "x": 89.0,
+        "y": 45.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-algae": {
+      "x": 717,
+      "y": 1719,
+      "w": 178,
+      "h": 121,
+      "anchor": {
+        "x": 88.5,
+        "y": 45.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-green": {
+      "x": 895,
+      "y": 1719,
+      "w": 178,
+      "h": 121,
+      "anchor": {
+        "x": 88.5,
+        "y": 45.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-shade": {
+      "x": 1073,
+      "y": 1719,
+      "w": 178,
+      "h": 121,
+      "anchor": {
+        "x": 88.5,
+        "y": 45.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "swamp-glow": {
+      "x": 1251,
+      "y": 1719,
+      "w": 178,
+      "h": 122,
+      "anchor": {
+        "x": 89.0,
+        "y": 46.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "pit": {
+      "x": 1429,
+      "y": 1719,
+      "w": 180,
+      "h": 124,
+      "anchor": {
+        "x": 88.5,
+        "y": 46.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "pit-blue": {
+      "x": 0,
+      "y": 1848,
+      "w": 180,
+      "h": 124,
+      "anchor": {
+        "x": 89.5,
+        "y": 46.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "pit-deep": {
+      "x": 180,
+      "y": 1848,
+      "w": 181,
+      "h": 125,
+      "anchor": {
+        "x": 90.0,
+        "y": 47.0,
+        "diamond_w": 181.0,
+        "kind": "tile"
+      }
+    },
+    "water-green": {
+      "x": 361,
+      "y": 1848,
+      "w": 178,
+      "h": 123,
+      "anchor": {
+        "x": 88.5,
+        "y": 46.0,
+        "diamond_w": 178.0,
+        "kind": "tile"
+      }
+    },
+    "water": {
+      "x": 539,
+      "y": 1848,
+      "w": 179,
+      "h": 124,
+      "anchor": {
+        "x": 89.5,
+        "y": 47.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "water-clear": {
+      "x": 718,
+      "y": 1848,
+      "w": 179,
+      "h": 124,
+      "anchor": {
+        "x": 88.5,
+        "y": 47.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "water-bright": {
+      "x": 897,
+      "y": 1848,
+      "w": 179,
+      "h": 123,
+      "anchor": {
+        "x": 88.5,
+        "y": 46.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "water-ice": {
+      "x": 1076,
+      "y": 1848,
+      "w": 180,
+      "h": 123,
+      "anchor": {
+        "x": 89.5,
+        "y": 47.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "water-shallow": {
+      "x": 1256,
+      "y": 1848,
+      "w": 179,
+      "h": 124,
+      "anchor": {
+        "x": 88.5,
+        "y": 46.0,
+        "diamond_w": 179.0,
+        "kind": "tile"
+      }
+    },
+    "reflect": {
+      "x": 1435,
+      "y": 1848,
+      "w": 180,
+      "h": 124,
+      "anchor": {
+        "x": 89.0,
+        "y": 46.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "reflect-cool": {
+      "x": 0,
+      "y": 1973,
+      "w": 181,
+      "h": 124,
+      "anchor": {
+        "x": 89.5,
+        "y": 47.0,
+        "diamond_w": 181.0,
+        "kind": "tile"
+      }
+    },
+    "reflect-panel": {
+      "x": 181,
+      "y": 1973,
+      "w": 182,
+      "h": 124,
+      "anchor": {
+        "x": 91.0,
+        "y": 47.0,
+        "diamond_w": 182.0,
+        "kind": "tile"
+      }
+    },
+    "water-glass": {
+      "x": 363,
+      "y": 1973,
+      "w": 180,
+      "h": 124,
+      "anchor": {
+        "x": 90.0,
+        "y": 46.0,
+        "diamond_w": 180.0,
+        "kind": "tile"
+      }
+    },
+    "water-mirror": {
+      "x": 543,
+      "y": 1973,
+      "w": 182,
+      "h": 126,
+      "anchor": {
+        "x": 91.0,
+        "y": 47.0,
+        "diamond_w": 182.0,
+        "kind": "tile"
+      }
+    }
+  }
+}

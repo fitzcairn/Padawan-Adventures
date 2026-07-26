@@ -56,7 +56,12 @@ final class AnimatedSpriteNode: SKSpriteNode {
               !animation.frames.isEmpty else {
             return
         }
-        play(animation: animation, name: name)
+        preparePlayback(animation: animation, name: name)
+        // Static one-frame clips keep the texture without a looping action.
+        guard animation.frames.count > 1 else { return }
+        if let animAction = library.action(id: libraryID, named: name) {
+            run(animAction, withKey: Self.animationActionKey)
+        }
     }
 
     /// Plays a concrete animation (e.g. floor terrains from `FloorSpriteLibrary`).
@@ -67,12 +72,49 @@ final class AnimatedSpriteNode: SKSpriteNode {
         }
         guard !animation.frames.isEmpty else { return }
 
-        currentAnimationName = key
+        preparePlayback(animation: animation, name: key)
+
+        // Static one-frame clips (floors) keep the texture without a looping action.
+        guard animation.frames.count > 1 else { return }
+
+        run(Self.makeLoopingAction(for: animation), withKey: Self.animationActionKey)
+    }
+
+    /// Builds a forever-looping texture animation action (uncached; used by floors and cache fill).
+    static func makeLoopingAction(for animation: SpriteAnimation) -> SKAction {
+        let textures = animation.frames.map(\.texture)
+        let durations = animation.frames.map(\.duration)
+        if let timePerFrame = uniformFrameDuration(durations) {
+            // Exact atlas timing when all frame weights are equal.
+            return .repeatForever(
+                .animate(
+                    with: textures,
+                    timePerFrame: timePerFrame,
+                    resize: false,
+                    restore: false
+                )
+            )
+        }
+        let steps: [SKAction] = zip(textures, durations).flatMap { texture, duration in
+            [
+                SKAction.setTexture(texture, resize: false),
+                SKAction.wait(forDuration: duration),
+            ]
+        }
+        return .repeatForever(.sequence(steps))
+    }
+
+    /// Uniform display scale (absolute); horizontal flip is reapplied from the active clip.
+    func setDisplayScale(_ scale: CGFloat) {
+        baseScale = abs(scale)
+        applyScale(flipsHorizontally: xScale < 0)
+    }
+
+    private func preparePlayback(animation: SpriteAnimation, name: String) {
+        currentAnimationName = name
         removeAction(forKey: Self.animationActionKey)
 
         let textures = animation.frames.map(\.texture)
-        let durations = animation.frames.map(\.duration)
-
         texture = textures[0]
         if let targetWidth {
             fitWidth(targetWidth)
@@ -83,37 +125,6 @@ final class AnimatedSpriteNode: SKSpriteNode {
         }
 
         applyScale(flipsHorizontally: animation.flipsHorizontally)
-
-        // Static one-frame clips (floors) keep the texture without a looping action.
-        guard textures.count > 1 else { return }
-
-        let animAction: SKAction
-        if let timePerFrame = Self.uniformFrameDuration(durations) {
-            // Exact atlas timing when all frame weights are equal.
-            animAction = .repeatForever(
-                .animate(
-                    with: textures,
-                    timePerFrame: timePerFrame,
-                    resize: false,
-                    restore: false
-                )
-            )
-        } else {
-            let steps: [SKAction] = zip(textures, durations).flatMap { texture, duration in
-                [
-                    SKAction.setTexture(texture, resize: false),
-                    SKAction.wait(forDuration: duration),
-                ]
-            }
-            animAction = .repeatForever(.sequence(steps))
-        }
-        run(animAction, withKey: Self.animationActionKey)
-    }
-
-    /// Uniform display scale (absolute); horizontal flip is reapplied from the active clip.
-    func setDisplayScale(_ scale: CGFloat) {
-        baseScale = abs(scale)
-        applyScale(flipsHorizontally: xScale < 0)
     }
 
     private func applyScale(flipsHorizontally: Bool) {

@@ -18,8 +18,8 @@ struct FloorSpriteSystemTests {
           }
         }
         """
-        let atlas = try FloorAtlas.decode(from: Data(json.utf8))
-        #expect(atlas.meta.size.w == 2046)
+        let atlas = try SpriteAtlas.decode(from: Data(json.utf8))
+        #expect(atlas.meta.size?.w == 2046)
         #expect(atlas.frames.count == 2)
         let sand = try #require(atlas.frameRect(named: "sand"))
         #expect(sand == CGRect(x: 0, y: 41, width: 186, height: 145))
@@ -27,6 +27,25 @@ struct FloorSpriteSystemTests {
         #expect(flowers.width < 186)
         #expect(flowers.height < 186)
         #expect(atlas.frameRect(named: "missing") == nil)
+    }
+
+    @Test func floorAtlasDecodesAnchors() throws {
+        let json = """
+        {
+          "meta": { "size": { "w": 100, "h": 100 }, "duration_s": 0 },
+          "frames": {
+            "sand": {
+              "x": 0, "y": 0, "w": 50, "h": 40,
+              "anchor": { "x": 25, "y": 20, "diamond_w": 50, "kind": "tile" }
+            }
+          }
+        }
+        """
+        let atlas = try SpriteAtlas.decode(from: Data(json.utf8))
+        let anchor = try #require(atlas.frames["sand"]?.anchor)
+        #expect(anchor.kind == .tile)
+        #expect(anchor.diamondWidth == 50)
+        #expect(anchor.x == 25)
     }
 
     @Test func bundleFloorAtlasListsEveryTerrain() throws {
@@ -39,14 +58,15 @@ struct FloorSpriteSystemTests {
             Issue.record("Missing floor atlas.json in bundle")
             return
         }
-        let atlas = try FloorAtlas.decode(from: Data(contentsOf: url))
+        let atlas = try SpriteAtlas.decode(from: Data(contentsOf: url))
+        let sheetSize = try #require(atlas.meta.size)
         #expect(atlas.frames.count == catalog.terrains.count)
         for id in catalog.terrains.keys {
             let rect = try #require(atlas.frameRect(named: id))
             #expect(rect.width >= 1)
             #expect(rect.height >= 1)
-            #expect(rect.maxX <= CGFloat(atlas.meta.size.w) + 0.5)
-            #expect(rect.maxY <= CGFloat(atlas.meta.size.h) + 0.5)
+            #expect(rect.maxX <= CGFloat(sheetSize.w) + 0.5)
+            #expect(rect.maxY <= CGFloat(sheetSize.h) + 0.5)
         }
     }
 
@@ -367,20 +387,27 @@ struct FloorSpriteSystemTests {
 
     @Test func floorSpriteLoaderSlicesSampleTerrainFromBundle() async throws {
         let catalog = try TerrainCatalog.loadFromBundle()
-        // Load only via a one-entry catalog so the test stays fast.
+        // Load only one named frame so the test stays fast.
         let sampleID = "water"
-        let sample = try #require(catalog.terrains[sampleID])
-        let slim = TerrainCatalog(
-            sprite: catalog.sprite,
-            terrains: [sampleID: sample]
+        let sprite = catalog.sprite
+        let loaded = try await SpriteSheetLoader.loadNamedFrameAnimations(
+            sheet: sprite.sheet,
+            atlas: sprite.atlas,
+            root: sprite.root,
+            frameKeys: [sampleID],
+            chromaKey: sprite.chromaKey,
+            chromaKeyTolerance: sprite.chromaKeyTolerance,
+            chromaKeyFeather: sprite.chromaKeyFeather,
+            chromaKeySmooth: sprite.chromaKeySmooth,
+            atlasRoot: sprite.atlasRoot
         )
-        let animations = try await FloorSpriteLoader.loadAll(catalog: slim)
-        let animation = try #require(animations[sampleID])
+        let animation = try #require(loaded.animations[sampleID])
         #expect(animation.frames.count == 1)
         #expect(animation.frames[0].duration == 0)
         let size = animation.frames[0].texture.size()
         #expect(size.width > 1)
         #expect(size.height > 1)
+        #expect(loaded.anchors[sampleID] != nil)
     }
 
     @Test @MainActor
