@@ -33,9 +33,10 @@ floor_sprites:
   - water
 
 # Chance a floor gets an accent overlay (when not replaced by a corner special).
-floor_accent_prob: 0.15
+# For now, turn this off -- enable per-level.
+floor_accent_prob: 0
 # Chance a corner floor (exactly 2 orthogonal floor neighbors) becomes a special.
-corner_special_prob: 0.15
+corner_special_prob: 0.55
 
 algorithm: rooms_doors
 # How many rooms to place on the map.

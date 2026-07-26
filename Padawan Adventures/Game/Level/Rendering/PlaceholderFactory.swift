@@ -52,7 +52,8 @@ enum PlaceholderFactory {
                         animation: animation,
                         terrainID: terrainID,
                         isPit: isPit,
-                        config: config
+                        config: config,
+                        raiseFraction: floorRaiseFraction(forTerrainID: terrainID, library: library)
                     )
                     sprite.zPosition = 0.02
                     container.addChild(sprite)
@@ -114,16 +115,33 @@ enum PlaceholderFactory {
         return node
     }
 
-    /// Extra screen-up lift as a fraction of the fitted sprite height (bases + accents).
+    /// Extra screen-up lift as a fraction of wall height (base floors).
     static let floorSpriteRaiseFraction: CGFloat = 0.10
+    /// Corner specials and accent props sit a bit higher than base floors.
+    static let floorSpecialRaiseFraction: CGFloat = 0.20
+    static let floorAccentRaiseFraction: CGFloat = 0.20
+
+    /// Wall-height raise for a terrain id (`special` / `accent` → 20%, else 10%).
+    static func floorRaiseFraction(
+        forTerrainID terrainID: String,
+        library: FloorSpriteLibrary
+    ) -> CGFloat {
+        switch library.type(of: terrainID) {
+        case .special, .accent:
+            return floorSpecialRaiseFraction
+        case .base, .none:
+            return floorSpriteRaiseFraction
+        }
+    }
 
     /// Floor terrain / accent sprite. Top-center near the diamond north tip, then raised
-    /// by 10% of the sprite's own height.
+    /// by a fraction of wall height.
     static func floorSpriteNode(
         animation: SpriteAnimation,
         terrainID: String,
         isPit: Bool,
-        config: IsometricConfig
+        config: IsometricConfig,
+        raiseFraction: CGFloat = floorSpriteRaiseFraction
     ) -> SKNode {
         let container = SKNode()
         container.name = "floor-sprite"
@@ -138,7 +156,8 @@ enum PlaceholderFactory {
         // Floor art is pre-flipped in the loader; keep positive yScale so content
         // hangs down from the diamond's north tip (not flipped above the origin).
         sprite.correctsUIImageVInversion = false
-        // Top-center near the diamond north tip, nudged 30% of tile height screen-up.
+        // Top-center near the diamond north tip, nudged 30% of tile height screen-up,
+        // then raised by `raiseFraction` of wall height.
         sprite.anchorPoint = CGPoint(x: 0.5, y: 1)
         sprite.zPosition = 0
         sprite.fitWidth(config.tileWidth)
@@ -146,7 +165,7 @@ enum PlaceholderFactory {
         sprite.fitWidth(config.tileWidth)
         sprite.position = CGPoint(
             x: 0,
-            y: config.tileHeight * 0.30 + sprite.size.height * floorSpriteRaiseFraction
+            y: config.tileHeight * 0.30 + config.wallHeight * raiseFraction
         )
         container.addChild(sprite)
 
@@ -203,7 +222,8 @@ enum PlaceholderFactory {
             animation: animation,
             terrainID: accentID,
             isPit: false,
-            config: config
+            config: config,
+            raiseFraction: floorAccentRaiseFraction
         )
         node.name = "floor-accent"
         node.position = IsometricMath.gridToScreen(coord, config: config)
