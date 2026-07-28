@@ -39,6 +39,7 @@ nonisolated enum ConfigAudit {
             let label = "levels[\(index)] (\(level.name))"
             problems.append(contentsOf: checkFloorSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkLetterSet(level: level, label: label, bundle: bundle))
+            problems.append(contentsOf: checkPitSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkEnemyTypes(level: level, enemies: enemies, label: label))
             problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
             problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
@@ -208,6 +209,27 @@ nonisolated enum ConfigAudit {
             }
         } catch {
             return ["\(label).letters.set: missing or invalid atlas for '\(setName)' (\(error))"]
+        }
+        return []
+    }
+
+    /// Pit platforms share the floor set name (`Sprites/Pit/{floor.set}/`).
+    private static func checkPitSet(
+        level: LevelConfig,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        let setName = level.floor.set.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !setName.isEmpty else {
+            return ["\(label).floor.set: empty (required for pit sprites)"]
+        }
+        do {
+            let pitSet = try PitSpriteSet.loadFromBundle(set: setName, bundle: bundle)
+            if pitSet.frames.isEmpty {
+                return ["\(label).pit set '\(setName)': has no platform tiles"]
+            }
+        } catch {
+            return ["\(label).pit set '\(setName)': missing or invalid atlas (\(error))"]
         }
         return []
     }

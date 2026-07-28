@@ -39,8 +39,8 @@ room:
   # Probability that a room contains a pit (at most one pit area per room).
   pit_chance: 1.0
   # Pit area size: mean tile count, capped at max.
-  pit_mean_size: 2
-  pit_max_size: 5
+  pit_mean_size: 5
+  pit_max_size: 10
   # Optional sealed shared-wall shortcut gates (not the mandatory join gates).
   partition_gate_chance: 0.8
 

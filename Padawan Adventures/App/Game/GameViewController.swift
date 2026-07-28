@@ -299,6 +299,7 @@ final class GameViewController: LandscapeHostingController {
                         puzzleConfig: puzzleConfig,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
+                        pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()

@@ -7,6 +7,7 @@ struct PitMinigameView: View {
     let puzzleConfig: PitPuzzleConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
+    let pitSpriteSetLibrary: PitSpriteSetLibrary
     let onFinished: (PitOutcome) -> Void
 
     @StateObject private var session: PitSessionController
@@ -15,16 +16,19 @@ struct PitMinigameView: View {
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        pitSpriteSetLibrary: PitSpriteSetLibrary,
         onFinished: @escaping (PitOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
+        self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
+                pitSpriteSetLibrary: pitSpriteSetLibrary,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -89,15 +93,18 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
+    private let pitSpriteSetLibrary: PitSpriteSetLibrary
     private var didFinish = false
 
     init(
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
+        pitSpriteSetLibrary: PitSpriteSetLibrary,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.timerSeconds = initialTimerSeconds
     }
 
@@ -110,7 +117,8 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         let created = PitScene(
             size: safeSize,
             puzzleConfig: puzzleConfig,
-            playerFx: playerFx
+            playerFx: playerFx,
+            pitSpriteSetLibrary: pitSpriteSetLibrary
         )
         created.pitDelegate = self
         scene = created

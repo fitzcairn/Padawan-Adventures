@@ -42,6 +42,8 @@ final class AppSession {
     let floorTileSetLibrary: FloorTileSetLibrary
     /// Session-scoped cache of the active level's baked letter glyph set.
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
+    /// Session-scoped cache of the active level's baked pit platform tile set.
+    let pitSpriteSetLibrary: PitSpriteSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
@@ -72,6 +74,7 @@ final class AppSession {
         spriteLibrary: SpriteLibrary? = nil,
         floorTileSetLibrary: FloorTileSetLibrary? = nil,
         letterSpriteSetLibrary: LetterSpriteSetLibrary? = nil,
+        pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
         treasureIcons: SpriteIconLibrary? = nil
     ) {
@@ -99,6 +102,7 @@ final class AppSession {
         self.spriteLibrary = spriteLibrary ?? SpriteLibrary()
         self.floorTileSetLibrary = floorTileSetLibrary ?? FloorTileSetLibrary()
         self.letterSpriteSetLibrary = letterSpriteSetLibrary ?? LetterSpriteSetLibrary()
+        self.pitSpriteSetLibrary = pitSpriteSetLibrary ?? PitSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
     }
@@ -233,6 +237,13 @@ final class AppSession {
     func ensureLetterSpriteSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
         let setName = selectedLevel.letters.set
         await letterSpriteSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
+    }
+
+    /// Loads the baked pit platform tile set for the currently selected level.
+    /// Uses the same set name as the level floor set (`1-tython`, …).
+    func ensurePitSpriteSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let setName = selectedLevel.floor.set
+        await pitSpriteSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
     }
 
     /// Ensures level-select planet sprites are loaded for this session.
@@ -391,9 +402,10 @@ final class AppSession {
         }
         await report(backgroundsEnd)
 
-        // Floor / letter sets are per-level; load when a level is selected / launched.
+        // Floor / letter / pit sets are per-level; load when a level is selected / launched.
         let floorTileSetLibrary = FloorTileSetLibrary()
         let letterSpriteSetLibrary = LetterSpriteSetLibrary()
+        let pitSpriteSetLibrary = PitSpriteSetLibrary()
         await report(1)
 
         do {
@@ -432,6 +444,7 @@ final class AppSession {
             spriteLibrary: spriteLibrary,
             floorTileSetLibrary: floorTileSetLibrary,
             letterSpriteSetLibrary: letterSpriteSetLibrary,
+            pitSpriteSetLibrary: pitSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary
         )
     }

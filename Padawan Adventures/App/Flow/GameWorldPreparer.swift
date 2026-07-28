@@ -97,6 +97,7 @@ enum GameWorldPreparer {
 
         await session.ensureFloorTileSetLoaded()
         await session.ensureLetterSpriteSetLoaded()
+        await session.ensurePitSpriteSetLoaded()
         let floorTileSet: FloorTileSet
         if let loaded = session.floorTileSetLibrary.tileSet {
             floorTileSet = loaded
@@ -163,6 +164,7 @@ enum GameWorldPreparer {
     private static func attachFloorSet(to world: inout GameWorld, session: AppSession) async {
         await session.ensureFloorTileSetLoaded()
         await session.ensureLetterSpriteSetLoaded()
+        await session.ensurePitSpriteSetLoaded()
         if let set = session.floorTileSetLibrary.tileSet {
             world.floorSet = set
             world.floorSetName = set.meta.floorSet

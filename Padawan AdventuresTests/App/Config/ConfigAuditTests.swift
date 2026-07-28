@@ -62,6 +62,9 @@ struct ConfigAuditTests {
             let letterSet = try LetterSpriteSet.loadFromBundle(set: level.letters.set)
             #expect(letterSet.frames.count == 52)
             #expect(letterSet.missingKeys.isEmpty)
+
+            let pitSet = try PitSpriteSet.loadFromBundle(set: level.floor.set)
+            #expect(!pitSet.frames.isEmpty)
         }
 
         try ConfigAudit.run(

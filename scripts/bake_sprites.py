@@ -32,9 +32,10 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + letters + planets + loading
+  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + planets + loading
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
+  python3 scripts/bake_sprites.py --pits       # bake per-level pit platform tile sets
   python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
@@ -62,6 +63,7 @@ CONFIG = RESOURCES / "Config"
 MANIFEST_PATH = SPRITES / "bake-manifest.json"
 FLOOR_SET_DIR = SPRITES / "Floor"
 LETTER_SET_DIR = SPRITES / "Letters"
+PIT_SET_DIR = SPRITES / "Pit"
 
 CHROMA_PRESETS: dict[str, tuple[str, int, int, int]] = {
     # name → (hex, tolerance, feather, smooth)
@@ -713,6 +715,42 @@ def collect_letter_job(plan: BakePlan) -> None:
             plan.input_paths.append(source)
 
 
+def collect_pit_job(plan: BakePlan) -> None:
+    """Register per-level pit platform tile sets for baking via bake_pit_sets.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import bake_pit_sets as pit_sets
+    except ImportError as exc:
+        plan.errors.append(f"pit: cannot import bake_pit_sets: {exc}")
+        return
+
+    discovered = pit_sets.discover_source_sheets()
+    if not discovered:
+        plan.errors.append("pit: no per-level pit spritesheets found under Sprites/Pit/")
+        return
+
+    for set_name, source in discovered:
+        set_dir = pit_sets.ensure_set_directory(set_name, source)
+        sheet_path = set_dir / f"{set_name}{pit_sets.SUFFIX}"
+        atlas_placeholder = set_dir / "Baked" / f"{set_name}-pit-atlas.json"
+        plan.jobs.append(
+            BakeJob(
+                category=f"pit.{set_name}",
+                sheet_path=sheet_path,
+                atlas_path=atlas_placeholder,
+                chroma=ChromaSettings(),
+                trim=False,
+                bake_scale=1.0,
+                flip_vertical=False,
+                isolate_primary=False,
+                preserve_anchors=False,
+                label=f"pit.{set_name}",
+            )
+        )
+        if sheet_path not in plan.input_paths:
+            plan.input_paths.append(sheet_path)
+
+
 def collect_player(plan: BakePlan) -> None:
     path = CONFIG / "player.yaml"
     add_config_input(plan, path)
@@ -818,6 +856,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_items = args.all or args.default_set or args.items
     bake_floors = args.all or args.default_set or args.floors
     bake_letters = args.all or args.default_set or args.letters
+    bake_pits = args.all or args.default_set or args.pits
     bake_planets = args.all or args.default_set or args.planets
     bake_loading = args.all or args.default_set or args.loading
     bake_enemies = args.all or args.enemies or bool(args.enemy)
@@ -832,12 +871,15 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.items,
             args.floors,
             args.letters,
+            args.pits,
             args.planets,
             args.loading,
             args.verify,
         ]
     ):
-        bake_player = bake_items = bake_floors = bake_letters = bake_planets = bake_loading = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
+            bake_planets
+        ) = bake_loading = True
 
     if args.verify and not any(
         [
@@ -848,13 +890,16 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.items,
             args.floors,
             args.letters,
+            args.pits,
             args.planets,
             args.loading,
         ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
-        bake_player = bake_items = bake_floors = bake_letters = bake_planets = bake_loading = True
+        bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
+            bake_planets
+        ) = bake_loading = True
 
     if bake_player:
         collect_player(plan)
@@ -864,6 +909,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_floor_job(plan)
     if bake_letters:
         collect_letter_job(plan)
+    if bake_pits:
+        collect_pit_job(plan)
     if bake_planets:
         collect_planets(plan)
     if bake_loading:
@@ -920,6 +967,20 @@ def bake_letter_set_job(job: BakeJob) -> tuple[Path, Path]:
 
     set_name = job.category.split(".", 1)[1]
     result = letter_sets.bake_one(
+        set_name,
+        job.sheet_path,
+        contact_only=False,
+    )
+    return result["baked_sheet"], result["atlas"]
+
+
+def bake_pit_set_job(job: BakeJob) -> tuple[Path, Path]:
+    """Bake one per-level pit platform set via scripts/bake_pit_sets.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import bake_pit_sets as pit_sets
+
+    set_name = job.category.split(".", 1)[1]
+    result = pit_sets.bake_one(
         set_name,
         job.sheet_path,
         contact_only=False,
@@ -1120,7 +1181,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, planets, loading, enemies",
+        help="Bake player, items, floors, letters, pits, planets, loading, enemies",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument(
@@ -1133,6 +1194,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--items", action="store_true", help="Bake item sheets")
     p.add_argument("--floors", action="store_true", help="Bake per-level floor tile sets")
     p.add_argument("--letters", action="store_true", help="Bake per-level letter glyph sets")
+    p.add_argument("--pits", action="store_true", help="Bake per-level pit platform tile sets")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
     p.add_argument("--loading", action="store_true", help="Bake loading-screen UI sprites")
     p.add_argument(
@@ -1155,6 +1217,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.items,
             args.floors,
             args.letters,
+            args.pits,
             args.planets,
             args.loading,
         ]
@@ -1190,6 +1253,8 @@ def main(argv: list[str] | None = None) -> int:
                 out_sheet, out_atlas = bake_floor_set_job(job)
             elif job.category.startswith("letter."):
                 out_sheet, out_atlas = bake_letter_set_job(job)
+            elif job.category.startswith("pit."):
+                out_sheet, out_atlas = bake_pit_set_job(job)
             else:
                 out_sheet, out_atlas = bake_job(job)
             outputs.extend([out_sheet, out_atlas])

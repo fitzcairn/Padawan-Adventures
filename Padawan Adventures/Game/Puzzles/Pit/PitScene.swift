@@ -10,16 +10,17 @@ protocol PitSceneDelegate: AnyObject {
     func pitSceneDidLose()
 }
 
-/// SpriteKit pit puzzle: side pads, hoppable letter circles, timer-driven engine.
+/// SpriteKit pit puzzle: side pads, hoppable letter platforms, timer-driven engine.
 final class PitScene: SKScene {
     weak var pitDelegate: PitSceneDelegate?
 
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
+    private let pitSpriteSetLibrary: PitSpriteSetLibrary
 
     private var engine: PitMinigameEngine
     private var letterNodes: [UUID: SKNode] = [:]
-    private var circleNodes: [UUID: SKShapeNode] = [:]
+    private var platformNodes: [UUID: SKSpriteNode] = [:]
     private var playerNode: SKShapeNode!
     private var leftPadRect: CGRect = .zero
     private var rightPadRect: CGRect = .zero
@@ -31,22 +32,29 @@ final class PitScene: SKScene {
     private var placementRNG = SystemRandomNumberGenerator()
 
     private let padFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
-    private let circleFill = UIColor(white: 0.22, alpha: 1)
-    private let circleCorrectFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
-    private let circleWrongFlash = UIColor.systemYellow
+    private let platformCorrectTint = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
+    private let platformWrongFlash = UIColor.systemYellow
     private let playerFill = UIColor.systemRed
 
     private static let jumpDuration: TimeInterval = 1.0
     private static let connectedSoundActionKey = "pitConnectedSound"
     private static let winSoundActionKey = "pitWinSound"
+    /// Extra margin around the letter relative to font size (each side).
+    private static let letterPaddingRatio: CGFloat = 0.45
+    /// Platform sprites are drawn this much larger than the letter+padding box.
+    private static let platformScale: CGFloat = 1.75
+    /// Shrinks platform size across placement retries when the field is overcrowded.
+    private var layoutScale: CGFloat = 1.0
 
     init(
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        pitSpriteSetLibrary: PitSpriteSetLibrary
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.engine = PitMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -93,8 +101,22 @@ final class PitScene: SKScene {
 
     // MARK: - Layout
 
+    /// Matches the previous circle font size (`radius * 1.35` with radius = 5.5% of min side).
+    private var letterFontSize: CGFloat {
+        min(size.width, size.height) * 0.055 * 1.35
+    }
+
+    private var letterPadding: CGFloat {
+        letterFontSize * Self.letterPaddingRatio
+    }
+
+    private var platformSide: CGFloat {
+        (letterFontSize + letterPadding * 2) * Self.platformScale * layoutScale
+    }
+
+    /// Half of the platform side (used for placement / jump reach).
     private var letterRadius: CGFloat {
-        min(size.width, size.height) * 0.055
+        platformSide * 0.5
     }
 
     /// Jump reach: at least enough to clear one equal-width word band plus vertical slack.
@@ -105,8 +127,9 @@ final class PitScene: SKScene {
         return max(letterRadius * 5.5, bandReach)
     }
 
-    private var minPadding: CGFloat {
-        letterRadius * 0.35
+    /// Gap between platform AABBs (axis-aligned), in points.
+    private var platformGap: CGFloat {
+        max(letterRadius * 0.12, 4)
     }
 
     private func computeLayoutFrames() {
@@ -120,7 +143,7 @@ final class PitScene: SKScene {
             width: padWidth,
             height: padHeight
         )
-        let fieldInset = letterRadius + minPadding
+        let fieldInset = letterRadius + platformGap
         playFieldRect = CGRect(
             x: leftPadRect.maxX + fieldInset,
             y: fieldInset,
@@ -130,50 +153,82 @@ final class PitScene: SKScene {
     }
 
     private func buildPuzzle() {
+        layoutScale = 1.0
+        for attempt in 0..<14 {
+            if attempt > 0 {
+                layoutScale *= 0.88
+            }
+            if tryBuildPuzzleLayout() {
+                return
+            }
+        }
+        // Last resort: keep shrinking until placements succeed (always non-overlapping).
+        while layoutScale > 0.15, !tryBuildPuzzleLayout() {
+            layoutScale *= 0.85
+        }
+        if letterNodes.isEmpty {
+            _ = tryBuildPuzzleLayout()
+        }
+    }
+
+    /// Clears the scene and places pads + letter platforms. Returns false if any
+    /// platform could not be placed without overlapping another.
+    @discardableResult
+    private func tryBuildPuzzleLayout() -> Bool {
         removeAllChildren()
         letterNodes = [:]
-        circleNodes = [:]
+        platformNodes = [:]
         computeLayoutFrames()
 
-        addPad(rect: leftPadRect, name: "leftPad")
-        addPad(rect: rightPadRect, name: "rightPad")
-
         let radius = letterRadius
-        var placedCenters: [CGPoint] = []
+        let side = platformSide
+        guard side > 1, playFieldRect.width >= side, playFieldRect.height >= side else {
+            return false
+        }
 
-        // Place word letters in equal-width horizontal bands across the play field.
+        // Resolve all centers first so a failed attempt never leaves a partial layout.
+        var placedCenters: [CGPoint] = []
+        var planned: [(token: PitMinigameEngine.LetterToken, position: CGPoint)] = []
         let startAnchor = CGPoint(x: leftPadRect.midX, y: leftPadRect.midY)
         var previous = startAnchor
         let wordCount = engine.wordLetterIDs.count
+
         for (index, id) in engine.wordLetterIDs.enumerated() {
             guard let token = engine.letter(id: id) else { continue }
-            let position = placeWordLetter(
+            guard let position = placeWordLetter(
                 index: index,
                 count: wordCount,
                 near: previous,
                 radius: radius,
                 avoiding: placedCenters
-            )
-            let node = makeLetterNode(token: token, radius: radius)
-            node.position = position
-            addChild(node)
-            letterNodes[token.id] = node
+            ) else {
+                return false
+            }
+            planned.append((token, position))
             placedCenters.append(position)
             previous = position
         }
 
-        // Place decoys in remaining play-field space.
         let wordIDs = Set(engine.wordLetterIDs)
         for token in engine.letters where !wordIDs.contains(token.id) {
-            let position = placeDecoy(radius: radius, avoiding: placedCenters)
-            let node = makeLetterNode(token: token, radius: radius)
-            node.position = position
-            addChild(node)
-            letterNodes[token.id] = node
+            guard let position = placeDecoy(radius: radius, avoiding: placedCenters) else {
+                return false
+            }
+            planned.append((token, position))
             placedCenters.append(position)
         }
 
-        let playerRadius = letterRadius * 0.85
+        addPad(rect: leftPadRect, name: "leftPad")
+        addPad(rect: rightPadRect, name: "rightPad")
+
+        for entry in planned {
+            let node = makeLetterNode(token: entry.token, side: side)
+            node.position = entry.position
+            addChild(node)
+            letterNodes[entry.token.id] = node
+        }
+
+        let playerRadius = letterRadius * 0.55
         playerNode = SKShapeNode(circleOfRadius: playerRadius)
         playerNode.fillColor = playerFill
         playerNode.strokeColor = UIColor(white: 0.9, alpha: 1)
@@ -182,6 +237,7 @@ final class PitScene: SKScene {
         playerNode.zPosition = 40
         playerNode.name = "player"
         addChild(playerNode)
+        return true
     }
 
     private func rebuildLayoutPreservingLetters() {
@@ -196,6 +252,9 @@ final class PitScene: SKScene {
                isValidLetterPosition(previous, radius: radius, avoiding: placedCenters) {
                 node.position = previous
                 placedCenters.append(previous)
+            } else {
+                // Keep the freshly laid-out non-overlapping position from buildPuzzle.
+                placedCenters.append(node.position)
             }
         }
         if let previousPlayer {
@@ -214,124 +273,249 @@ final class PitScene: SKScene {
         addChild(node)
     }
 
-    private func makeLetterNode(token: PitMinigameEngine.LetterToken, radius: CGFloat) -> SKNode {
+    private func makeLetterNode(token: PitMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
         let root = SKNode()
         root.name = "letter:\(token.id.uuidString)"
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
         root.zPosition = 10
 
-        let circle = SKShapeNode(circleOfRadius: radius)
-        circle.fillColor = engine.isSpent(token.id) ? circleCorrectFill : circleFill
-        circle.strokeColor = UIColor(white: 0.65, alpha: 1)
-        circle.lineWidth = 2
-        circle.zPosition = 0
-        root.addChild(circle)
-        circleNodes[token.id] = circle
+        var spriteHeight = side
+        if let texture = pitSpriteSetLibrary.randomTexture(using: &placementRNG),
+           let sprite = PitSpriteFactory.sprite(texture: texture, side: side) {
+            sprite.zPosition = 0
+            sprite.alpha = 0.90 // spritesheet platform only — letters stay fully opaque
+            if engine.isSpent(token.id) {
+                applyPlatformTint(sprite, color: platformCorrectTint, blend: 0.45)
+            }
+            root.addChild(sprite)
+            platformNodes[token.id] = sprite
+            spriteHeight = sprite.size.height
+        } else {
+            let fallback = SKShapeNode(circleOfRadius: side * 0.5)
+            fallback.fillColor = UIColor(white: 0.22, alpha: 1)
+            fallback.strokeColor = UIColor(white: 0.65, alpha: 1)
+            fallback.lineWidth = 2
+            fallback.zPosition = 0
+            fallback.alpha = 0.90
+            if engine.isSpent(token.id) {
+                fallback.fillColor = platformCorrectTint
+            }
+            root.addChild(fallback)
+        }
 
-        let label = SKLabelNode(text: token.letter)
+        let engraved = makeEngravedLetter(text: token.letter, fontSize: letterFontSize)
+        // Bottom padding = 10% of sprite height → shift letter up toward the platform top.
+        engraved.position = CGPoint(x: 0, y: spriteHeight * 0.10)
+        engraved.zPosition = 1
+        engraved.alpha = 1
+        engraved.isUserInteractionEnabled = false
+        root.addChild(engraved)
+
+        return root
+    }
+
+    /// Letter with white outline + inner shadow so it reads as carved into the platform.
+    private func makeEngravedLetter(text: String, fontSize: CGFloat) -> SKNode {
+        let root = SKNode()
+        let offset = max(1.0, fontSize * 0.045)
+
+        // 1px white outline (8-neighbor copies behind the engraved stack).
+        for dx in -1...1 {
+            for dy in -1...1 {
+                guard dx != 0 || dy != 0 else { continue }
+                let outline = SKLabelNode(text: text)
+                outline.fontName = AppFont.name
+                outline.fontSize = fontSize
+                outline.fontColor = .white
+                outline.verticalAlignmentMode = .center
+                outline.horizontalAlignmentMode = .center
+                outline.position = CGPoint(x: CGFloat(dx), y: CGFloat(dy))
+                outline.zPosition = 0
+                root.addChild(outline)
+            }
+        }
+
+        let highlight = SKLabelNode(text: text)
+        highlight.fontName = AppFont.name
+        highlight.fontSize = fontSize
+        highlight.fontColor = UIColor.white.withAlphaComponent(0.30)
+        highlight.verticalAlignmentMode = .center
+        highlight.horizontalAlignmentMode = .center
+        highlight.position = CGPoint(x: offset, y: -offset)
+        highlight.zPosition = 1
+        root.addChild(highlight)
+
+        let shadow = SKLabelNode(text: text)
+        shadow.fontName = AppFont.name
+        shadow.fontSize = fontSize
+        shadow.fontColor = UIColor.black.withAlphaComponent(0.55)
+        shadow.verticalAlignmentMode = .center
+        shadow.horizontalAlignmentMode = .center
+        shadow.position = CGPoint(x: -offset, y: offset)
+        shadow.zPosition = 2
+        root.addChild(shadow)
+
+        let label = SKLabelNode(text: text)
         label.fontName = AppFont.name
-        label.fontSize = radius * 1.35
-        label.fontColor = .white
+        label.fontSize = fontSize
+        label.fontColor = UIColor(white: 0.10, alpha: 1)
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        label.isUserInteractionEnabled = false
+        label.zPosition = 3
+        label.alpha = 1
         root.addChild(label)
 
         return root
     }
 
-    private func minCenterDistance(for radius: CGFloat) -> CGFloat {
-        radius * 2 + minPadding
+    private func applyPlatformTint(_ sprite: SKSpriteNode, color: UIColor, blend: CGFloat) {
+        sprite.color = color
+        sprite.colorBlendFactor = blend
     }
 
-    /// Samples a word-letter center inside the `index`-th equal-width horizontal band
-    /// spanning the play field between the side pads (`count` = word length).
+    private func clearPlatformTint(_ sprite: SKSpriteNode) {
+        sprite.color = .white
+        sprite.colorBlendFactor = 0
+    }
+
+    /// Minimum center-to-center separation on each axis so AABBs do not overlap.
+    private func minAxisSeparation(for radius: CGFloat) -> CGFloat {
+        radius * 2 + platformGap
+    }
+
+    /// Samples a word-letter center, preferring its horizontal band, never overlapping.
     private func placeWordLetter(
         index: Int,
         count: Int,
         near previous: CGPoint,
         radius: CGFloat,
         avoiding occupied: [CGPoint]
-    ) -> CGPoint {
+    ) -> CGPoint? {
         let bands = max(count, 1)
         let bandWidth = playFieldRect.width / CGFloat(bands)
         let bandMinX = playFieldRect.minX + CGFloat(index) * bandWidth
         let bandMaxX = bandMinX + bandWidth
-
-        let minY = playFieldRect.minY + radius
-        let maxY = playFieldRect.maxY - radius
-        guard minY <= maxY else {
-            return CGPoint(x: (bandMinX + bandMaxX) * 0.5, y: playFieldRect.midY)
-        }
-
-        let insetMinX = bandMinX + radius
-        let insetMaxX = bandMaxX - radius
-        let xRange: ClosedRange<CGFloat>
-        if insetMinX <= insetMaxX {
-            xRange = insetMinX...insetMaxX
-        } else {
-            let midX = (bandMinX + bandMaxX) * 0.5
-            xRange = midX...midX
-        }
-        let yRange = minY...maxY
         let maxDist = maxJumpDistance
 
-        for _ in 0..<160 {
+        // 1) Prefer the word band, within jump reach.
+        if let point = sampleValidPosition(
+            xMin: bandMinX,
+            xMax: bandMaxX,
+            radius: radius,
+            avoiding: occupied,
+            attempts: 160,
+            near: previous,
+            maxDistance: maxDist
+        ) {
+            return point
+        }
+
+        // 2) Spill into neighbouring bands / full field, still within jump reach.
+        if let point = sampleValidPosition(
+            xMin: playFieldRect.minX,
+            xMax: playFieldRect.maxX,
+            radius: radius,
+            avoiding: occupied,
+            attempts: 200,
+            near: previous,
+            maxDistance: maxDist
+        ) {
+            return point
+        }
+
+        // 3) Dense grid within jump reach.
+        if let point = gridSearchPosition(
+            radius: radius,
+            avoiding: occupied,
+            near: previous,
+            maxDistance: maxDist
+        ) {
+            return point
+        }
+
+        // 4) Any non-overlapping slot (jump may be longer — still better than overlap).
+        return gridSearchPosition(radius: radius, avoiding: occupied, near: nil, maxDistance: nil)
+    }
+
+    private func placeDecoy(radius: CGFloat, avoiding occupied: [CGPoint]) -> CGPoint? {
+        if let point = sampleValidPosition(
+            xMin: playFieldRect.minX,
+            xMax: playFieldRect.maxX,
+            radius: radius,
+            avoiding: occupied,
+            attempts: 160,
+            near: nil,
+            maxDistance: nil
+        ) {
+            return point
+        }
+        return gridSearchPosition(radius: radius, avoiding: occupied, near: nil, maxDistance: nil)
+    }
+
+    private func sampleValidPosition(
+        xMin: CGFloat,
+        xMax: CGFloat,
+        radius: CGFloat,
+        avoiding occupied: [CGPoint],
+        attempts: Int,
+        near: CGPoint?,
+        maxDistance: CGFloat?
+    ) -> CGPoint? {
+        let minY = playFieldRect.minY + radius
+        let maxY = playFieldRect.maxY - radius
+        guard minY <= maxY else { return nil }
+
+        let insetMinX = max(xMin, playFieldRect.minX) + radius
+        let insetMaxX = min(xMax, playFieldRect.maxX) - radius
+        guard insetMinX <= insetMaxX else { return nil }
+
+        let xRange = insetMinX...insetMaxX
+        let yRange = minY...maxY
+
+        for _ in 0..<attempts {
             let point = CGPoint(
                 x: CGFloat.random(in: xRange, using: &placementRNG),
                 y: CGFloat.random(in: yRange, using: &placementRNG)
             )
-            if isValidLetterPosition(point, radius: radius, avoiding: occupied),
-               hypot(point.x - previous.x, point.y - previous.y) <= maxDist + 0.5 {
-                return point
+            guard isValidLetterPosition(point, radius: radius, avoiding: occupied) else { continue }
+            if let near, let maxDistance {
+                guard hypot(point.x - near.x, point.y - near.y) <= maxDistance + 0.5 else { continue }
             }
+            return point
         }
-
-        // Prefer band center; still require non-overlap when possible.
-        for _ in 0..<40 {
-            let point = CGPoint(
-                x: (bandMinX + bandMaxX) * 0.5,
-                y: CGFloat.random(in: yRange, using: &placementRNG)
-            )
-            if isValidLetterPosition(point, radius: radius, avoiding: occupied) {
-                return point
-            }
-        }
-
-        return CGPoint(x: (bandMinX + bandMaxX) * 0.5, y: playFieldRect.midY)
+        return nil
     }
 
-    private func placeDecoy(radius: CGFloat, avoiding occupied: [CGPoint]) -> CGPoint {
+    private func gridSearchPosition(
+        radius: CGFloat,
+        avoiding occupied: [CGPoint],
+        near: CGPoint?,
+        maxDistance: CGFloat?
+    ) -> CGPoint? {
         let bounds = playFieldRect.insetBy(dx: radius, dy: radius)
-        guard bounds.width > 0, bounds.height > 0 else {
-            return CGPoint(x: playFieldRect.midX, y: playFieldRect.midY)
-        }
+        guard bounds.width > 0, bounds.height > 0 else { return nil }
 
-        for _ in 0..<120 {
-            let point = CGPoint(
-                x: CGFloat.random(in: bounds.minX...bounds.maxX, using: &placementRNG),
-                y: CGFloat.random(in: bounds.minY...bounds.maxY, using: &placementRNG)
-            )
-            if isValidLetterPosition(point, radius: radius, avoiding: occupied) {
-                return point
-            }
-        }
-
-        let step = minCenterDistance(for: radius)
+        // Step slightly under the separation so the grid can still pack tightly.
+        let step = max(minAxisSeparation(for: radius) * 0.5, radius * 0.35)
         var y = bounds.maxY
-        while y >= bounds.minY {
+        while y >= bounds.minY - 0.5 {
             var x = bounds.minX
-            while x <= bounds.maxX {
+            while x <= bounds.maxX + 0.5 {
                 let point = CGPoint(x: x, y: y)
                 if isValidLetterPosition(point, radius: radius, avoiding: occupied) {
-                    return point
+                    if let near, let maxDistance {
+                        if hypot(point.x - near.x, point.y - near.y) <= maxDistance + 0.5 {
+                            return point
+                        }
+                    } else {
+                        return point
+                    }
                 }
                 x += step
             }
             y -= step
         }
-        return CGPoint(x: bounds.midX, y: bounds.midY)
+        return nil
     }
 
     private func isValidLetterPosition(
@@ -351,9 +535,10 @@ final class PitScene: SKScene {
             return false
         }
 
-        let minDistance = minCenterDistance(for: radius)
+        // Axis-aligned square separation — Euclidean distance alone allows diagonal overlap.
+        let sep = minAxisSeparation(for: radius)
         for other in occupied {
-            if hypot(other.x - point.x, other.y - point.y) < minDistance {
+            if abs(other.x - point.x) < sep, abs(other.y - point.y) < sep {
                 return false
             }
         }
@@ -484,7 +669,9 @@ final class PitScene: SKScene {
         case let .correct(prefix, won):
             jumpPlayer(to: node.position) { [weak self] in
                 guard let self else { return }
-                self.circleNodes[id]?.fillColor = self.circleCorrectFill
+                if let platform = self.platformNodes[id] {
+                    self.applyPlatformTint(platform, color: self.platformCorrectTint, blend: 0.45)
+                }
                 self.pitDelegate?.pitSceneDidUpdateSolvedCount(prefix.count)
                 self.playConnectedPrefixSound(prefix) {
                     if won {
@@ -550,20 +737,19 @@ final class PitScene: SKScene {
     }
 
     private func flashWrong(id: UUID, completion: @escaping () -> Void) {
-        guard let circle = circleNodes[id] else {
+        guard let platform = platformNodes[id] else {
             completion()
             return
         }
-        let original = circleFill
         let flash = SKAction.sequence([
-            SKAction.run { circle.fillColor = self.circleWrongFlash },
+            SKAction.run { self.applyPlatformTint(platform, color: self.platformWrongFlash, blend: 0.55) },
             SKAction.wait(forDuration: 0.12),
-            SKAction.run { circle.fillColor = original },
+            SKAction.run { self.clearPlatformTint(platform) },
             SKAction.wait(forDuration: 0.12),
-            SKAction.run { circle.fillColor = self.circleWrongFlash },
+            SKAction.run { self.applyPlatformTint(platform, color: self.platformWrongFlash, blend: 0.55) },
             SKAction.wait(forDuration: 0.12),
-            SKAction.run { circle.fillColor = original },
+            SKAction.run { self.clearPlatformTint(platform) },
         ])
-        circle.run(flash, completion: completion)
+        platform.run(flash, completion: completion)
     }
 }
