@@ -165,20 +165,25 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
 nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     /// Max seconds a combat slash stays active after the initial tap.
     var slashMaxSeconds: Double
+    /// Max slash path length as a fraction of combat scene width (e.g. 0.05 = 5%).
+    var slashMaxScreenWidthFraction: Double
     var enemies: [String: EnemyTypeConfig]
     /// Shared sprite definitions referenced by `EnemyTypeConfig.sprite`.
     var sprites: [String: SpriteConfig]
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
+        case slashMaxScreenWidthFraction = "slash_max_screen_width_fraction"
         case enemies
         case sprites
     }
 
     nonisolated static let fallbackSlashMaxSeconds: Double = 0.5
+    nonisolated static let fallbackSlashMaxScreenWidthFraction: Double = 0.20
 
     nonisolated static let fallback = EnemyConfig(
         slashMaxSeconds: fallbackSlashMaxSeconds,
+        slashMaxScreenWidthFraction: fallbackSlashMaxScreenWidthFraction,
         enemies: [
             "spider": EnemyTypeConfig(
                 letter: "E",
@@ -196,10 +201,12 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 
     init(
         slashMaxSeconds: Double = fallbackSlashMaxSeconds,
+        slashMaxScreenWidthFraction: Double = fallbackSlashMaxScreenWidthFraction,
         enemies: [String: EnemyTypeConfig],
         sprites: [String: SpriteConfig] = [:]
     ) {
         self.slashMaxSeconds = slashMaxSeconds
+        self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.enemies = enemies
         self.sprites = sprites
     }
@@ -208,6 +215,10 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         slashMaxSeconds = try container.decodeIfPresent(Double.self, forKey: .slashMaxSeconds)
             ?? Self.fallbackSlashMaxSeconds
+        slashMaxScreenWidthFraction = try container.decodeIfPresent(
+            Double.self,
+            forKey: .slashMaxScreenWidthFraction
+        ) ?? Self.fallbackSlashMaxScreenWidthFraction
         enemies = try container.decode([String: EnemyTypeConfig].self, forKey: .enemies)
         sprites = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .sprites) ?? [:]
     }
@@ -215,6 +226,11 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     func validate() throws {
         guard slashMaxSeconds > 0 else {
             throw EnemyConfigError.invalid("slash_max_seconds must be > 0")
+        }
+        guard slashMaxScreenWidthFraction > 0, slashMaxScreenWidthFraction <= 1 else {
+            throw EnemyConfigError.invalid(
+                "slash_max_screen_width_fraction must be in (0, 1]"
+            )
         }
         guard !enemies.isEmpty else {
             throw EnemyConfigError.invalid("enemies must not be empty")
@@ -328,11 +344,13 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 /// Intermediate decode shape that still accepts injected `shot_types` maps.
 private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
     var slashMaxSeconds: Double?
+    var slashMaxScreenWidthFraction: Double?
     var enemies: [String: EnemyTypeConfigDTO]
     var sprites: [String: SpriteConfig]?
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
+        case slashMaxScreenWidthFraction = "slash_max_screen_width_fraction"
         case enemies
         case sprites
     }
@@ -340,6 +358,8 @@ private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
     nonisolated func asEnemyConfig() -> EnemyConfig {
         EnemyConfig(
             slashMaxSeconds: slashMaxSeconds ?? EnemyConfig.fallbackSlashMaxSeconds,
+            slashMaxScreenWidthFraction: slashMaxScreenWidthFraction
+                ?? EnemyConfig.fallbackSlashMaxScreenWidthFraction,
             enemies: enemies.mapValues { $0.asEnemyTypeConfig() },
             sprites: sprites ?? [:]
         )

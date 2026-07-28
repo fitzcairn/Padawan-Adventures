@@ -10,6 +10,7 @@ struct EnemyMinigameView: View {
     let hudConfig: HudConfig
     let letterSoundRepeatSeconds: Double
     let slashMaxSeconds: Double
+    let slashMaxScreenWidthFraction: Double
     let spriteLibrary: SpriteLibrary
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let combatSprite: SpriteConfig?
@@ -26,6 +27,7 @@ struct EnemyMinigameView: View {
         hudConfig: HudConfig,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
+        slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
         combatSprite: SpriteConfig?,
@@ -39,6 +41,7 @@ struct EnemyMinigameView: View {
         self.hudConfig = hudConfig
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.slashMaxSeconds = slashMaxSeconds
+        self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary
         self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.combatSprite = combatSprite
@@ -52,6 +55,7 @@ struct EnemyMinigameView: View {
                 startingHealth: healthCount,
                 letterSoundRepeatSeconds: letterSoundRepeatSeconds,
                 slashMaxSeconds: slashMaxSeconds,
+                slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                 initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds)),
                 spriteLibrary: spriteLibrary,
                 letterSpriteSetLibrary: letterSpriteSetLibrary,
@@ -119,6 +123,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let startingHealth: Int
     private let letterSoundRepeatSeconds: Double
     private let slashMaxSeconds: Double
+    private let slashMaxScreenWidthFraction: Double
     private let spriteLibrary: SpriteLibrary
     private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private let combatSprite: SpriteConfig?
@@ -133,6 +138,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
+        slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         initialTimerSeconds: Int,
         spriteLibrary: SpriteLibrary,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
@@ -145,6 +151,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         self.startingHealth = startingHealth
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
         self.slashMaxSeconds = slashMaxSeconds
+        self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary
         self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.combatSprite = combatSprite
@@ -167,6 +174,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
             startingHealth: startingHealth,
             letterSoundRepeatSeconds: letterSoundRepeatSeconds,
             slashMaxSeconds: slashMaxSeconds,
+            slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
             spriteLibrary: spriteLibrary,
             letterSpriteSetLibrary: letterSpriteSetLibrary,
             combatSprite: combatSprite,

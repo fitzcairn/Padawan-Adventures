@@ -5,6 +5,8 @@
 
 version: 1
 slash_max_seconds: 0.5
+# Max combat slash path length as a fraction of scene width (0.20 = 20%).
+slash_max_screen_width_fraction: 0.20
 
 # Shared enemy sprite sheets, referenced by id from each type's `sprite:`.
 # Sheets already carry an alpha channel, so no `chroma:` / `chroma_key:`.

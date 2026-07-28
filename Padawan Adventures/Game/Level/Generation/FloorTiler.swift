@@ -110,6 +110,7 @@ nonisolated struct FloorTiler: Sendable {
         let fallbackFloor = floorIDs.first
             ?? nonPitIDs.sorted().first
             ?? set.frames.keys.sorted().first { set.frames[$0]?.role != .pit }
+        let fallbackPit = pitIDs.sorted().first
 
         // Domains keyed by (x,y) within the story plane.
         var domains: [Int: Set<String>] = [:]
@@ -185,7 +186,12 @@ nonisolated struct FloorTiler: Sendable {
                     nonPitIDs: nonPitIDs
                 )
             }
-            if !tiles[y][x].isPit {
+            if tiles[y][x].isPit {
+                if !pitIDs.isEmpty {
+                    let narrowed = domain.intersection(pitIDs)
+                    domain = narrowed.isEmpty ? pitIDs : narrowed
+                }
+            } else {
                 domain.subtract(pitIDs)
                 if domain.isEmpty { domain = nonPitIDs }
             }
@@ -200,9 +206,13 @@ nonisolated struct FloorTiler: Sendable {
                 set: set,
                 rng: &rng
             ) ?? domain.sorted().first ?? fallbackFloor
-            // Final guard: never stamp a pit frame onto ordinary floor.
-            if !tiles[y][x].isPit, let id = chosen, set.frames[id]?.role == .pit {
-                chosen = fallbackFloor ?? nonPitIDs.sorted().first
+            // Never mix the two art pools, whatever the solver produced.
+            if let id = chosen {
+                if tiles[y][x].isPit, set.frames[id]?.role != .pit, let fallbackPit {
+                    chosen = fallbackPit
+                } else if !tiles[y][x].isPit, set.frames[id]?.role == .pit {
+                    chosen = fallbackFloor ?? nonPitIDs.sorted().first
+                }
             }
             guard let chosen else {
                 undecided.remove(pickKey)
@@ -222,7 +232,9 @@ nonisolated struct FloorTiler: Sendable {
                 let nKey = ny * width + nx
                 guard undecided.contains(nKey) else { continue }
                 var allowed = Set(set.frames[chosen]?.matches[side.rawValue] ?? [])
-                if !tiles[ny][nx].isPit {
+                if tiles[ny][nx].isPit {
+                    if !pitIDs.isEmpty { allowed.formIntersection(pitIDs) }
+                } else {
                     allowed.subtract(pitIDs)
                 }
                 if var nDomain = domains[nKey] {
@@ -233,7 +245,12 @@ nonisolated struct FloorTiler: Sendable {
                             nDomain = narrowed
                         }
                     }
-                    if !tiles[ny][nx].isPit {
+                    if tiles[ny][nx].isPit {
+                        if !pitIDs.isEmpty {
+                            let keep = nDomain.intersection(pitIDs)
+                            if !keep.isEmpty { nDomain = keep }
+                        }
+                    } else {
                         nDomain.subtract(pitIDs)
                     }
                     domains[nKey] = nDomain
@@ -362,15 +379,26 @@ nonisolated struct FloorTiler: Sendable {
                set.frames[nid] != nil {
                 let opp = FloorTileSet.opposite(side)
                 var allowed = Set(set.frames[nid]?.matches[opp.rawValue] ?? [])
-                if !tiles[coord.y][coord.x].isPit {
+                if tiles[coord.y][coord.x].isPit {
+                    if !pitIDs.isEmpty { allowed.formIntersection(pitIDs) }
+                } else {
                     allowed.subtract(pitIDs)
                 }
                 if !allowed.isEmpty {
-                    domain = domain.intersection(allowed)
+                    let narrowed = domain.intersection(allowed)
+                    // Keep prior domain if intersection empties — rescue later.
+                    if !narrowed.isEmpty {
+                        domain = narrowed
+                    }
                 }
             }
         }
-        if !tiles[coord.y][coord.x].isPit {
+        if tiles[coord.y][coord.x].isPit {
+            if !pitIDs.isEmpty {
+                let keep = domain.intersection(pitIDs)
+                if !keep.isEmpty { domain = keep }
+            }
+        } else {
             domain.subtract(pitIDs)
         }
         domains[key] = domain

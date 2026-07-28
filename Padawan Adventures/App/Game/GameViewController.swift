@@ -194,6 +194,7 @@ final class GameViewController: LandscapeHostingController {
         let playerFx = session.playerConfig.fx
         let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
+        let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
         let outcomeBox = CombatOutcomeBox()
 
         BackgroundMusicController.shared.apply(session.selectedGameMusic.combatCue)
@@ -209,6 +210,7 @@ final class GameViewController: LandscapeHostingController {
                         hudConfig: hudConfig,
                         letterSoundRepeatSeconds: letterSoundRepeatSeconds,
                         slashMaxSeconds: slashMaxSeconds,
+                        slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                         spriteLibrary: self.session.spriteLibrary,
                         letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
                         combatSprite: combatSprite,

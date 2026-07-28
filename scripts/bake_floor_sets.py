@@ -16,6 +16,7 @@ Usage:
   python3 scripts/bake_floor_sets.py --set 1-tython
   python3 scripts/bake_floor_sets.py --grid 14x8 --set 3-ilum
   python3 scripts/bake_floor_sets.py --contact-only
+  python3 scripts/bake_floor_sets.py --verify-pits
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / "Padawan Adventures" / "Resources"
@@ -55,6 +56,11 @@ MIN_CLUSTER_SIZE = 4
 # Max 6-D feature distance for opposite edges to count as compatible.
 MATCH_DIST = 24.0
 PAD = 2
+# Fraction of the source cell's own occupancy a pit-sheet cell must reach.
+# Observed ratios are ~0 or ~1 across all sets, so this is a wide margin.
+PIT_TRUTH_MIN_RATIO = 0.25
+# Max per-channel difference before a marked cell counts as "drifted" art.
+PIT_ART_TOLERANCE = 16
 
 # Source filename stem → canonical set name (rename illum → ilum).
 SET_ALIASES = {
@@ -698,10 +704,19 @@ def compute_cues(
     }
 
 
-def classify_role(cues: dict[str, float], diamond_w: float, diamond_h: float) -> tuple[str, float]:
+def classify_non_pit_role(
+    cues: dict[str, float], diamond_w: float, diamond_h: float
+) -> tuple[str, float]:
+    """Decor vs floor only — used when pit labels come from the pit sheet."""
     # Tall props only — baked-in flowers/vines should stay role=floor so the
     # solver has variety. ~0.08 of diamond area ≈ 700px on a 16x9 sheet.
     overhang_thresh = 0.08 * (diamond_w * diamond_h / 2.0)
+    if cues["overhang"] > overhang_thresh:
+        return "decor", min(1.0, cues["overhang"] / (overhang_thresh * 3))
+    return "floor", 0.0
+
+
+def classify_role(cues: dict[str, float], diamond_w: float, diamond_h: float) -> tuple[str, float]:
     # Dark recessed holes (Coruscant/Kashyyyk style): strongly darker centre.
     if cues["lum_delta"] < -35:
         conf = min(1.0, (-35 - cues["lum_delta"]) / 40)
@@ -716,38 +731,107 @@ def classify_role(cues: dict[str, float], diamond_w: float, diamond_h: float) ->
         if cues["sat_delta"] > 25:
             conf += min(1.0, max(0.0, (cues["sat_delta"] - 25) / 40))
         return "pit", min(1.0, conf / 2.0)
-    if cues["overhang"] > overhang_thresh:
-        return "decor", min(1.0, cues["overhang"] / (overhang_thresh * 3))
-    return "floor", 0.0
+    return classify_non_pit_role(cues, diamond_w, diamond_h)
+
+
+def _cell_occupancy(px, x0: int, y0: int, x1: int, y1: int, step: int = 3) -> int:
+    """Count non-background samples in a cell (same predicate as is_dark)."""
+    n = 0
+    for y in range(y0, y1, step):
+        for x in range(x0, x1, step):
+            p = px[x, y]
+            if len(p) > 3 and p[3] <= 8:
+                continue
+            if max(p[0], p[1], p[2]) > BG_MAX:
+                n += 1
+    return n
+
+
+def load_pit_truth(
+    set_dir: Path, set_name: str, source_img: Image.Image, tiles: list[TileGeom]
+) -> set[str] | None:
+    """Tile ids that are pits, read from {set}-floor-spritesheet-pit.png.
+
+    Returns None when no pit sheet exists (caller falls back to the heuristic).
+    """
+    pit_path = set_dir / f"{set_name}-floor-spritesheet-pit.png"
+    if not pit_path.is_file():
+        print(f"  no pit sheet ({pit_path.name}) — using image-cue heuristic")
+        return None
+
+    pit_img = Image.open(pit_path).convert("RGBA")
+    if pit_img.size != source_img.size:
+        print(
+            f"  WARNING pit sheet size {pit_img.size} != source {source_img.size} "
+            f"— using image-cue heuristic"
+        )
+        return None
+
+    ppx = pit_img.load()
+    spx = source_img.load()
+    truth: set[str] = set()
+    drifted: list[str] = []
+    for geom in tiles:
+        src = _cell_occupancy(spx, geom.x0, geom.y0, geom.x1, geom.y1)
+        if src <= 0:
+            continue
+        marked = _cell_occupancy(ppx, geom.x0, geom.y0, geom.x1, geom.y1)
+        if marked / src < PIT_TRUTH_MIN_RATIO:
+            continue
+        truth.add(geom.tid)
+        box = (geom.x0, geom.y0, geom.x1, geom.y1)
+        diff = ImageChops.difference(
+            pit_img.crop(box).convert("RGB"), source_img.crop(box).convert("RGB")
+        )
+        if max(hi for _, hi in diff.getextrema()) > PIT_ART_TOLERANCE:
+            drifted.append(geom.tid)
+
+    if drifted:
+        print(
+            f"  WARNING {len(drifted)}/{len(truth)} pit cells differ from source art: "
+            f"{', '.join(sorted(drifted)[:8])}"
+        )
+        if len(drifted) > len(truth) // 2:
+            print(
+                f"  WARNING majority of pit cells mismatch — "
+                f"{pit_path.name} may be exported from a different level"
+            )
+    print(f"  pit truth: {len(truth)} tiles from {pit_path.name}")
+    return truth
 
 
 def build_matches(
     edges: dict[str, dict[str, str]],
     features: dict[str, dict[str, list[float]]],
+    roles: dict[str, str],
     match_dist: float = MATCH_DIST,
 ) -> dict[str, dict[str, list[str]]]:
-    """Compatible neighbours = same material label OR opposite-edge feature within match_dist.
+    """Compatible neighbours, partitioned so pit and non-pit art never mix.
 
-    Feature distance is what actually drives contiguous landscapes; discrete
-    materials keep the map dense enough for the CSP solver to stay happy.
+    Pit tiles accept any pit tile on any side (a hole is a hole, and
+    pits.by_mask + weights drive the actual choice). Non-pit tiles keep
+    material/feature matching, restricted to other non-pit tiles.
     """
-    ids = list(edges.keys())
+    pit_ids = sorted(t for t in edges if roles.get(t) == "pit")
+    non_pit = [t for t in edges if roles.get(t) != "pit"]
+
     by_edge: dict[str, dict[str, list[str]]] = {s: {} for s in SIDES}
-    for tid, e in edges.items():
+    for tid in non_pit:
         for s in SIDES:
-            mat = e[s]
-            by_edge[s].setdefault(mat, []).append(tid)
+            by_edge[s].setdefault(edges[tid][s], []).append(tid)
 
     matches: dict[str, dict[str, list[str]]] = {}
-    for tid, e in edges.items():
+    for tid in edges:
+        if roles.get(tid) == "pit":
+            matches[tid] = {s: list(pit_ids) for s in SIDES}
+            continue
         matches[tid] = {}
         for s in SIDES:
             opp = OPPOSITE[s]
-            mat = e[s]
-            allowed = set(by_edge[opp].get(mat, []))
+            allowed = set(by_edge[opp].get(edges[tid][s], []))
             v = features.get(tid, {}).get(s)
             if v is not None:
-                for other in ids:
+                for other in non_pit:
                     ov = features.get(other, {}).get(opp)
                     if ov is not None and dist6(v, ov) <= match_dist:
                         allowed.add(other)
@@ -995,6 +1079,7 @@ def bake_one(
     diamond_w = gmeta["diamond_w"]
     diamond_h = gmeta["diamond_h"]
     px = img.load()
+    pit_truth = load_pit_truth(set_dir, set_name, img, tiles)
 
     # Edge features
     raw_features: dict[str, dict[str, list[float]]] = {}
@@ -1056,16 +1141,39 @@ def bake_one(
     for geom in tiles:
         cues = compute_cues(px, geom, diamond_w, diamond_h)
         cues_map[geom.tid] = cues
-        role, conf = classify_role(cues, diamond_w, diamond_h)
+        if pit_truth is None:
+            role, conf = classify_role(cues, diamond_w, diamond_h)
+        elif geom.tid in pit_truth:
+            role, conf = "pit", 1.0
+        else:
+            role, conf = classify_non_pit_role(cues, diamond_w, diamond_h)
         roles[geom.tid] = role
         confidences[geom.tid] = conf
 
+    if pit_truth:
+        orphans = pit_truth - {g.tid for g in tiles}
+        if orphans:
+            print(f"  WARNING pit cells with no measured frame: {sorted(orphans)}")
+
     overrides = load_overrides(atlas_path)
+    stale_roles: list[str] = []
     for tid, ov in overrides.items():
         if "role" in ov:
-            roles[tid] = ov["role"]
+            wanted = ov["role"]
+            if pit_truth is not None and (wanted == "pit" or tid in pit_truth):
+                # Pit truth is authoritative; this override predates it.
+                stale_roles.append(tid)
+            else:
+                roles[tid] = wanted
         if "edges" in ov:
             edges.setdefault(tid, {}).update(ov["edges"])
+    for tid in stale_roles:
+        overrides[tid].pop("role", None)
+    overrides = {tid: ov for tid, ov in overrides.items() if ov}
+    if stale_roles:
+        print(
+            f"  dropped {len(stale_roles)} stale role override(s) superseded by pit truth"
+        )
 
     # Void material classification
     mat_pit_count: dict[str, int] = {m: 0 for m in materials}
@@ -1110,7 +1218,7 @@ def bake_one(
     norm_by_tid: dict[str, dict[str, list[float]]] = {tid: {} for tid in raw_features}
     for (tid, s), v in zip(feat_index, norm_features):
         norm_by_tid[tid][s] = v
-    matches = build_matches(edges, norm_by_tid)
+    matches = build_matches(edges, norm_by_tid, roles)
 
     # Compatibility sanity
     if edges:
@@ -1199,6 +1307,7 @@ def bake_one(
             "materials": materials,
             "edge_order": list(SIDES),
             "confident_tiles": int(gmeta["confident_tiles"]),
+            "pit_source": "heuristic" if pit_truth is None else "sheet",
         },
         "frames": frames_out,
         "pits": {"tiles": pits_tiles, "by_mask": by_mask},
@@ -1222,11 +1331,55 @@ def parse_grid(s: str | None) -> tuple[int, int] | None:
     return int(a), int(b)
 
 
+def verify_pits(
+    selected: list[tuple[str, Path]],
+    grid_override: tuple[int, int] | None,
+) -> int:
+    """Re-derive pit truth and exit 1 if any baked atlas disagrees."""
+    failed = 0
+    for set_name, source in selected:
+        set_dir = FLOOR_DIR / set_name
+        sheet_path = set_dir / f"{set_name}-floor-spritesheet.png"
+        atlas_path = set_dir / "Baked" / f"{set_name}-floor-atlas.json"
+        if not atlas_path.is_file():
+            print(f"{set_name}: missing atlas {atlas_path.relative_to(ROOT)}", file=sys.stderr)
+            failed += 1
+            continue
+        img = Image.open(sheet_path).convert("RGBA")
+        cols, rows = detect_grid(img, grid_override)
+        tiles, _ = measure_tiles(img, cols, rows)
+        truth = load_pit_truth(set_dir, set_name, img, tiles)
+        if truth is None:
+            print(f"{set_name}: no pit sheet — skip verify")
+            continue
+        atlas = json.loads(atlas_path.read_text())
+        baked = {
+            tid for tid, frame in atlas.get("frames", {}).items() if frame.get("role") == "pit"
+        }
+        missing = sorted(truth - baked)
+        extra = sorted(baked - truth)
+        if missing or extra:
+            failed += 1
+            print(f"{set_name}: pit role mismatch", file=sys.stderr)
+            if missing:
+                print(f"  missing from atlas: {', '.join(missing)}", file=sys.stderr)
+            if extra:
+                print(f"  extra in atlas: {', '.join(extra)}", file=sys.stderr)
+        else:
+            print(f"{set_name}: ok ({len(truth)} pits)")
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--set", action="append", dest="sets", help="Bake one set (repeatable)")
     p.add_argument("--grid", help="Override grid as COLSxROWS (e.g. 14x8)")
     p.add_argument("--contact-only", action="store_true", help="Emit contact sheets only")
+    p.add_argument(
+        "--verify-pits",
+        action="store_true",
+        help="Re-derive pit truth and exit 1 if any baked atlas disagrees",
+    )
     args = p.parse_args(argv)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1244,6 +1397,9 @@ def main(argv: list[str] | None = None) -> int:
         if missing:
             print("Unknown sets:", ", ".join(sorted(missing)), file=sys.stderr)
             return 1
+
+    if args.verify_pits:
+        return verify_pits(selected, grid)
 
     for set_name, source in selected:
         bake_one(

@@ -142,6 +142,7 @@ nonisolated enum ConfigStore {
         "sprite",
         "sprites",
         "slash_max_seconds",
+        "slash_max_screen_width_fraction",
         "fade_seconds",
         "fx",
     ]

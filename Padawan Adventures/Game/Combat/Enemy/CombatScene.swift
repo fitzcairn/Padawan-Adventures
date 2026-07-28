@@ -28,6 +28,7 @@ final class CombatScene: SKScene {
     private let enemyType: EnemyTypeConfig
     private let playerFx: SoundEffectTable
     private let slashMaxSeconds: Double
+    private let slashMaxScreenWidthFraction: Double
     private let spriteLibrary: SpriteLibrary
     private let letterSpriteSetLibrary: LetterSpriteSetLibrary
     private let combatSprite: SpriteConfig?
@@ -39,7 +40,8 @@ final class CombatScene: SKScene {
     private var enemyNode: AnimatedSpriteNode!
     private var shotVisuals: [UUID: ShotVisual] = [:]
     private var slashPoints: [CGPoint] = []
-    private var slashLine: SKShapeNode?
+    private var slashPathLength: CGFloat = 0
+    private var slashLine: SKNode?
     private var slashStartedAt: TimeInterval?
     private var isSlashActive = false
     private var didEnd = false
@@ -50,6 +52,7 @@ final class CombatScene: SKScene {
     private let playerFlashActionKey = "playerFlash"
     private let playerCombatLibraryID = "player_combat"
     private let playerSwingAnimationName = "swing"
+    private let slashFadeOutSeconds: TimeInterval = 0.28
 
     init(
         size: CGSize,
@@ -58,6 +61,7 @@ final class CombatScene: SKScene {
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
+        slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
         combatSprite: SpriteConfig?,
@@ -67,6 +71,7 @@ final class CombatScene: SKScene {
         self.enemyType = enemyType
         self.playerFx = playerFx
         self.slashMaxSeconds = max(slashMaxSeconds, 0.05)
+        self.slashMaxScreenWidthFraction = min(max(slashMaxScreenWidthFraction, 0.01), 1)
         self.spriteLibrary = spriteLibrary
         self.letterSpriteSetLibrary = letterSpriteSetLibrary
         self.combatSprite = combatSprite
@@ -110,7 +115,8 @@ final class CombatScene: SKScene {
     override func update(_ currentTime: TimeInterval) {
         guard !didEnd else { return }
 
-        if isSlashActive, hasSlashTimedOut(at: currentTime) {
+        // Use CACurrentMediaTime — same clock as touch handlers (not SKScene currentTime).
+        if isSlashActive, hasSlashTimedOut(at: CACurrentMediaTime()) {
             endSlash()
         }
 
@@ -500,14 +506,15 @@ final class CombatScene: SKScene {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, !engine.isFrozen, isSlashActive else { return }
         guard let touch = touches.first else { return }
-        if hasSlashTimedOut(at: CACurrentMediaTime()) {
-            endSlash()
-            return
-        }
+        let now = CACurrentMediaTime()
         let point = touch.location(in: self)
-        slashPoints.append(point)
+        let reachedLengthCap = appendSlashPoint(point)
         updateSlashLine()
         resolveSlashHits()
+        // Cap by path length and/or duration, then fade the saber out.
+        if reachedLengthCap || hasSlashTimedOut(at: now) {
+            endSlash()
+        }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -522,6 +529,7 @@ final class CombatScene: SKScene {
         isSlashActive = true
         slashStartedAt = time
         slashPoints = [point]
+        slashPathLength = 0
         updateSlashLine()
         if combatSprite != nil {
             playerNode.playOnce(
@@ -549,6 +557,7 @@ final class CombatScene: SKScene {
         slashStartedAt = nil
         clearSlashLine()
         slashPoints = []
+        slashPathLength = 0
     }
 
     private func hasSlashTimedOut(at time: TimeInterval) -> Bool {
@@ -556,26 +565,147 @@ final class CombatScene: SKScene {
         return time - started >= slashMaxSeconds
     }
 
+    private var maxSlashPathLength: CGFloat {
+        max(size.width * slashMaxScreenWidthFraction, 1)
+    }
+
+    /// Appends `point`, clamping to `maxSlashPathLength`. Returns true if the length cap was hit.
+    @discardableResult
+    private func appendSlashPoint(_ point: CGPoint) -> Bool {
+        guard let last = slashPoints.last else {
+            slashPoints = [point]
+            slashPathLength = 0
+            return false
+        }
+        let dx = point.x - last.x
+        let dy = point.y - last.y
+        let step = hypot(dx, dy)
+        guard step > 0.5 else { return false }
+
+        let maxLen = maxSlashPathLength
+        let remaining = maxLen - slashPathLength
+        if step >= remaining {
+            let t = remaining / step
+            slashPoints.append(CGPoint(x: last.x + dx * t, y: last.y + dy * t))
+            slashPathLength = maxLen
+            return true
+        }
+        slashPoints.append(point)
+        slashPathLength += step
+        return false
+    }
+
     private func updateSlashLine() {
         slashLine?.removeFromParent()
+        slashLine = nil
         guard slashPoints.count >= 2 else { return }
-        let path = CGMutablePath()
-        path.move(to: slashPoints[0])
-        for p in slashPoints.dropFirst() {
-            path.addLine(to: p)
-        }
-        let line = SKShapeNode(path: path)
-        line.strokeColor = UIColor.white.withAlphaComponent(0.85)
-        line.lineWidth = 4
-        line.lineCap = .round
-        line.zPosition = 50
-        addChild(line)
-        slashLine = line
+        let path = makeLightsaberSlashPath(from: slashPoints)
+        let slash = makeLightsaberSlashNode(path: path)
+        addChild(slash)
+        slashLine = slash
     }
 
     private func clearSlashLine() {
-        slashLine?.removeFromParent()
+        guard let slash = slashLine else { return }
         slashLine = nil
+        slash.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: slashFadeOutSeconds),
+            SKAction.removeFromParent(),
+        ]))
+    }
+
+    /// Quadratic arc from first→last sample, bulged through the swipe midpoint for a saber slash.
+    private func makeLightsaberSlashPath(from points: [CGPoint]) -> CGPath {
+        let start = points[0]
+        let end = points[points.count - 1]
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = hypot(dx, dy)
+
+        let path = CGMutablePath()
+        path.move(to: start)
+        guard length > 0.5 else {
+            path.addLine(to: end)
+            return path
+        }
+
+        // Prefer the real mid sample so the arc tracks the finger; fall back to a slight bulge.
+        // Keep bulge proportional so short (length-capped) slashes don't balloon visually.
+        let midSample = points[points.count / 2]
+        let chordMid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
+        let maxBulge = length * 0.35
+        let offsetX = midSample.x - chordMid.x
+        let offsetY = midSample.y - chordMid.y
+        let sampleOffset = hypot(offsetX, offsetY)
+        let control: CGPoint
+        if sampleOffset > 1 {
+            let pull = min(sampleOffset * 2, maxBulge) / sampleOffset
+            control = CGPoint(
+                x: chordMid.x + offsetX * pull,
+                y: chordMid.y + offsetY * pull
+            )
+        } else {
+            let nx = -dy / length
+            let ny = dx / length
+            let bulge = min(length * 0.18, maxBulge)
+            control = CGPoint(x: chordMid.x + nx * bulge, y: chordMid.y + ny * bulge)
+        }
+        path.addQuadCurve(to: end, control: control)
+        return path
+    }
+
+    /// Layered blue glow + blade + white core (additive), Star Wars lightsaber style.
+    private func makeLightsaberSlashNode(path: CGPath) -> SKNode {
+        let container = SKNode()
+        container.zPosition = 50
+        container.setScale(1)
+
+        // Scale stroke to slash size so short capped trails don't read as full-screen blooms.
+        let strokeScale = min(max(maxSlashPathLength / 80, 0.45), 1)
+
+        let glow = makeSlashStrokeNode(
+            path: path,
+            lineWidth: 14 * strokeScale,
+            color: UIColor(red: 0.15, green: 0.45, blue: 1.0, alpha: 0.55),
+            glowWidth: 18 * strokeScale
+        )
+        let blade = makeSlashStrokeNode(
+            path: path,
+            lineWidth: 6 * strokeScale,
+            color: UIColor(red: 0.35, green: 0.75, blue: 1.0, alpha: 0.95),
+            glowWidth: 6 * strokeScale
+        )
+        let core = makeSlashStrokeNode(
+            path: path,
+            lineWidth: 2.5 * strokeScale,
+            color: UIColor.white.withAlphaComponent(0.95),
+            glowWidth: 1 * strokeScale
+        )
+        glow.blendMode = .add
+        blade.blendMode = .add
+        core.blendMode = .add
+
+        container.addChild(glow)
+        container.addChild(blade)
+        container.addChild(core)
+        return container
+    }
+
+    private func makeSlashStrokeNode(
+        path: CGPath,
+        lineWidth: CGFloat,
+        color: UIColor,
+        glowWidth: CGFloat
+    ) -> SKShapeNode {
+        let node = SKShapeNode(path: path)
+        node.fillColor = .clear
+        node.strokeColor = color
+        node.lineWidth = lineWidth
+        node.lineCap = .round
+        node.lineJoin = .round
+        node.glowWidth = glowWidth
+        node.isAntialiased = true
+        return node
     }
 
     private func resolveSlashHits() {

@@ -15,8 +15,34 @@ struct FloorTileSetTests {
             #expect(set.meta.floorSet == name)
             #expect(!set.frames.isEmpty)
             #expect(!set.floorTileIDs.isEmpty, "\(name) has no floor tiles")
+            #expect(!set.pitTileIDs.isEmpty, "\(name) has no pit tiles")
             let aspect = set.meta.diamond.w / set.meta.diamond.h
             #expect(aspect >= 1.45 && aspect <= 1.80, "\(name) aspect \(aspect)")
+        }
+    }
+
+    @Test func pitSourceIsTheSheet() throws {
+        for name in Self.allSets {
+            let set = try FloorTileSet.loadFromBundle(set: name)
+            #expect(set.meta.pitSource == "sheet", "\(name) pit_source=\(set.meta.pitSource ?? "nil")")
+        }
+    }
+
+    @Test func matchesNeverCrossPitBoundary() throws {
+        for name in Self.allSets {
+            let set = try FloorTileSet.loadFromBundle(set: name)
+            for (tid, frame) in set.frames {
+                let isPit = frame.role == .pit
+                for side in FloorTileSet.Side.allCases {
+                    for other in frame.matches[side.rawValue] ?? [] {
+                        let otherIsPit = set.frames[other]?.role == .pit
+                        #expect(
+                            otherIsPit == isPit,
+                            Comment(rawValue: "\(name) \(tid).\(side) → \(other) crosses pit boundary")
+                        )
+                    }
+                }
+            }
         }
     }
 

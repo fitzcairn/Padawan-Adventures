@@ -28,6 +28,7 @@ struct EnemyConfigTests {
 
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == EnemyConfig.fallbackSlashMaxSeconds)
+        #expect(config.slashMaxScreenWidthFraction == EnemyConfig.fallbackSlashMaxScreenWidthFraction)
         #expect(config.enemies.count == 2)
         #expect(config.type(named: "spider")?.letter == "E")
         #expect(config.type(named: "spider")?.color == "#FF0000")
@@ -51,6 +52,7 @@ struct EnemyConfigTests {
     @Test func fallbackMatchesSpiderDefaults() {
         let config = EnemyConfig.fallback
         #expect(config.slashMaxSeconds == 0.5)
+        #expect(config.slashMaxScreenWidthFraction == 0.20)
         let spider = config.type(named: "spider")
         #expect(spider?.letter == "E")
         #expect(spider?.color == "#FF0000")
@@ -75,6 +77,21 @@ struct EnemyConfigTests {
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == 0.75)
+    }
+
+    @Test func decodesSlashMaxScreenWidthFraction() throws {
+        let yaml = """
+        slash_max_screen_width_fraction: 0.12
+        enemies:
+          spider:
+            letter: E
+            color: "#FF0000"
+            tiles_per_second: 1.0
+            forget_seconds: 3.0
+            shot_letters: [a]
+        """
+        let config = try EnemyConfig.decode(from: yaml)
+        #expect(config.slashMaxScreenWidthFraction == 0.12)
     }
 
     @Test func appliesDefaultsToEmptyEntries() throws {
@@ -113,9 +130,27 @@ struct EnemyConfigTests {
         }
     }
 
+    @Test func validateRejectsInvalidSlashMaxScreenWidthFraction() {
+        var config = EnemyConfig.fallback
+        config.slashMaxScreenWidthFraction = 0
+        #expect(throws: EnemyConfigError.invalid(
+            "slash_max_screen_width_fraction must be in (0, 1]"
+        )) {
+            try config.validate()
+        }
+        config = EnemyConfig.fallback
+        config.slashMaxScreenWidthFraction = 1.5
+        #expect(throws: EnemyConfigError.invalid(
+            "slash_max_screen_width_fraction must be in (0, 1]"
+        )) {
+            try config.validate()
+        }
+    }
+
     @Test func loadsSlashMaxSecondsFromBundle() throws {
         let config = try EnemyConfig.loadFromBundle()
         #expect(config.slashMaxSeconds == 0.5)
+        #expect(config.slashMaxScreenWidthFraction == 0.20)
         #expect(config.type(named: "grunt") == nil)
         #expect(config.type(named: "spider") != nil)
         #expect(config.enemies.count == 10)

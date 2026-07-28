@@ -100,8 +100,28 @@ struct FloorTilerTests {
             rng: &rng
         )
         let id = try #require(tiles[2][2].floorTileID)
-        // Prefer pit role; fallback to floor is allowed when no mask match.
-        #expect(set.frames[id] != nil)
+        #expect(set.frames[id]?.role == .pit, "pit cell got non-pit tile \(id)")
+    }
+
+    @Test func pitBlobCellsAllReceivePitTiles() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "4-kashyyyk")
+        #expect(!set.pitTileIDs.isEmpty)
+        var tiles = makeFloorGrid(width: 8, height: 8, pitBlob: [(3, 3), (3, 4), (4, 3), (4, 4)])
+        var rng = SeededGenerator(seed: 19)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0.1),
+            rng: &rng
+        )
+        for row in tiles {
+            for tile in row {
+                guard case .floor(let isPit) = tile.kind, isPit else { continue }
+                let id = try #require(tile.floorTileID)
+                #expect(set.frames[id]?.role == .pit, "pit blob cell got non-pit tile \(id)")
+            }
+        }
     }
 
     @Test func singleTileSetStillTerminates() throws {

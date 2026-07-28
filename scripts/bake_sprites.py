@@ -673,6 +673,9 @@ def collect_floor_job(plan: BakePlan) -> None:
         )
         if source not in plan.input_paths:
             plan.input_paths.append(source)
+        pit_sheet = set_dir / f"{set_name}-floor-spritesheet-pit.png"
+        if pit_sheet.is_file() and pit_sheet not in plan.input_paths:
+            plan.input_paths.append(pit_sheet)
 
 
 def collect_letter_job(plan: BakePlan) -> None:

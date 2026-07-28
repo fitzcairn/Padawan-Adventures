@@ -64,6 +64,8 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         var materials: [String: Material]
         var edgeOrder: [String]
         var confidentTiles: Int?
+        /// `"sheet"` when roles came from `*-floor-spritesheet-pit.png`, else `"heuristic"`.
+        var pitSource: String?
 
         struct Size: Codable, Equatable, Sendable {
             var w: Int
@@ -79,6 +81,7 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             case materials
             case edgeOrder = "edge_order"
             case confidentTiles = "confident_tiles"
+            case pitSource = "pit_source"
         }
     }
 
