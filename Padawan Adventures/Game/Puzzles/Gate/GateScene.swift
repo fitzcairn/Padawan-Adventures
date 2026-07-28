@@ -260,11 +260,15 @@ final class GateScene: SKScene {
         root.zPosition = 10
 
         var labelOffsetY: CGFloat = 0
+        var spriteHeight: CGFloat = radius * 2
         if let texture = capacitorTexture,
            let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: radius * 2) {
             capacitor.zPosition = 0
             root.addChild(capacitor)
-            labelOffsetY = GateSpellingCapacitorSprites.letterOffsetY(for: capacitor.size.height)
+            spriteHeight = capacitor.size.height
+            // Top-face center, then 7% of sprite height top padding (shift letter down).
+            labelOffsetY = GateSpellingCapacitorSprites.letterOffsetY(for: spriteHeight)
+                - spriteHeight * 0.07
         } else {
             let circle = SKShapeNode(circleOfRadius: radius)
             circle.fillColor = circleFill
@@ -273,9 +277,10 @@ final class GateScene: SKScene {
             circle.zPosition = 0
             circle.name = "capacitorFallback"
             root.addChild(circle)
+            labelOffsetY = -spriteHeight * 0.07
         }
 
-        let fontSize = radius * 1.35 * 0.85
+        let fontSize = radius * 1.35 * 0.85 * 0.95 * 0.95
         let letter = makeOutlinedLetter(text: token.letter, fontSize: fontSize)
         letter.position = CGPoint(x: 0, y: labelOffsetY)
         letter.zPosition = 1
@@ -285,10 +290,11 @@ final class GateScene: SKScene {
         return root
     }
 
-    /// White letter with a black outline for readability on the capacitor face.
+    /// White letter with a 2px black outline and 2px inner shadow on the capacitor face.
     private func makeOutlinedLetter(text: String, fontSize: CGFloat) -> SKNode {
         let root = SKNode()
-        let outlineOffset = max(1.0, fontSize * 0.06)
+        let outlineOffset: CGFloat = 2
+        let shadowOffset: CGFloat = 2
 
         for dx in -1...1 {
             for dy in -1...1 {
@@ -309,13 +315,25 @@ final class GateScene: SKScene {
             }
         }
 
+        let innerShadow = SKLabelNode(text: text)
+        innerShadow.fontName = AppFont.name
+        innerShadow.fontSize = fontSize
+        innerShadow.fontColor = UIColor.black.withAlphaComponent(0.45)
+        innerShadow.verticalAlignmentMode = .center
+        innerShadow.horizontalAlignmentMode = .center
+        // Slightly up-left so the fill covers most of it → thin inset shadow.
+        innerShadow.position = CGPoint(x: -shadowOffset, y: shadowOffset)
+        innerShadow.zPosition = 1
+        innerShadow.isUserInteractionEnabled = false
+        root.addChild(innerShadow)
+
         let label = SKLabelNode(text: text)
         label.fontName = AppFont.name
         label.fontSize = fontSize
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.zPosition = 1
+        label.zPosition = 2
         label.isUserInteractionEnabled = false
         root.addChild(label)
 

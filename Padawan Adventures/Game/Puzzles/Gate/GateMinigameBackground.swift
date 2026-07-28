@@ -13,6 +13,16 @@ enum GateMinigameBackground {
         makeNode(named: "spelling-bg", root: "Sprites/Gate/spelling", sceneSize: sceneSize)
     }
 
+    /// Scene-space frame of the letter-match background (width-fit, centered).
+    static func letterMatchFrame(sceneSize: CGSize, bundle: Bundle = .main) -> CGRect? {
+        frame(
+            named: "letter_match-bg",
+            root: "Sprites/Gate/letter_match",
+            sceneSize: sceneSize,
+            bundle: bundle
+        )
+    }
+
     /// Scales the image to `sceneSize.width`, keeps aspect ratio, and centers it.
     private static func makeNode(
         named name: String,
@@ -20,27 +30,7 @@ enum GateMinigameBackground {
         sceneSize: CGSize
     ) -> SKSpriteNode? {
         guard sceneSize.width > 1 else { return nil }
-
-        let url: URL
-        do {
-            url = try SpriteSheetLoader.resourceURL(
-                named: name,
-                extensions: ["png"],
-                root: root,
-                bundle: .main
-            )
-        } catch {
-            return nil
-        }
-
-        guard let uiImage = UIImage(contentsOfFile: url.path) ?? (try? Data(contentsOf: url)).flatMap(UIImage.init(data:)),
-              let cgImage = uiImage.cgImage
-        else {
-            return nil
-        }
-
-        let texture = SKTexture(image: UIImage(cgImage: cgImage, scale: 1, orientation: .up))
-        SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+        guard let texture = loadTexture(named: name, root: root) else { return nil }
 
         let aspect = texture.size().height / max(texture.size().width, 1)
         let node = SKSpriteNode(texture: texture)
@@ -50,5 +40,52 @@ enum GateMinigameBackground {
         node.name = "background"
         node.isUserInteractionEnabled = false
         return node
+    }
+
+    private static func frame(
+        named name: String,
+        root: String,
+        sceneSize: CGSize,
+        bundle: Bundle
+    ) -> CGRect? {
+        guard sceneSize.width > 1 else { return nil }
+        guard let texture = loadTexture(named: name, root: root, bundle: bundle) else { return nil }
+        let aspect = texture.size().height / max(texture.size().width, 1)
+        let height = sceneSize.width * aspect
+        return CGRect(
+            x: 0,
+            y: (sceneSize.height - height) * 0.5,
+            width: sceneSize.width,
+            height: height
+        )
+    }
+
+    private static func loadTexture(
+        named name: String,
+        root: String,
+        bundle: Bundle = .main
+    ) -> SKTexture? {
+        let url: URL
+        do {
+            url = try SpriteSheetLoader.resourceURL(
+                named: name,
+                extensions: ["png"],
+                root: root,
+                bundle: bundle
+            )
+        } catch {
+            return nil
+        }
+
+        guard let uiImage = UIImage(contentsOfFile: url.path)
+            ?? (try? Data(contentsOf: url)).flatMap(UIImage.init(data:)),
+              let cgImage = uiImage.cgImage
+        else {
+            return nil
+        }
+
+        let texture = SKTexture(image: UIImage(cgImage: cgImage, scale: 1, orientation: .up))
+        SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+        return texture
     }
 }

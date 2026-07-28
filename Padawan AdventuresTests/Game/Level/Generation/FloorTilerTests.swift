@@ -182,6 +182,82 @@ struct FloorTilerTests {
         #expect(tiles[1][1].floorTileID != nil)
     }
 
+    @Test func retileAllFloorsIfNeededFixesStaleNonPitArtOnPitCells() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "7-mustafar")
+        let floorID = try #require(set.floorTileIDs.first)
+        #expect(!set.pitTileIDs.isEmpty)
+        #expect(set.frames[floorID]?.role != .pit)
+
+        var world = TestWorldFactory.withTiles(
+            [[
+                [
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: true), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                ],
+                [
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: true), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                ],
+                [
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                    Tile(kind: .floor(isPit: false), floorTileID: floorID),
+                ],
+            ]],
+            spawn: GridCoord(x: 0, y: 0, story: 0)
+        )
+        world.floorSet = set
+        world.tileSeed = 21
+
+        world.retileAllFloorsIfNeeded()
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let tile = try #require(world.tile(at: GridCoord(x: x, y: y, story: 0)))
+                guard case .floor = tile.kind else { continue }
+                let id = try #require(tile.floorTileID)
+                if tile.isPit {
+                    #expect(set.frames[id]?.role == .pit, "pit at (\(x),\(y)) kept non-pit art \(id)")
+                } else {
+                    #expect(set.frames[id]?.role != .pit, "floor at (\(x),\(y)) got pit art \(id)")
+                }
+            }
+        }
+    }
+
+    @Test func retileAllFloorsIfNeededIsNoOpWhenRolesAlreadyMatch() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "4-kashyyyk")
+        #expect(!set.pitTileIDs.isEmpty)
+
+        var tiles = makeFloorGrid(width: 5, height: 5, pitBlob: [(2, 2)])
+        var rng = SeededGenerator(seed: 9)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0),
+            rng: &rng
+        )
+        let before = tiles.map { $0.map(\.floorTileID) }
+
+        var world = TestWorldFactory.withTiles([tiles], spawn: GridCoord(x: 0, y: 0, story: 0))
+        world.floorSet = set
+        world.tileSeed = 9
+
+        world.retileAllFloorsIfNeeded()
+
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                #expect(
+                    world.tile(at: GridCoord(x: x, y: y, story: 0))?.floorTileID == before[y][x],
+                    "(\(x),\(y)) retiled despite matching roles"
+                )
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func assign(set: FloorTileSet, seed: UInt64) -> [[String?]] {

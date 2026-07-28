@@ -20,6 +20,8 @@ final class GateLetterMatchScene: SKScene {
     private var letterNodes: [UUID: SKNode] = [:]
     private var switchNodes: [UUID: SKSpriteNode] = [:]
     private var switchTextures: GateLetterMatchSwitchSprites.Textures?
+    /// Side length used by the last `layoutLetterRow` (for hit-testing).
+    private var laidOutTileSide: CGFloat = 0
     private var didEnd = false
     private var didSetup = false
     private var inputLocked = false
@@ -81,9 +83,12 @@ final class GateLetterMatchScene: SKScene {
 
     // MARK: - Layout
 
-    /// Layout bounds for the letter row (no visible staging panel).
-    private var stagingRect: CGRect {
-        // Aspect 3:1 landscape, ~40% of screen area.
+    /// Fit bounds for the letter row — background image frame when available.
+    private var letterRowBounds: CGRect {
+        if let bg = GateMinigameBackground.letterMatchFrame(sceneSize: size), bg.width > 1 {
+            return bg
+        }
+        // Aspect 3:1 landscape fallback, ~40% of screen area.
         let area = size.width * size.height * 0.40
         var width = sqrt(area * 3)
         var height = width / 3
@@ -103,12 +108,60 @@ final class GateLetterMatchScene: SKScene {
         )
     }
 
-    private var tileSize: CGFloat {
-        let count = max(engine.letters.count, 1)
-        let rect = stagingRect
-        let maxByWidth = (rect.width * 0.9) / CGFloat(count) * 0.85
-        let maxByHeight = rect.height * 0.55
-        return min(maxByWidth, maxByHeight, min(size.width, size.height) * 0.18) * 1.344
+    /// Aesthetic target size before fitting into the background width.
+    private var preferredTileSize: CGFloat {
+        let bounds = letterRowBounds
+        let maxByHeight = bounds.height * 0.55
+        return min(maxByHeight, min(size.width, size.height) * 0.18) * 1.344
+    }
+
+    /// Preferred gap as a fraction of tile side; compress toward `minGapRatio` before shrinking tiles.
+    private let preferredGapRatio: CGFloat = 0.18
+    private let minGapRatio: CGFloat = 0.04
+    /// Horizontal inset inside the background so switches don't kiss the art edges.
+    private let backgroundEdgeInsetRatio: CGFloat = 0.05
+
+    private struct LetterRowLayout {
+        let side: CGFloat
+        let gap: CGFloat
+        let firstCenterX: CGFloat
+        let centerY: CGFloat
+    }
+
+    /// Compresses horizontal padding first; shrinks sprite size only after padding hits the floor.
+    private func letterRowLayout(letterCount: Int) -> LetterRowLayout {
+        let count = max(letterCount, 1)
+        let n = CGFloat(count)
+        let bounds = letterRowBounds
+        let availableWidth = bounds.width * (1 - 2 * backgroundEdgeInsetRatio)
+
+        var side = preferredTileSize
+        var gap = side * preferredGapRatio
+
+        func rowWidth(side: CGFloat, gap: CGFloat) -> CGFloat {
+            n * side + max(n - 1, 0) * gap
+        }
+
+        if rowWidth(side: side, gap: gap) > availableWidth {
+            let minGap = side * minGapRatio
+            if count > 1, rowWidth(side: side, gap: minGap) <= availableWidth {
+                gap = max(minGap, (availableWidth - n * side) / (n - 1))
+            } else {
+                // Out of padding room — shrink tiles, keeping min gap ratio.
+                let denom = n + max(n - 1, 0) * minGapRatio
+                side = max(1, availableWidth / max(denom, 1))
+                gap = count > 1 ? side * minGapRatio : 0
+            }
+        }
+
+        let totalWidth = rowWidth(side: side, gap: gap)
+        let firstCenterX = bounds.midX - totalWidth * 0.5 + side * 0.5
+        return LetterRowLayout(
+            side: side,
+            gap: gap,
+            firstCenterX: firstCenterX,
+            centerY: bounds.midY
+        )
     }
 
     private var replayBoxSize: CGSize {
@@ -184,19 +237,16 @@ final class GateLetterMatchScene: SKScene {
         let tokens = engine.letters
         guard !tokens.isEmpty else { return }
 
-        let side = tileSize
-        let gap = side * 0.18
-        let totalWidth = CGFloat(tokens.count) * side + CGFloat(tokens.count - 1) * gap
-        let rect = stagingRect
-        var x = rect.midX - totalWidth * 0.5 + side * 0.5
-        let y = rect.midY
+        let layout = letterRowLayout(letterCount: tokens.count)
+        laidOutTileSide = layout.side
+        var x = layout.firstCenterX
 
         for token in tokens {
-            let node = makeLetterNode(token: token, side: side)
-            node.position = CGPoint(x: x, y: y)
+            let node = makeLetterNode(token: token, side: layout.side)
+            node.position = CGPoint(x: x, y: layout.centerY)
             addChild(node)
             letterNodes[token.id] = node
-            x += side + gap
+            x += layout.side + layout.gap
         }
     }
 
@@ -500,7 +550,7 @@ final class GateLetterMatchScene: SKScene {
     }
 
     private func letterID(at point: CGPoint) -> UUID? {
-        let side = tileSize
+        let side = laidOutTileSide > 0 ? laidOutTileSide : preferredTileSize
         for (id, node) in letterNodes {
             let half = side * 0.5
             let bounds = CGRect(

@@ -178,7 +178,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         }
     }
 
-    /// Re-assigns every floor tile when legacy/missing ids are detected.
+    /// Re-assigns every floor tile when legacy/missing ids or pit/floor role mismatches are detected.
     mutating func retileAllFloorsIfNeeded() {
         guard let floorSet else { return }
         var needs = false
@@ -186,7 +186,12 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
             for row in story {
                 for tile in row {
                     guard case .floor = tile.kind else { continue }
-                    if tile.floorTileID == nil || floorSet.frames[tile.floorTileID ?? ""] == nil {
+                    guard let id = tile.floorTileID, let frame = floorSet.frames[id] else {
+                        needs = true
+                        break
+                    }
+                    let roleIsPit = frame.role == .pit
+                    if tile.isPit != roleIsPit {
                         needs = true
                         break
                     }
