@@ -300,6 +300,10 @@ final class GameViewController: LandscapeHostingController {
                         playerFx: playerFx,
                         hudConfig: hudConfig,
                         pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,
+                        floorTileSetLibrary: self.session.floorTileSetLibrary,
+                        isoConfig: self.isoConfig,
+                        spriteLibrary: self.session.spriteLibrary,
+                        playerSpriteConfig: self.session.playerConfig.sprite,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()

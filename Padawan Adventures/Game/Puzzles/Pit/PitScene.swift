@@ -17,11 +17,18 @@ final class PitScene: SKScene {
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
     private let pitSpriteSetLibrary: PitSpriteSetLibrary
+    private let floorTileSetLibrary: FloorTileSetLibrary
+    /// Same isometric footprint as the world engine (`app.yaml` display tiles).
+    private let isoConfig: IsometricConfig
+    private let spriteLibrary: SpriteLibrary
+    private let playerSpriteConfig: SpriteConfig?
 
     private var engine: PitMinigameEngine
     private var letterNodes: [UUID: SKNode] = [:]
     private var platformNodes: [UUID: SKSpriteNode] = [:]
-    private var playerNode: SKShapeNode!
+    private var playerNode: SKNode!
+    private var playerSprite: AnimatedSpriteNode?
+    private var playerFacingLeft = false
     private var leftPadRect: CGRect = .zero
     private var rightPadRect: CGRect = .zero
     private var playFieldRect: CGRect = .zero
@@ -37,12 +44,20 @@ final class PitScene: SKScene {
     private let playerFill = UIColor.systemRed
 
     private static let jumpDuration: TimeInterval = 1.0
+    private static let playerLibraryID = "player"
+    /// Above pads (z≈1) and letter platforms (z≈10).
+    private static let playerZ: CGFloat = 1_000
     private static let connectedSoundActionKey = "pitConnectedSound"
     private static let winSoundActionKey = "pitWinSound"
     /// Extra margin around the letter relative to font size (each side).
     private static let letterPaddingRatio: CGFloat = 0.45
     /// Platform sprites are drawn this much larger than the letter+padding box.
     private static let platformScale: CGFloat = 1.75
+    /// Side pads are a 2×2 block of level floor tiles.
+    private static let padCols = 2
+    private static let padRows = 2
+    /// Keep jump platforms clear of the top-center HUD word (44pt) + margin.
+    private static let hudWordClearance: CGFloat = 72
     /// Shrinks platform size across placement retries when the field is overcrowded.
     private var layoutScale: CGFloat = 1.0
 
@@ -50,11 +65,19 @@ final class PitScene: SKScene {
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
-        pitSpriteSetLibrary: PitSpriteSetLibrary
+        pitSpriteSetLibrary: PitSpriteSetLibrary,
+        floorTileSetLibrary: FloorTileSetLibrary,
+        isoConfig: IsometricConfig,
+        spriteLibrary: SpriteLibrary,
+        playerSpriteConfig: SpriteConfig?
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
+        self.floorTileSetLibrary = floorTileSetLibrary
+        self.isoConfig = isoConfig
+        self.spriteLibrary = spriteLibrary
+        self.playerSpriteConfig = playerSpriteConfig
         self.engine = PitMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
         scaleMode = .aspectFit
@@ -133,23 +156,51 @@ final class PitScene: SKScene {
     }
 
     private func computeLayoutFrames() {
-        let padHeight = size.height * 0.60
-        let padWidth = padHeight / 3.0
-        let padY = (size.height - padHeight) * 0.5
-        leftPadRect = CGRect(x: 0, y: padY, width: padWidth, height: padHeight)
+        // Pad rect matches the world-scale AABB of a 2×2 isometric floor block.
+        let padSize = Self.floorPadBounds(config: isoConfig).size
+        let padY = (size.height - padSize.height) * 0.5
+        leftPadRect = CGRect(x: 0, y: padY, width: padSize.width, height: padSize.height)
         rightPadRect = CGRect(
-            x: size.width - padWidth,
+            x: size.width - padSize.width,
             y: padY,
-            width: padWidth,
-            height: padHeight
+            width: padSize.width,
+            height: padSize.height
         )
         let fieldInset = letterRadius + platformGap
+        // Top of scene is high Y; reserve space so jump tiles sit below the HUD word.
+        let topInset = max(Self.hudWordClearance, fieldInset)
+        let bottomInset = fieldInset
         playFieldRect = CGRect(
             x: leftPadRect.maxX + fieldInset,
-            y: fieldInset,
+            y: bottomInset,
             width: max(rightPadRect.minX - leftPadRect.maxX - fieldInset * 2, letterRadius * 2),
-            height: max(size.height - fieldInset * 2, letterRadius * 2)
+            height: max(size.height - bottomInset - topInset, letterRadius * 2)
         )
+    }
+
+    /// Axis-aligned bounds of a `padCols`×`padRows` isometric floor diamond block.
+    private static func floorPadBounds(config: IsometricConfig) -> CGRect {
+        var minX = CGFloat.greatestFiniteMagnitude
+        var minY = CGFloat.greatestFiniteMagnitude
+        var maxX = -CGFloat.greatestFiniteMagnitude
+        var maxY = -CGFloat.greatestFiniteMagnitude
+        let corners = IsometricTileGeometry.floorCorners(config: config)
+        for row in 0..<padRows {
+            for col in 0..<padCols {
+                let origin = IsometricMath.gridToScreen(
+                    GridCoord(x: col, y: row, story: 0),
+                    config: config
+                )
+                for point in [corners.north, corners.east, corners.south, corners.west] {
+                    let world = CGPoint(x: origin.x + point.x, y: origin.y + point.y)
+                    minX = min(minX, world.x)
+                    maxX = max(maxX, world.x)
+                    minY = min(minY, world.y)
+                    maxY = max(maxY, world.y)
+                }
+            }
+        }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
     private func buildPuzzle() {
@@ -228,16 +279,80 @@ final class PitScene: SKScene {
             letterNodes[entry.token.id] = node
         }
 
-        let playerRadius = letterRadius * 0.55
-        playerNode = SKShapeNode(circleOfRadius: playerRadius)
-        playerNode.fillColor = playerFill
-        playerNode.strokeColor = UIColor(white: 0.9, alpha: 1)
-        playerNode.lineWidth = 2
-        playerNode.position = startAnchor
-        playerNode.zPosition = 40
-        playerNode.name = "player"
-        addChild(playerNode)
+        addPlayer(at: startAnchor)
         return true
+    }
+
+    private func addPlayer(at position: CGPoint) {
+        playerSprite = nil
+        playerFacingLeft = false
+        let height = playerDisplayHeight
+
+        if let config = playerSpriteConfig,
+           spriteLibrary.animation(id: Self.playerLibraryID, named: "idle_right") != nil
+            || spriteLibrary.animation(id: Self.playerLibraryID, named: "idle_down") != nil {
+            let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
+            sprite.fitHeight(height)
+            // Above pad tiles / letters (pad tiles use small local z; world depthSort is huge).
+            sprite.zPosition = Self.playerZ
+            sprite.name = "player"
+            sprite.position = position
+            addChild(sprite)
+            playerNode = sprite
+            playerSprite = sprite
+            // Match world feet nudge when configured.
+            let correction = height * CGFloat(config.anchorCorrection) / 100
+            sprite.position = CGPoint(x: position.x, y: position.y - correction)
+            resumePlayerIdle()
+            return
+        }
+
+        let radius = max(height * 0.28, 12)
+        let fallback = SKShapeNode(circleOfRadius: radius)
+        fallback.fillColor = playerFill
+        fallback.strokeColor = UIColor(white: 0.9, alpha: 1)
+        fallback.lineWidth = 2
+        fallback.position = position
+        fallback.zPosition = Self.playerZ
+        fallback.name = "player"
+        addChild(fallback)
+        playerNode = fallback
+    }
+
+    private var playerDisplayHeight: CGFloat {
+        if let config = playerSpriteConfig {
+            return max(
+                PlaceholderFactory.spriteDisplayHeight(isoConfig: isoConfig, spriteConfig: config),
+                48
+            )
+        }
+        return max(letterRadius * 2.4, 48)
+    }
+
+    private func resumePlayerIdle() {
+        guard let playerSprite else { return }
+        let preferred = playerFacingLeft ? "idle_left" : "idle_right"
+        let name: String
+        if spriteLibrary.animation(id: Self.playerLibraryID, named: preferred) != nil {
+            name = preferred
+        } else {
+            name = "idle_down"
+        }
+        playPlayerLoop(name)
+    }
+
+    private func playPlayerLoop(_ name: String) {
+        guard let playerSprite else { return }
+        playerSprite.play(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
+        playerSprite.fitHeight(playerDisplayHeight)
+    }
+
+    private func playJumpAnimation(toward target: CGPoint) {
+        guard let playerSprite else { return }
+        playerFacingLeft = target.x < playerNode.position.x - 0.5
+        let name = playerFacingLeft ? "jump_left" : "jump_right"
+        playerSprite.playOnce(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
+        playerSprite.fitHeight(playerDisplayHeight)
     }
 
     private func rebuildLayoutPreservingLetters() {
@@ -263,14 +378,63 @@ final class PitScene: SKScene {
     }
 
     private func addPad(rect: CGRect, name: String) {
-        let node = SKShapeNode(rectOf: rect.size, cornerRadius: 6)
-        node.fillColor = padFill
-        node.strokeColor = UIColor(white: 0.2, alpha: 1)
-        node.lineWidth = 2
-        node.position = CGPoint(x: rect.midX, y: rect.midY)
-        node.zPosition = 1
-        node.name = name
-        addChild(node)
+        let root = SKNode()
+        root.name = name
+        root.position = CGPoint(x: rect.midX, y: rect.midY)
+        root.zPosition = 1
+
+        if let cluster = makeFloorPadCluster() {
+            root.addChild(cluster)
+        } else {
+            let fallback = SKShapeNode(rectOf: rect.size, cornerRadius: 6)
+            fallback.fillColor = padFill
+            fallback.strokeColor = UIColor(white: 0.2, alpha: 1)
+            fallback.lineWidth = 2
+            fallback.zPosition = 0
+            root.addChild(fallback)
+        }
+        addChild(root)
+    }
+
+    /// Builds a 2×2 isometric floor block at the world engine's tile scale / perspective.
+    private func makeFloorPadCluster() -> SKNode? {
+        guard let tileSet = floorTileSetLibrary.tileSet else { return nil }
+        let floorIDs = tileSet.floorTileIDs
+        guard !floorIDs.isEmpty else { return nil }
+
+        let config = isoConfig
+        let cluster = SKNode()
+        let bounds = Self.floorPadBounds(config: config)
+
+        for row in 0..<Self.padRows {
+            for col in 0..<Self.padCols {
+                let coord = GridCoord(x: col, y: row, story: 0)
+                let origin = IsometricMath.gridToScreen(coord, config: config)
+                let tid = floorIDs[Int.random(in: 0..<floorIDs.count, using: &placementRNG)]
+                guard let texture = floorTileSetLibrary.texture(tid),
+                      let frame = tileSet.frames[tid] else {
+                    continue
+                }
+                let tile = PlaceholderFactory.floorTileNode(
+                    tileID: tid,
+                    texture: texture,
+                    frame: frame,
+                    diamond: tileSet.meta.diamond,
+                    config: config
+                )
+                tile.position = origin
+                // Local painter order only — world `floorSortValue` is ~10k×row and
+                // buries the player when the SKView uses ignoresSiblingOrder / parent z sum.
+                tile.zPosition = CGFloat(row) * 10 + CGFloat(col)
+                cluster.addChild(tile)
+            }
+        }
+
+        guard !cluster.children.isEmpty, bounds.width > 0, bounds.height > 0 else { return nil }
+
+        // Center on the pad midpoint at 1:1 world scale (no squash — keeps perspective).
+        cluster.position = CGPoint(x: -bounds.midX, y: -bounds.midY)
+        return cluster
     }
 
     private func makeLetterNode(token: PitMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
@@ -676,7 +840,7 @@ final class PitScene: SKScene {
                 self.playConnectedPrefixSound(prefix) {
                     if won {
                         let exit = CGPoint(x: self.rightPadRect.midX, y: self.rightPadRect.midY)
-                        self.jumpPlayer(to: exit) {
+                        self.jumpPlayer(to: exit, landAnimation: "celebrate_down") {
                             self.isJumping = false
                             self.finishWon()
                         }
@@ -712,8 +876,13 @@ final class PitScene: SKScene {
         return nil
     }
 
-    private func jumpPlayer(to target: CGPoint, completion: @escaping () -> Void) {
+    private func jumpPlayer(
+        to target: CGPoint,
+        landAnimation: String? = nil,
+        completion: @escaping () -> Void
+    ) {
         let start = playerNode.position
+        playJumpAnimation(toward: target)
         let arcHeight = max(letterRadius * 2.2, hypot(target.x - start.x, target.y - start.y) * 0.35)
         let control = CGPoint(
             x: (start.x + target.x) * 0.5,
@@ -732,6 +901,12 @@ final class PitScene: SKScene {
         }
         playerNode.run(action) {
             self.playerNode.position = target
+            if let landAnimation,
+               self.spriteLibrary.animation(id: Self.playerLibraryID, named: landAnimation) != nil {
+                self.playPlayerLoop(landAnimation)
+            } else {
+                self.resumePlayerIdle()
+            }
             completion()
         }
     }

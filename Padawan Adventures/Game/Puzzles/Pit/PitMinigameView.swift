@@ -8,6 +8,10 @@ struct PitMinigameView: View {
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let pitSpriteSetLibrary: PitSpriteSetLibrary
+    let floorTileSetLibrary: FloorTileSetLibrary
+    let isoConfig: IsometricConfig
+    let spriteLibrary: SpriteLibrary
+    let playerSpriteConfig: SpriteConfig?
     let onFinished: (PitOutcome) -> Void
 
     @StateObject private var session: PitSessionController
@@ -17,18 +21,30 @@ struct PitMinigameView: View {
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
+        floorTileSetLibrary: FloorTileSetLibrary,
+        isoConfig: IsometricConfig,
+        spriteLibrary: SpriteLibrary,
+        playerSpriteConfig: SpriteConfig?,
         onFinished: @escaping (PitOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
+        self.floorTileSetLibrary = floorTileSetLibrary
+        self.isoConfig = isoConfig
+        self.spriteLibrary = spriteLibrary
+        self.playerSpriteConfig = playerSpriteConfig
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
+                floorTileSetLibrary: floorTileSetLibrary,
+                isoConfig: isoConfig,
+                spriteLibrary: spriteLibrary,
+                playerSpriteConfig: playerSpriteConfig,
                 initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
             )
         )
@@ -94,39 +110,80 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     private let puzzleConfig: PitPuzzleConfig
     private let playerFx: SoundEffectTable
     private let pitSpriteSetLibrary: PitSpriteSetLibrary
+    private let floorTileSetLibrary: FloorTileSetLibrary
+    private let isoConfig: IsometricConfig
+    private let spriteLibrary: SpriteLibrary
+    private let playerSpriteConfig: SpriteConfig?
     private var didFinish = false
+    private var isCreatingScene = false
+    private var pendingSceneSize: CGSize?
 
     init(
         puzzleConfig: PitPuzzleConfig,
         playerFx: SoundEffectTable,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
+        floorTileSetLibrary: FloorTileSetLibrary,
+        isoConfig: IsometricConfig,
+        spriteLibrary: SpriteLibrary,
+        playerSpriteConfig: SpriteConfig?,
         initialTimerSeconds: Int
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
+        self.floorTileSetLibrary = floorTileSetLibrary
+        self.isoConfig = isoConfig
+        self.spriteLibrary = spriteLibrary
+        self.playerSpriteConfig = playerSpriteConfig
         self.timerSeconds = initialTimerSeconds
     }
 
     func ensureScene(size: CGSize) {
-        guard scene == nil else {
-            updateSceneSizeIfNeeded(size)
+        let safeSize = Self.sanitizedSize(size)
+        if let scene {
+            updateSceneSizeIfNeeded(safeSize)
             return
         }
-        let safeSize = Self.sanitizedSize(size)
-        let created = PitScene(
-            size: safeSize,
-            puzzleConfig: puzzleConfig,
-            playerFx: playerFx,
-            pitSpriteSetLibrary: pitSpriteSetLibrary
-        )
-        created.pitDelegate = self
-        scene = created
+        pendingSceneSize = safeSize
+        guard !isCreatingScene else { return }
+        isCreatingScene = true
+        // Ensure player sheets are loaded (covers cold start / jump clip added mid-session).
+        Task {
+            if let config = playerSpriteConfig {
+                let missingNewClip =
+                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
+                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
+                if missingNewClip,
+                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
+                    // Player was loaded before newer clips existed — reload once.
+                    spriteLibrary.invalidate(id: "player")
+                }
+                await spriteLibrary.ensureLoaded(config, id: "player")
+            }
+            let finalSize = pendingSceneSize ?? safeSize
+            let created = PitScene(
+                size: finalSize,
+                puzzleConfig: puzzleConfig,
+                playerFx: playerFx,
+                pitSpriteSetLibrary: pitSpriteSetLibrary,
+                floorTileSetLibrary: floorTileSetLibrary,
+                isoConfig: isoConfig,
+                spriteLibrary: spriteLibrary,
+                playerSpriteConfig: playerSpriteConfig
+            )
+            created.pitDelegate = self
+            scene = created
+            isCreatingScene = false
+        }
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        guard let scene else { return }
         let safeSize = Self.sanitizedSize(size)
+        if scene == nil {
+            pendingSceneSize = safeSize
+            return
+        }
+        guard let scene else { return }
         let dw = abs(scene.size.width - safeSize.width)
         let dh = abs(scene.size.height - safeSize.height)
         guard dw > 8 || dh > 8 else { return }

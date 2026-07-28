@@ -8,7 +8,7 @@ protocol GateLetterMatchSceneDelegate: AnyObject {
     func gateLetterMatchSceneDidLose()
 }
 
-/// SpriteKit gate letter-match puzzle: staging area, tappable letter tiles, timer-driven engine.
+/// SpriteKit gate letter-match puzzle: switch letter buttons, timer-driven engine.
 final class GateLetterMatchScene: SKScene {
     weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
 
@@ -16,16 +16,15 @@ final class GateLetterMatchScene: SKScene {
     private let playerFx: SoundEffectTable
 
     private var engine: GateLetterMatchMinigameEngine
-    private var stagingNode: SKShapeNode!
     private var replayBoxNode: SKNode!
     private var letterNodes: [UUID: SKNode] = [:]
-    private var squareNodes: [UUID: SKShapeNode] = [:]
+    private var switchNodes: [UUID: SKSpriteNode] = [:]
+    private var switchTextures: GateLetterMatchSwitchSprites.Textures?
     private var didEnd = false
     private var didSetup = false
     private var inputLocked = false
     private var lastUpdateTime: TimeInterval?
 
-    private let stagingFill = UIColor(white: 0.45, alpha: 1)
     private let replayFill = UIColor(white: 0.28, alpha: 1)
     private let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
     private let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
@@ -82,6 +81,7 @@ final class GateLetterMatchScene: SKScene {
 
     // MARK: - Layout
 
+    /// Layout bounds for the letter row (no visible staging panel).
     private var stagingRect: CGRect {
         // Aspect 3:1 landscape, ~40% of screen area.
         let area = size.width * size.height * 0.40
@@ -108,7 +108,7 @@ final class GateLetterMatchScene: SKScene {
         let rect = stagingRect
         let maxByWidth = (rect.width * 0.9) / CGFloat(count) * 0.85
         let maxByHeight = rect.height * 0.55
-        return min(maxByWidth, maxByHeight, min(size.width, size.height) * 0.18)
+        return min(maxByWidth, maxByHeight, min(size.width, size.height) * 0.18) * 1.344
     }
 
     private var replayBoxSize: CGSize {
@@ -132,17 +132,13 @@ final class GateLetterMatchScene: SKScene {
     private func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
-        squareNodes = [:]
+        switchNodes = [:]
+        switchTextures = GateLetterMatchSwitchSprites.load()
 
-        let rect = stagingRect
-        stagingNode = SKShapeNode(rectOf: rect.size, cornerRadius: 10)
-        stagingNode.fillColor = stagingFill
-        stagingNode.strokeColor = UIColor(white: 0.55, alpha: 1)
-        stagingNode.lineWidth = 2
-        stagingNode.position = CGPoint(x: rect.midX, y: rect.midY)
-        stagingNode.zPosition = 1
-        stagingNode.name = "staging"
-        addChild(stagingNode)
+        if let background = GateMinigameBackground.letterMatch(sceneSize: size) {
+            background.alpha = 0.8
+            addChild(background)
+        }
 
         layoutReplayBox()
         layoutLetterRow()
@@ -210,22 +206,75 @@ final class GateLetterMatchScene: SKScene {
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
         root.zPosition = 10
 
-        let square = SKShapeNode(rectOf: CGSize(width: side, height: side), cornerRadius: side * 0.12)
-        square.fillColor = squareFill
-        square.strokeColor = UIColor(white: 0.25, alpha: 1)
-        square.lineWidth = 2
-        square.zPosition = 0
-        root.addChild(square)
-        squareNodes[token.id] = square
+        let matched = engine.matchedIDs.contains(token.id)
+        if let textures = switchTextures {
+            let texture = matched ? textures.on : textures.off
+            if let switchNode = GateLetterMatchSwitchSprites.sprite(texture: texture, side: side) {
+                switchNode.zPosition = 0
+                switchNode.name = "switch"
+                root.addChild(switchNode)
+                switchNodes[token.id] = switchNode
+            }
+        } else {
+            let square = SKShapeNode(rectOf: CGSize(width: side, height: side), cornerRadius: side * 0.12)
+            square.fillColor = matched ? squareMatchedFill : squareFill
+            square.strokeColor = UIColor(white: 0.25, alpha: 1)
+            square.lineWidth = 2
+            square.zPosition = 0
+            square.name = "switchFallback"
+            root.addChild(square)
+        }
 
-        let label = SKLabelNode(text: token.letter)
+        let letter = makeOutlinedLetter(text: token.letter, fontSize: side * 0.378)
+        letter.zPosition = 1
+        letter.isUserInteractionEnabled = false
+        root.addChild(letter)
+
+        return root
+    }
+
+    /// White letter with black outline and a thin inner shadow for readability on the switch.
+    private func makeOutlinedLetter(text: String, fontSize: CGFloat) -> SKNode {
+        let root = SKNode()
+        let outlineOffset = max(1.0, fontSize * 0.06)
+        let shadowOffset = max(0.75, fontSize * 0.035)
+
+        for dx in -1...1 {
+            for dy in -1...1 {
+                guard dx != 0 || dy != 0 else { continue }
+                let outline = SKLabelNode(text: text)
+                outline.fontName = AppFont.name
+                outline.fontSize = fontSize
+                outline.fontColor = .black
+                outline.verticalAlignmentMode = .center
+                outline.horizontalAlignmentMode = .center
+                outline.position = CGPoint(
+                    x: CGFloat(dx) * outlineOffset,
+                    y: CGFloat(dy) * outlineOffset
+                )
+                outline.zPosition = 0
+                root.addChild(outline)
+            }
+        }
+
+        let innerShadow = SKLabelNode(text: text)
+        innerShadow.fontName = AppFont.name
+        innerShadow.fontSize = fontSize
+        innerShadow.fontColor = UIColor.black.withAlphaComponent(0.45)
+        innerShadow.verticalAlignmentMode = .center
+        innerShadow.horizontalAlignmentMode = .center
+        // Slightly up-left so the fill covers most of it → thin inset shadow.
+        innerShadow.position = CGPoint(x: -shadowOffset, y: shadowOffset)
+        innerShadow.zPosition = 1
+        root.addChild(innerShadow)
+
+        let label = SKLabelNode(text: text)
         label.fontName = AppFont.name
-        label.fontSize = side * 0.62
+        label.fontSize = fontSize
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        label.isUserInteractionEnabled = false
+        label.zPosition = 2
         root.addChild(label)
 
         return root
@@ -335,20 +384,37 @@ final class GateLetterMatchScene: SKScene {
     }
 
     private func applyMatchedAppearance(id: UUID) {
-        squareNodes[id]?.fillColor = squareMatchedFill
+        if let switchNode = switchNodes[id], let on = switchTextures?.on {
+            let size = switchNode.size
+            switchNode.texture = on
+            switchNode.size = size
+            switchNode.colorBlendFactor = 0
+        } else if let square = letterNodes[id]?.childNode(withName: "switchFallback") as? SKShapeNode {
+            square.fillColor = squareMatchedFill
+        }
         letterNodes[id]?.alpha = 1
     }
 
     private func runIncorrectFeedback(id: UUID, pronunciationTrackID: String) {
         inputLocked = true
-        let square = squareNodes[id]
+        let switchNode = switchNodes[id]
+        let fallback = letterNodes[id]?.childNode(withName: "switchFallback") as? SKShapeNode
         let nameDuration = audioDuration(for: engine.letters.first { $0.id == id }?.nameTrackID)
         let waitName = SKAction.wait(forDuration: nameDuration)
         let flashOn = SKAction.run { [weak self] in
-            square?.fillColor = self?.squareWrongFill ?? .systemRed
+            if let switchNode {
+                switchNode.color = self?.squareWrongFill ?? .systemRed
+                switchNode.colorBlendFactor = 0.55
+            } else {
+                fallback?.fillColor = self?.squareWrongFill ?? .systemRed
+            }
         }
         let flashOff = SKAction.run { [weak self] in
-            square?.fillColor = self?.squareFill ?? .brown
+            if let switchNode {
+                switchNode.colorBlendFactor = 0
+            } else {
+                fallback?.fillColor = self?.squareFill ?? .brown
+            }
         }
         let flash = SKAction.sequence([
             flashOn,

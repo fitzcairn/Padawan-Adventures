@@ -1,0 +1,17 @@
+# Letter-match gate minigame UI sprites (baked via scripts/bake_sprites.py --gate).
+switch:
+  sprite:
+    root: Sprites/Gate/letter_match
+    # Exterior near-black only — keeps dark button recesses intact.
+    background: flood_black:18
+    # Source cells are ~1408×1536; bake down for button-sized SKTextures.
+    bake_scale: 0.5
+    # Upright SKSpriteNode display (no AnimatedSpriteNode yScale flip).
+    trim: true
+    # Off/on art is shifted within each cell — align content edges, not cell coords.
+    trim_mode: bottom_edges
+    animations:
+      # Frame 0 = OFF, frame 1 = ON
+      idle:
+        sheet: switch-spritesheet
+        atlas: switch-atlas

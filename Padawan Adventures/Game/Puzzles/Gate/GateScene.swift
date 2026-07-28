@@ -27,8 +27,8 @@ final class GateScene: SKScene {
 
     private var engine: GateMinigameEngine
     private var stagingNode: SKShapeNode!
-    private var leftEndpointNode: SKShapeNode!
-    private var rightEndpointNode: SKShapeNode!
+    private var leftEndpointNode: SKNode!
+    private var rightEndpointNode: SKNode!
     private var letterNodes: [UUID: SKNode] = [:]
     private var connectorSegments: [ElectricConnector] = []
     private var electricityRefreshAccumulator: TimeInterval = 0
@@ -44,16 +44,18 @@ final class GateScene: SKScene {
     /// Connected prefix when the current drag began; used to detect non-advancing moves.
     private var connectedPrefixAtDragStart: String?
     private var placementRNG = SystemRandomNumberGenerator()
+    private var capacitorTexture: SKTexture?
 
-    private let stagingFill = UIColor(white: 0.35, alpha: 1)
+    private let capacitorWrongFlash = UIColor.systemRed
+    /// Bright blue tint for the completed start → letters → stop chain.
+    private let capacitorSolvedTint = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)
+    private let capacitorTintBlend: CGFloat = 0.55
+    /// Fallback circle colors when the capacitor texture fails to load.
     private let circleFill = UIColor(white: 0.22, alpha: 1)
-    private let circleWrongFlash = UIColor.systemRed
-    /// Bright blue fill for the completed start → letters → stop chain.
-    private let circleSolvedFill = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)
     private let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)
     private let connectorCoreColor = UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 1)
 
-    /// One light-blue electricity span between two linked circles.
+    /// One light-blue electricity span between two linked capacitors.
     private struct ElectricConnector {
         var start: CGPoint
         var end: CGPoint
@@ -120,7 +122,7 @@ final class GateScene: SKScene {
     // MARK: - Layout
 
     private var stagingRect: CGRect {
-        // Aspect 3:1 landscape, ~40% of screen area.
+        // Aspect 3:1 landscape, ~40% of screen area, then shrunk 25%.
         let area = size.width * size.height * 0.40
         var width = sqrt(area * 3)
         var height = width / 3
@@ -132,6 +134,8 @@ final class GateScene: SKScene {
             height = size.height * 0.7
             width = height * 3
         }
+        width *= 0.75
+        height *= 0.75
         return CGRect(
             x: (size.width - width) * 0.5,
             y: (size.height - height) * 0.5,
@@ -140,8 +144,19 @@ final class GateScene: SKScene {
         )
     }
 
+    /// Base token radius before letter/endpoint size adjustments.
     private var letterRadius: CGFloat {
         min(size.width, size.height) * 0.07
+    }
+
+    /// Letter capacitors are 40% larger than the base radius.
+    private var letterCapacitorRadius: CGFloat {
+        letterRadius * 1.4
+    }
+
+    /// Empty side capacitors are 40% smaller than the base radius.
+    private var endpointCapacitorRadius: CGFloat {
+        letterRadius * 0.6
     }
 
     /// Top band reserved for the HUD word/timer (shared screen inset + label height).
@@ -164,14 +179,14 @@ final class GateScene: SKScene {
     /// Midpoint between the left screen edge and the left side of the staging box.
     private var leftEndpointPosition: CGPoint {
         let rect = stagingRect
-        let y = min(size.height * 0.5, maxPlayableCenterY(for: letterRadius))
+        let y = min(size.height * 0.5, maxPlayableCenterY(for: endpointCapacitorRadius))
         return CGPoint(x: rect.minX * 0.5, y: y)
     }
 
     /// Midpoint between the right side of the staging box and the right screen edge.
     private var rightEndpointPosition: CGPoint {
         let rect = stagingRect
-        let y = min(size.height * 0.5, maxPlayableCenterY(for: letterRadius))
+        let y = min(size.height * 0.5, maxPlayableCenterY(for: endpointCapacitorRadius))
         return CGPoint(x: (rect.maxX + size.width) * 0.5, y: y)
     }
 
@@ -180,26 +195,33 @@ final class GateScene: SKScene {
         letterNodes = [:]
         connectorSegments = []
         electricityRefreshAccumulator = 0
+        if capacitorTexture == nil {
+            capacitorTexture = GateSpellingCapacitorSprites.load()
+        }
+
+        if let background = GateMinigameBackground.spelling(sceneSize: size) {
+            addChild(background)
+        }
 
         let rect = stagingRect
         stagingNode = SKShapeNode(rectOf: rect.size, cornerRadius: 10)
-        stagingNode.fillColor = stagingFill
-        stagingNode.strokeColor = UIColor(white: 0.55, alpha: 1)
-        stagingNode.lineWidth = 2
+        stagingNode.fillColor = .clear
+        stagingNode.strokeColor = .clear
+        stagingNode.lineWidth = 0
         stagingNode.position = CGPoint(x: rect.midX, y: rect.midY)
         stagingNode.zPosition = 1
         stagingNode.name = "staging"
         addChild(stagingNode)
 
-        let radius = letterRadius
-        leftEndpointNode = makeEndpointCircle(radius: radius, name: "endpoint:left")
+        leftEndpointNode = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:left")
         leftEndpointNode.position = leftEndpointPosition
         addChild(leftEndpointNode)
 
-        rightEndpointNode = makeEndpointCircle(radius: radius, name: "endpoint:right")
+        rightEndpointNode = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:right")
         rightEndpointNode.position = rightEndpointPosition
         addChild(rightEndpointNode)
 
+        let radius = letterCapacitorRadius
         var placedCenters: [CGPoint] = [leftEndpointPosition, rightEndpointPosition]
         for token in engine.letters {
             let node = makeLetterNode(token: token, radius: radius)
@@ -214,7 +236,7 @@ final class GateScene: SKScene {
     private func rebuildLayoutPreservingLetters() {
         let previousPositions = letterNodes.mapValues(\.position)
         buildPuzzle()
-        let radius = letterRadius
+        let radius = letterCapacitorRadius
         var placedCenters: [CGPoint] = [leftEndpointPosition, rightEndpointPosition]
         // Restore prior positions when still valid and non-overlapping; otherwise re-place.
         for (id, node) in letterNodes {
@@ -237,28 +259,81 @@ final class GateScene: SKScene {
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
         root.zPosition = 10
 
-        let circle = SKShapeNode(circleOfRadius: radius)
-        circle.fillColor = circleFill
-        circle.strokeColor = UIColor(white: 0.65, alpha: 1)
-        circle.lineWidth = 2
-        circle.zPosition = 0
-        root.addChild(circle)
+        var labelOffsetY: CGFloat = 0
+        if let texture = capacitorTexture,
+           let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: radius * 2) {
+            capacitor.zPosition = 0
+            root.addChild(capacitor)
+            labelOffsetY = GateSpellingCapacitorSprites.letterOffsetY(for: capacitor.size.height)
+        } else {
+            let circle = SKShapeNode(circleOfRadius: radius)
+            circle.fillColor = circleFill
+            circle.strokeColor = UIColor(white: 0.65, alpha: 1)
+            circle.lineWidth = 2
+            circle.zPosition = 0
+            circle.name = "capacitorFallback"
+            root.addChild(circle)
+        }
 
-        let label = SKLabelNode(text: token.letter)
+        let fontSize = radius * 1.35 * 0.85
+        let letter = makeOutlinedLetter(text: token.letter, fontSize: fontSize)
+        letter.position = CGPoint(x: 0, y: labelOffsetY)
+        letter.zPosition = 1
+        letter.isUserInteractionEnabled = false
+        root.addChild(letter)
+
+        return root
+    }
+
+    /// White letter with a black outline for readability on the capacitor face.
+    private func makeOutlinedLetter(text: String, fontSize: CGFloat) -> SKNode {
+        let root = SKNode()
+        let outlineOffset = max(1.0, fontSize * 0.06)
+
+        for dx in -1...1 {
+            for dy in -1...1 {
+                guard dx != 0 || dy != 0 else { continue }
+                let outline = SKLabelNode(text: text)
+                outline.fontName = AppFont.name
+                outline.fontSize = fontSize
+                outline.fontColor = .black
+                outline.verticalAlignmentMode = .center
+                outline.horizontalAlignmentMode = .center
+                outline.position = CGPoint(
+                    x: CGFloat(dx) * outlineOffset,
+                    y: CGFloat(dy) * outlineOffset
+                )
+                outline.zPosition = 0
+                outline.isUserInteractionEnabled = false
+                root.addChild(outline)
+            }
+        }
+
+        let label = SKLabelNode(text: text)
         label.fontName = AppFont.name
-        label.fontSize = radius * 1.35
+        label.fontSize = fontSize
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
         label.zPosition = 1
-        // Labels shouldn't steal the parent's hit testing for drag.
         label.isUserInteractionEnabled = false
         root.addChild(label)
 
         return root
     }
 
-    private func makeEndpointCircle(radius: CGFloat, name: String) -> SKShapeNode {
+    private func makeEndpointNode(radius: CGFloat, name: String) -> SKNode {
+        if let texture = capacitorTexture,
+           let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: radius * 2) {
+            let root = SKNode()
+            root.name = name
+            root.zPosition = 8
+            root.isUserInteractionEnabled = false
+            capacitor.zPosition = 0
+            root.addChild(capacitor)
+            return root
+        }
+
         let circle = SKShapeNode(circleOfRadius: radius)
         circle.fillColor = circleFill
         circle.strokeColor = UIColor(white: 0.65, alpha: 1)
@@ -418,7 +493,7 @@ final class GateScene: SKScene {
 
         for step in 1..<jagCount {
             let t = CGFloat(step) / CGFloat(jagCount)
-            // Soft envelope so the bolt stays anchored at the circles.
+            // Soft envelope so the bolt stays anchored at the capacitors.
             let taper = sin(t * .pi)
             let offset = CGFloat.random(in: -maxOffset...maxOffset, using: &rng) * taper
             // Slight uneven progress along the span (not perfectly even segments).
@@ -465,7 +540,7 @@ final class GateScene: SKScene {
         return makeElectricityPath(from: origin, to: tip, using: &rng)
     }
 
-    /// Minimum center-to-center distance so circles do not overlap (includes a small gap).
+    /// Minimum center-to-center distance so capacitors do not overlap (includes a small gap).
     private func minCenterDistance(for radius: CGFloat) -> CGFloat {
         radius * 2 + 6
     }
@@ -545,7 +620,7 @@ final class GateScene: SKScene {
                     x: bounds.minX + (bounds.width * CGFloat(ix) / CGFloat(samples)),
                     y: bounds.minY + (bounds.height * CGFloat(iy) / CGFloat(samples))
                 )
-                guard isOutsideStaging(point, radius: letterRadius) else { continue }
+                guard isOutsideStaging(point, radius: letterCapacitorRadius) else { continue }
                 let score = occupied.map { hypot($0.x - point.x, $0.y - point.y) }.min() ?? 0
                 if score > bestScore {
                     bestScore = score
@@ -684,7 +759,7 @@ final class GateScene: SKScene {
         guard !didEnd, !isCompletingWin, let touch = touches.first, let node = draggedNode else { return }
         let location = touch.location(in: self)
         var next = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
-        let r = letterRadius
+        let r = letterCapacitorRadius
         next.x = min(max(next.x, r), size.width - r)
         next.y = min(max(next.y, r), maxPlayableCenterY(for: r))
         node.position = next
@@ -721,8 +796,7 @@ final class GateScene: SKScene {
         node.removeAction(forKey: Self.wrongMoveActionKey)
         node.zPosition = 50
 
-        let circle = letterCircle(in: node)
-        circle?.fillColor = circleWrongFlash
+        applyCapacitorTint(to: node, color: capacitorWrongFlash, blend: capacitorTintBlend)
 
         let move = SKAction.move(to: origin, duration: Self.wrongMoveDuration)
         move.timingMode = .easeInEaseOut
@@ -734,7 +808,7 @@ final class GateScene: SKScene {
 
         let finish = SKAction.run { [weak self, weak node] in
             guard let self, let node else { return }
-            self.letterCircle(in: node)?.fillColor = self.circleFill
+            self.clearCapacitorTint(on: node)
             node.zPosition = 10
             self.updateCorrectOrderConnectors()
         }
@@ -748,8 +822,31 @@ final class GateScene: SKScene {
         )
     }
 
-    private func letterCircle(in root: SKNode) -> SKShapeNode? {
-        root.children.compactMap { $0 as? SKShapeNode }.first
+    private func capacitorSprite(in root: SKNode) -> SKSpriteNode? {
+        root.childNode(withName: "capacitor") as? SKSpriteNode
+    }
+
+    private func capacitorFallback(in root: SKNode) -> SKShapeNode? {
+        (root.childNode(withName: "capacitorFallback") as? SKShapeNode)
+            ?? root.children.compactMap { $0 as? SKShapeNode }.first
+            ?? (root as? SKShapeNode)
+    }
+
+    private func applyCapacitorTint(to root: SKNode, color: UIColor, blend: CGFloat) {
+        if let sprite = capacitorSprite(in: root) {
+            sprite.color = color
+            sprite.colorBlendFactor = blend
+            return
+        }
+        capacitorFallback(in: root)?.fillColor = color
+    }
+
+    private func clearCapacitorTint(on root: SKNode) {
+        if let sprite = capacitorSprite(in: root) {
+            sprite.colorBlendFactor = 0
+            return
+        }
+        capacitorFallback(in: root)?.fillColor = circleFill
     }
 
     private func letterNode(at point: CGPoint) -> SKNode? {
@@ -818,7 +915,7 @@ final class GateScene: SKScene {
             addConnectorLine(from: last.node.position, to: rightEndpointNode.position)
         }
 
-        applyConnectedCircleColors(
+        applyConnectedCapacitorColors(
             staged: staged,
             connectedCount: connectedCount,
             isFullyConnected: isFullyConnected
@@ -833,33 +930,33 @@ final class GateScene: SKScene {
         }
     }
 
-    /// When the full word chain is complete, paint every linked circle bright blue.
-    private func applyConnectedCircleColors(
+    /// When the full word chain is complete, tint every linked capacitor bright blue.
+    private func applyConnectedCapacitorColors(
         staged: [(node: SKNode, letter: String)],
         connectedCount: Int,
         isFullyConnected: Bool
     ) {
         if isFullyConnected {
-            leftEndpointNode.fillColor = circleSolvedFill
-            rightEndpointNode.fillColor = circleSolvedFill
+            applyCapacitorTint(to: leftEndpointNode, color: capacitorSolvedTint, blend: capacitorTintBlend)
+            applyCapacitorTint(to: rightEndpointNode, color: capacitorSolvedTint, blend: capacitorTintBlend)
             var solvedNodes = Set<ObjectIdentifier>()
             for index in 0..<connectedCount {
                 let node = staged[index].node
-                letterCircle(in: node)?.fillColor = circleSolvedFill
+                applyCapacitorTint(to: node, color: capacitorSolvedTint, blend: capacitorTintBlend)
                 solvedNodes.insert(ObjectIdentifier(node))
             }
             for (_, node) in letterNodes where !solvedNodes.contains(ObjectIdentifier(node)) {
                 guard node.action(forKey: Self.wrongMoveActionKey) == nil else { continue }
-                letterCircle(in: node)?.fillColor = circleFill
+                clearCapacitorTint(on: node)
             }
             return
         }
 
-        leftEndpointNode.fillColor = circleFill
-        rightEndpointNode.fillColor = circleFill
+        clearCapacitorTint(on: leftEndpointNode)
+        clearCapacitorTint(on: rightEndpointNode)
         for (_, node) in letterNodes {
             guard node.action(forKey: Self.wrongMoveActionKey) == nil else { continue }
-            letterCircle(in: node)?.fillColor = circleFill
+            clearCapacitorTint(on: node)
         }
     }
 

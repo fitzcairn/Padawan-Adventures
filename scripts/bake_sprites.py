@@ -32,11 +32,12 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + planets + loading
+  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + planets + loading + gate
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
   python3 scripts/bake_sprites.py --pits       # bake per-level pit platform tile sets
   python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
+  python3 scripts/bake_sprites.py --gate       # bake gate letter-match UI sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -212,6 +213,57 @@ def smooth_premultiplied_alpha_edge(
                     min(255, (straight_b[idx] * a + 127) // 255),
                     a,
                 )
+
+
+def flood_clear_near_black(
+    image: Image.Image,
+    *,
+    max_channel: int = 18,
+) -> Image.Image:
+    """Clear exterior near-black pixels reachable from the image edges.
+
+    Unlike global chroma key, interior dark shading (button recesses, etc.) is
+    preserved because it is not 4-connected to the exterior background.
+    """
+    from collections import deque
+
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    px = rgba.load()
+    assert px is not None
+
+    def is_bg(p: tuple[int, int, int, int]) -> bool:
+        r, g, b, a = p
+        if a < 8:
+            return True
+        return max(r, g, b) <= max_channel
+
+    visited = [[False] * width for _ in range(height)]
+    queue: deque[tuple[int, int]] = deque()
+
+    def try_seed(x: int, y: int) -> None:
+        if visited[y][x] or not is_bg(px[x, y]):
+            return
+        visited[y][x] = True
+        queue.append((x, y))
+
+    for x in range(width):
+        try_seed(x, 0)
+        try_seed(x, height - 1)
+    for y in range(height):
+        try_seed(0, y)
+        try_seed(width - 1, y)
+
+    while queue:
+        x, y = queue.popleft()
+        px[x, y] = (0, 0, 0, 0)
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < width and 0 <= ny < height and not visited[ny][nx]:
+                if is_bg(px[nx, ny]):
+                    visited[ny][nx] = True
+                    queue.append((nx, ny))
+
+    return rgba
 
 
 def apply_chroma_key(
@@ -399,6 +451,37 @@ def trim_to_shared_opaque_bounds(images: list[Image.Image]) -> list[Image.Image]
     return trimmed
 
 
+def align_content_bottom_edges(images: list[Image.Image]) -> list[Image.Image]:
+    """Tight-crop each frame, then pad to a shared canvas aligned on bottom/left/right.
+
+    Use when frames are not registered in the same cell coordinates (e.g. off/on
+    switch art shifted within each half of a sheet). Tops may differ — shorter
+    frames get transparent top padding so bottoms stay put when swapping states.
+    """
+    if not images:
+        return images
+
+    crops: list[Image.Image] = []
+    for image in images:
+        bounds = opaque_content_bounds(image)
+        if bounds is None:
+            crops.append(image)
+            continue
+        x, y, w, h = bounds
+        crops.append(image.crop((x, y, x + w, y + h)))
+
+    max_w = max(im.size[0] for im in crops)
+    max_h = max(im.size[1] for im in crops)
+    aligned: list[Image.Image] = []
+    for crop in crops:
+        w, h = crop.size
+        canvas = Image.new("RGBA", (max_w, max_h), (0, 0, 0, 0))
+        # Left-align; pad right if narrower. Bottom-align; pad top if shorter.
+        canvas.paste(crop, (0, max_h - h), crop)
+        aligned.append(canvas)
+    return aligned
+
+
 def flip_around_x_axis(image: Image.Image) -> Image.Image:
     """Match SpriteSheetLoader.flipAroundXAxis (top ↔ bottom)."""
     return image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
@@ -512,6 +595,8 @@ class ChromaSettings:
     tolerance: int = 0
     feather: int = 0
     smooth: int = 0
+    # When set, clear exterior near-black via edge flood-fill instead of global key.
+    flood_max_channel: int | None = None
 
 
 @dataclass
@@ -521,6 +606,8 @@ class BakeJob:
     atlas_path: Path
     chroma: ChromaSettings
     trim: bool = True
+    # "shared" = cell-space union crop; "bottom_edges" = content-relative L/R/bottom align.
+    trim_mode: str = "shared"
     bake_scale: float = 1.0
     flip_vertical: bool = True
     isolate_primary: bool = False
@@ -552,6 +639,18 @@ def chroma_from_sprite_dict(sprite: dict[str, Any]) -> ChromaSettings:
         settings.feather = int(sprite["chroma_key_feather"])
     if "chroma_key_smooth" in sprite:
         settings.smooth = int(sprite["chroma_key_smooth"])
+
+    # background: flood_black | flood_black:<max_channel>
+    background = sprite.get("background")
+    if isinstance(background, str) and background.startswith("flood_black"):
+        max_channel = 18
+        if ":" in background:
+            try:
+                max_channel = int(background.split(":", 1)[1])
+            except ValueError:
+                max_channel = 18
+        settings.flood_max_channel = max_channel
+        settings.key = None
     return settings
 
 
@@ -585,6 +684,12 @@ def collect_animation_jobs(
     root_dir = resolve_sprites_root(root)
     chroma = chroma_from_sprite_dict(sprite)
     trim = bool(sprite.get("trim", True))
+    trim_mode = str(sprite.get("trim_mode") or "shared")
+    if trim_mode not in ("shared", "bottom_edges"):
+        plan.errors.append(
+            f"{category}: trim_mode must be 'shared' or 'bottom_edges' (got {trim_mode!r})"
+        )
+        return
     scale = bake_scale_from_sprite(sprite, item_default=item_default_scale)
     animations = sprite.get("animations") or {}
     if not isinstance(animations, dict):
@@ -627,6 +732,7 @@ def collect_animation_jobs(
                 atlas_path=atlas_path,
                 chroma=chroma,
                 trim=trim,
+                trim_mode=trim_mode,
                 bake_scale=scale,
                 flip_vertical=flip_vertical,
                 isolate_primary=isolate_primary,
@@ -846,6 +952,37 @@ def collect_loading(plan: BakePlan) -> None:
         )
 
 
+def collect_gate_letter_match(plan: BakePlan) -> None:
+    """Bake gate letter-match UI sheets (switch off/on). No SpriteKit prep flip."""
+    path = CONFIG / "UI" / "gate_letter_match.yaml"
+    add_config_input(plan, path)
+    if not path.is_file():
+        plan.errors.append(
+            f"gate_letter_match: missing {path.relative_to(RESOURCES.parent)}"
+        )
+        return
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        plan.errors.append(
+            "gate_letter_match: Config/UI/gate_letter_match.yaml must be a mapping"
+        )
+        return
+    for name, entry in data.items():
+        if not isinstance(entry, dict):
+            plan.errors.append(f"gate_letter_match.{name}: expected mapping with sprite:")
+            continue
+        sprite = entry.get("sprite")
+        if not isinstance(sprite, dict):
+            plan.errors.append(f"gate_letter_match.{name}: missing sprite:")
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"gate_letter_match.{name}",
+            sprite=sprite,
+            flip_vertical=False,
+        )
+
+
 def build_plan(args: argparse.Namespace) -> BakePlan:
     plan = BakePlan()
     if args.verify_only:
@@ -859,6 +996,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_pits = args.all or args.default_set or args.pits
     bake_planets = args.all or args.default_set or args.planets
     bake_loading = args.all or args.default_set or args.loading
+    bake_gate = args.all or args.default_set or args.gate
     bake_enemies = args.all or args.enemies or bool(args.enemy)
 
     # Default invocation (no flags) → default set.
@@ -874,12 +1012,13 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.pits,
             args.planets,
             args.loading,
+            args.gate,
             args.verify,
         ]
     ):
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_planets
-        ) = bake_loading = True
+        ) = bake_loading = bake_gate = True
 
     if args.verify and not any(
         [
@@ -893,13 +1032,14 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.pits,
             args.planets,
             args.loading,
+            args.gate,
         ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_planets
-        ) = bake_loading = True
+        ) = bake_loading = bake_gate = True
 
     if bake_player:
         collect_player(plan)
@@ -915,6 +1055,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_planets(plan)
     if bake_loading:
         collect_loading(plan)
+    if bake_gate:
+        collect_gate_letter_match(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)
@@ -992,7 +1134,11 @@ def bake_job(job: BakeJob) -> tuple[Path, Path]:
     atlas = load_atlas(job.atlas_path)
     sheet = Image.open(job.sheet_path).convert("RGBA")
 
-    if job.chroma.key is not None:
+    if job.chroma.flood_max_channel is not None:
+        sheet = flood_clear_near_black(
+            sheet, max_channel=job.chroma.flood_max_channel
+        )
+    elif job.chroma.key is not None:
         sheet = apply_chroma_key(
             sheet,
             job.chroma.key,
@@ -1017,7 +1163,10 @@ def bake_job(job: BakeJob) -> tuple[Path, Path]:
 
     images = [im for _, im, _ in prepared]
     if job.trim and not job.preserve_anchors:
-        images = trim_to_shared_opaque_bounds(images)
+        if job.trim_mode == "bottom_edges":
+            images = align_content_bottom_edges(images)
+        else:
+            images = trim_to_shared_opaque_bounds(images)
         prepared = [
             (key, images[i], extra) for i, (key, _, extra) in enumerate(prepared)
         ]
@@ -1181,7 +1330,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, planets, loading, enemies",
+        help="Bake player, items, floors, letters, pits, planets, loading, gate, enemies",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument(
@@ -1197,6 +1346,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--pits", action="store_true", help="Bake per-level pit platform tile sets")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
     p.add_argument("--loading", action="store_true", help="Bake loading-screen UI sprites")
+    p.add_argument("--gate", action="store_true", help="Bake gate letter-match UI sprites")
     p.add_argument(
         "--verify",
         action="store_true",
@@ -1220,6 +1370,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.pits,
             args.planets,
             args.loading,
+            args.gate,
         ]
     )
     return args

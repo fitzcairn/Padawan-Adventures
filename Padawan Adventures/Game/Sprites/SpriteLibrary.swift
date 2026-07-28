@@ -127,6 +127,16 @@ final class SpriteLibrary {
         loadedIDs.insert(id)
     }
 
+    /// Drops one loaded id so the next `ensureLoaded` re-reads its sheets.
+    func invalidate(id: String) {
+        loadedIDs.remove(id)
+        animationsByID[id] = nil
+        bytesByID[id] = nil
+        uiImageCache = uiImageCache.filter { !$0.key.hasPrefix("\(id)|") }
+        uiImagesCache = uiImagesCache.filter { !$0.key.hasPrefix("\(id)|") }
+        actionCache = actionCache.filter { !$0.key.hasPrefix("\(id)|") }
+    }
+
     /// Drops every loaded id outside `keep`, freeing its textures.
     ///
     /// Declarative on purpose: callers state what the current context needs rather
