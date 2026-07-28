@@ -17,6 +17,8 @@ final class GateScene: SKScene {
     private static let wrongMoveDuration: TimeInterval = 1.0
     /// Brief beat after the final right-end connector appears, before win SFX / overlay.
     private static let winConnectorHoldDuration: TimeInterval = 0.45
+    /// How often connector bolts re-jag for the electricity flicker.
+    private static let electricityRefreshInterval: TimeInterval = 0.045
 
     weak var gateDelegate: GateSceneDelegate?
 
@@ -28,7 +30,9 @@ final class GateScene: SKScene {
     private var leftEndpointNode: SKShapeNode!
     private var rightEndpointNode: SKShapeNode!
     private var letterNodes: [UUID: SKNode] = [:]
-    private var connectorNodes: [SKShapeNode] = []
+    private var connectorSegments: [ElectricConnector] = []
+    private var electricityRefreshAccumulator: TimeInterval = 0
+    private var electricityRNG = SystemRandomNumberGenerator()
     private var draggedNode: SKNode?
     private var dragOffset: CGPoint = .zero
     private var dragStartPosition: CGPoint = .zero
@@ -47,6 +51,19 @@ final class GateScene: SKScene {
     /// Bright blue fill for the completed start → letters → stop chain.
     private let circleSolvedFill = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)
     private let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)
+    private let connectorCoreColor = UIColor(red: 0.85, green: 0.95, blue: 1.0, alpha: 1)
+
+    /// One light-blue electricity span between two linked circles.
+    private struct ElectricConnector {
+        var start: CGPoint
+        var end: CGPoint
+        let container: SKNode
+        let baseline: SKShapeNode
+        let glow: SKShapeNode
+        let bolt: SKShapeNode
+        let core: SKShapeNode
+        let branch: SKShapeNode
+    }
 
     init(
         size: CGSize,
@@ -86,10 +103,12 @@ final class GateScene: SKScene {
     }
 
     override func update(_ currentTime: TimeInterval) {
-        guard !didEnd else { return }
-
         let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
         lastUpdateTime = currentTime
+
+        refreshElectricityConnectors(dt: dt)
+
+        guard !didEnd else { return }
 
         let events = engine.tick(dt: dt)
         for event in events {
@@ -159,7 +178,8 @@ final class GateScene: SKScene {
     private func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
-        connectorNodes = []
+        connectorSegments = []
+        electricityRefreshAccumulator = 0
 
         let rect = stagingRect
         stagingNode = SKShapeNode(rectOf: rect.size, cornerRadius: 10)
@@ -250,17 +270,199 @@ final class GateScene: SKScene {
     }
 
     private func addConnectorLine(from start: CGPoint, to end: CGPoint) {
+        let container = SKNode()
+        container.name = "connector"
+        container.zPosition = 5
+
+        let baseline = makeConnectorStrokeNode(
+            lineWidth: 4,
+            color: connectorColor.withAlphaComponent(0.35),
+            glowWidth: 0
+        )
+        let glow = makeConnectorStrokeNode(
+            lineWidth: 10,
+            color: connectorColor.withAlphaComponent(0.45),
+            glowWidth: 6
+        )
+        let bolt = makeConnectorStrokeNode(
+            lineWidth: 4.5,
+            color: connectorColor,
+            glowWidth: 2
+        )
+        let core = makeConnectorStrokeNode(
+            lineWidth: 1.8,
+            color: connectorCoreColor,
+            glowWidth: 0
+        )
+        let branch = makeConnectorStrokeNode(
+            lineWidth: 2.2,
+            color: connectorColor.withAlphaComponent(0.9),
+            glowWidth: 1
+        )
+        glow.blendMode = .add
+        bolt.blendMode = .add
+        core.blendMode = .add
+        branch.blendMode = .add
+
+        container.addChild(baseline)
+        container.addChild(glow)
+        container.addChild(bolt)
+        container.addChild(core)
+        container.addChild(branch)
+        addChild(container)
+
+        var connector = ElectricConnector(
+            start: start,
+            end: end,
+            container: container,
+            baseline: baseline,
+            glow: glow,
+            bolt: bolt,
+            core: core,
+            branch: branch
+        )
+        applyElectricityPaths(to: &connector)
+        connectorSegments.append(connector)
+    }
+
+    private func makeConnectorStrokeNode(
+        lineWidth: CGFloat,
+        color: UIColor,
+        glowWidth: CGFloat
+    ) -> SKShapeNode {
+        let node = SKShapeNode()
+        node.strokeColor = color
+        node.fillColor = .clear
+        node.lineWidth = lineWidth
+        node.lineCap = .round
+        node.lineJoin = .round
+        node.glowWidth = glowWidth
+        node.isAntialiased = true
+        return node
+    }
+
+    private func clearConnectorSegments() {
+        for segment in connectorSegments {
+            segment.container.removeFromParent()
+        }
+        connectorSegments.removeAll(keepingCapacity: true)
+        electricityRefreshAccumulator = 0
+    }
+
+    /// Flicker / re-jag active connectors so the spans read as arcing electricity.
+    private func refreshElectricityConnectors(dt: TimeInterval) {
+        guard !connectorSegments.isEmpty else { return }
+        electricityRefreshAccumulator += dt
+        guard electricityRefreshAccumulator >= Self.electricityRefreshInterval else { return }
+        electricityRefreshAccumulator = 0
+        for index in connectorSegments.indices {
+            applyElectricityPaths(to: &connectorSegments[index])
+        }
+    }
+
+    private func applyElectricityPaths(to connector: inout ElectricConnector) {
+        let start = connector.start
+        let end = connector.end
+
+        let straight = CGMutablePath()
+        straight.move(to: start)
+        straight.addLine(to: end)
+        connector.baseline.path = straight
+
+        let boltPath = makeElectricityPath(from: start, to: end, using: &electricityRNG)
+        connector.glow.path = boltPath
+        connector.bolt.path = boltPath
+        connector.core.path = boltPath
+
+        // Brightness flicker — keeps the arc feeling alive between re-jags.
+        let boltAlpha = CGFloat.random(in: 0.72...1.0, using: &electricityRNG)
+        let coreAlpha = CGFloat.random(in: 0.55...1.0, using: &electricityRNG)
+        connector.bolt.alpha = boltAlpha
+        connector.core.alpha = coreAlpha
+        connector.glow.alpha = CGFloat.random(in: 0.35...0.7, using: &electricityRNG)
+
+        // Occasional short side-arc branching off the main span.
+        if CGFloat.random(in: 0...1, using: &electricityRNG) < 0.32,
+           let branchPath = makeElectricityBranchPath(from: start, to: end, using: &electricityRNG) {
+            connector.branch.path = branchPath
+            connector.branch.alpha = CGFloat.random(in: 0.35...0.85, using: &electricityRNG)
+            connector.branch.isHidden = false
+        } else {
+            connector.branch.path = nil
+            connector.branch.isHidden = true
+        }
+    }
+
+    /// Jagged polyline along `start`→`end`, with displacement tapered at both endpoints.
+    private func makeElectricityPath(
+        from start: CGPoint,
+        to end: CGPoint,
+        using rng: inout some RandomNumberGenerator
+    ) -> CGPath {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = hypot(dx, dy)
         let path = CGMutablePath()
         path.move(to: start)
+        guard length > 2 else {
+            path.addLine(to: end)
+            return path
+        }
+
+        // Unit perpendicular for lateral bolt displacement.
+        let px = -dy / length
+        let py = dx / length
+
+        let jagCount = max(Int(length / 16), 3)
+        let maxOffset = min(length * 0.14, 14)
+
+        for step in 1..<jagCount {
+            let t = CGFloat(step) / CGFloat(jagCount)
+            // Soft envelope so the bolt stays anchored at the circles.
+            let taper = sin(t * .pi)
+            let offset = CGFloat.random(in: -maxOffset...maxOffset, using: &rng) * taper
+            // Slight uneven progress along the span (not perfectly even segments).
+            let alongJitter = CGFloat.random(in: -0.04...0.04, using: &rng) * (1 - abs(t - 0.5) * 2)
+            let along = min(max(t + alongJitter, 0.02), 0.98)
+            path.addLine(to: CGPoint(
+                x: start.x + dx * along + px * offset,
+                y: start.y + dy * along + py * offset
+            ))
+        }
         path.addLine(to: end)
-        let line = SKShapeNode(path: path)
-        line.strokeColor = connectorColor
-        line.lineWidth = 6
-        line.lineCap = .round
-        line.zPosition = 5
-        line.name = "connector"
-        addChild(line)
-        connectorNodes.append(line)
+        return path
+    }
+
+    /// Short fork that peels off the main span, then dies out — reads as a secondary arc.
+    private func makeElectricityBranchPath(
+        from start: CGPoint,
+        to end: CGPoint,
+        using rng: inout some RandomNumberGenerator
+    ) -> CGPath? {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = hypot(dx, dy)
+        guard length > 28 else { return nil }
+
+        let ux = dx / length
+        let uy = dy / length
+        let px = -uy
+        let py = ux
+
+        let branchStartT = CGFloat.random(in: 0.25...0.7, using: &rng)
+        let origin = CGPoint(
+            x: start.x + dx * branchStartT,
+            y: start.y + dy * branchStartT
+        )
+        let branchLength = length * CGFloat.random(in: 0.18...0.38, using: &rng)
+        let side: CGFloat = Bool.random(using: &rng) ? 1 : -1
+        let tip = CGPoint(
+            x: origin.x + ux * branchLength * CGFloat.random(in: 0.35...0.8, using: &rng)
+                + px * side * branchLength * CGFloat.random(in: 0.45...0.95, using: &rng),
+            y: origin.y + uy * branchLength * CGFloat.random(in: 0.35...0.8, using: &rng)
+                + py * side * branchLength * CGFloat.random(in: 0.45...0.95, using: &rng)
+        )
+        return makeElectricityPath(from: origin, to: tip, using: &rng)
     }
 
     /// Minimum center-to-center distance so circles do not overlap (includes a small gap).
@@ -578,10 +780,7 @@ final class GateScene: SKScene {
 
     /// Light-blue lines for the connected prefix: left end → letters → right end (when complete).
     private func updateCorrectOrderConnectors() {
-        for line in connectorNodes {
-            line.removeFromParent()
-        }
-        connectorNodes.removeAll(keepingCapacity: true)
+        clearConnectorSegments()
 
         guard !didEnd else { return }
         let staged = stagedLettersLeftToRight()
