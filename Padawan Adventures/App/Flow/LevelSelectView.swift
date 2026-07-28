@@ -16,6 +16,8 @@ struct LevelSelectView: View {
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
     @State private var inventoryIcons: [String: UIImage] = [:]
+    /// False until planets, inventory icons, and coin art are warm — content stays hidden.
+    @State private var isContentReady = false
     /// Resource whose treasure should fade in (first completion this session).
     @State private var celebratingInventoryResource: String?
     /// Planet that should animate from locked → unlocked.
@@ -57,6 +59,21 @@ struct LevelSelectView: View {
             }
         )
         _celebrationRevealed = State(initialValue: pending == nil)
+
+        // Prefer already-warmed treasure icons so inventory never flashes SF Symbols.
+        var seededIcons: [String: UIImage] = [:]
+        for level in resolvedLevels {
+            if let id = level.treasure, let image = session.treasureIcons.uiImage(id: id) {
+                seededIcons[id] = image
+            }
+        }
+        _inventoryIcons = State(initialValue: seededIcons)
+        // Bootstrap warms planets / icons / coin; show content on first frame when present.
+        let planetsReady = resolvedLevels.allSatisfy { level in
+            level.sprite == nil
+                || session.spriteLibrary.uiImage(id: level.resourceName, named: "idle") != nil
+        }
+        _isContentReady = State(initialValue: planetsReady && ScoreCoinIcon.uiImage() != nil)
     }
 
     /// Earned parts in catalog order; completing a level is what grants its treasure.
@@ -92,60 +109,68 @@ struct LevelSelectView: View {
                 backgroundNamed: screenBackground,
                 backgroundLibrary: session.backgroundLibrary
             ) {
-                VStack(spacing: 0) {
-                    starCountHeader
-                        .padding(.bottom, 8)
+                if isContentReady {
+                    VStack(spacing: 0) {
+                        starCountHeader
+                            .padding(.bottom, 8)
 
-                    planetStrip
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.vertical, 12)
+                        planetStrip
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.vertical, 12)
 
-                    // Inventory + chrome buttons share one bottom band (bottoms aligned).
-                    HStack(alignment: .bottom, spacing: 16) {
-                        AppCircularIconButton(
-                            systemName: "chevron.backward",
-                            accessibilityID: "levelSelect.back",
-                            accessibilityLabel: "Back"
-                        ) {
-                            if router.path.isEmpty {
-                                router.showMenu()
-                            } else {
-                                router.pop()
+                        // Inventory + chrome buttons share one bottom band (bottoms aligned).
+                        HStack(alignment: .bottom, spacing: 16) {
+                            AppCircularIconButton(
+                                systemName: "chevron.backward",
+                                accessibilityID: "levelSelect.back",
+                                accessibilityLabel: "Back"
+                            ) {
+                                if router.path.isEmpty {
+                                    router.showMenu()
+                                } else {
+                                    router.pop()
+                                }
+                            }
+
+                            inventorySection
+                                .frame(maxWidth: AppChrome.maxContentWidth)
+                                .frame(maxWidth: .infinity)
+
+                            AppCircularIconButton(
+                                systemName: "lock.fill",
+                                accessibilityID: "levelSelect.dadModeLock",
+                                accessibilityLabel: "Dad mode"
+                            ) {
+                                showPassword = true
                             }
                         }
-
-                        inventorySection
-                            .frame(maxWidth: AppChrome.maxContentWidth)
-                            .frame(maxWidth: .infinity)
-
-                        AppCircularIconButton(
-                            systemName: "lock.fill",
-                            accessibilityID: "levelSelect.dadModeLock",
-                            accessibilityLabel: "Dad mode"
-                        ) {
-                            showPassword = true
-                        }
                     }
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityIdentifier("levelSelect.loading")
                 }
             }
 
-            // Measure full-screen safe areas (AppScreen zeroes child insets) so arrows
-            // sit clear of the Dynamic Island in landscape.
-            GeometryReader { geo in
-                let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
-                HStack {
-                    scrollHintArrow(systemName: "chevron.left", visible: canScrollLeft)
-                        .accessibilityIdentifier("levelSelect.scrollLeftHint")
-                    Spacer()
-                    scrollHintArrow(systemName: "chevron.right", visible: canScrollRight)
-                        .accessibilityIdentifier("levelSelect.scrollRightHint")
+            if isContentReady {
+                // Measure full-screen safe areas (AppScreen zeroes child insets) so arrows
+                // sit clear of the Dynamic Island in landscape.
+                GeometryReader { geo in
+                    let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
+                    HStack {
+                        scrollHintArrow(systemName: "chevron.left", visible: canScrollLeft)
+                            .accessibilityIdentifier("levelSelect.scrollLeftHint")
+                        Spacer()
+                        scrollHintArrow(systemName: "chevron.right", visible: canScrollRight)
+                            .accessibilityIdentifier("levelSelect.scrollRightHint")
+                    }
+                    .padding(.leading, insets.leading + 8)
+                    .padding(.trailing, insets.trailing + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.leading, insets.leading + 8)
-                .padding(.trailing, insets.trailing + 8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
             }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
 
             if let messageOverlay {
                 MessageOverlay(
@@ -178,6 +203,9 @@ struct LevelSelectView: View {
         }
         .playScreenMusic("level_select")
         .task {
+            // Assets are warmed on the loading screen; refresh icons if progression changed.
+            refreshInventoryIcons(ids: inventoryTreasureIDs)
+            isContentReady = true
             await runPendingCelebrationIfNeeded()
         }
         .fullScreenCover(isPresented: $showPassword) {
@@ -409,19 +437,24 @@ struct LevelSelectView: View {
         .padding(.horizontal, 16)
         .frame(height: 72)
         .task(id: inventoryTreasureIDs) {
+            guard isContentReady else { return }
             let ids = inventoryTreasureIDs
             await session.ensureTreasureIconsLoaded(ids: ids)
-            var icons: [String: UIImage] = [:]
-            for id in ids {
-                if let image = session.treasureIcons.uiImage(id: id) {
-                    icons[id] = image
-                }
-            }
-            inventoryIcons = icons
+            refreshInventoryIcons(ids: ids)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("levelSelect.inventory")
         .accessibilityLabel("Inventory")
+    }
+
+    private func refreshInventoryIcons(ids: [String]) {
+        var icons: [String: UIImage] = [:]
+        for id in ids {
+            if let image = session.treasureIcons.uiImage(id: id) {
+                icons[id] = image
+            }
+        }
+        inventoryIcons = icons
     }
 
     @ViewBuilder

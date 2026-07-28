@@ -5,12 +5,14 @@ enum GameWorldPreparer {
     /// Sprite warming occupies the first slice; world gen fills the rest.
     private static let assetsEnd = 0.48
 
+    /// Warms level sprites and builds the world. Returns `nil` when enemy sprites
+    /// could not be fully loaded — callers must not present gameplay in that case.
     @MainActor
     static func prepareLaunch(
         session: AppSession,
         mode: GameLaunchMode,
         onProgress: (@MainActor (Double) -> Void)? = nil
-    ) async -> GameWorld {
+    ) async -> GameWorld? {
         func report(_ value: Double) {
             onProgress?(min(1, max(0, value)))
         }
@@ -38,12 +40,34 @@ enum GameWorldPreparer {
         await session.ensureItemSpritesLoaded { local in
             report(LoadProgress.map(local, from: 0.18, to: 0.26))
         }
-        await session.ensureEnemySpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.26, to: assetsEnd))
+        let enemiesReady = await session.ensureEnemySpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.26, to: 0.40))
+        }
+        guard enemiesReady else {
+            print("GameWorldPreparer: aborting launch — enemy sprites incomplete")
+            session.releaseLevelScopedSprites()
+            session.startObservingMemoryPressure()
+            return nil
         }
 
+        // Warm per-level tile sets before GPU upload so the world does not decode mid-frame.
+        await session.ensureFloorTileSetLoaded { local in
+            report(LoadProgress.map(local, from: 0.40, to: 0.44))
+        }
+        await session.ensureLetterSpriteSetLoaded { local in
+            report(LoadProgress.map(local, from: 0.44, to: 0.46))
+        }
+        await session.ensurePitSpriteSetLoaded { local in
+            report(LoadProgress.map(local, from: 0.46, to: assetsEnd))
+        }
+
+        let textures =
+            session.spriteLibrary.allTextures()
+            + session.floorTileSetLibrary.allTextures()
+            + session.letterSpriteSetLibrary.allTextures()
+            + session.pitSpriteSetLibrary.allTextures()
         await withCheckedContinuation { continuation in
-            SKTexture.preload(session.spriteLibrary.allTextures()) {
+            SKTexture.preload(textures) {
                 continuation.resume()
             }
         }

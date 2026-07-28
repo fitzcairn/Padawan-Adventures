@@ -89,6 +89,10 @@ final class PitSpriteSetLibrary {
         textures[tileID]
     }
 
+    func allTextures() -> [SKTexture] {
+        Array(textures.values)
+    }
+
     /// Uniform random tile texture from the loaded set, or nil when empty.
     func randomTexture(using rng: inout some RandomNumberGenerator) -> SKTexture? {
         let ids = tileIDs

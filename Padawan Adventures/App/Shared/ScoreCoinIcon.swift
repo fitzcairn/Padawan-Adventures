@@ -84,6 +84,6 @@ enum ScoreCoinIcon {
         guard let frame = animation?.frames.first else { return nil }
         // Undo the SpriteKit prep flip, exactly as `SpriteLibrary.uiImage` does.
         let upright = SpriteSheetLoader.flipAroundXAxis(frame.texture.cgImage())
-        return UIImage(cgImage: upright, scale: 1, orientation: .up)
+        return UIImage(cgImage: upright, scale: 1, orientation: .up).preparedForScreen()
     }
 }

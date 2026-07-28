@@ -59,7 +59,7 @@ struct FlowRootView: View {
             case .settings:
                 SettingsView(session: session, router: router)
             case .preparing(let mode):
-                PreparingView(session: session, mode: mode)
+                PreparingView(session: session, mode: mode, router: router)
             }
         } else {
             LoadingView(session: $session, router: router)

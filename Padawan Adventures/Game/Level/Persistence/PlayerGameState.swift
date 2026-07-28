@@ -105,6 +105,9 @@ nonisolated struct PlayerStats: Codable, Equatable, Sendable {
 
 /// Per-player settings from the Settings screen. New fields decode with defaults.
 nonisolated struct PlayerSettings: Codable, Equatable, Sendable {
+    /// Default BGM level — kept well below full SFX so gameplay audio stays clear.
+    static let defaultMusicVolume: Float = 0.35
+
     var soundEffectsEnabled: Bool
     var soundEffectsVolume: Float
     var musicEnabled: Bool
@@ -116,7 +119,7 @@ nonisolated struct PlayerSettings: Codable, Equatable, Sendable {
         soundEffectsEnabled: Bool = true,
         soundEffectsVolume: Float = 1,
         musicEnabled: Bool = true,
-        musicVolume: Float = 1
+        musicVolume: Float = PlayerSettings.defaultMusicVolume
     ) {
         self.soundEffectsEnabled = soundEffectsEnabled
         self.soundEffectsVolume = Self.clamp(soundEffectsVolume)
@@ -139,7 +142,7 @@ nonisolated struct PlayerSettings: Codable, Equatable, Sendable {
         )
         musicEnabled = try container.decodeIfPresent(Bool.self, forKey: .musicEnabled) ?? true
         musicVolume = Self.clamp(
-            try container.decodeIfPresent(Float.self, forKey: .musicVolume) ?? 1
+            try container.decodeIfPresent(Float.self, forKey: .musicVolume) ?? Self.defaultMusicVolume
         )
     }
 

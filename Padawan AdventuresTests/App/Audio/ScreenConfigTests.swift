@@ -4,10 +4,10 @@ import Testing
 struct ScreenConfigTests {
     @Test func decodesMusicField() throws {
         let config = try ScreenConfig.decode(from: """
-            music: menu_theme
+            music: title_menu
             """)
-        #expect(config.music == "menu_theme")
-        #expect(config.musicCue == .track("menu_theme"))
+        #expect(config.music == "title_menu")
+        #expect(config.musicCue == .track("title_menu"))
     }
 
     @Test func decodesNoneAsUnchangedCue() throws {
@@ -25,17 +25,17 @@ struct ScreenConfigTests {
 
     @Test func loadsMenuScreenFromBundle() throws {
         let config = try ScreenConfig.loadFromBundle(named: "menu")
-        #expect(config.musicCue == .track("menu_theme"))
+        #expect(config.musicCue == .track("title_menu"))
     }
 
     @Test func loadsYouWinScreenFromBundle() throws {
         let config = try ScreenConfig.loadFromBundle(named: "you_win")
-        #expect(config.musicCue == .track("victory"))
+        #expect(config.musicCue == .track("win"))
     }
 
     @Test func loadsSettingsScreenFromBundle() throws {
         let config = try ScreenConfig.loadFromBundle(named: "settings")
-        #expect(config.musicCue == .track("menu_theme"))
+        #expect(config.musicCue == .track("title_menu"))
     }
 
     @Test func loadsDefeatScreenFromBundle() throws {
@@ -45,12 +45,17 @@ struct ScreenConfigTests {
 
     @Test func loadsLevelSelectScreenMusicFromScreensYAML() throws {
         let config = try ScreenConfig.loadFromBundle(named: "level_select")
-        #expect(config.musicCue == .track("menu_theme"))
+        #expect(config.musicCue == .track("title_menu"))
+    }
+
+    @Test func loadsLoadingScreenMusicFromScreensYAML() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "loading")
+        #expect(config.musicCue == .track("title_menu"))
     }
 
     @Test func decodesBackgroundField() throws {
         let config = try ScreenConfig.decode(from: """
-            music: menu_theme
+            music: title_menu
             background: level_screen_bg
             """)
         #expect(config.background == "level_screen_bg")
@@ -58,7 +63,7 @@ struct ScreenConfigTests {
 
     @Test func omittedBackgroundIsNil() throws {
         let config = try ScreenConfig.decode(from: """
-            music: menu_theme
+            music: title_menu
             """)
         #expect(config.background == nil)
     }
@@ -71,9 +76,10 @@ struct ScreenConfigTests {
     @Test func loadsBundledScreensYAML() throws {
         let all = try ScreensConfig.loadFromBundle()
         #expect(all.version == 1)
-        #expect(all.screens["menu"]?.musicCue == .track("menu_theme"))
-        #expect(all.screens["loading"]?.musicCue == .unchanged)
+        #expect(all.screens["menu"]?.musicCue == .track("title_menu"))
+        #expect(all.screens["loading"]?.musicCue == .track("title_menu"))
         #expect(all.screens["preparing"]?.musicCue == .unchanged)
+        #expect(all.screens["level_select"]?.musicCue == .track("title_menu"))
         #expect(all.screens["level_select"]?.background == "level_screen_bg")
         #expect(all.screens.count == 9)
     }

@@ -66,11 +66,12 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        controller.apply(.track("menu_theme"))
-        await waitFor { mock.playCount == 1 && mock.volume == 1 }
-        #expect(mock.loadCalls == ["menu_theme"])
-        #expect(controller.currentTrackID == "menu_theme")
-        #expect(mock.fadeCalls.map(\.0) == [1])
+        let target = PlayerSettings.defaultMusicVolume
+        controller.apply(.track("title_menu"))
+        await waitFor { mock.playCount == 1 && mock.volume == target }
+        #expect(mock.loadCalls == ["title_menu"])
+        #expect(controller.currentTrackID == "title_menu")
+        #expect(mock.fadeCalls.map(\.0) == [target])
         #expect(mock.fadeCalls.map(\.1) == [0.5])
     }
 
@@ -78,11 +79,11 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        controller.apply(.track("menu_theme"))
+        controller.apply(.track("title_menu"))
         await waitFor { mock.playCount == 1 }
-        controller.apply(.track("menu_theme"))
+        controller.apply(.track("title_menu"))
         await Task.yield()
-        #expect(mock.loadCalls == ["menu_theme"])
+        #expect(mock.loadCalls == ["title_menu"])
         #expect(mock.playCount == 1)
     }
 
@@ -90,15 +91,16 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        controller.apply(.track("menu_theme"))
-        await waitFor { controller.currentTrackID == "menu_theme" && mock.volume == 1 }
+        let target = PlayerSettings.defaultMusicVolume
+        controller.apply(.track("title_menu"))
+        await waitFor { controller.currentTrackID == "title_menu" && mock.volume == target }
 
-        controller.apply(.track("level_theme"))
-        await waitFor { controller.currentTrackID == "level_theme" && mock.volume == 1 }
+        controller.apply(.track("level"))
+        await waitFor { controller.currentTrackID == "level" && mock.volume == target }
 
-        #expect(mock.loadCalls == ["menu_theme", "level_theme"])
+        #expect(mock.loadCalls == ["title_menu", "level"])
         #expect(mock.stopCount == 1)
-        #expect(mock.fadeCalls.map(\.0) == [1, 0, 1])
+        #expect(mock.fadeCalls.map(\.0) == [target, 0, target])
         #expect(mock.fadeCalls.map(\.1) == [0.5, 0.5, 0.5])
     }
 
@@ -106,8 +108,8 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        controller.apply(.track("menu_theme"))
-        await waitFor { controller.currentTrackID == "menu_theme" }
+        controller.apply(.track("title_menu"))
+        await waitFor { controller.currentTrackID == "title_menu" }
 
         controller.apply(.silence)
         await waitFor { controller.currentTrackID == nil && mock.stopCount == 1 }
@@ -118,7 +120,7 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 0)
-        controller.apply(.track("menu_theme"))
+        controller.apply(.track("title_menu"))
         await waitFor { mock.isPlaying }
 
         controller.pauseForBackground()
@@ -137,7 +139,7 @@ struct BackgroundMusicControllerTests {
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
         controller.setMusicVolume(0.5)
-        controller.apply(.track("menu_theme"))
+        controller.apply(.track("title_menu"))
         await waitFor { mock.playCount == 1 && mock.volume == 0.5 }
         #expect(mock.fadeCalls.map(\.0) == [0.5])
         #expect(controller.effectiveVolume == 0.5)
@@ -147,25 +149,27 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 0)
-        controller.apply(.track("menu_theme"))
-        await waitFor { controller.currentTrackID == "menu_theme" && mock.volume == 1 }
+        let target = PlayerSettings.defaultMusicVolume
+        controller.apply(.track("title_menu"))
+        await waitFor { controller.currentTrackID == "title_menu" && mock.volume == target }
 
         controller.setMusicEnabled(false)
-        #expect(controller.currentTrackID == "menu_theme")
+        #expect(controller.currentTrackID == "title_menu")
         #expect(mock.volume == 0)
         #expect(controller.effectiveVolume == 0)
 
         controller.setMusicEnabled(true)
-        #expect(mock.volume == 1)
-        #expect(controller.effectiveVolume == 1)
+        #expect(mock.volume == target)
+        #expect(controller.effectiveVolume == target)
     }
 
     @Test func liveVolumeChangeUpdatesPlayer() async {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 0)
-        controller.apply(.track("menu_theme"))
-        await waitFor { mock.volume == 1 }
+        let target = PlayerSettings.defaultMusicVolume
+        controller.apply(.track("title_menu"))
+        await waitFor { mock.volume == target }
 
         controller.setMusicVolume(0.3)
         #expect(mock.volume == 0.3)

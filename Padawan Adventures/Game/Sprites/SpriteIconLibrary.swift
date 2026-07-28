@@ -41,7 +41,8 @@ final class SpriteIconLibrary {
         guard let frame = animation?.frames.first else { return }
         // Undo the SpriteKit prep flip, exactly as `SpriteLibrary.uiImage` does.
         let upright = SpriteSheetLoader.flipAroundXAxis(frame.texture.cgImage())
-        images[id] = UIImage(cgImage: upright, scale: 1, orientation: .up)
+        let image = UIImage(cgImage: upright, scale: 1, orientation: .up)
+        images[id] = image.preparedForScreen()
         await Task.yield()
     }
 }

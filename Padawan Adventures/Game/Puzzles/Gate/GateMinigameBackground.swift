@@ -2,7 +2,32 @@ import SpriteKit
 import UIKit
 
 /// Full-width, aspect-preserving backgrounds for gate minigames.
+@MainActor
 enum GateMinigameBackground {
+    @MainActor
+    private static var textureCache: [String: SKTexture] = [:]
+
+    /// Decodes gate backgrounds into the texture cache (call during bootstrap).
+    @MainActor
+    @discardableResult
+    static func preloadTextures(bundle: Bundle = .main) -> [SKTexture] {
+        let specs = [
+            ("letter_match-bg", "Sprites/Gate/letter_match"),
+            ("spelling-bg", "Sprites/Gate/spelling"),
+        ]
+        var loaded: [SKTexture] = []
+        for (name, root) in specs {
+            if let existing = textureCache[cacheKey(name: name, root: root)] {
+                loaded.append(existing)
+                continue
+            }
+            guard let texture = loadTexture(named: name, root: root, bundle: bundle) else { continue }
+            textureCache[cacheKey(name: name, root: root)] = texture
+            loaded.append(texture)
+        }
+        return loaded
+    }
+
     /// Letter-match art under `Sprites/Gate/letter_match/letter_match-bg.png`.
     static func letterMatch(sceneSize: CGSize) -> SKSpriteNode? {
         makeNode(named: "letter_match-bg", root: "Sprites/Gate/letter_match", sceneSize: sceneSize)
@@ -60,11 +85,21 @@ enum GateMinigameBackground {
         )
     }
 
+    private static func cacheKey(name: String, root: String) -> String {
+        "\(root)/\(name)"
+    }
+
+    @MainActor
     private static func loadTexture(
         named name: String,
         root: String,
         bundle: Bundle = .main
     ) -> SKTexture? {
+        let key = cacheKey(name: name, root: root)
+        if let cached = textureCache[key] {
+            return cached
+        }
+
         let url: URL
         do {
             url = try SpriteSheetLoader.resourceURL(
@@ -86,6 +121,7 @@ enum GateMinigameBackground {
 
         let texture = SKTexture(image: UIImage(cgImage: cgImage, scale: 1, orientation: .up))
         SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+        textureCache[key] = texture
         return texture
     }
 }

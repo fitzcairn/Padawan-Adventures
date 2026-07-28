@@ -34,7 +34,7 @@ final class BackgroundLibrary {
         guard !trimmed.isEmpty, images[trimmed] == nil else { return }
 
         guard let image = Self.loadImage(named: trimmed, bundle: bundle) else { return }
-        images[trimmed] = image
+        images[trimmed] = image.preparedForScreen()
         await Task.yield()
     }
 

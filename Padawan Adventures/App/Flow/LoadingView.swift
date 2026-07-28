@@ -10,6 +10,13 @@ struct LoadingView: View {
     @State private var kamFrames: [(image: UIImage, duration: TimeInterval)] = []
     @State private var logoImage: UIImage?
     @State private var yodaFrames: [(image: UIImage, duration: TimeInterval)] = []
+    @State private var kamOpacity: Double = 0
+    @State private var logoOpacity: Double = 0
+    @State private var yodaOpacity: Double = 0
+
+    /// Loading-screen art occupies the first slice of the progress bar.
+    private static let artProgressEnd = 0.12
+    private static let artFadeSeconds: TimeInterval = 0.45
 
     var body: some View {
         AppScreen {
@@ -22,6 +29,7 @@ struct LoadingView: View {
                             .scaledToFit()
                             .frame(maxWidth: 360)
                             .padding(.top, 12)
+                            .opacity(logoOpacity)
                     }
                     Spacer(minLength: 0)
                 }
@@ -31,12 +39,14 @@ struct LoadingView: View {
                         if !kamFrames.isEmpty {
                             AnimatedUIImageView(frames: kamFrames)
                                 .frame(height: 200)
+                                .opacity(kamOpacity)
                         }
                         Spacer(minLength: 0)
                         if !yodaFrames.isEmpty {
                             AnimatedUIImageView(frames: yodaFrames)
                                 .frame(height: 140) // 30% smaller than kam
                                 .offset(x: -geo.size.width * 0.05)
+                                .opacity(yodaOpacity)
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -69,10 +79,22 @@ struct LoadingView: View {
         }
         .playScreenMusic("loading")
         .task {
+            // Commit the chrome ("Loading..." + bar) before any asset work.
+            await Task.yield()
+
+            // Phase 1 — fade each title asset in as soon as it decodes.
             await loadLoadingSprites()
-            let loaded = await AppSession.loadResources { value in
-                progress = value
-            }
+            progress = Self.artProgressEnd
+            await Task.yield()
+
+            // Phase 2 — configs + every other screen / gameplay asset.
+            let artEnd = Self.artProgressEnd
+            let loaded = await AppSession.loadResources(
+                spriteLibrary: spriteLibrary,
+                onProgress: { value in
+                    progress = artEnd + (1 - artEnd) * value
+                }
+            )
             progress = 1
             session = loaded
             isReady = true
@@ -82,11 +104,43 @@ struct LoadingView: View {
     @MainActor
     private func loadLoadingSprites() async {
         guard let config = try? LoadingSpritesConfig.loadFromBundle() else { return }
-        for entry in config.entries {
-            await spriteLibrary.ensureLoaded(entry.config, id: entry.id)
+        let entries = config.entries
+        let total = max(entries.count, 1)
+        for (index, entry) in entries.enumerated() {
+            await spriteLibrary.ensureLoaded(entry.config, id: entry.id) { local in
+                let entryStart = Double(index) / Double(total)
+                let entryEnd = Double(index + 1) / Double(total)
+                progress = Self.artProgressEnd * LoadProgress.map(local, from: entryStart, to: entryEnd)
+            }
+            revealLoadingArt(id: entry.id)
+            // Let SwiftUI commit the fade before starting the next sheet.
+            await Task.yield()
         }
-        kamFrames = spriteLibrary.uiImages(id: "kam") ?? []
-        logoImage = spriteLibrary.uiImage(id: "logo")
-        yodaFrames = spriteLibrary.uiImages(id: "yoda") ?? []
+    }
+
+    @MainActor
+    private func revealLoadingArt(id: String) {
+        switch id {
+        case "kam":
+            kamFrames = spriteLibrary.uiImages(id: "kam") ?? []
+            guard !kamFrames.isEmpty else { return }
+            withAnimation(.easeIn(duration: Self.artFadeSeconds)) {
+                kamOpacity = 1
+            }
+        case "logo":
+            logoImage = spriteLibrary.uiImage(id: "logo")
+            guard logoImage != nil else { return }
+            withAnimation(.easeIn(duration: Self.artFadeSeconds)) {
+                logoOpacity = 1
+            }
+        case "yoda":
+            yodaFrames = spriteLibrary.uiImages(id: "yoda") ?? []
+            guard !yodaFrames.isEmpty else { return }
+            withAnimation(.easeIn(duration: Self.artFadeSeconds)) {
+                yodaOpacity = 1
+            }
+        default:
+            break
+        }
     }
 }

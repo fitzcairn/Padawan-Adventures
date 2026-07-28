@@ -16,20 +16,29 @@ protocol MusicAudioPlaying: AnyObject {
     func fadeVolume(to volume: Float, duration: TimeInterval) async
 }
 
-/// Bundle-backed looping `AVAudioPlayer` implementation.
+/// Bundle-backed streaming looping player (`AVQueuePlayer` + `AVPlayerLooper`).
 @MainActor
 final class BundleMusicAudioPlayer: MusicAudioPlaying {
     private(set) var currentTrackID: String?
-    private var player: AVAudioPlayer?
+    private var queuePlayer: AVQueuePlayer?
+    private var looper: AVPlayerLooper?
+    private var fadeTask: Task<Void, Never>?
+    private var fadeGeneration = 0
     private var didConfigureSession = false
 
     var volume: Float {
-        get { player?.volume ?? 0 }
-        set { player?.volume = newValue }
+        get { Float(queuePlayer?.volume ?? 0) }
+        set {
+            fadeGeneration += 1
+            fadeTask?.cancel()
+            fadeTask = nil
+            queuePlayer?.volume = newValue
+        }
     }
 
     var isPlaying: Bool {
-        player?.isPlaying ?? false
+        guard let queuePlayer else { return false }
+        return queuePlayer.timeControlStatus == .playing || queuePlayer.rate > 0
     }
 
     func load(trackID: String) throws {
@@ -37,38 +46,73 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
             throw MusicConfigError.missingResource
         }
         configureSessionIfNeeded()
-        let newPlayer = try AVAudioPlayer(contentsOf: url)
-        newPlayer.numberOfLoops = -1
-        newPlayer.volume = 0
-        newPlayer.prepareToPlay()
-        player?.stop()
-        player = newPlayer
+        tearDownPlayer()
+
+        let player = AVQueuePlayer()
+        player.volume = 0
+        let item = AVPlayerItem(url: url)
+        looper = AVPlayerLooper(player: player, templateItem: item)
+        queuePlayer = player
         currentTrackID = trackID
     }
 
     func play() {
-        player?.play()
+        queuePlayer?.play()
     }
 
     func pause() {
-        player?.pause()
+        queuePlayer?.pause()
     }
 
     func stop() {
-        player?.stop()
-        player = nil
+        tearDownPlayer()
         currentTrackID = nil
     }
 
     func fadeVolume(to volume: Float, duration: TimeInterval) async {
-        guard let player else { return }
+        fadeGeneration += 1
+        let generation = fadeGeneration
+        fadeTask?.cancel()
+        fadeTask = nil
+
+        guard let queuePlayer else { return }
         if duration <= 0 {
-            player.volume = volume
+            queuePlayer.volume = volume
             return
         }
-        player.setVolume(volume, fadeDuration: duration)
-        let nanos = UInt64(duration * 1_000_000_000)
-        try? await Task.sleep(nanoseconds: nanos)
+
+        let start = queuePlayer.volume
+        let delta = volume - start
+        let steps = max(1, Int(duration / 0.02))
+        let stepDuration = duration / Double(steps)
+
+        let task = Task { @MainActor in
+            for step in 1...steps {
+                guard !Task.isCancelled, generation == self.fadeGeneration else { return }
+                let t = Float(step) / Float(steps)
+                queuePlayer.volume = start + delta * t
+                let nanos = UInt64(stepDuration * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanos)
+            }
+            guard !Task.isCancelled, generation == self.fadeGeneration else { return }
+            queuePlayer.volume = volume
+        }
+        fadeTask = task
+        await task.value
+        if generation == fadeGeneration {
+            fadeTask = nil
+        }
+    }
+
+    private func tearDownPlayer() {
+        fadeGeneration += 1
+        fadeTask?.cancel()
+        fadeTask = nil
+        queuePlayer?.pause()
+        looper?.disableLooping()
+        looper = nil
+        queuePlayer?.removeAllItems()
+        queuePlayer = nil
     }
 
     private func configureSessionIfNeeded() {

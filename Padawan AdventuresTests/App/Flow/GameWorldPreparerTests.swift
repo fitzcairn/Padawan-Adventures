@@ -4,20 +4,6 @@ import Testing
 
 @MainActor
 struct GameWorldPreparerTests {
-    private func makeSession() throws -> AppSession {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let store = try PlayerStateStore(directoryURL: directory)
-        let saveService = try GameSaveService(directoryURL: directory)
-        return AppSession(
-            appConfig: AppSession.fallbackAppConfig(),
-            selectedLevel: .fallback,
-            playerStore: store,
-            saveService: saveService
-        )
-    }
-
     @Test func newGameDeletesSaveAndGeneratesWorld() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Rex")
@@ -79,8 +65,77 @@ struct GameWorldPreparerTests {
         await session.addLevelStar(resourceName: "1-tython")
         #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 2)
 
-        _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        let world = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        #expect(world != nil)
         #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 0)
         #expect(session.playerState?.levels["1-tython"]?.started == true)
+    }
+
+    @Test func ensureEnemySpritesLoadedRejectsIncompleteSprites() async throws {
+        let session = try makeSession(enemyConfig: Self.brokenSpiderEnemyConfig())
+        let ready = await session.ensureEnemySpritesLoaded()
+        #expect(ready == false)
+        #expect(session.spriteLibrary.isLoaded(id: "spider") == false)
+    }
+
+    @Test func prepareLaunchFailsClosedWhenEnemySpritesMissing() async throws {
+        let session = try makeSession(enemyConfig: Self.brokenSpiderEnemyConfig())
+        try await session.createAndBindPlayer(name: "Rex")
+        let world = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        #expect(world == nil)
+        #expect(session.spriteLibrary.isLoaded(id: "spider") == false)
+    }
+
+    @Test func ensureEnemySpritesLoadedWarmsTythonTypes() async throws {
+        let enemies = try EnemyConfig.loadFromBundle()
+        let session = try makeSession(enemyConfig: enemies)
+        try session.selectLevel(resourceName: "1-tython")
+        let ready = await session.ensureEnemySpritesLoaded()
+        #expect(ready == true)
+        #expect(session.spriteLibrary.isLoaded(id: "dino"))
+        #expect(session.spriteLibrary.isLoaded(id: "treant"))
+        #expect(session.spriteLibrary.animation(id: "dino", named: "idle_down") != nil)
+        #expect(session.spriteLibrary.animation(id: "treant", named: "idle_down") != nil)
+        #expect(session.spriteLibrary.missingAnimations(
+            id: "dino",
+            config: try #require(enemies.sprites["dino"])
+        ).isEmpty)
+    }
+
+    private func makeSession(enemyConfig: EnemyConfig? = nil) throws -> AppSession {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = try PlayerStateStore(directoryURL: directory)
+        let saveService = try GameSaveService(directoryURL: directory)
+        return AppSession(
+            appConfig: AppSession.fallbackAppConfig(),
+            selectedLevel: .fallback,
+            enemyConfig: enemyConfig,
+            playerStore: store,
+            saveService: saveService
+        )
+    }
+
+    private static func brokenSpiderEnemyConfig() -> EnemyConfig {
+        EnemyConfig(
+            enemies: [
+                "spider": EnemyTypeConfig(
+                    letter: "E",
+                    color: "#FF0000",
+                    tilesPerSecond: 1.0,
+                    forgetSeconds: 3.0,
+                    sprite: "spider"
+                ),
+            ],
+            sprites: [
+                "spider": SpriteConfig(
+                    root: "Sprites/Missing",
+                    animations: [
+                        "idle_down": .sheet(sheet: "missing", atlas: "missing"),
+                    ]
+                ),
+            ]
+        )
     }
 }

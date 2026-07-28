@@ -56,7 +56,7 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
         timerSeconds: 30,
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words,
-        music: "gate_theme"
+        music: "gate"
     )
 
     nonisolated init(
@@ -259,7 +259,7 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
         letterCountMin: 4,
         letterCountMax: 8,
         letters: LetterCatalog.fallback.letters,
-        music: "destructible_wall_theme"
+        music: "gate"
     )
 
     nonisolated init(
@@ -428,7 +428,7 @@ nonisolated struct GateConfig: Equatable, Sendable {
     }
 }
 
-/// Per-level minigame music track basenames (`Resources/Audio/Music/<name>.m4a`).
+/// Per-level minigame music track basenames (`Resources/Audio/Music/<name>.mp3`).
 nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
     var combat: String?
     var pit: String?
@@ -441,9 +441,9 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
     }
 
     nonisolated static let fallback = GameMusicConfig(
-        combat: "combat_theme",
-        pit: "pit_theme",
-        gate: "gate_theme"
+        combat: "combat",
+        pit: "pit",
+        gate: "gate"
     )
 
     nonisolated init(
@@ -580,7 +580,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         color: fallbackColor,
         sprite: nil,
         artifact: fallbackArtifact,
-        music: "level_theme",
+        music: "level",
         gameMusic: .fallback,
         letterSoundRepeatSeconds: 3,
         width: 100,

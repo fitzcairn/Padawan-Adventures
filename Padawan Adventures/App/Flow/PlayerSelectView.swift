@@ -111,6 +111,7 @@ struct PlayerSelectView: View {
     let session: AppSession
     let router: FlowRouter
     @State private var model: PlayerSelectModel
+    @State private var isContentReady = false
 
     init(session: AppSession, router: FlowRouter) {
         self.session = session
@@ -121,43 +122,50 @@ struct PlayerSelectView: View {
     var body: some View {
         @Bindable var model = model
         AppScreen {
-            VStack(spacing: 16) {
-                AppTitleText(text: "Select Player", size: 28, weight: .semibold)
-                    .accessibilityIdentifier("playerSelect.title")
+            if isContentReady {
+                VStack(spacing: 16) {
+                    AppTitleText(text: "Select Player", size: 28, weight: .semibold)
+                        .accessibilityIdentifier("playerSelect.title")
 
-                ScrollView {
-                    VStack(spacing: 12) {
-                        if model.playerNames.isEmpty {
-                            AppTitleText(
-                                text: "No players yet. Tap New to create one.",
-                                size: 16,
-                                weight: .regular,
-                                color: AppChrome.secondaryTextColor
-                            )
-                            .accessibilityIdentifier("playerSelect.empty")
-                        } else {
-                            ForEach(model.playerNames, id: \.self) { name in
-                                playerRow(name: name)
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            if model.playerNames.isEmpty {
+                                AppTitleText(
+                                    text: "No players yet. Tap New to create one.",
+                                    size: 16,
+                                    weight: .regular,
+                                    color: AppChrome.secondaryTextColor
+                                )
+                                .accessibilityIdentifier("playerSelect.empty")
+                            } else {
+                                ForEach(model.playerNames, id: \.self) { name in
+                                    playerRow(name: name)
+                                }
                             }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
-                }
-                .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
-                .frame(maxWidth: .infinity)
-                .frame(maxHeight: .infinity)
+                    .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: .infinity)
 
-                AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
-                    model.beginCreatePlayer()
+                    AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
+                        model.beginCreatePlayer()
+                    }
+                    .disabled(model.isCreatingAvatar)
+                    .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
+                    .frame(maxWidth: .infinity)
                 }
-                .disabled(model.isCreatingAvatar)
-                .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
-                .frame(maxWidth: .infinity)
+            } else {
+                Color.clear
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("playerSelect.loading")
             }
         }
         .playScreenMusic("player_select")
         .task {
             await model.reloadPlayers()
+            isContentReady = true
         }
         .alert("New Player", isPresented: $model.isShowingNewPlayerAlert) {
             TextField("Player name", text: $model.newPlayerName)

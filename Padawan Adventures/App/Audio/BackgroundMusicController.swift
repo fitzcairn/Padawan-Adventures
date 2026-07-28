@@ -9,7 +9,7 @@ final class BackgroundMusicController {
     private(set) var currentTrackID: String?
     private(set) var isPausedForBackground = false
     private(set) var musicEnabled = true
-    private(set) var musicVolume: Float = 1
+    private(set) var musicVolume: Float = PlayerSettings.defaultMusicVolume
 
     private let player: any MusicAudioPlaying
     private var transitionTask: Task<Void, Never>?

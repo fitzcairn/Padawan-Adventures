@@ -2,24 +2,25 @@
 version: 1
 screens:
   menu:
-    music: menu_theme
+    # Same track as loading — no-op while already playing; restores after gameplay.
+    music: title_menu
     background: menu_screen_bg
   loading:
-    # Continue whatever was playing (nothing at cold start).
-    music: none
+    # Starts as early as possible during bootstrap (see AppSession.loadResources).
+    music: title_menu
   preparing:
-    # Keep menu music while the world is prepared.
+    # Keep title_menu while the world is prepared.
     music: none
   settings:
-    music: menu_theme
+    music: title_menu
   level_select:
-    music: menu_theme
+    music: title_menu
     background: level_screen_bg
   player_select:
-    music: menu_theme
+    music: title_menu
   player_selfie:
-    music: menu_theme
+    music: title_menu
   you_win:
-    music: victory
+    music: win
   defeat:
     music: silence

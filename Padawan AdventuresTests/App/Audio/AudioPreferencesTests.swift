@@ -10,7 +10,7 @@ struct AudioPreferencesTests {
         #expect(prefs.soundEffectsEnabled)
         #expect(prefs.soundEffectsVolume == 1)
         #expect(prefs.musicEnabled)
-        #expect(prefs.musicVolume == 1)
+        #expect(prefs.musicVolume == PlayerSettings.defaultMusicVolume)
     }
 
     @Test func clampsVolumeToUnitInterval() {

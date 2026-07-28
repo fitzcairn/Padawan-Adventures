@@ -4,15 +4,15 @@
 
 name: Level
 
-# Background music track basename (Resources/Audio/Music/<name>.m4a).
+# Background music track basename (Resources/Audio/Music/<name>.mp3).
 # Use `none` to keep previous music, or `silence` to fade out.
-music: level_theme
+music: level
 
 # Per-minigame music for this level (same cue rules as `music:`).
 game_music:
-  combat: combat_theme
-  pit: pit_theme
-  gate: gate_theme
+  combat: combat
+  pit: pit
+  gate: gate
 
 # How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
 letter_sound_repeat_seconds: 3
@@ -62,13 +62,13 @@ gate:
       timer_seconds: 30
       num_padding_letters: 6
       words: [cat, dog, star, gate, open]
-      music: gate_theme
+      music: gate
     - type: letter_match
       timer_seconds: 30
       letter_count_min: 4
       letter_count_max: 8
       letters: [a, b, c, d, e, f, g, h]
-      music: destructible_wall_theme
+      music: gate
 
 enemies:
   types: [spider]

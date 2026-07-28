@@ -86,6 +86,10 @@ final class FloorTileSetLibrary {
         textures[tileID]
     }
 
+    func allTextures() -> [SKTexture] {
+        Array(textures.values)
+    }
+
     func frame(_ tileID: String) -> FloorTileSet.Frame? {
         tileSet?.frames[tileID]
     }

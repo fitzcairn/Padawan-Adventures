@@ -39,6 +39,9 @@ final class SpriteLibrary {
 
     /// Loads all animations for `config` under `id` if not already loaded.
     ///
+    /// Marks `id` loaded only when every configured animation is present (sheets and
+    /// resolved `flip_of` targets). Partial loads stay unloaded so a later call can retry.
+    ///
     /// `onProgress` receives a 0...1 fraction after each sheet animation is processed.
     func ensureLoaded(
         _ config: SpriteConfig,
@@ -82,7 +85,7 @@ final class SpriteLibrary {
                     trim: config.trim
                 )
             } catch {
-                // Missing assets are skipped so worlds still load while sheets arrive.
+                // Missing assets are skipped; incomplete ids stay unloaded for retry.
                 print("SpriteLibrary: failed to load \(entry.name) for \(id) — \(error)")
             }
             onProgress?(Double(index + 1) / Double(total))
@@ -91,12 +94,26 @@ final class SpriteLibrary {
 
         Self.resolveFlipAnimations(into: &loaded, flipSources: flipSources)
 
+        let expected = Set(config.animations.keys)
+        let missing = expected.subtracting(loaded.keys)
+        guard missing.isEmpty else {
+            print(
+                "SpriteLibrary: incomplete load for \(id) — missing \(missing.sorted().joined(separator: ", "))"
+            )
+            onProgress?(1)
+            return
+        }
+
         animationsByID[id] = loaded
         bytesByID[id] = Self.textureBytes(of: loaded)
-        if !loaded.isEmpty || config.animations.isEmpty {
-            loadedIDs.insert(id)
-        }
+        loadedIDs.insert(id)
         onProgress?(1)
+    }
+
+    /// Configured animation names not yet resident for `id` (sorted).
+    func missingAnimations(id: String, config: SpriteConfig) -> [String] {
+        let loaded = animationsByID[id] ?? [:]
+        return config.animations.keys.filter { loaded[$0] == nil }.sorted()
     }
 
     /// Resolves `flip_of` entries against already-loaded sheet animations.
@@ -234,7 +251,7 @@ final class SpriteLibrary {
         let frames: [(image: UIImage, duration: TimeInterval)] = animation.frames.map { frame in
             let cgImage = frame.texture.cgImage()
             let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
-            let image = UIImage(cgImage: upright, scale: 1, orientation: .up)
+            let image = UIImage(cgImage: upright, scale: 1, orientation: .up).preparedForScreen()
             return (image, frame.duration)
         }
         uiImagesCache[key] = frames

@@ -1,4 +1,5 @@
 import Foundation
+import SpriteKit
 import UIKit
 
 /// Shared bootstrap state loaded before the menu appears.
@@ -48,6 +49,8 @@ final class AppSession {
     let backgroundLibrary: BackgroundLibrary
     /// Still frames of treasure parts for the level-select inventory row.
     let treasureIcons: SpriteIconLibrary
+    /// Enemy sprite ids warmed at bootstrap for every playable level; kept across levels.
+    private let retainedEnemySpriteIDs: Set<String>
     /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
     private(set) var pendingLevelSelectCelebration: String? = nil
 
@@ -76,7 +79,8 @@ final class AppSession {
         letterSpriteSetLibrary: LetterSpriteSetLibrary? = nil,
         pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
-        treasureIcons: SpriteIconLibrary? = nil
+        treasureIcons: SpriteIconLibrary? = nil,
+        retainedEnemySpriteIDs: Set<String> = []
     ) {
         self.appConfig = appConfig
         self.selectedLevel = selectedLevel
@@ -105,6 +109,7 @@ final class AppSession {
         self.pitSpriteSetLibrary = pitSpriteSetLibrary ?? PitSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
+        self.retainedEnemySpriteIDs = retainedEnemySpriteIDs
     }
 
     /// Ensures player sprite animations are loaded for this session.
@@ -122,14 +127,19 @@ final class AppSession {
 
     /// Ensures item pickup sprite animations are loaded for this session.
     ///
-    /// Only the selected level's treasure part is warmed; the other seven stay unread.
-    func ensureItemSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+    /// By default warms shared pickups plus every level treasure part (bootstrapped at load).
+    func ensureItemSpritesLoaded(
+        includeAllTreasures: Bool = true,
+        onProgress: ((Double) -> Void)? = nil
+    ) async {
         var requiredIDs: Set<String> = [
             PickupKind.health.rawValue,
             PickupKind.energy.rawValue,
             PickupKind.treasure.rawValue,
         ]
-        if let treasureID = selectedLevel.treasure {
+        if includeAllTreasures {
+            requiredIDs.formUnion(LevelCatalog.loadFromBundle().compactMap(\.treasure))
+        } else if let treasureID = selectedLevel.treasure {
             requiredIDs.insert(treasureID)
         }
 
@@ -164,11 +174,22 @@ final class AppSession {
         }
     }
 
-    /// Tier 0 + Tier 1 sprite ids: level-select planets, the player, and the
-    /// pickups every level uses. Enemy and treasure sprites are level-scoped.
+    /// Tier 0 + Tier 1 sprite ids warmed at bootstrap and kept across levels.
     private var persistentSpriteIDs: Set<String> {
-        var ids: Set<String> = ["player", "player_combat", "energy", "health"]
-        ids.formUnion(LevelCatalog.loadFromBundle().map(\.resourceName))
+        var ids: Set<String> = [
+            "player",
+            "player_combat",
+            "energy",
+            "health",
+            "treasure",
+            "logo",
+            "kam",
+            "yoda",
+        ]
+        let levels = LevelCatalog.loadFromBundle()
+        ids.formUnion(levels.map(\.resourceName))
+        ids.formUnion(levels.compactMap(\.treasure))
+        ids.formUnion(retainedEnemySpriteIDs)
         return ids
     }
 
@@ -204,7 +225,10 @@ final class AppSession {
     /// Ensures enemy sprite animations for the selected level's spawn list are loaded.
     ///
     /// Scoped rather than loading every catalog sprite: the full set is ~160 sheets.
-    func ensureEnemySpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+    /// Returns `false` if any sprite is still incomplete after one retry — callers must
+    /// not present the level until this returns `true`.
+    @discardableResult
+    func ensureEnemySpritesLoaded(onProgress: ((Double) -> Void)? = nil) async -> Bool {
         let typeIDs = generationConfig.enemies?.types ?? []
         let spriteIDs = Set(typeIDs.compactMap { enemyConfig.enemies[$0]?.sprite })
         // Sorted so progress reporting is deterministic across launches.
@@ -213,18 +237,31 @@ final class AppSession {
             .sorted { $0.key < $1.key }
         guard !entries.isEmpty else {
             onProgress?(1)
-            return
+            return true
         }
 
         let total = entries.count
+        var allReady = true
         for (index, entry) in entries.enumerated() {
             let start = Double(index) / Double(total)
             let end = Double(index + 1) / Double(total)
-            await spriteLibrary.ensureLoaded(entry.value, id: entry.key) { local in
+            func reportLocal(_ local: Double) {
                 onProgress?(LoadProgress.map(local, from: start, to: end))
+            }
+            await spriteLibrary.ensureLoaded(entry.value, id: entry.key, onProgress: reportLocal)
+            if !spriteLibrary.isLoaded(id: entry.key) {
+                await spriteLibrary.ensureLoaded(entry.value, id: entry.key, onProgress: reportLocal)
+            }
+            if !spriteLibrary.isLoaded(id: entry.key) {
+                let missing = spriteLibrary.missingAnimations(id: entry.key, config: entry.value)
+                print(
+                    "AppSession: enemy sprite '\(entry.key)' incomplete after retry — missing \(missing.joined(separator: ", "))"
+                )
+                allReady = false
             }
         }
         onProgress?(1)
+        return allReady
     }
 
     /// Loads the baked floor tile set for the currently selected level.
@@ -282,10 +319,12 @@ final class AppSession {
         fallbackAppConfig()
     }
 
-    /// Loads seed config, player store, and an unbound save service.
+    /// Loads config, stores, and warms screen + shared gameplay assets before tap-to-start.
     ///
-    /// `onProgress` receives a monotonically useful 0...1 fraction across config + floor sheets.
+    /// Call after the loading screen has already warmed title art into `spriteLibrary`.
+    /// `onProgress` receives a monotonically useful 0...1 fraction for this phase only.
     static func loadResources(
+        spriteLibrary: SpriteLibrary? = nil,
         onProgress: (@MainActor (Double) -> Void)? = nil
     ) async -> AppSession {
         func report(_ value: Double) async {
@@ -293,8 +332,34 @@ final class AppSession {
             await Task.yield()
         }
 
-        // Config / store bootstrap occupies the first slice; UI planets then floor sheets fill the rest.
-        let configEnd = 0.18
+        let spriteLibrary = spriteLibrary ?? SpriteLibrary()
+
+        // Ensure title art is present when callers (tests) skip the LoadingView phase.
+        if spriteLibrary.uiImage(id: "logo") == nil,
+           let loadingSprites = try? LoadingSpritesConfig.loadFromBundle() {
+            for entry in loadingSprites.entries {
+                await spriteLibrary.ensureLoaded(entry.config, id: entry.id)
+            }
+            _ = spriteLibrary.uiImage(id: "logo")
+            _ = spriteLibrary.uiImages(id: "kam")
+            _ = spriteLibrary.uiImages(id: "yoda")
+        }
+        await report(0.02)
+
+        // Config / store bootstrap, then remaining screen + gameplay assets.
+        let configEnd = 0.14
+
+        // Start title music early so it is audible during the rest of bootstrap.
+        let soundSettings = ConfigStore.loadOrFallback("audio", fallback: SoundSettings.fallback) {
+            let loaded = try SoundSettings.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        }
+        BackgroundMusicController.shared.configure(fadeSeconds: soundSettings.fadeSeconds)
+        SoundEffectsController.shared.configure(commonFx: soundSettings.fx)
+        AudioPreferences.shared.applyToControllers()
+        BackgroundMusicController.shared.applyScreen(named: "loading")
+        await report(0.04)
 
         let appAndLevel = ConfigStore.loadOrFallback(
             "app+level",
@@ -306,16 +371,6 @@ final class AppSession {
         }
         let appConfig = appAndLevel.0
         let selectedLevel = appAndLevel.1
-        await report(0.03)
-
-        let soundSettings = ConfigStore.loadOrFallback("audio", fallback: SoundSettings.fallback) {
-            let loaded = try SoundSettings.loadFromBundle()
-            try loaded.validate()
-            return loaded
-        }
-        BackgroundMusicController.shared.configure(fadeSeconds: soundSettings.fadeSeconds)
-        SoundEffectsController.shared.configure(commonFx: soundSettings.fx)
-        AudioPreferences.shared.applyToControllers()
         await report(0.06)
 
         let playerConfig = ConfigStore.loadOrFallback("player", fallback: PlayerConfig.fallback) {
@@ -370,46 +425,103 @@ final class AppSession {
         }
 
         try? await playerStore.purgeOrphans()
-        await report(0.14)
-
         await report(configEnd)
 
-        let spriteLibrary = SpriteLibrary()
         let backgroundLibrary = BackgroundLibrary()
-        // Level-select planet art: load at game open so the picker has sprites ready.
-        let uiEntries = LevelCatalog.loadFromBundle().compactMap { level -> (String, SpriteConfig)? in
+        let treasureIcons = SpriteIconLibrary()
+        let levelDescriptors = LevelCatalog.loadFromBundle()
+
+        // 1) Level-select planet art (+ upright UIImages for first paint).
+        let uiEntries = levelDescriptors.compactMap { level -> (String, SpriteConfig)? in
             guard let sprite = level.sprite else { return nil }
             return (level.resourceName, sprite)
         }
-        let uiEnd = uiEntries.isEmpty ? configEnd : 0.26
+        let planetsEnd = uiEntries.isEmpty ? configEnd : 0.28
         if !uiEntries.isEmpty {
             let total = uiEntries.count
             for (index, entry) in uiEntries.enumerated() {
-                let start = LoadProgress.map(Double(index) / Double(total), from: configEnd, to: uiEnd)
-                let end = LoadProgress.map(Double(index + 1) / Double(total), from: configEnd, to: uiEnd)
+                let start = LoadProgress.map(Double(index) / Double(total), from: configEnd, to: planetsEnd)
+                let end = LoadProgress.map(Double(index + 1) / Double(total), from: configEnd, to: planetsEnd)
+                await spriteLibrary.ensureLoaded(entry.1, id: entry.0) { local in
+                    onProgress?(LoadProgress.map(local, from: start, to: end))
+                }
+                _ = spriteLibrary.uiImage(id: entry.0, named: "idle")
+            }
+        }
+        await report(planetsEnd)
+
+        // 2) Screen backgrounds from screens.yaml.
+        let screenBackgroundNames = BackgroundLibrary.screenBackgroundNames()
+        let backgroundsEnd = screenBackgroundNames.isEmpty ? planetsEnd : 0.40
+        await backgroundLibrary.ensureLoaded(names: screenBackgroundNames) { local in
+            onProgress?(LoadProgress.map(local, from: planetsEnd, to: backgroundsEnd))
+        }
+        await report(backgroundsEnd)
+
+        // 3) Inventory treasure icons + coin + HUD vitals.
+        let treasureIDs = levelDescriptors.compactMap(\.treasure)
+        let iconsEnd = treasureIDs.isEmpty ? backgroundsEnd : 0.48
+        if !treasureIDs.isEmpty {
+            let total = treasureIDs.count
+            for (index, id) in treasureIDs.enumerated() {
+                if let sprite = itemsConfig.spriteConfig(id: id) {
+                    await treasureIcons.ensureLoaded(sprite, id: id)
+                }
+                onProgress?(
+                    LoadProgress.map(Double(index + 1) / Double(total), from: backgroundsEnd, to: iconsEnd)
+                )
+            }
+        }
+        _ = ScoreCoinIcon.uiImage()
+        _ = HudVitalIcon.health.uiImage()
+        _ = HudVitalIcon.energy.uiImage()
+        await report(iconsEnd)
+
+        // 4) Player walk / combat sprites.
+        let playerEnd = 0.58
+        if let sprite = playerConfig.sprite {
+            await spriteLibrary.ensureLoaded(sprite, id: "player") { local in
+                onProgress?(LoadProgress.map(local, from: iconsEnd, to: 0.54))
+            }
+        }
+        if let combat = playerConfig.combatSprite {
+            await spriteLibrary.ensureLoaded(combat, id: "player_combat") { local in
+                onProgress?(LoadProgress.map(local, from: 0.54, to: playerEnd))
+            }
+        }
+        await report(playerEnd)
+
+        // 5) Shared pickups + every level treasure part animation.
+        var itemIDs: Set<String> = [
+            PickupKind.health.rawValue,
+            PickupKind.energy.rawValue,
+            PickupKind.treasure.rawValue,
+        ]
+        itemIDs.formUnion(treasureIDs)
+        let itemEntries = itemsConfig.items
+            .filter { itemIDs.contains($0.key) }
+            .sorted { $0.key < $1.key }
+            .compactMap { id, item -> (String, SpriteConfig)? in
+                guard let sprite = item.sprite else { return nil }
+                return (id, sprite)
+            }
+        let itemsEnd = itemEntries.isEmpty ? playerEnd : 0.70
+        if !itemEntries.isEmpty {
+            let total = itemEntries.count
+            for (index, entry) in itemEntries.enumerated() {
+                let start = LoadProgress.map(Double(index) / Double(total), from: playerEnd, to: itemsEnd)
+                let end = LoadProgress.map(Double(index + 1) / Double(total), from: playerEnd, to: itemsEnd)
                 await spriteLibrary.ensureLoaded(entry.1, id: entry.0) { local in
                     onProgress?(LoadProgress.map(local, from: start, to: end))
                 }
             }
         }
-        await report(uiEnd)
+        await report(itemsEnd)
 
-        // All screen backgrounds referenced by screens.yaml.
-        let screenBackgroundNames = BackgroundLibrary.screenBackgroundNames()
-        let backgroundsEnd = screenBackgroundNames.isEmpty ? uiEnd : 0.32
-        await backgroundLibrary.ensureLoaded(names: screenBackgroundNames) { local in
-            onProgress?(LoadProgress.map(local, from: uiEnd, to: backgroundsEnd))
-        }
-        await report(backgroundsEnd)
-
-        // Floor / letter / pit sets are per-level; load when a level is selected / launched.
-        let floorTileSetLibrary = FloorTileSetLibrary()
-        let letterSpriteSetLibrary = LetterSpriteSetLibrary()
-        let pitSpriteSetLibrary = PitSpriteSetLibrary()
-        await report(1)
-
+        // 6) Enemy sprites used by any playable level (not the entire unused catalog).
+        let levelsForAudit: [LevelConfig]
         do {
-            let levels = try LevelCatalog.loadFromBundle().map { descriptor in
+            levelsForAudit = try levelDescriptors.map { descriptor in
                 try LevelConfig.loadFromBundle(
                     named: descriptor.resourceName,
                     subdirectory: LevelCatalog.subdirectory,
@@ -417,9 +529,61 @@ final class AppSession {
                     letterCatalog: letterCatalog
                 )
             }
+        } catch {
+            levelsForAudit = [selectedLevel]
+            assertionFailure("Failed to load levels during bootstrap: \(error)")
+        }
+
+        var enemySpriteIDs = Set<String>()
+        for level in levelsForAudit {
+            for typeID in level.enemies?.types ?? [] {
+                if let spriteID = enemyConfig.enemies[typeID]?.sprite {
+                    enemySpriteIDs.insert(spriteID)
+                }
+            }
+        }
+        let enemyEntries = enemyConfig.sprites
+            .filter { enemySpriteIDs.contains($0.key) }
+            .sorted { $0.key < $1.key }
+        let enemiesEnd = enemyEntries.isEmpty ? itemsEnd : 0.92
+        if !enemyEntries.isEmpty {
+            let total = enemyEntries.count
+            for (index, entry) in enemyEntries.enumerated() {
+                let start = LoadProgress.map(Double(index) / Double(total), from: itemsEnd, to: enemiesEnd)
+                let end = LoadProgress.map(Double(index + 1) / Double(total), from: itemsEnd, to: enemiesEnd)
+                await spriteLibrary.ensureLoaded(entry.value, id: entry.key) { local in
+                    onProgress?(LoadProgress.map(local, from: start, to: end))
+                }
+            }
+        }
+        await report(enemiesEnd)
+
+        // 7) Gate minigame stills + GPU upload for every warmed texture.
+        var gateTextures = GateMinigameBackground.preloadTextures()
+        if let capacitor = GateSpellingCapacitorSprites.load() {
+            gateTextures.append(capacitor)
+        }
+        if let switches = GateLetterMatchSwitchSprites.load() {
+            gateTextures.append(switches.off)
+            gateTextures.append(switches.on)
+        }
+        let preloadTextures = spriteLibrary.allTextures() + gateTextures
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            SKTexture.preload(preloadTextures) {
+                continuation.resume()
+            }
+        }
+        await report(1)
+
+        // Floor / letter / pit sets stay per-level (single active set in each library).
+        let floorTileSetLibrary = FloorTileSetLibrary()
+        let letterSpriteSetLibrary = LetterSpriteSetLibrary()
+        let pitSpriteSetLibrary = PitSpriteSetLibrary()
+
+        do {
             try ConfigAudit.run(
                 app: appConfig,
-                levels: levels,
+                levels: levelsForAudit,
                 enemies: enemyConfig,
                 items: itemsConfig,
                 words: wordCatalog,
@@ -445,7 +609,9 @@ final class AppSession {
             floorTileSetLibrary: floorTileSetLibrary,
             letterSpriteSetLibrary: letterSpriteSetLibrary,
             pitSpriteSetLibrary: pitSpriteSetLibrary,
-            backgroundLibrary: backgroundLibrary
+            backgroundLibrary: backgroundLibrary,
+            treasureIcons: treasureIcons,
+            retainedEnemySpriteIDs: enemySpriteIDs
         )
     }
 

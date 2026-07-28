@@ -4,11 +4,11 @@ import Testing
 struct LevelConfigTests {
     private static let baseLevelYAML = """
         name: Level
-        music: level_theme
+        music: level
         game_music:
-          combat: combat_theme
-          pit: pit_theme
-          gate: gate_theme
+          combat: combat
+          pit: pit
+          gate: gate
         width: 100
         height: 100
         algorithm: rooms_doors
@@ -26,11 +26,11 @@ struct LevelConfigTests {
             - type: spelling
               timer_seconds: 30
               words: [cat, dog, star]
-              music: gate_theme
+              music: gate
             - type: letter_match
               timer_seconds: 30
               letters: [a, b, c, d, e, f, g, h]
-              music: destructible_wall_theme
+              music: gate
         enemies:
           type: spider
           spawn_chance_per_room: 0.8
@@ -44,11 +44,11 @@ struct LevelConfigTests {
     /// Base YAML without the `gate:` block so inheritance tests can append their own.
     private static let baseLevelYAMLWithoutPuzzles = """
         name: Level
-        music: level_theme
+        music: level
         game_music:
-          combat: combat_theme
-          pit: pit_theme
-          gate: gate_theme
+          combat: combat
+          pit: pit
+          gate: gate
         width: 100
         height: 100
         algorithm: rooms_doors
@@ -203,11 +203,11 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.music == "level_theme")
-        #expect(level.musicCue == .track("level_theme"))
-        #expect(level.gameMusic.combatCue == .track("combat_theme"))
-        #expect(level.gameMusic.pitCue == .track("pit_theme"))
-        #expect(level.gameMusic.gateCue == .track("gate_theme"))
+        #expect(level.music == "level")
+        #expect(level.musicCue == .track("level"))
+        #expect(level.gameMusic.combatCue == .track("combat"))
+        #expect(level.gameMusic.pitCue == .track("pit"))
+        #expect(level.gameMusic.gateCue == .track("gate"))
     }
 
     @Test func childCanOverrideGameMusicKeys() throws {
@@ -215,16 +215,16 @@ struct LevelConfigTests {
         inherits: base_level
         name: Level 1
         game_music:
-          combat: combat_theme_alt
+          combat: combat_alt
           gate: silence
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.gameMusic.combat == "combat_theme_alt")
+        #expect(level.gameMusic.combat == "combat_alt")
         #expect(level.gameMusic.gateCue == .silence)
-        #expect(level.gameMusic.pit == "pit_theme")
+        #expect(level.gameMusic.pit == "pit")
     }
 
     @Test func childCanOverrideMusic() throws {

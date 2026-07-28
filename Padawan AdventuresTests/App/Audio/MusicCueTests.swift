@@ -20,7 +20,7 @@ struct MusicCueTests {
     }
 
     @Test func parseTrackPreservesBasenameCasing() {
-        #expect(MusicCue.parse("menu_theme") == .track("menu_theme"))
+        #expect(MusicCue.parse("title_menu") == .track("title_menu"))
         #expect(MusicCue.parse("Victory") == .track("Victory"))
     }
 }

@@ -3,18 +3,39 @@ import SwiftUI
 struct PreparingView: View {
     let session: AppSession
     let mode: GameLaunchMode
+    let router: FlowRouter
     @State private var didStartLoad = false
     @State private var progress: Double = 0
+    @State private var loadFailed = false
 
     var body: some View {
         AppScreen {
             VStack(spacing: 28) {
-                AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
-                    .accessibilityIdentifier("preparing.status")
-
-                AppProgressBar(progress: progress, accessibilityID: "preparing.progress")
+                if loadFailed {
+                    AppTitleText(text: "COULD NOT LOAD ENEMIES", size: 28, weight: .semibold)
+                        .accessibilityIdentifier("preparing.status")
+                    AppTitleText(
+                        text: "Sprite sheets failed to load. Try again from level select.",
+                        size: 18,
+                        weight: .regular
+                    )
+                    .accessibilityIdentifier("preparing.error")
+                    AppLargeButton(title: "Back", accessibilityID: "preparing.back") {
+                        if router.path.isEmpty {
+                            router.showMenu()
+                        } else {
+                            router.pop()
+                        }
+                    }
                     .frame(maxWidth: 280)
-                    .appReadableWidth()
+                } else {
+                    AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
+                        .accessibilityIdentifier("preparing.status")
+
+                    AppProgressBar(progress: progress, accessibilityID: "preparing.progress")
+                        .frame(maxWidth: 280)
+                        .appReadableWidth()
+                }
             }
         }
         .playScreenMusic("preparing")
@@ -27,8 +48,11 @@ struct PreparingView: View {
 
     @MainActor
     private func prepareAndPresentGame() async {
-        let world = await GameWorldPreparer.prepareLaunch(session: session, mode: mode) { value in
+        guard let world = await GameWorldPreparer.prepareLaunch(session: session, mode: mode, onProgress: { value in
             progress = value
+        }) else {
+            loadFailed = true
+            return
         }
         progress = 1
         let isoConfig = session.appConfig.display.makeIsometricConfig()

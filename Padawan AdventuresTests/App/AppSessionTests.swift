@@ -192,4 +192,35 @@ struct AppSessionTests {
         await session.applyDadModeProgression(to: target)
         #expect(session.isDadModeUnlocked == false)
     }
+
+    @Test func loadResourcesWarmsMenuAndLevelSelectAssets() async {
+        let session = await AppSession.loadResources()
+        #expect(session.spriteLibrary.uiImage(id: "logo") != nil)
+        #expect(session.spriteLibrary.uiImages(id: "kam") != nil)
+        #expect(session.spriteLibrary.uiImages(id: "yoda") != nil)
+        #expect(session.backgroundLibrary.uiImage(named: "menu_screen_bg") != nil)
+        #expect(session.backgroundLibrary.uiImage(named: "level_screen_bg") != nil)
+        #expect(ScoreCoinIcon.uiImage() != nil)
+        #expect(HudVitalIcon.health.uiImage() != nil)
+        #expect(HudVitalIcon.energy.uiImage() != nil)
+        #expect(session.spriteLibrary.isLoaded(id: "player"))
+
+        let levels = LevelCatalog.loadFromBundle()
+        for level in levels where level.sprite != nil {
+            #expect(
+                session.spriteLibrary.uiImage(id: level.resourceName, named: "idle") != nil,
+                "Missing planet UIImage for \(level.resourceName)"
+            )
+        }
+        for treasureID in levels.compactMap(\.treasure) {
+            #expect(
+                session.treasureIcons.uiImage(id: treasureID) != nil,
+                "Missing treasure icon for \(treasureID)"
+            )
+            #expect(
+                session.spriteLibrary.isLoaded(id: treasureID),
+                "Missing treasure animation for \(treasureID)"
+            )
+        }
+    }
 }

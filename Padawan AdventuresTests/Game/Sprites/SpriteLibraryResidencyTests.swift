@@ -53,6 +53,28 @@ struct SpriteLibraryResidencyTests {
         #expect(library.residentBytes == 10 * 10 * 4)
     }
 
+    @Test
+    func incompleteLoadStaysUnloadedAndCanRetry() async throws {
+        let library = SpriteLibrary()
+        let missing = SpriteConfig(
+            root: "Sprites/Missing",
+            chromaKey: "#000000",
+            animations: [
+                "idle_down": .sheet(sheet: "missing", atlas: "missing"),
+            ]
+        )
+        await library.ensureLoaded(missing, id: "dino")
+        #expect(library.isLoaded(id: "dino") == false)
+        #expect(library.animation(id: "dino", named: "idle_down") == nil)
+        #expect(library.missingAnimations(id: "dino", config: missing) == ["idle_down"])
+
+        let real = try #require(try EnemyConfig.loadFromBundle().sprites["dino"])
+        await library.ensureLoaded(real, id: "dino")
+        #expect(library.isLoaded(id: "dino"))
+        #expect(library.animation(id: "dino", named: "idle_down") != nil)
+        #expect(library.missingAnimations(id: "dino", config: real).isEmpty)
+    }
+
     private static func makeTexture(width: Int, height: Int) -> SKTexture {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bytesPerRow = width * 4

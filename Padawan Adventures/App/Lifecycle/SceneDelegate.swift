@@ -19,6 +19,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
+        // Match app chrome so the system launch surface never flashes white.
+        window.backgroundColor = .black
         window.rootViewController = LandscapeSwiftUIHost(rootView: FlowRootView())
         window.makeKeyAndVisible()
         self.window = window

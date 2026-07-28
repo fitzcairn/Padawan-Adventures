@@ -364,19 +364,15 @@ struct SpriteSystemTests {
         #expect(uiImage.size.height > 0)
     }
 
-    @Test @MainActor func spriteLibraryEnsureLoadedIsIdempotent() async {
+    @Test @MainActor func spriteLibraryEnsureLoadedIsIdempotent() async throws {
+        let config = try PlayerConfig.loadFromBundle()
+        let sprite = try #require(config.sprite)
         let library = SpriteLibrary()
-        let config = SpriteConfig(
-            root: "Sprites/Missing",
-            chromaKey: "#000000",
-            animations: [
-                "idle_down": .sheet(sheet: "missing", atlas: "missing"),
-            ]
-        )
-        await library.ensureLoaded(config, id: "player")
+        await library.ensureLoaded(sprite, id: "player")
         #expect(library.isLoaded(id: "player"))
         let countAfterFirst = library.animationCount(for: "player")
-        await library.ensureLoaded(config, id: "player")
+        await library.ensureLoaded(sprite, id: "player")
+        #expect(library.isLoaded(id: "player"))
         #expect(library.animationCount(for: "player") == countAfterFirst)
     }
 

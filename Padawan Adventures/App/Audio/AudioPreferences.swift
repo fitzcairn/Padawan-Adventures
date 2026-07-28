@@ -85,7 +85,7 @@ final class AudioPreferences {
         }
 
         if defaults.object(forKey: Keys.musicVolume) == nil {
-            musicVolume = 1
+            musicVolume = PlayerSettings.defaultMusicVolume
         } else {
             musicVolume = Self.clamp(Float(defaults.double(forKey: Keys.musicVolume)))
         }

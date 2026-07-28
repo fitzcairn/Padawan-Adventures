@@ -82,6 +82,10 @@ final class LetterSpriteSetLibrary {
         }
     }
 
+    func allTextures() -> [SKTexture] {
+        Array(textures.values)
+    }
+
     /// Case-sensitive first; if missing, try opposite case; else nil.
     func texture(forLetter letter: String) -> SKTexture? {
         let key = letter.trimmingCharacters(in: .whitespacesAndNewlines)
