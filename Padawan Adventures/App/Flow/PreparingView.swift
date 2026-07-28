@@ -63,8 +63,6 @@ struct PreparingView: View {
         )
 
         // Replace root so the player cannot navigate back into preparing/menu.
-        let window = AppWindow.key
-        window?.rootViewController = game
-        window?.makeKeyAndVisible()
+        AppWindow.setRoot(game)
     }
 }

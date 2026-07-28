@@ -491,9 +491,7 @@ final class GameViewController: LandscapeHostingController {
                 )
             )
 
-            let window = view.window ?? AppWindow.key
-            window?.rootViewController = flow
-            window?.makeKeyAndVisible()
+            AppWindow.setRoot(flow, in: view.window ?? AppWindow.key)
         }
     }
 }

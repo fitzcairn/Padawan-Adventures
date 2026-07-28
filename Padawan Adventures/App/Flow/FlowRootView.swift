@@ -11,16 +11,29 @@ struct FlowRootView: View {
     }
 
     var body: some View {
-        @Bindable var router = router
-        NavigationStack(path: $router.path) {
+        ZStack {
+            screenContent
+                .id(screenIdentity)
+                .transition(.opacity)
+        }
+        .animation(.easeInOut(duration: ScreenCrossFade.duration), value: screenIdentity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppChrome.backgroundColor.ignoresSafeArea())
+    }
+
+    private var screenIdentity: FlowScreenIdentity {
+        if let route = router.path.last {
+            return .route(route)
+        }
+        return .root(router.root)
+    }
+
+    @ViewBuilder
+    private var screenContent: some View {
+        if let route = router.path.last {
+            destination(for: route)
+        } else {
             rootContent
-                .navigationBarBackButtonHidden(true)
-                .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: FlowRoute.self) { route in
-                    destination(for: route)
-                        .navigationBarBackButtonHidden(true)
-                        .toolbar(.hidden, for: .navigationBar)
-                }
         }
     }
 
@@ -65,4 +78,10 @@ struct FlowRootView: View {
             LoadingView(session: $session, router: router)
         }
     }
+}
+
+/// Identity for cross-fading between flow screens.
+private enum FlowScreenIdentity: Hashable {
+    case root(FlowRoot)
+    case route(FlowRoute)
 }
