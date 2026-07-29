@@ -661,7 +661,7 @@ struct PlaceholderFactoryTests {
         var completed = false
         PlaceholderFactory.playGateOpenAnimation(
             on: gate,
-            floorNodes: [floorA, floorB],
+            revealNodes: [floorA, floorB],
             duration: PlaceholderFactory.gateOpenDuration,
             referenceHeight: 80,
             timingNode: timing

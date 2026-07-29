@@ -267,12 +267,14 @@ final class GameScene: SKScene {
     }
 
     /// Opens a beaten gate: fade the world back in, then dissolve the gate with sparkles
-    /// while the two connecting floor tiles fade in (`gateOpenDuration`).
+    /// while the two connecting floor tiles and the room it was sealing fade in
+    /// (`gateOpenDuration`).
     func resolveGateEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
         pendingInput = PendingInput()
         // Keep the gate sprite around for the dissolve; openGate converts cells to floor.
         let gateNode = renderer.detachGateNode(at: coord, in: world)
         let openedCoords = world.openGate(at: coord)
+        renderer.armRevealFade()
         renderer.render(world: world, focus: viewportFocus)
         renderer.setFloorNodesAlpha(0, at: openedCoords)
         captureContinueAndSave()

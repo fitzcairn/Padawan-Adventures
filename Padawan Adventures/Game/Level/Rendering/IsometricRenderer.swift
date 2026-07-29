@@ -29,6 +29,16 @@ final class IsometricRenderer {
     private var ceilingIdentities: [GridCoord: String] = [:]
     /// Canonical gate strips on the visible story — used for entity/gate occlusion.
     private var gateOccluders: [PlaceholderFactory.GateOccluder] = []
+    /// Rooms the player can reach without crossing a closed gate; everything else is dark.
+    private var visibility: RoomVisibility.Result = .empty
+    /// Cells revealed by the latest render that are waiting to be faded in.
+    private var revealFadeCells: Set<GridCoord> = []
+    /// Entities inside `revealFadeCells`, held so their nodes fade in with the room.
+    private var revealFadeEntityIDs: Set<UUID> = []
+    /// Set by `armRevealFade()` so only a gate opening fades its new room in.
+    private var fadesNextReveal = false
+    /// Story the current `visibility` was computed for (`nil` before the first render).
+    private var visibilityStory: Int?
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
     private var viewSize: CGSize = .zero
@@ -71,6 +81,11 @@ final class IsometricRenderer {
         ceilingNodes.removeAll()
         ceilingIdentities.removeAll()
         gateOccluders = []
+        visibility = .empty
+        revealFadeCells.removeAll()
+        revealFadeEntityIDs.removeAll()
+        fadesNextReveal = false
+        visibilityStory = nil
         visibleStory = 0
         worldScale = 1
 
@@ -97,6 +112,11 @@ final class IsometricRenderer {
 
         let story = visibleStory
         guard story >= 0, story < world.storyCount else {
+            visibility = .empty
+            visibilityStory = nil
+            revealFadeCells.removeAll()
+            revealFadeEntityIDs.removeAll()
+            fadesNextReveal = false
             clearFloorNodes()
             clearWallNodes()
             clearCeilingNodes()
@@ -105,12 +125,50 @@ final class IsometricRenderer {
             return
         }
 
+        updateVisibility(world: world, story: story)
+
         syncFloorNodes(world: world, story: story)
         syncWallNodes(world: world, story: story)
         syncCeilingNodes(world: world, story: story)
 
         syncEntities(world.entities)
         updateViewportFocus(focus)
+    }
+
+    /// Makes the next render's newly reachable rooms start hidden, so a gate opening can
+    /// fade them in. Reveals from any other render (level start, restore) appear at once.
+    func armRevealFade() {
+        fadesNextReveal = true
+    }
+
+    private func updateVisibility(world: GameWorld, story: Int) {
+        let previous = visibilityStory == story ? visibility.renderableCells : []
+        visibility = RoomVisibility.compute(
+            in: world,
+            story: story,
+            from: world.playerPosition ?? world.spawn
+        )
+        visibilityStory = story
+        guard fadesNextReveal else { return }
+        fadesNextReveal = false
+        revealFadeCells = visibility.renderableCells.subtracting(previous)
+        revealFadeEntityIDs.removeAll()
+    }
+
+    /// True when a cell is inside a reachable room (its floor art may draw).
+    private func showsFloor(at coord: GridCoord) -> Bool {
+        visibility.floorCells.contains(coord)
+    }
+
+    /// True when a wall/gate cell borders a reachable room (a sealing gate stays visible).
+    private func showsWall(at coord: GridCoord) -> Bool {
+        visibility.renderableCells.contains(coord)
+    }
+
+    /// Newly revealed art starts invisible so `playGateOpenAnimation` can fade it in.
+    private func applyRevealAlpha(to node: SKNode, at coord: GridCoord) {
+        guard revealFadeCells.contains(coord) else { return }
+        node.alpha = 0
     }
 
     /// Reuses base floor sprite nodes when terrain identity is unchanged.
@@ -122,6 +180,7 @@ final class IsometricRenderer {
                 let coord = GridCoord(x: x, y: y, story: story)
                 let tile = world.tiles[story][y][x]
                 guard case .floor = tile.kind,
+                      showsFloor(at: coord),
                       let identity = PlaceholderFactory.floorIdentity(for: tile) else {
                     continue
                 }
@@ -150,6 +209,7 @@ final class IsometricRenderer {
                     floorTileSetLibrary: floorTileSetLibrary
                 )
                 node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+                applyRevealAlpha(to: node, at: coord)
                 floorLayer.addChild(node)
                 floorNodes[coord] = node
                 floorIdentities[coord] = identity
@@ -178,12 +238,16 @@ final class IsometricRenderer {
     /// z adjustments can win or lose against the gate sprite as siblings.
     private func syncWallNodes(world: GameWorld, story: Int) {
         var liveCoords = Set<GridCoord>()
-        gateOccluders = PlaceholderFactory.gateOccluders(in: world, story: story)
+        // Culled gates draw nothing, so they must not reorder entities either.
+        gateOccluders = PlaceholderFactory.gateOccluders(in: world, story: story).filter {
+            showsWall(at: $0.cell) || showsWall(at: $0.partner)
+        }
 
         for y in 0..<world.height {
             for x in 0..<world.width {
                 let coord = GridCoord(x: x, y: y, story: story)
                 let tile = world.tiles[story][y][x]
+                guard showsWall(at: coord) else { continue }
                 guard let identity = PlaceholderFactory.wallIdentity(
                     for: tile,
                     at: coord,
@@ -224,6 +288,7 @@ final class IsometricRenderer {
                     gateSpriteSetLibrary: gateSpriteSetLibrary
                 )
                 node.zPosition = IsometricMath.wallSortValue(for: sortCoord, config: config)
+                applyRevealAlpha(to: node, at: coord)
                 parentLayer.addChild(node)
                 wallNodes[coord] = node
                 wallIdentities[coord] = identity
@@ -250,6 +315,7 @@ final class IsometricRenderer {
         for y in 0..<world.height {
             for x in 0..<world.width {
                 let coord = GridCoord(x: x, y: y, story: story)
+                guard showsWall(at: coord) else { continue }
                 guard let identity = PlaceholderFactory.ceilingIdentity(at: coord, in: world) else {
                     continue
                 }
@@ -269,6 +335,7 @@ final class IsometricRenderer {
                 let ceiling = PlaceholderFactory.ceilingNode(config: config)
                 ceiling.position = IsometricMath.gridToScreen(coord, config: config)
                 ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                applyRevealAlpha(to: ceiling, at: coord)
                 wallLayer.addChild(ceiling)
                 ceilingNodes[coord] = ceiling
                 ceilingIdentities[coord] = identity
@@ -337,18 +404,19 @@ final class IsometricRenderer {
         }
 
         for entity in entities {
-            let onVisibleStory = entity.position.story == visibleStory
+            let shows = entity.position.story == visibleStory && showsEntity(entity)
             if let node = entityNodes[entity.id] {
-                if onVisibleStory {
+                if shows {
                     if node.parent !== occlusionLayer {
                         node.removeFromParent()
+                        applyRevealAlpha(to: node, entity: entity)
                         occlusionLayer.addChild(node)
                     }
                     updateEntityNode(node, entity: entity)
                 } else {
                     node.removeFromParent()
                 }
-            } else if onVisibleStory {
+            } else if shows {
                 let node = PlaceholderFactory.entityNode(
                     for: entity,
                     config: config,
@@ -360,10 +428,22 @@ final class IsometricRenderer {
                     treasureItemID: treasureItemID
                 )
                 entityNodes[entity.id] = node
+                applyRevealAlpha(to: node, entity: entity)
                 occlusionLayer.addChild(node)
                 updateEntityNode(node, entity: entity)
             }
         }
+    }
+
+    /// Enemies and pickups stay hidden until their room is reachable; the player always draws.
+    private func showsEntity(_ entity: GameEntity) -> Bool {
+        entity.isPlayer || visibility.floorCells.contains(entity.position)
+    }
+
+    private func applyRevealAlpha(to node: SKNode, entity: GameEntity) {
+        guard !entity.isPlayer, revealFadeCells.contains(entity.position) else { return }
+        node.alpha = 0
+        revealFadeEntityIDs.insert(entity.id)
     }
 
     private func updateEntityNode(_ node: SKNode, entity: GameEntity) {
@@ -415,13 +495,29 @@ final class IsometricRenderer {
         coords.compactMap { floorNodes[$0] }
     }
 
+    /// Nodes for cells the armed render revealed, handed over once so a later render does
+    /// not blank them again.
+    func takeRevealedNodes() -> [SKNode] {
+        var nodes: [SKNode] = []
+        for coord in revealFadeCells {
+            if let node = floorNodes[coord] { nodes.append(node) }
+            if let node = wallNodes[coord] { nodes.append(node) }
+            if let node = ceilingNodes[coord] { nodes.append(node) }
+        }
+        nodes.append(contentsOf: revealFadeEntityIDs.compactMap { entityNodes[$0] })
+        revealFadeCells.removeAll()
+        revealFadeEntityIDs.removeAll()
+        return nodes
+    }
+
     /// Gate sparkle dissolve + connecting floor fade-in (see `PlaceholderFactory.gateOpenDuration`).
+    /// The room the gate was sealing fades in on the same beat.
     func playGateOpenAnimation(
         gateNode: SKNode?,
         floorCoords: [GridCoord],
         completion: @escaping () -> Void
     ) {
-        let floors = floorNodes(at: floorCoords)
+        let revealed = floorNodes(at: floorCoords) + takeRevealedNodes()
         let referenceHeight: CGFloat
         if let gateNode {
             let frame = gateNode.calculateAccumulatedFrame()
@@ -431,7 +527,7 @@ final class IsometricRenderer {
         }
         PlaceholderFactory.playGateOpenAnimation(
             on: gateNode,
-            floorNodes: floors,
+            revealNodes: revealed,
             referenceHeight: referenceHeight,
             timingNode: worldRoot,
             completion: completion

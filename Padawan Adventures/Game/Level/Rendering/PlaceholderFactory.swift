@@ -828,26 +828,27 @@ enum PlaceholderFactory {
     /// Duration for gate dissolve + connecting-floor fade-in after a successful puzzle.
     static let gateOpenDuration: TimeInterval = 2.0
 
-    /// Gate sprite fades out with sparkles while floor tiles fade in over the same window.
+    /// Gate sprite fades out with sparkles while `revealNodes` — the connecting floor tiles
+    /// and whatever art the opened gate uncovers — fade in over the same window.
     ///
     /// Particles do not inherit parent alpha, so gate visuals fade separately from the
     /// emitter. Calls `completion` after the dissolve finishes (and lingering particles die).
     @MainActor
     static func playGateOpenAnimation(
         on gateNode: SKNode?,
-        floorNodes: [SKNode],
+        revealNodes: [SKNode],
         duration: TimeInterval = gateOpenDuration,
         referenceHeight: CGFloat,
         timingNode: SKNode,
         completion: @escaping () -> Void
     ) {
         let highlight = HighlightConfig.gateOpen
-        for floor in floorNodes {
-            floor.removeAction(forKey: "gateOpenFloorFade")
-            floor.alpha = 0
+        for revealed in revealNodes {
+            revealed.removeAction(forKey: "gateOpenFloorFade")
+            revealed.alpha = 0
             let fadeIn = SKAction.fadeIn(withDuration: duration)
             fadeIn.timingMode = .easeInEaseOut
-            floor.run(fadeIn, withKey: "gateOpenFloorFade")
+            revealed.run(fadeIn, withKey: "gateOpenFloorFade")
         }
 
         if let gateNode {
