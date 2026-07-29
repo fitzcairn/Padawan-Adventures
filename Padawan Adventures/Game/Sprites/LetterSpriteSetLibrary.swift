@@ -4,7 +4,7 @@ import UIKit
 
 /// Session-scoped cache of one active letter glyph set's textures.
 ///
-/// Loads `Sprites/Letters/{set}/Baked/{set}-letters-spritesheet.png` + atlas.
+/// Loads `Levels/{set}/{set}-letters-spritesheet.png` + atlas.
 /// Switching levels replaces the previous set.
 @MainActor
 final class LetterSpriteSetLibrary {

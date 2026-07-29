@@ -3,7 +3,7 @@ import Foundation
 
 /// Per-level baked floor tile atlas (Sendable — safe across `Task.detached`).
 ///
-/// Loaded from `Sprites/Floor/{set}/Baked/{set}-floor-atlas.json`.
+/// Loaded from `Levels/{set}/{set}-floor-atlas.json`.
 nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
     enum Side: String, Codable, CaseIterable, Sendable {
         case ne = "NE"

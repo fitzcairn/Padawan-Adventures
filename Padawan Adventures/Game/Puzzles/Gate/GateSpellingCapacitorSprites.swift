@@ -34,10 +34,9 @@ enum GateSpellingCapacitorSprites {
             return nil
         }
 
+        // capacitor.png ships raw (no bake recipe), so chroma always runs at load.
         let keyed: CGImage
-        if SpriteSheetLoader.isBakedResource(at: url) {
-            keyed = cgImage
-        } else if let rgb = SpriteSheetLoader.parseHexRGB("#000000") {
+        if let rgb = SpriteSheetLoader.parseHexRGB("#000000") {
             // Exterior is near-black; keep the darker outline (channel values ~10+).
             keyed = SpriteSheetLoader.applyChromaKey(
                 to: cgImage,

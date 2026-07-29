@@ -58,14 +58,22 @@ from typing import Any
 import yaml
 from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ROOT / "Padawan Adventures" / "Resources"
-SPRITES = RESOURCES / "Sprites"
-CONFIG = RESOURCES / "Config"
+from paths import (
+    ART,
+    ART_LEVELS,
+    ART_SHARED,
+    CONFIG,
+    LEVELS,
+    RESOURCES,
+    ROOT,
+    SPRITES,
+    art_level_dir,
+    baked_dir_for_source,
+    baked_level_dir,
+    level_ids,
+)
+
 MANIFEST_PATH = SPRITES / "bake-manifest.json"
-FLOOR_SET_DIR = SPRITES / "Floor"
-LETTER_SET_DIR = SPRITES / "Letters"
-PIT_SET_DIR = SPRITES / "Pit"
 
 CHROMA_PRESETS: dict[str, tuple[str, int, int, int]] = {
     # name → (hex, tolerance, feather, smooth)
@@ -97,39 +105,25 @@ def sha256_file(path: Path) -> str:
 
 
 def resolve_sprites_root(root: str) -> Path:
-    """Map YAML `root:` to a directory under Resources/Sprites."""
+    """Map a YAML `root:` to the source art directory that feeds it.
+
+    Roots name bundle locations (`Sprites/Player`, `Levels/1-tython`); the sheets
+    behind them live in the matching `Art/` tree.
+    """
     root = root.strip().strip("/")
-    if root.startswith("Sprites/") or root == "Sprites":
-        return RESOURCES / root
-    return SPRITES / root
-
-
-def animation_folder_name(resource_name: str) -> str:
-    for suffix in ("-spritesheet", "-atlas"):
-        if resource_name.endswith(suffix):
-            return resource_name[: -len(suffix)]
-    return resource_name
+    if root.startswith("Levels/"):
+        return ART_LEVELS / root[len("Levels/") :]
+    if root.startswith("Sprites/"):
+        return ART_SHARED / root[len("Sprites/") :]
+    return ART_SHARED / root
 
 
 def find_resource(root_dir: Path, basename: str, extensions: list[str]) -> Path | None:
-    """Locate sheet/atlas the way SpriteSheetLoader.resourceURL does."""
-    folder_hint = animation_folder_name(basename)
-    candidates = [
-        root_dir,
-        root_dir / folder_hint,
-        SPRITES / folder_hint,
-        SPRITES,
-    ]
-    seen: set[Path] = set()
-    for directory in candidates:
-        directory = directory.resolve()
-        if directory in seen or not directory.is_dir():
-            continue
-        seen.add(directory)
-        for ext in extensions:
-            path = directory / f"{basename}.{ext}"
-            if path.is_file():
-                return path
+    """Locate a sheet/atlas the way SpriteSheetLoader.resourceURL does: exactly."""
+    for ext in extensions:
+        path = root_dir / f"{basename}.{ext}"
+        if path.is_file():
+            return path
     return None
 
 
@@ -759,13 +753,12 @@ def collect_floor_job(plan: BakePlan) -> None:
 
     discovered = floor_sets.discover_source_sheets()
     if not discovered:
-        plan.errors.append("floor: no per-level floor spritesheets found under Sprites/Floor/")
+        plan.errors.append("floor: no per-level floor spritesheets found under Art/Levels/")
         return
 
     for set_name, source in discovered:
-        set_dir = FLOOR_SET_DIR / set_name
         # Placeholder atlas path — bake_floor_sets writes the real atlas.
-        atlas_placeholder = set_dir / "Baked" / f"{set_name}-floor-atlas.json"
+        atlas_placeholder = baked_level_dir(set_name) / f"{set_name}-floor-atlas.json"
         plan.jobs.append(
             BakeJob(
                 category=f"floor.{set_name}",
@@ -782,7 +775,7 @@ def collect_floor_job(plan: BakePlan) -> None:
         )
         if source not in plan.input_paths:
             plan.input_paths.append(source)
-        pit_sheet = set_dir / f"{set_name}-floor-spritesheet-pit.png"
+        pit_sheet = art_level_dir(set_name) / f"{set_name}-floor-spritesheet-pit.png"
         if pit_sheet.is_file() and pit_sheet not in plan.input_paths:
             plan.input_paths.append(pit_sheet)
 
@@ -798,12 +791,11 @@ def collect_letter_job(plan: BakePlan) -> None:
 
     discovered = letter_sets.discover_source_sheets()
     if not discovered:
-        plan.errors.append("letter: no per-level letter spritesheets found under Sprites/Letters/")
+        plan.errors.append("letter: no per-level letter spritesheets found under Art/Levels/")
         return
 
     for set_name, source in discovered:
-        set_dir = LETTER_SET_DIR / set_name
-        atlas_placeholder = set_dir / "Baked" / f"{set_name}-letters-atlas.json"
+        atlas_placeholder = baked_level_dir(set_name) / f"{set_name}-letters-atlas.json"
         plan.jobs.append(
             BakeJob(
                 category=f"letter.{set_name}",
@@ -833,13 +825,12 @@ def collect_pit_job(plan: BakePlan) -> None:
 
     discovered = pit_sets.discover_source_sheets()
     if not discovered:
-        plan.errors.append("pit: no per-level pit spritesheets found under Sprites/Pit/")
+        plan.errors.append("pit: no per-level pit spritesheets found under Art/Levels/")
         return
 
     for set_name, source in discovered:
-        set_dir = pit_sets.ensure_set_directory(set_name, source)
-        sheet_path = set_dir / f"{set_name}{pit_sets.SUFFIX}"
-        atlas_placeholder = set_dir / "Baked" / f"{set_name}-pit-atlas.json"
+        sheet_path = source
+        atlas_placeholder = baked_level_dir(set_name) / f"{set_name}-pit-atlas.json"
         plan.jobs.append(
             BakeJob(
                 category=f"pit.{set_name}",
@@ -869,13 +860,12 @@ def collect_gate_floor_job(plan: BakePlan) -> None:
 
     discovered = gate_sets.discover_source_sheets()
     if not discovered:
-        plan.errors.append("gates: no per-level gate spritesheets found under Sprites/Gate/Floor/")
+        plan.errors.append("gates: no per-level gate spritesheets found under Art/Levels/")
         return
 
     for set_name, source in discovered:
-        set_dir = gate_sets.ensure_set_directory(set_name, source)
-        sheet_path = set_dir / f"{set_name}{gate_sets.SUFFIX}"
-        atlas_placeholder = set_dir / "Baked" / f"{set_name}-gate-atlas.json"
+        sheet_path = source
+        atlas_placeholder = baked_level_dir(set_name) / f"{set_name}-gate-atlas.json"
         plan.jobs.append(
             BakeJob(
                 category=f"gates.{set_name}",
@@ -936,7 +926,6 @@ def collect_enemies(plan: BakePlan, only: set[str] | None = None) -> None:
             continue
         if not isinstance(sprite, dict):
             continue
-        # Enemy roots are like Enemies/Centipede (under Resources/Sprites).
         collect_animation_jobs(
             plan,
             category=f"enemy.{enemy_id}",
@@ -946,9 +935,11 @@ def collect_enemies(plan: BakePlan, only: set[str] | None = None) -> None:
 
 
 def collect_planets(plan: BakePlan) -> None:
-    levels_dir = CONFIG / "Levels"
-    for path in sorted(levels_dir.glob("*.yaml")):
-        if path.name.startswith("_"):
+    """Level-select planet art, one job per level folder."""
+    for level_id in level_ids():
+        path = LEVELS / level_id / "level.yaml"
+        if not path.is_file():
+            plan.errors.append(f"planet.{level_id}: missing {path.name}")
             continue
         add_config_input(plan, path)
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -957,7 +948,7 @@ def collect_planets(plan: BakePlan) -> None:
             continue
         collect_animation_jobs(
             plan,
-            category=f"planet.{path.stem}",
+            category=f"planet.{level_id}",
             sprite=sprite,
             flip_vertical=True,
         )
@@ -1122,11 +1113,9 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
 
 
 def baked_output_paths(sheet_path: Path, atlas_path: Path) -> tuple[Path, Path]:
-    baked_dir = sheet_path.parent / "Baked"
-    out_sheet = baked_dir / sheet_path.name
-    # Atlas may live next to the sheet (normal) — write matching basename into Baked/.
-    out_atlas = baked_dir / atlas_path.name
-    return out_sheet, out_atlas
+    """Where a source sheet's baked sheet + atlas belong under Resources/."""
+    baked_dir = baked_dir_for_source(sheet_path)
+    return baked_dir / sheet_path.name, baked_dir / atlas_path.name
 
 
 def bake_floor_set_job(job: BakeJob) -> tuple[Path, Path]:

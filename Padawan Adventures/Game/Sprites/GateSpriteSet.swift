@@ -3,7 +3,7 @@ import Foundation
 
 /// Per-level baked world gate wall atlas (Sendable — safe across `Task.detached`).
 ///
-/// Loaded from `Sprites/Gate/Floor/{set}/Baked/{set}-gate-atlas.json`.
+/// Loaded from `Levels/{set}/{set}-gate-atlas.json`.
 /// Frames are `along_x` / `along_y` for 2-tile gate strips on each iso axis.
 nonisolated struct GateSpriteSet: Codable, Equatable, Sendable {
     struct Anchor: Codable, Equatable, Sendable {

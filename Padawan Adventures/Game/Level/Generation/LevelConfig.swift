@@ -468,7 +468,7 @@ nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
     var gateCue: MusicCue { MusicCue.parse(gate) }
 }
 
-/// Per-level map size and generation settings loaded from `Levels/_defaults.yaml` / `Resources/Config/Levels/*.yaml`.
+/// Per-level map size and generation settings loaded from `Levels/_defaults.yaml` / `Levels/<id>/level.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
     static let fallbackArtifact = "star.fill"
@@ -480,7 +480,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var order: Int
     /// Hex fill for the level-select planet sprite (`#RRGGBB`).
     var color: String
-    /// Level-select planet art (`Resources/Sprites/UI/Levels/...`).
+    /// Level-select planet art (`Levels/<id>/<id>-planet-*`).
     var sprite: SpriteConfig?
     /// SF Symbol name awarded to inventory on first level completion.
     var artifact: String
@@ -502,9 +502,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var pickups: PickupsSpawnConfig?
     var pit: PitPuzzleConfig
     var gate: GateConfig
-    /// Per-level baked floor tile set (`Sprites/Floor/{set}/`).
+    /// Per-level baked floor tile set (`Levels/{set}/{set}-floor-*`).
     var floor: Floor
-    /// Per-level baked letter glyph set (`Sprites/Letters/{set}/`).
+    /// Per-level baked letter glyph set (`Levels/{set}/{set}-letters-*`).
     var letters: Letters
 
     /// Floor tile set reference and decor sprinkle probability.
@@ -966,8 +966,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         return try decode(
             from: data,
             parentDataNamed: { parentName in
-                // Inherited bases live alongside level files in Levels/.
-                try ConfigStore.data(at: ConfigPath.level(parentName))
+                try ConfigStore.data(at: ConfigPath.levelBase(parentName))
             },
             fileLabel: path.description,
             wordCatalog: wordCatalog,
@@ -1057,7 +1056,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 }
 
-/// A playable level discovered from `Resources/Config/Levels/`.
+/// A playable level discovered from `Resources/Levels/<id>/`.
 nonisolated struct LevelDescriptor: Equatable, Sendable {
     let resourceName: String
     let displayName: String
@@ -1075,19 +1074,10 @@ nonisolated struct LevelDescriptor: Equatable, Sendable {
 nonisolated enum LevelCatalog {
     static let subdirectory = "Levels"
 
-    /// Resource basenames that are shared config, not playable levels.
-    private static let excludedResourceNames: Set<String> = [
-        "_defaults",
-    ]
-
     static func loadFromBundle(
         withExtension ext: String = "yaml"
     ) -> [LevelDescriptor] {
-        let urls = levelResourceURLs(withExtension: ext)
-
-        return urls.compactMap { url -> LevelDescriptor? in
-            let resourceName = url.deletingPathExtension().lastPathComponent
-            guard !excludedResourceNames.contains(resourceName) else { return nil }
+        return levelIDs().compactMap { resourceName -> LevelDescriptor? in
             do {
                 let level = try LevelConfig.loadFromBundle(
                     named: resourceName,
@@ -1116,11 +1106,21 @@ nonisolated enum LevelCatalog {
         }
     }
 
-    private static func levelResourceURLs(withExtension ext: String) -> [URL] {
-        Bundle.main.urls(
-            forResourcesWithExtension: ext,
-            subdirectory: subdirectory
-        ) ?? []
+    /// Every directory under `Levels/` is a playable level, so adding one needs no code
+    /// change. Names beginning with `_` are shared config (`_defaults.yaml`), not levels.
+    private static func levelIDs() -> [String] {
+        guard let root = Bundle.main.resourceURL?
+            .appendingPathComponent(subdirectory, isDirectory: true) else { return [] }
+        let entries = (try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        )) ?? []
+        return entries.compactMap { url in
+            let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
+            guard isDirectory == true else { return nil }
+            let name = url.lastPathComponent
+            return name.hasPrefix("_") ? nil : name
+        }
     }
 }
 

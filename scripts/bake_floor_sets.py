@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Bake per-level floor tile sets from source spritesheets.
 
-For each sheet under Resources/Sprites/Floor/{set}-floor-spritesheet.png
+For each sheet under Art/Levels/{set}/{set}-floor-spritesheet.png
 (or Floor/{set}/{set}-floor-spritesheet.png after first move):
 
   1. Detect grid, separate black background, measure per-tile diamond geometry.
   2. Cluster lighting-bias-normalized edge strips into material classes,
      assign NE/SE/SW/NW labels, score pit/decor roles, build matches map.
-  3. Trim, shelf-pack into Floor/{set}/Baked/, write {set}-floor-atlas.json.
+  3. Trim, shelf-pack into Resources/Levels/{set}/, write {set}-floor-atlas.json.
 
 Contact sheets land in scripts/out/ (not bundled).
 
@@ -35,10 +35,11 @@ from typing import Any
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ROOT / "Padawan Adventures" / "Resources"
-FLOOR_DIR = RESOURCES / "Sprites" / "Floor"
+from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
+
 OUT_DIR = ROOT / "scripts" / "out"
+
+SUFFIX = "-floor-spritesheet.png"
 
 BG_MAX = 12
 # Soft chroma ramp above BG_MAX — only applied near the silhouette so interior
@@ -115,51 +116,13 @@ def tile_id(row: int, col: int) -> str:
 
 
 def discover_source_sheets() -> list[tuple[str, Path]]:
-    """Return (set_name, source_png) for every floor sheet found."""
-    found: dict[str, Path] = {}
-
-    # Already-moved layout: Floor/{set}/{set}-floor-spritesheet.png
-    if FLOOR_DIR.is_dir():
-        for sub in sorted(FLOOR_DIR.iterdir()):
-            if not sub.is_dir() or sub.name == "Baked":
-                continue
-            candidate = sub / f"{sub.name}-floor-spritesheet.png"
-            if candidate.is_file():
-                found[sub.name] = candidate
-
-        # Flat layout: Floor/{stem}-floor-spritesheet.png
-        for png in sorted(FLOOR_DIR.glob("*-floor-spritesheet.png")):
-            stem = png.name[: -len("-floor-spritesheet.png")]
-            set_name = SET_ALIASES.get(stem, stem)
-            if set_name not in found:
-                found[set_name] = png
-
-    return sorted(found.items(), key=lambda x: x[0])
-
-
-def ensure_set_directory(set_name: str, source: Path) -> Path:
-    """Move source into Floor/{set}/ if needed; return the set directory."""
-    set_dir = FLOOR_DIR / set_name
-    set_dir.mkdir(parents=True, exist_ok=True)
-    dest = set_dir / f"{set_name}-floor-spritesheet.png"
-    if source.resolve() == dest.resolve():
-        return set_dir
-    if dest.exists():
-        return set_dir
-    # Prefer git mv when available so history is preserved.
-    import subprocess
-
-    try:
-        subprocess.run(
-            ["git", "mv", str(source), str(dest)],
-            check=True,
-            cwd=ROOT,
-            capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        shutil.move(str(source), str(dest))
-    print(f"  moved {source.name} → {dest.relative_to(ROOT)}")
-    return set_dir
+    """Return (level_id, source_png) for every floor sheet under Art/Levels/."""
+    found: list[tuple[str, Path]] = []
+    for level_id in level_ids():
+        candidate = art_level_dir(level_id) / f"{level_id}{SUFFIX}"
+        if candidate.is_file():
+            found.append((level_id, candidate))
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -1066,9 +1029,9 @@ def bake_one(
     contact_only: bool,
 ) -> dict[str, Path]:
     print(f"\n=== {set_name} ===")
-    set_dir = ensure_set_directory(set_name, source)
+    set_dir = art_level_dir(set_name)
     sheet_path = set_dir / f"{set_name}-floor-spritesheet.png"
-    baked_dir = set_dir / "Baked"
+    baked_dir = baked_level_dir(set_name)
     baked_dir.mkdir(parents=True, exist_ok=True)
     atlas_path = baked_dir / f"{set_name}-floor-atlas.json"
     baked_sheet = baked_dir / f"{set_name}-floor-spritesheet.png"
@@ -1340,7 +1303,7 @@ def verify_pits(
     for set_name, source in selected:
         set_dir = FLOOR_DIR / set_name
         sheet_path = set_dir / f"{set_name}-floor-spritesheet.png"
-        atlas_path = set_dir / "Baked" / f"{set_name}-floor-atlas.json"
+        atlas_path = baked_level_dir(set_name) / f"{set_name}-floor-atlas.json"
         if not atlas_path.is_file():
             print(f"{set_name}: missing atlas {atlas_path.relative_to(ROOT)}", file=sys.stderr)
             failed += 1

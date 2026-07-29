@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Bake per-level pit platform tile sets from source spritesheets.
 
-For each sheet under Resources/Sprites/Pit/{set}.png
+For each sheet under Art/Levels/{set}/{set}-pit-spritesheet.png
 (or Pit/{set}/{set}-pit-spritesheet.png after first move):
 
   1. Tight hard-black chroma key (tolerance 2, no feather) — dark sprite shading kept.
   2. Segment into connected components (one platform tile each).
   3. Mask each tile to its own component (AABB crops must not keep neighbour art).
-  4. Per-tile opaque trim, shelf-pack into Pit/{set}/Baked/.
+  4. Per-tile opaque trim, shelf-pack into Resources/Levels/{set}/.
   5. Write {set}-pit-atlas.json with numeric frame keys ("0", "1", …).
 
 Contact sheets land in scripts/out/ (not bundled).
@@ -32,9 +32,8 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ROOT / "Padawan Adventures" / "Resources"
-PIT_DIR = RESOURCES / "Sprites" / "Pit"
+from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
+
 OUT_DIR = ROOT / "scripts" / "out"
 
 SUFFIX = "-pit-spritesheet.png"
@@ -75,54 +74,13 @@ class PitTile:
 
 
 def discover_source_sheets() -> list[tuple[str, Path]]:
-    """Return (set_name, source_png) for every pit sheet found."""
-    found: dict[str, Path] = {}
-
-    if not PIT_DIR.is_dir():
-        return []
-
-    for sub in sorted(PIT_DIR.iterdir()):
-        if not sub.is_dir() or sub.name == "Baked":
-            continue
-        candidate = sub / f"{sub.name}{SUFFIX}"
+    """Return (level_id, source_png) for every pit sheet under Art/Levels/."""
+    found: list[tuple[str, Path]] = []
+    for level_id in level_ids():
+        candidate = art_level_dir(level_id) / f"{level_id}{SUFFIX}"
         if candidate.is_file():
-            found[sub.name] = candidate
-        # Also accept pre-rename short names inside the set folder.
-        short = sub / f"{sub.name}.png"
-        if short.is_file():
-            found.setdefault(sub.name, short)
-
-    for png in sorted(PIT_DIR.glob("*.png")):
-        stem = png.stem
-        if stem.endswith("-pit-spritesheet"):
-            set_name = stem[: -len("-pit-spritesheet")]
-        else:
-            set_name = stem
-        found.setdefault(set_name, png)
-
-    return sorted(found.items(), key=lambda x: x[0])
-
-
-def ensure_set_directory(set_name: str, source: Path) -> Path:
-    """Move source into Pit/{set}/{set}-pit-spritesheet.png; return set dir."""
-    set_dir = PIT_DIR / set_name
-    set_dir.mkdir(parents=True, exist_ok=True)
-    dest = set_dir / f"{set_name}{SUFFIX}"
-    if source.resolve() == dest.resolve():
-        return set_dir
-    if dest.exists():
-        return set_dir
-    try:
-        subprocess.run(
-            ["git", "mv", str(source), str(dest)],
-            check=True,
-            cwd=ROOT,
-            capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        shutil.move(str(source), str(dest))
-    print(f"  moved {source.name} → {dest.relative_to(ROOT)}")
-    return set_dir
+            found.append((level_id, candidate))
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -259,7 +217,7 @@ def bake_one(
     source: Path,
     contact_only: bool = False,
 ) -> dict[str, Any]:
-    set_dir = ensure_set_directory(set_name, source)
+    set_dir = art_level_dir(set_name)
     sheet_path = set_dir / f"{set_name}{SUFFIX}"
     print(f"Baking pit set {set_name} from {sheet_path.relative_to(ROOT)}")
 
@@ -277,8 +235,8 @@ def bake_one(
         return {
             "contact": contact_path,
             "sheet": sheet_path,
-            "baked_sheet": set_dir / "Baked" / f"{set_name}-pit-spritesheet.png",
-            "atlas": set_dir / "Baked" / f"{set_name}-pit-atlas.json",
+            "baked_sheet": baked_level_dir(set_name) / f"{set_name}-pit-spritesheet.png",
+            "atlas": baked_level_dir(set_name) / f"{set_name}-pit-atlas.json",
         }
 
     frame_images: list[tuple[str, Image.Image, dict[str, Any]]] = []
@@ -296,7 +254,7 @@ def bake_one(
 
     packed = bs.shelf_pack(frame_images, padding=PACK_PADDING)
 
-    baked_dir = set_dir / "Baked"
+    baked_dir = baked_level_dir(set_name)
     baked_dir.mkdir(parents=True, exist_ok=True)
     baked_sheet = baked_dir / f"{set_name}-pit-spritesheet.png"
     atlas_path = baked_dir / f"{set_name}-pit-atlas.json"

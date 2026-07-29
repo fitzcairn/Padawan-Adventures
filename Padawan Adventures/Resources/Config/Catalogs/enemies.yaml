@@ -18,7 +18,7 @@ slash_max_screen_width_fraction: 0.20
 # are not loaded — PNGs may remain on disk unused.
 sprites:
   centipede:
-    root: Enemies/Centipede
+    root: Sprites/Enemies/Centipede
     trim: false
     scale: 0.86
     anchor_correction: 0
@@ -40,7 +40,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: centipede-walk_down-spritesheet, atlas: centipede-walk_down-atlas }
   dino:
-    root: Enemies/Dino
+    root: Sprites/Enemies/Dino
     trim: false
     scale: 1.40
     anchor_correction: 0
@@ -62,7 +62,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: dino-walk_down-spritesheet, atlas: dino-walk_down-atlas }
   drone:
-    root: Enemies/Drone
+    root: Sprites/Enemies/Drone
     trim: false
     scale: 0.87
     anchor_correction: 0
@@ -84,7 +84,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: drone-walk_down-spritesheet, atlas: drone-walk_down-atlas }
   ice_monster:
-    root: Enemies/IceMonster
+    root: Sprites/Enemies/IceMonster
     trim: false
     scale: 1.2
     anchor_correction: 0
@@ -106,7 +106,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: ice_monster-walk_down-spritesheet, atlas: ice_monster-walk_down-atlas }
   lava_lizard:
-    root: Enemies/LavaLizard
+    root: Sprites/Enemies/LavaLizard
     trim: false
     scale: 0.94
     anchor_correction: 0
@@ -128,7 +128,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: lava_lizard-walk_down-spritesheet, atlas: lava_lizard-walk_down-atlas }
   moth:
-    root: Enemies/Moth
+    root: Sprites/Enemies/Moth
     trim: false
     scale: 0.96
     anchor_correction: 0
@@ -150,7 +150,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: moth-walk_down-spritesheet, atlas: moth-walk_down-atlas }
   robot:
-    root: Enemies/Robot
+    root: Sprites/Enemies/Robot
     trim: false
     scale: 0.86
     anchor_correction: 0
@@ -172,7 +172,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: robot-walk_down-spritesheet, atlas: robot-walk_down-atlas }
   snake:
-    root: Enemies/Snake
+    root: Sprites/Enemies/Snake
     trim: false
     scale: 1.00
     anchor_correction: 0
@@ -194,7 +194,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: snake-walk_down-spritesheet, atlas: snake-walk_down-atlas }
   spider:
-    root: Enemies/Spider
+    root: Sprites/Enemies/Spider
     trim: false
     scale: 0.60
     anchor_correction: 0
@@ -216,7 +216,7 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: spider-walk_down-spritesheet, atlas: spider-walk_down-atlas }
   treant:
-    root: Enemies/Treant
+    root: Sprites/Enemies/Treant
     trim: false
     scale: 0.91
     anchor_correction: 0

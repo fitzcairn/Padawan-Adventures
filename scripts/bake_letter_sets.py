@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Bake per-level letter glyph sets from source spritesheets.
 
-For each sheet under Resources/Sprites/Letters/{set}-letters-spritesheet.png
+For each sheet under Art/Levels/{set}/{set}-letters-spritesheet.png
 (or Letters/{set}/{set}-letters-spritesheet.png after first move):
 
   1. Soft-black chroma key.
   2. Segment into exactly 4 content bands × 13 glyphs (A–M, N–Z, a–m, n–z).
-  3. Per-glyph opaque trim, shelf-pack into Letters/{set}/Baked/.
+  3. Per-glyph opaque trim, shelf-pack into Resources/Levels/{set}/.
   4. Write {set}-letters-atlas.json with case-sensitive frame keys.
 
 Contact sheets land in scripts/out/ (not bundled).
@@ -30,9 +30,8 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ROOT / "Padawan Adventures" / "Resources"
-LETTER_DIR = RESOURCES / "Sprites" / "Letters"
+from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
+
 OUT_DIR = ROOT / "scripts" / "out"
 
 SUFFIX = "-letters-spritesheet.png"
@@ -53,46 +52,13 @@ KEYS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + list("abcdefghijklmnopqrstuvwxyz")
 
 
 def discover_source_sheets() -> list[tuple[str, Path]]:
-    """Return (set_name, source_png) for every letter sheet found."""
-    found: dict[str, Path] = {}
-
-    if not LETTER_DIR.is_dir():
-        return []
-
-    for sub in sorted(LETTER_DIR.iterdir()):
-        if not sub.is_dir() or sub.name == "Baked":
-            continue
-        candidate = sub / f"{sub.name}{SUFFIX}"
+    """Return (level_id, source_png) for every letter sheet under Art/Levels/."""
+    found: list[tuple[str, Path]] = []
+    for level_id in level_ids():
+        candidate = art_level_dir(level_id) / f"{level_id}{SUFFIX}"
         if candidate.is_file():
-            found[sub.name] = candidate
-
-    for png in sorted(LETTER_DIR.glob(f"*{SUFFIX}")):
-        stem = png.name[: -len(SUFFIX)]
-        found.setdefault(stem, png)
-
-    return sorted(found.items(), key=lambda x: x[0])
-
-
-def ensure_set_directory(set_name: str, source: Path) -> Path:
-    """Move source into Letters/{set}/ if needed; return the set directory."""
-    set_dir = LETTER_DIR / set_name
-    set_dir.mkdir(parents=True, exist_ok=True)
-    dest = set_dir / f"{set_name}{SUFFIX}"
-    if source.resolve() == dest.resolve():
-        return set_dir
-    if dest.exists():
-        return set_dir
-    try:
-        subprocess.run(
-            ["git", "mv", str(source), str(dest)],
-            check=True,
-            cwd=ROOT,
-            capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        shutil.move(str(source), str(dest))
-    print(f"  moved {source.name} → {dest.relative_to(ROOT)}")
-    return set_dir
+            found.append((level_id, candidate))
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -406,7 +372,7 @@ def bake_one(
     source: Path,
     contact_only: bool = False,
 ) -> dict[str, Any]:
-    set_dir = ensure_set_directory(set_name, source)
+    set_dir = art_level_dir(set_name)
     sheet_path = set_dir / f"{set_name}{SUFFIX}"
     print(f"Baking letter set {set_name} from {sheet_path.relative_to(ROOT)}")
 
@@ -427,8 +393,8 @@ def bake_one(
         return {
             "contact": contact_path,
             "sheet": sheet_path,
-            "baked_sheet": set_dir / "Baked" / f"{set_name}-letters-spritesheet.png",
-            "atlas": set_dir / "Baked" / f"{set_name}-letters-atlas.json",
+            "baked_sheet": baked_level_dir(set_name) / f"{set_name}-letters-spritesheet.png",
+            "atlas": baked_level_dir(set_name) / f"{set_name}-letters-atlas.json",
         }
 
     frame_images: list[tuple[str, Image.Image, dict[str, Any]]] = []
@@ -447,7 +413,7 @@ def bake_one(
     if len(packed.frames) != 52:
         raise RuntimeError(f"{set_name}: packed {len(packed.frames)} frames, expected 52")
 
-    baked_dir = set_dir / "Baked"
+    baked_dir = baked_level_dir(set_name)
     baked_dir.mkdir(parents=True, exist_ok=True)
     baked_sheet = baked_dir / f"{set_name}-letters-spritesheet.png"
     atlas_path = baked_dir / f"{set_name}-letters-atlas.json"

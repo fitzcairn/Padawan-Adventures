@@ -8,18 +8,12 @@ nonisolated enum LevelAssetKind: String, CaseIterable, Sendable {
 /// Bundle locations for a level's baked art, keyed by the level's set name.
 ///
 /// Set names double as level folder names (`1-tython`), so `floor.set` /
-/// `letters.set` from the level YAML are what callers pass in.
+/// `letters.set` from the level YAML are what callers pass in. Everything for one
+/// level lives flat in that folder; the kind is carried by the filename.
 nonisolated enum LevelAssetPaths {
-    /// Bundle subdirectory holding one level's assets of a given kind.
+    /// Bundle subdirectory holding one level's assets.
     static func root(set name: String, _ kind: LevelAssetKind) -> String {
-        switch kind {
-        case .floor:    return "Sprites/Floor/\(name)"
-        case .letters:  return "Sprites/Letters/\(name)"
-        case .pit:      return "Sprites/Pit/\(name)"
-        case .gate:     return "Sprites/Gate/Floor/\(name)"
-        case .planet:   return "Sprites/UI/Levels"
-        case .treasure: return "Sprites/Items/Treasure"
-        }
+        "Levels/\(name)"
     }
 
     /// Basename for a sheet or atlas, e.g. `1-tython-floor-atlas`.

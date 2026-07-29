@@ -5,7 +5,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     /// Bundle-relative subdirectory for sheet/atlas basenames.
     ///
     /// With `Resources/Sprites` in the Xcode project's `explicitFolders`, paths
-    /// keep the on-disk tree (e.g. `Sprites/Player`, `Sprites/Enemies/Dino/Baked`).
+    /// keep the on-disk tree (e.g. `Sprites/Player`, `Sprites/Enemies/Dino`).
     /// Enemy YAML may still say `Enemies/<Type>`; the loader also tries
     /// `Sprites/Enemies/<Type>`.
     var root: String

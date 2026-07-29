@@ -39,7 +39,7 @@ coin:
 # Optional `highlight:` draws a particle halo behind the sprite (any item id can opt in).
 emitter:
   sprite:
-    root: Sprites/Items/Treasure/1-emitter
+    root: Levels/1-tython
     scale: 1.0
     animations:
       idle:
@@ -49,7 +49,7 @@ emitter:
 
 control-ring:
   sprite:
-    root: Sprites/Items/Treasure/2-control
+    root: Levels/2-tatooine
     scale: 1.0
     animations:
       idle:
@@ -59,7 +59,7 @@ control-ring:
 
 central-grip:
   sprite:
-    root: Sprites/Items/Treasure/3-central
+    root: Levels/3-ilum
     scale: 1.0
     animations:
       idle:
@@ -69,7 +69,7 @@ central-grip:
 
 activation-switch:
   sprite:
-    root: Sprites/Items/Treasure/4-activation
+    root: Levels/4-kashyyyk
     scale: 1.0
     animations:
       idle:
@@ -79,7 +79,7 @@ activation-switch:
 
 lower-grip:
   sprite:
-    root: Sprites/Items/Treasure/5-lower
+    root: Levels/5-dagobah
     scale: 1.0
     animations:
       idle:
@@ -89,7 +89,7 @@ lower-grip:
 
 power-cell:
   sprite:
-    root: Sprites/Items/Treasure/6-power
+    root: Levels/6-coruscant
     scale: 1.0
     animations:
       idle:
@@ -99,7 +99,7 @@ power-cell:
 
 connector:
   sprite:
-    root: Sprites/Items/Treasure/7-connector
+    root: Levels/7-mustafar
     scale: 1.0
     animations:
       idle:
@@ -109,7 +109,7 @@ connector:
 
 pommel:
   sprite:
-    root: Sprites/Items/Treasure/8-pommel
+    root: Levels/8-geonosis
     scale: 1.0
     animations:
       idle:

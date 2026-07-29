@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bake per-level world gate wall sprites from source sheets.
 
-For each sheet under Resources/Sprites/Gate/Floor/{set}.png
+For each sheet under Art/Levels/{set}/{set}-gate-spritesheet.png
 (or Gate/Floor/{set}/{set}-gate-spritesheet.png after first move):
 
   1. Tight chroma key on pure blue background (6, 1, 255).
@@ -9,7 +9,7 @@ For each sheet under Resources/Sprites/Gate/Floor/{set}.png
   3. Keep large opaque components in each half, trim, pack.
   4. Label frames along_x / along_y from the south tip of the iso base
      (tip right of center → along_x; tip left → along_y).
-  5. Write Gate/Floor/{set}/Baked/ sheet + atlas.
+  5. Write Resources/Levels/{set}/ sheet + atlas.
 
 Source filename alias: 8-genosis → 8-geonosis (matches level floor.set).
 
@@ -33,9 +33,8 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parents[1]
-RESOURCES = ROOT / "Padawan Adventures" / "Resources"
-GATE_DIR = RESOURCES / "Sprites" / "Gate" / "Floor"
+from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
+
 OUT_DIR = ROOT / "scripts" / "out"
 
 SUFFIX = "-gate-spritesheet.png"
@@ -81,49 +80,13 @@ def canonical_set_name(stem: str) -> str:
 
 
 def discover_source_sheets() -> list[tuple[str, Path]]:
-    """Return (set_name, source_png) for every gate floor sheet found."""
-    found: dict[str, Path] = {}
-
-    if not GATE_DIR.is_dir():
-        return []
-
-    for sub in sorted(GATE_DIR.iterdir()):
-        if not sub.is_dir() or sub.name == "Baked":
-            continue
-        candidate = sub / f"{sub.name}{SUFFIX}"
+    """Return (level_id, source_png) for every gate sheet under Art/Levels/."""
+    found: list[tuple[str, Path]] = []
+    for level_id in level_ids():
+        candidate = art_level_dir(level_id) / f"{level_id}{SUFFIX}"
         if candidate.is_file():
-            found[sub.name] = candidate
-        short = sub / f"{sub.name}.png"
-        if short.is_file():
-            found.setdefault(sub.name, short)
-
-    for png in sorted(GATE_DIR.glob("*.png")):
-        set_name = canonical_set_name(png.stem)
-        found.setdefault(set_name, png)
-
-    return sorted(found.items(), key=lambda x: x[0])
-
-
-def ensure_set_directory(set_name: str, source: Path) -> Path:
-    """Move source into Gate/Floor/{set}/{set}-gate-spritesheet.png; return set dir."""
-    set_dir = GATE_DIR / set_name
-    set_dir.mkdir(parents=True, exist_ok=True)
-    dest = set_dir / f"{set_name}{SUFFIX}"
-    if source.resolve() == dest.resolve():
-        return set_dir
-    if dest.exists():
-        return set_dir
-    try:
-        subprocess.run(
-            ["git", "mv", str(source), str(dest)],
-            check=True,
-            cwd=ROOT,
-            capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        shutil.move(str(source), str(dest))
-    print(f"  moved {source.name} → {dest.relative_to(ROOT)}")
-    return set_dir
+            found.append((level_id, candidate))
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +233,7 @@ def bake_one(
     source: Path,
     contact_only: bool = False,
 ) -> dict[str, Any]:
-    set_dir = ensure_set_directory(set_name, source)
+    set_dir = art_level_dir(set_name)
     sheet_path = set_dir / f"{set_name}{SUFFIX}"
     print(f"Baking gate set {set_name} from {sheet_path.relative_to(ROOT)}")
 
@@ -281,7 +244,7 @@ def bake_one(
     contact_path = write_contact(set_name, keyed, pieces)
     print(f"  contact → {contact_path.relative_to(ROOT)} ({len(pieces)} frames)")
 
-    baked_dir = set_dir / "Baked"
+    baked_dir = baked_level_dir(set_name)
     baked_sheet = baked_dir / f"{set_name}-gate-spritesheet.png"
     atlas_path = baked_dir / f"{set_name}-gate-atlas.json"
 

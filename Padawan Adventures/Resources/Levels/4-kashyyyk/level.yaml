@@ -1,0 +1,24 @@
+# Terrain: Entirely vertical, dominated by massive, kilometers-tall wroshyr trees. The planet has no visible surface from space, just a canopy of endless green.
+# Monsters:
+# - spider: Aggressive arachnid of the lower branches.
+# - moth: Flying moth predator of the canopy.
+inherits: _defaults
+name: Kashyyyk
+order: 4
+color: "#1B5E20"
+sprite:
+  root: Levels/4-kashyyyk
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 4-kashyyyk-planet-spritesheet
+      atlas: 4-kashyyyk-planet-atlas
+artifact: tree.fill
+treasure: activation-switch
+floor:
+  set: 4-kashyyyk
+letters:
+  set: 4-kashyyyk
+enemies:
+  types: [spider, moth]
+  spawn_chance_per_room: 0.8

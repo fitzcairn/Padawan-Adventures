@@ -4,7 +4,7 @@ import UIKit
 
 /// Session-scoped cache of one active world gate wall sprite set.
 ///
-/// Loads `Sprites/Gate/Floor/{set}/Baked/{set}-gate-spritesheet.png` + atlas.
+/// Loads `Levels/{set}/{set}-gate-spritesheet.png` + atlas.
 /// Switching levels replaces the previous set. Uses the same set name as the
 /// level floor set (`1-tython`, …).
 @MainActor

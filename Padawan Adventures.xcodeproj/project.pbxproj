@@ -53,8 +53,8 @@
 				Resources/Audio,
 				Resources/Backgrounds,
 				Resources/Config/Catalogs,
-				Resources/Config/Levels,
 				Resources/Config/UI,
+				Resources/Levels,
 				Resources/Sprites,
 			);
 			path = "Padawan Adventures";

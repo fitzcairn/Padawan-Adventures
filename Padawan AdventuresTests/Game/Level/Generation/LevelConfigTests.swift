@@ -385,7 +385,7 @@ struct LevelConfigTests {
         #expect(levels.map(\.order) == [1, 2, 3, 4, 5, 6, 7, 8])
         #expect(levels.allSatisfy { !$0.color.isEmpty })
         #expect(levels.allSatisfy { $0.sprite != nil })
-        #expect(levels.map { $0.sprite?.root } == Array(repeating: "Sprites/UI/Levels", count: 8))
+        #expect(levels.map { $0.sprite?.root } == levels.map { "Levels/\($0.resourceName)" })
 
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
@@ -394,7 +394,7 @@ struct LevelConfigTests {
         #expect(tython.name == "Tython")
         #expect(tython.order == 1)
         #expect(tython.color == "#2E7D32")
-        #expect(tython.sprite?.root == "Sprites/UI/Levels")
+        #expect(tython.sprite?.root == "Levels/1-tython")
         #expect(tython.sprite?.chromaKey == "#000000")
         #expect(tython.sprite?.chromaKeyTolerance == 2)
         #expect(tython.enemies?.types == ["dino", "treant"])
@@ -453,7 +453,7 @@ struct LevelConfigTests {
             order: 3
             color: "#81D4FA"
             sprite:
-              root: Sprites/UI/Levels
+              root: Levels/1-tython
               chroma: black_soft
               animations:
                 idle:
@@ -462,7 +462,7 @@ struct LevelConfigTests {
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.sprite?.root == "Sprites/UI/Levels")
+        #expect(level.sprite?.root == "Levels/1-tython")
         #expect(level.sprite?.chromaKey == "#000000")
         #expect(level.sprite?.chromaKeyTolerance == 2)
     }

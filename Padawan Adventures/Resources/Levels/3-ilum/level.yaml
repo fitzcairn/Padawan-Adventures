@@ -1,0 +1,23 @@
+# Terrain: A desolate planet entirely covered in ice, massive glaciers, and snow-capped mountain ranges.
+# Monsters:
+# - ice_monster: Carnivorous ice creature that uses camouflage to stalk its prey.
+inherits: _defaults
+name: Ilum
+order: 3
+color: "#81D4FA"
+sprite:
+  root: Levels/3-ilum
+  chroma: black_soft
+  animations:
+    idle:
+      sheet: 3-ilum-planet-spritesheet
+      atlas: 3-ilum-planet-atlas
+artifact: snowflake
+treasure: central-grip
+floor:
+  set: 3-ilum
+letters:
+  set: 3-ilum
+enemies:
+  types: [ice_monster]
+  spawn_chance_per_room: 0.8

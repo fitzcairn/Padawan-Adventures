@@ -3,7 +3,7 @@ import Foundation
 
 /// Per-level baked pit platform tile atlas (Sendable — safe across `Task.detached`).
 ///
-/// Loaded from `Sprites/Pit/{set}/Baked/{set}-pit-atlas.json`.
+/// Loaded from `Levels/{set}/{set}-pit-atlas.json`.
 nonisolated struct PitSpriteSet: Codable, Equatable, Sendable {
     struct Meta: Codable, Equatable, Sendable {
         var version: Int

@@ -4,7 +4,7 @@ import UIKit
 
 /// Session-scoped cache of one active pit platform tile set's textures.
 ///
-/// Loads `Sprites/Pit/{set}/Baked/{set}-pit-spritesheet.png` + atlas.
+/// Loads `Levels/{set}/{set}-pit-spritesheet.png` + atlas.
 /// Switching levels replaces the previous set.
 @MainActor
 final class PitSpriteSetLibrary {

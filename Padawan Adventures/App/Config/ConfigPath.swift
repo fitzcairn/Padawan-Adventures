@@ -21,8 +21,17 @@ nonisolated struct ConfigPath: Equatable, Sendable {
     static let levelDefaults = ConfigPath(basename: "_defaults", subdirectory: "Levels")
     static let loading = ConfigPath(basename: "loading", subdirectory: "UI")
 
+    /// Each level owns a folder holding its `level.yaml` and all of its art.
     static func level(_ name: String) -> ConfigPath {
-        ConfigPath(basename: name, subdirectory: "Levels")
+        ConfigPath(basename: "level", subdirectory: "Levels/\(name)")
+    }
+
+    /// Resolves an `inherits:` target: shared bases like `_defaults` sit beside the
+    /// level folders, while anything else is a sibling level's own `level.yaml`.
+    static func levelBase(_ name: String) -> ConfigPath {
+        name.hasPrefix("_")
+            ? ConfigPath(basename: name, subdirectory: "Levels")
+            : .level(name)
     }
 
     var description: String {

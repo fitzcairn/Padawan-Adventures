@@ -216,7 +216,7 @@ nonisolated enum ConfigAudit {
         return []
     }
 
-    /// Pit platforms share the floor set name (`Sprites/Pit/{floor.set}/`).
+    /// Pit platforms share the floor set name (`Levels/{floor.set}/`).
     private static func checkPitSet(
         level: LevelConfig,
         label: String,
@@ -237,7 +237,7 @@ nonisolated enum ConfigAudit {
         return []
     }
 
-    /// World gate walls share the floor set name (`Sprites/Gate/Floor/{floor.set}/`).
+    /// World gate walls share the floor set name (`Levels/{floor.set}/`).
     private static func checkGateSet(
         level: LevelConfig,
         label: String,
@@ -548,73 +548,33 @@ nonisolated enum ConfigAudit {
         return nil
     }
 
+    /// Mirrors `SpriteSheetLoader.resourceURL` exactly: one lookup, in `root` only.
+    /// Any laxer search here would pass assets the loader then fails to find.
     private static func resourceExists(
         named name: String,
         extensions: [String],
         root: String,
         bundle: Bundle
     ) -> Bool {
-        let folderHint = animationFolderName(from: name)
-        let searchRoots = bundleSearchRoots(for: root)
-        var subdirectories: [String] = []
-        for searchRoot in searchRoots {
-            subdirectories.append("\(searchRoot)/Baked")
-            subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
-            subdirectories.append(searchRoot)
-            subdirectories.append("\(searchRoot)/\(folderHint)")
-        }
-        subdirectories.append(folderHint)
-        subdirectories.append("")
-        var seen = Set<String>()
-        subdirectories = subdirectories.filter { seen.insert($0).inserted }
-
-        for ext in extensions {
-            for subdirectory in subdirectories {
-                if subdirectory.isEmpty {
-                    if bundle.url(forResource: name, withExtension: ext) != nil {
-                        return true
-                    }
-                } else if bundle.url(
-                    forResource: name,
-                    withExtension: ext,
-                    subdirectory: subdirectory
-                ) != nil {
-                    return true
-                }
-            }
-        }
-        return false
+        (try? SpriteSheetLoader.resourceURL(
+            named: name,
+            extensions: extensions,
+            root: root,
+            bundle: bundle
+        )) != nil
     }
 
     private static func directoryHasResources(root: String, bundle: Bundle) -> Bool {
-        for searchRoot in bundleSearchRoots(for: root) {
-            if let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: searchRoot),
+        if let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: root),
+           !urls.isEmpty {
+            return true
+        }
+        for ext in imageExtensions {
+            if let urls = bundle.urls(forResourcesWithExtension: ext, subdirectory: root),
                !urls.isEmpty {
                 return true
             }
-            for ext in imageExtensions {
-                if let urls = bundle.urls(forResourcesWithExtension: ext, subdirectory: searchRoot),
-                   !urls.isEmpty {
-                    return true
-                }
-            }
         }
         return false
-    }
-
-    /// Enemy YAML roots are `Enemies/<Type>`; bundled under `Sprites/Enemies/<Type>`.
-    private static func bundleSearchRoots(for root: String) -> [String] {
-        if root == "Enemies" || root.hasPrefix("Enemies/") {
-            return ["Sprites/\(root)", root]
-        }
-        return [root]
-    }
-
-    private static func animationFolderName(from resourceName: String) -> String {
-        let suffixes = ["-spritesheet", "-atlas"]
-        for suffix in suffixes where resourceName.hasSuffix(suffix) {
-            return String(resourceName.dropLast(suffix.count))
-        }
-        return resourceName
     }
 }

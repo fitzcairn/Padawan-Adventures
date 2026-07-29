@@ -3,7 +3,7 @@ import Foundation
 
 /// Per-level baked letter glyph atlas (Sendable — safe across `Task.detached`).
 ///
-/// Loaded from `Sprites/Letters/{set}/Baked/{set}-letters-atlas.json`.
+/// Loaded from `Levels/{set}/{set}-letters-atlas.json`.
 nonisolated struct LetterSpriteSet: Codable, Equatable, Sendable {
     struct Meta: Codable, Equatable, Sendable {
         var version: Int

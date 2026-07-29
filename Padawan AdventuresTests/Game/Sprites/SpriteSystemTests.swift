@@ -22,7 +22,7 @@ struct SpriteSystemTests {
 
     /// Player `idle_northeast` source sheet + atlas: a regular 5×5 grid of 256×256 cells.
     private static func playerIdleNortheastSource() throws -> Bundle {
-        try sourceArtBundle("Shared/Player/idle_northeast")
+        try sourceArtBundle("Shared/Player")
     }
 
     @Test func atlasDecodesOrderedFramesAndDurations() throws {
@@ -213,8 +213,7 @@ struct SpriteSystemTests {
             named: "idle_northeast-spritesheet",
             extensions: ["png"],
             root: "",
-            bundle: Self.playerIdleNortheastSource(),
-            preferBaked: false
+            bundle: Self.playerIdleNortheastSource()
         )
         let original = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(to: original, key: (0, 0, 0))
@@ -367,15 +366,15 @@ struct SpriteSystemTests {
             subdirectory: LevelCatalog.subdirectory
         )
         let sprite = try #require(level.sprite)
-        #expect(sprite.root == "Sprites/UI/Levels")
+        #expect(sprite.root == "Levels/1-tython")
         #expect(sprite.chromaKey == "#000000")
         #expect(sprite.chromaKeyTolerance == 2)
         guard case .sheet(let sheet, let atlas) = sprite.animations["idle"] else {
             Issue.record("Expected tython idle sheet animation")
             return
         }
-        #expect(sheet == "1-tython")
-        #expect(atlas == "1-tython-atlas")
+        #expect(sheet == "1-tython-planet-spritesheet")
+        #expect(atlas == "1-tython-planet-atlas")
         let library = SpriteLibrary()
         await library.ensureLoaded(sprite, id: "1-tython")
         let idle = try #require(library.animation(id: "1-tython", named: "idle"))
@@ -471,8 +470,7 @@ struct SpriteSystemTests {
             named: "idle_northeast-atlas",
             extensions: ["json"],
             root: "",
-            bundle: source,
-            preferBaked: false
+            bundle: source
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let ordered = atlas.orderedFrames
@@ -494,8 +492,7 @@ struct SpriteSystemTests {
             named: "idle_northeast-spritesheet",
             extensions: ["png"],
             root: "",
-            bundle: source,
-            preferBaked: false
+            bundle: source
         )
         let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(
@@ -517,14 +514,13 @@ struct SpriteSystemTests {
             .map(SpriteSheetLoader.flipAroundXAxis)
 
         // Unbaked load path: chroma + shared trim + X-flip (matches expectedTrimmed).
-        // Production prefers Baked/ when present; this regression pins the source pipeline.
         let idle = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
             root: "",
             chromaKey: "#000000",
             bundle: source,
-            preferBaked: false
+            isBaked: false
         )
         #expect(idle.frames.count == expectedTrimmed.count)
 
@@ -563,8 +559,7 @@ struct SpriteSystemTests {
             named: "idle_northeast-atlas",
             extensions: ["json"],
             root: "",
-            bundle: source,
-            preferBaked: false
+            bundle: source
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let frame = try #require(atlas.orderedFrames.first?.frame)
@@ -576,7 +571,7 @@ struct SpriteSystemTests {
             chromaKey: "#000000",
             bundle: source,
             trim: true,
-            preferBaked: false
+            isBaked: false
         )
         let untrimmed = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
@@ -585,7 +580,7 @@ struct SpriteSystemTests {
             chromaKey: "#000000",
             bundle: source,
             trim: false,
-            preferBaked: false
+            isBaked: false
         )
 
         let untrimmedSize = untrimmed.frames[0].texture.size()
@@ -641,7 +636,7 @@ struct SpriteSystemTests {
         let soft = try YAMLDecoder().decode(
             SpriteConfig.self,
             from: Data("""
-            root: Sprites/UI/Levels
+            root: Levels/1-tython
             chroma: black_soft
             """.utf8)
         )

@@ -4,7 +4,7 @@ import UIKit
 
 /// Session-scoped cache of one active floor tile set's textures.
 ///
-/// Loads `Sprites/Floor/{set}/Baked/{set}-floor-spritesheet.png` + atlas.
+/// Loads `Levels/{set}/{set}-floor-spritesheet.png` + atlas.
 /// Switching levels replaces the previous set.
 @MainActor
 final class FloorTileSetLibrary {

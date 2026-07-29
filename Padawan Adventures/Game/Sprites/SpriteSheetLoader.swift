@@ -6,9 +6,10 @@ import UIKit
 enum SpriteSheetLoader {
     /// Loads a spritesheet + atlas and returns animation frames.
     ///
-    /// Prefers offline-baked sheets under a `Baked/` subdirectory. Baked loads skip
-    /// chroma keying, trim, and `flipAroundXAxis` (baker already applied them); source
-    /// fallbacks still run that pixel processing so unbaked sheets keep working.
+    /// Baked art is the norm: the bakers already applied chroma keying, trim and
+    /// `flipAroundXAxis`, so those steps are skipped. Pass `isBaked: false` for the
+    /// handful of raw sheets loaded straight from source, which still need that pixel
+    /// processing at runtime.
     static func loadAnimation(
         sheet: String,
         atlas: String,
@@ -19,23 +20,20 @@ enum SpriteSheetLoader {
         chromaKeySmooth: Int = 0,
         bundle: Bundle = .main,
         trim: Bool = true,
-        preferBaked: Bool = true
+        isBaked: Bool = true
     ) throws -> SpriteAnimation {
         let sheetURL = try resourceURL(
             named: sheet,
             extensions: ["png", "jpg", "jpeg"],
             root: root,
-            bundle: bundle,
-            preferBaked: preferBaked
+            bundle: bundle
         )
         let atlasURL = try resourceURL(
             named: atlas,
             extensions: ["json"],
             root: root,
-            bundle: bundle,
-            preferBaked: preferBaked
+            bundle: bundle
         )
-        let isBaked = isBakedResource(at: sheetURL)
 
         let atlasData = try Data(contentsOf: atlasURL)
         let atlasDoc = try SpriteAtlas.decode(from: atlasData)
@@ -645,69 +643,25 @@ enum SpriteSheetLoader {
         )
     }
 
-    /// Resolves sheet/atlas basenames under `root`, preferring `Baked/` subdirectories
-    /// when `preferBaked` is true (production default).
+    /// Resolves a sheet/atlas basename in exactly one bundle subdirectory.
+    ///
+    /// `Resources/` is flat — one folder per level, one per shared tree — so there is
+    /// no search to do. An exact lookup means a missing file fails here instead of
+    /// silently resolving to a same-named file belonging to another level.
+    /// An empty `root` looks at the bundle root.
     static func resourceURL(
         named name: String,
         extensions: [String],
         root: String,
-        bundle: Bundle,
-        preferBaked: Bool = true
+        bundle: Bundle
     ) throws -> URL {
-        let folderHint = animationFolderName(from: name)
-        // Enemy YAML roots are `Enemies/<Type>`; with `Resources/Sprites` as an
-        // explicit folder those assets live under `Sprites/Enemies/<Type>`.
-        let searchRoots: [String]
-        if root == "Enemies" || root.hasPrefix("Enemies/") {
-            searchRoots = ["Sprites/\(root)", root]
-        } else {
-            searchRoots = [root]
-        }
-
-        var subdirectories: [String] = []
-        for searchRoot in searchRoots {
-            if preferBaked {
-                subdirectories.append("\(searchRoot)/Baked")
-                subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
-            }
-            subdirectories.append(searchRoot)
-            subdirectories.append("\(searchRoot)/\(folderHint)")
-        }
-        subdirectories.append(folderHint)
-        subdirectories.append("")
-
-        var seen = Set<String>()
-        subdirectories = subdirectories.filter { seen.insert($0).inserted }
-
         for ext in extensions {
-            for subdirectory in subdirectories {
-                if subdirectory.isEmpty {
-                    if let url = bundle.url(forResource: name, withExtension: ext) {
-                        return url
-                    }
-                } else if let url = bundle.url(
-                    forResource: name,
-                    withExtension: ext,
-                    subdirectory: subdirectory
-                ) {
-                    return url
-                }
-            }
+            let url = root.isEmpty
+                ? bundle.url(forResource: name, withExtension: ext)
+                : bundle.url(forResource: name, withExtension: ext, subdirectory: root)
+            if let url { return url }
         }
         throw SpriteLoadError.missingResource("\(root)/\(name)")
-    }
-
-    /// True when the resolved URL lives under a `Baked` path component.
-    static func isBakedResource(at url: URL) -> Bool {
-        url.pathComponents.contains("Baked")
-    }
-
-    private static func animationFolderName(from resourceName: String) -> String {
-        let suffixes = ["-spritesheet", "-atlas"]
-        for suffix in suffixes where resourceName.hasSuffix(suffix) {
-            return String(resourceName.dropLast(suffix.count))
-        }
-        return resourceName
     }
 }
 

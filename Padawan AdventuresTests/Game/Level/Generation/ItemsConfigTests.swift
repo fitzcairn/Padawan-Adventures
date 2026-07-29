@@ -57,7 +57,7 @@ struct ItemsConfigTests {
         let yaml = """
         emitter:
           sprite:
-            root: Sprites/Items/Treasure/1-emitter
+            root: Levels/1-tython
             scale: 0.4
             animations:
               idle:
@@ -66,7 +66,7 @@ struct ItemsConfigTests {
         """
         let config = try ItemsConfig.decode(from: yaml)
         let sprite = try #require(config.spriteConfig(id: "emitter"))
-        #expect(sprite.root == "Sprites/Items/Treasure/1-emitter")
+        #expect(sprite.root == "Levels/1-tython")
         #expect(sprite.chromaKey == nil)
         #expect(sprite.scale == 0.4)
         #expect(config.spriteConfig(for: .treasure) == nil)
@@ -77,7 +77,7 @@ struct ItemsConfigTests {
         let yaml = """
         emitter:
           sprite:
-            root: Sprites/Items/Treasure/1-emitter
+            root: Levels/1-tython
             scale: 1.0
             animations:
               idle:
@@ -108,7 +108,7 @@ struct ItemsConfigTests {
         let yaml = """
         emitter:
           sprite:
-            root: Sprites/Items/Treasure/1-emitter
+            root: Levels/1-tython
           highlight:
             color: "#FFFFFF"
         """
