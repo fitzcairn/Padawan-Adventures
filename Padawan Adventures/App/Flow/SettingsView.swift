@@ -22,6 +22,8 @@ struct SettingsView: View {
                 Spacer()
 
                 VStack(spacing: 28) {
+                    // No mute toggle: letter/word cues are gameplay-critical, so SFX
+                    // stay enabled and only volume is adjustable.
                     volumeRow(
                         label: "Sound Effects",
                         labelID: "settings.soundEffects.label",

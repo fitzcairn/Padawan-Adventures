@@ -2,9 +2,18 @@ import SpriteKit
 import UIKit
 
 /// Capacitor token art for the spelling gate minigame (`Sprites/Gate/spelling/capacitor.png`).
+@MainActor
 enum GateSpellingCapacitorSprites {
+    private static var cached: SKTexture?
+    private static var didAttemptLoad = false
+
     /// Loads the capacitor texture, clearing the solid black backdrop.
     static func load(bundle: Bundle = .main) -> SKTexture? {
+        if bundle === Bundle.main {
+            if didAttemptLoad { return cached }
+            didAttemptLoad = true
+        }
+
         let root = "Sprites/Gate/spelling"
         let url: URL
         do {
@@ -42,6 +51,9 @@ enum GateSpellingCapacitorSprites {
 
         let texture = SKTexture(image: UIImage(cgImage: keyed, scale: 1, orientation: .up))
         SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+        if bundle === Bundle.main {
+            cached = texture
+        }
         return texture
     }
 

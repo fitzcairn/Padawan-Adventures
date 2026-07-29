@@ -214,7 +214,7 @@ struct AppSessionTests {
         }
         for treasureID in levels.compactMap(\.treasure) {
             #expect(
-                session.treasureIcons.uiImage(id: treasureID) != nil,
+                session.spriteLibrary.uiImage(id: treasureID) != nil,
                 "Missing treasure icon for \(treasureID)"
             )
             #expect(
@@ -222,5 +222,19 @@ struct AppSessionTests {
                 "Missing treasure animation for \(treasureID)"
             )
         }
+    }
+
+    @Test func treasureIconsSurviveLevelScopedRelease() async {
+        let session = await AppSession.loadResources()
+        session.releaseLevelScopedSprites()
+        for treasureID in LevelCatalog.loadFromBundle().compactMap(\.treasure) {
+            #expect(
+                session.spriteLibrary.uiImage(id: treasureID) != nil,
+                "Treasure icon lost after release for \(treasureID)"
+            )
+        }
+        #expect(session.spriteLibrary.uiImage(id: "coin") != nil)
+        #expect(session.spriteLibrary.uiImage(id: "health") != nil)
+        #expect(session.spriteLibrary.uiImage(id: "energy") != nil)
     }
 }

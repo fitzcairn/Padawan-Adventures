@@ -155,6 +155,8 @@ nonisolated enum ConfigAudit {
             }
         }
 
+        problems.append(contentsOf: checkAudioLayout(bundle: bundle))
+
         if !problems.isEmpty {
             throw ConfigAuditError.detail(problems.joined(separator: "; "))
         }
@@ -395,10 +397,17 @@ nonisolated enum ConfigAudit {
         guard !trimmed.isEmpty else {
             return ["\(kind): music basename must be non-empty"]
         }
-        if audioExists(basename: trimmed, subdirectories: ["Audio/Music", "Audio"], bundle: bundle) {
-            return []
+        guard let url = resolveAudioURL(
+            basename: trimmed,
+            subdirectory: "Audio/Music",
+            bundle: bundle
+        ) else {
+            return ["\(kind): missing music track '\(trimmed)'"]
         }
-        return ["\(kind): missing music track '\(trimmed)'"]
+        if !url.path.contains("/Audio/Music/") {
+            return ["\(kind): music track '\(trimmed)' must resolve under Audio/Music"]
+        }
+        return []
     }
 
     private static func requireFX(
@@ -410,34 +419,93 @@ nonisolated enum ConfigAudit {
         guard !trimmed.isEmpty else {
             return ["\(kind): fx basename must be non-empty"]
         }
-        if audioExists(basename: trimmed, subdirectories: ["Audio/FX", "Audio"], bundle: bundle) {
-            return []
+        guard let url = resolveAudioURL(
+            basename: trimmed,
+            subdirectory: "Audio/FX",
+            bundle: bundle
+        ) else {
+            return ["\(kind): missing fx track '\(trimmed)'"]
         }
-        return ["\(kind): missing fx track '\(trimmed)'"]
+        if !url.path.contains("/Audio/FX/") {
+            return ["\(kind): fx track '\(trimmed)' must resolve under Audio/FX"]
+        }
+        return []
+    }
+
+    /// Structural layout invariants for bundled audio (folder scoping + no flat collisions).
+    static func checkAudioLayout(bundle: Bundle = .main) -> [String] {
+        var problems: [String] = []
+        guard let resourceURL = bundle.resourceURL else {
+            return ["audio layout: bundle has no resourceURL"]
+        }
+
+        // 1) No audio flattened into the bundle root (non-recursive).
+        if let rootEntries = try? FileManager.default.contentsOfDirectory(
+            at: resourceURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) {
+            for url in rootEntries where isAudioFile(url) {
+                problems.append(
+                    "audio layout: '\(url.lastPathComponent)' must not sit at the bundle root"
+                )
+            }
+        }
+
+        // 2) Both searched directories present and non-empty.
+        for subdirectory in ["Audio/FX", "Audio/Music"] {
+            let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: subdirectory) ?? []
+            let audioFiles = urls.filter(isAudioFile)
+            if audioFiles.isEmpty {
+                problems.append("audio layout: '\(subdirectory)' is missing or empty")
+            }
+        }
+
+        // 3) No basename collisions between searchable Music and FX trees.
+        // `Audio/FX/New/` is staging and excluded — those clips are not looked up by basename.
+        var locationsByBasename: [String: Set<String>] = [:]
+        for subdirectory in ["Audio/Music", "Audio/FX"] {
+            guard let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: subdirectory)
+            else { continue }
+            for url in urls where isAudioFile(url) {
+                // Skip staged WIP under Audio/FX/New/.
+                if url.path.contains("/Audio/FX/New/") { continue }
+                let basename = url.deletingPathExtension().lastPathComponent
+                locationsByBasename[basename, default: []].insert(subdirectory)
+            }
+        }
+        for basename in locationsByBasename.keys.sorted() {
+            guard let locations = locationsByBasename[basename], locations.count > 1 else { continue }
+            let joined = locations.sorted().joined(separator: ", ")
+            problems.append(
+                "audio layout: basename '\(basename)' appears in multiple directories (\(joined))"
+            )
+        }
+
+        return problems
     }
 
     // MARK: - Bundle helpers
 
-    private static func audioExists(
+    private static func isAudioFile(_ url: URL) -> Bool {
+        audioExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    private static func resolveAudioURL(
         basename: String,
-        subdirectories: [String],
+        subdirectory: String,
         bundle: Bundle
-    ) -> Bool {
+    ) -> URL? {
         for ext in audioExtensions {
-            for subdirectory in subdirectories {
-                if bundle.url(
-                    forResource: basename,
-                    withExtension: ext,
-                    subdirectory: subdirectory
-                ) != nil {
-                    return true
-                }
-            }
-            if bundle.url(forResource: basename, withExtension: ext) != nil {
-                return true
+            if let url = bundle.url(
+                forResource: basename,
+                withExtension: ext,
+                subdirectory: subdirectory
+            ) {
+                return url
             }
         }
-        return false
+        return nil
     }
 
     private static func resourceExists(

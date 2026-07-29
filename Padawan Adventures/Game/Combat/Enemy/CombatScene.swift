@@ -42,6 +42,10 @@ final class CombatScene: SKScene {
     private var slashPoints: [CGPoint] = []
     private var slashPathLength: CGFloat = 0
     private var slashLine: SKNode?
+    private var slashStrokes: [SKShapeNode] = []
+    /// Test seam: how many times the slash container has been built, to prove it is
+    /// reused across a drag rather than rebuilt per touch event.
+    private(set) var slashContainerBuildCount = 0
     private var slashStartedAt: TimeInterval?
     private var isSlashActive = false
     private var didEnd = false
@@ -596,18 +600,32 @@ final class CombatScene: SKScene {
     }
 
     private func updateSlashLine() {
-        slashLine?.removeFromParent()
-        slashLine = nil
         guard slashPoints.count >= 2 else { return }
         let path = makeLightsaberSlashPath(from: slashPoints)
+        if let existing = slashLine, !slashStrokes.isEmpty {
+            for stroke in slashStrokes {
+                stroke.path = path
+            }
+            return
+        }
         let slash = makeLightsaberSlashNode(path: path)
+        slashStrokes = slash.children.compactMap { $0 as? SKShapeNode }
+        slashContainerBuildCount += 1
         addChild(slash)
         slashLine = slash
     }
 
-    private func clearSlashLine() {
+    /// Test seam: drives `updateSlashLine` without synthesising `UITouch` values.
+    func updateSlashLineForTesting(points: [CGPoint]) {
+        slashPoints = points
+        updateSlashLine()
+    }
+
+    /// Also used as a test seam after `updateSlashLineForTesting`.
+    func clearSlashLine() {
         guard let slash = slashLine else { return }
         slashLine = nil
+        slashStrokes = []
         slash.run(SKAction.sequence([
             SKAction.fadeOut(withDuration: slashFadeOutSeconds),
             SKAction.removeFromParent(),
@@ -663,19 +681,19 @@ final class CombatScene: SKScene {
         // Scale stroke to slash size so short capped trails don't read as full-screen blooms.
         let strokeScale = min(max(maxSlashPathLength / 80, 0.45), 1)
 
-        let glow = makeSlashStrokeNode(
+        let glow = makeGlowStroke(
             path: path,
             lineWidth: 14 * strokeScale,
             color: UIColor(red: 0.15, green: 0.45, blue: 1.0, alpha: 0.55),
             glowWidth: 18 * strokeScale
         )
-        let blade = makeSlashStrokeNode(
+        let blade = makeGlowStroke(
             path: path,
             lineWidth: 6 * strokeScale,
             color: UIColor(red: 0.35, green: 0.75, blue: 1.0, alpha: 0.95),
             glowWidth: 6 * strokeScale
         )
-        let core = makeSlashStrokeNode(
+        let core = makeGlowStroke(
             path: path,
             lineWidth: 2.5 * strokeScale,
             color: UIColor.white.withAlphaComponent(0.95),
@@ -689,23 +707,6 @@ final class CombatScene: SKScene {
         container.addChild(blade)
         container.addChild(core)
         return container
-    }
-
-    private func makeSlashStrokeNode(
-        path: CGPath,
-        lineWidth: CGFloat,
-        color: UIColor,
-        glowWidth: CGFloat
-    ) -> SKShapeNode {
-        let node = SKShapeNode(path: path)
-        node.fillColor = .clear
-        node.strokeColor = color
-        node.lineWidth = lineWidth
-        node.lineCap = .round
-        node.lineJoin = .round
-        node.glowWidth = glowWidth
-        node.isAntialiased = true
-        return node
     }
 
     private func resolveSlashHits() {

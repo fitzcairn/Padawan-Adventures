@@ -2,14 +2,23 @@ import SpriteKit
 import UIKit
 
 /// Off/on switch textures for letter-match buttons (`Sprites/Gate/letter_match/switch-*`).
+@MainActor
 enum GateLetterMatchSwitchSprites {
     struct Textures {
         let off: SKTexture
         let on: SKTexture
     }
 
+    private static var cached: Textures?
+    private static var didAttemptLoad = false
+
     /// Loads baked (preferred) or source switch sheet; frame 0 = OFF, frame 1 = ON.
     static func load(bundle: Bundle = .main) -> Textures? {
+        if bundle === Bundle.main {
+            if didAttemptLoad { return cached }
+            didAttemptLoad = true
+        }
+
         let root = "Sprites/Gate/letter_match"
         let sheetName = "switch-spritesheet"
         let atlasName = "switch-atlas"
@@ -76,7 +85,11 @@ enum GateLetterMatchSwitchSprites {
         }
 
         guard let off = texture(at: 0), let on = texture(at: 1) else { return nil }
-        return Textures(off: off, on: on)
+        let result = Textures(off: off, on: on)
+        if bundle === Bundle.main {
+            cached = result
+        }
+        return result
     }
 
     /// Aspect-fit switch into a square of `side`.

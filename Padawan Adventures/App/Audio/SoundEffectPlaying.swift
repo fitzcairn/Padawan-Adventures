@@ -7,50 +7,130 @@ protocol SoundEffectPlaying: AnyObject {
     /// Plays a short effect. Returns `false` when the track cannot be loaded.
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool
+
+    /// Clip length in seconds, or nil when the track cannot be resolved.
+    func duration(of trackID: String) -> TimeInterval?
+
+    /// Warms the clip pool for the given track ids without starting playback.
+    func prepare(trackIDs: [String])
 }
 
-/// Bundle-backed multi-channel `AVAudioPlayer` pool for overlapping one-shots.
+/// Bundle-backed per-track `AVAudioPlayer` pool for overlapping one-shots.
 @MainActor
 final class BundleSoundEffectPlayer: SoundEffectPlaying {
-    private let channelCount: Int
-    private var players: [AVAudioPlayer] = []
-    private var nextSlot = 0
+    private var urlCache: [String: URL] = [:]
+    private var pools: [String: [AVAudioPlayer]] = [:]
+    private var trackOrder: [String] = []
+    private var durationCache: [String: TimeInterval] = [:]
     private var didConfigureSession = false
 
-    init(channelCount: Int = 8) {
-        self.channelCount = max(1, channelCount)
+    /// Simultaneous instances of the *same* effect before the oldest is retriggered.
+    static let playersPerTrack = 2
+    /// Distinct tracks held before the least-recently-used track is dropped.
+    static let maxCachedTracks = 32
+
+    /// Test seam: total `AVAudioPlayer` instances constructed since init.
+    private(set) var decodeCount = 0
+    /// Test seam: distinct tracks currently pooled.
+    var cachedTrackCount: Int { pools.count }
+    /// Test seam: whether any pooled player is currently audible.
+    var anyPooledPlayerIsPlaying: Bool {
+        pools.values.contains { players in players.contains(where: \.isPlaying) }
     }
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
+        guard let url = resolvedURL(for: trackID) else { return false }
+        configureSessionIfNeeded()
+        guard let player = pooledPlayer(for: trackID, url: url) else { return false }
+        player.volume = min(1, max(0, volume))
+        player.currentTime = 0
+        return player.play()
+    }
+
+    func duration(of trackID: String) -> TimeInterval? {
+        if let cached = durationCache[trackID] {
+            return cached
+        }
+        guard let url = resolvedURL(for: trackID) else { return nil }
+        configureSessionIfNeeded()
+        guard let player = pooledPlayer(for: trackID, url: url) else { return nil }
+        let value = player.duration
+        durationCache[trackID] = value
+        return value
+    }
+
+    func prepare(trackIDs: [String]) {
+        for trackID in trackIDs {
+            let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let url = resolvedURL(for: trimmed) else { continue }
+            configureSessionIfNeeded()
+            _ = pooledPlayer(for: trimmed, url: url)
+        }
+    }
+
+    private func resolvedURL(for trackID: String) -> URL? {
+        if let cached = urlCache[trackID] {
+            return cached
+        }
         guard let url = BundleMusicAudioPlayer.audioURL(
             for: trackID,
             subdirectories: ["Audio/FX", "Audio"]
         ) else {
-            return false
+            return nil
         }
-        configureSessionIfNeeded()
-        do {
-            let player = try AVAudioPlayer(contentsOf: url)
-            player.numberOfLoops = 0
-            player.volume = min(1, max(0, volume))
-            player.prepareToPlay()
-            insert(player)
-            return player.play()
-        } catch {
-            return false
-        }
+        urlCache[trackID] = url
+        return url
     }
 
-    private func insert(_ player: AVAudioPlayer) {
-        if players.count < channelCount {
-            players.append(player)
-            return
+    private func pooledPlayer(for trackID: String, url: URL) -> AVAudioPlayer? {
+        var pool = pools[trackID] ?? []
+
+        if let idle = pool.first(where: { !$0.isPlaying }) {
+            touchTrackOrder(trackID)
+            evictIfNeeded()
+            return idle
         }
-        let index = nextSlot % channelCount
-        nextSlot = (index + 1) % channelCount
-        players[index].stop()
-        players[index] = player
+
+        if pool.count < Self.playersPerTrack {
+            do {
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.numberOfLoops = 0
+                player.prepareToPlay()
+                decodeCount += 1
+                pool.append(player)
+                pools[trackID] = pool
+                touchTrackOrder(trackID)
+                evictIfNeeded()
+                return player
+            } catch {
+                return nil
+            }
+        }
+
+        let oldest = pool[0]
+        oldest.stop()
+        pools[trackID] = pool
+        touchTrackOrder(trackID)
+        evictIfNeeded()
+        return oldest
+    }
+
+    private func touchTrackOrder(_ trackID: String) {
+        trackOrder.removeAll { $0 == trackID }
+        trackOrder.append(trackID)
+    }
+
+    private func evictIfNeeded() {
+        while trackOrder.count > Self.maxCachedTracks {
+            let victim = trackOrder.removeFirst()
+            if let players = pools.removeValue(forKey: victim) {
+                for player in players {
+                    player.stop()
+                }
+            }
+            durationCache[victim] = nil
+        }
     }
 
     private func configureSessionIfNeeded() {

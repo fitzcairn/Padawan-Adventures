@@ -34,6 +34,18 @@ struct SpriteLibraryResidencyTests {
     }
 
     @Test
+    func uiImageConvertsOnlyFirstFrame() {
+        let library = SpriteLibrary()
+        let frames = (0..<3).map { _ in
+            SpriteFrame(texture: Self.makeTexture(width: 8, height: 8), duration: 0.1)
+        }
+        library.seedForTesting(id: "icon", animations: ["idle": SpriteAnimation(frames: frames)])
+        #expect(library.uiImagesCacheCount == 0)
+        #expect(library.uiImage(id: "icon", named: "idle") != nil)
+        #expect(library.uiImagesCacheCount == 0)
+    }
+
+    @Test
     func sharedTexturesAreCountedOnce() {
         let library = SpriteLibrary()
         let shared = Self.makeTexture(width: 10, height: 10)

@@ -18,19 +18,22 @@ enum SpriteSheetLoader {
         chromaKeyFeather: UInt8 = 0,
         chromaKeySmooth: Int = 0,
         bundle: Bundle = .main,
-        trim: Bool = true
+        trim: Bool = true,
+        preferBaked: Bool = true
     ) throws -> SpriteAnimation {
         let sheetURL = try resourceURL(
             named: sheet,
             extensions: ["png", "jpg", "jpeg"],
             root: root,
-            bundle: bundle
+            bundle: bundle,
+            preferBaked: preferBaked
         )
         let atlasURL = try resourceURL(
             named: atlas,
             extensions: ["json"],
             root: root,
-            bundle: bundle
+            bundle: bundle,
+            preferBaked: preferBaked
         )
         let isBaked = isBakedResource(at: sheetURL)
 
@@ -642,12 +645,14 @@ enum SpriteSheetLoader {
         )
     }
 
-    /// Resolves sheet/atlas basenames under `root`, preferring `Baked/` subdirectories.
+    /// Resolves sheet/atlas basenames under `root`, preferring `Baked/` subdirectories
+    /// when `preferBaked` is true (production default).
     static func resourceURL(
         named name: String,
         extensions: [String],
         root: String,
-        bundle: Bundle
+        bundle: Bundle,
+        preferBaked: Bool = true
     ) throws -> URL {
         let folderHint = animationFolderName(from: name)
         // Enemy YAML roots are `Enemies/<Type>`; with `Resources/Sprites` as an
@@ -661,8 +666,10 @@ enum SpriteSheetLoader {
 
         var subdirectories: [String] = []
         for searchRoot in searchRoots {
-            subdirectories.append("\(searchRoot)/Baked")
-            subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
+            if preferBaked {
+                subdirectories.append("\(searchRoot)/Baked")
+                subdirectories.append("\(searchRoot)/\(folderHint)/Baked")
+            }
             subdirectories.append(searchRoot)
             subdirectories.append("\(searchRoot)/\(folderHint)")
         }

@@ -11,6 +11,14 @@ enum HudVitalIcon {
     @MainActor
     private static var didAttemptLoad: Set<HudVitalIcon> = []
 
+    /// Seeds the cache from a bootstrap-loaded sprite. Ignores `nil` so the lazy fallback remains.
+    @MainActor
+    func seed(_ image: UIImage?) {
+        guard let image else { return }
+        Self.cached[self] = image
+        Self.didAttemptLoad.insert(self)
+    }
+
     /// Upright item UIImage, or nil when the sprite is missing / malformed.
     @MainActor
     func uiImage() -> UIImage? {
@@ -78,26 +86,6 @@ enum HudVitalIcon {
 
     @MainActor
     private static func load(id: String) -> UIImage? {
-        guard let items = try? ItemsConfig.loadFromBundle(),
-              let config = items.spriteConfig(id: id),
-              case let .sheet(sheet, atlas)? = config.animations["idle"]
-        else {
-            return nil
-        }
-
-        let animation = try? SpriteSheetLoader.loadAnimation(
-            sheet: sheet,
-            atlas: atlas,
-            root: config.root,
-            chromaKey: config.chromaKey,
-            chromaKeyTolerance: config.chromaKeyTolerance,
-            chromaKeyFeather: config.chromaKeyFeather,
-            chromaKeySmooth: config.chromaKeySmooth,
-            trim: config.trim
-        )
-        guard let frame = animation?.frames.first else { return nil }
-        // Undo the SpriteKit prep flip, exactly as `SpriteLibrary.uiImage` does.
-        let upright = SpriteSheetLoader.flipAroundXAxis(frame.texture.cgImage())
-        return UIImage(cgImage: upright, scale: 1, orientation: .up).preparedForScreen()
+        ItemIconLoader.firstFrameImage(itemID: id)
     }
 }

@@ -47,8 +47,6 @@ final class AppSession {
     let pitSpriteSetLibrary: PitSpriteSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
-    /// Still frames of treasure parts for the level-select inventory row.
-    let treasureIcons: SpriteIconLibrary
     /// Enemy sprite ids warmed at bootstrap for every playable level; kept across levels.
     private let retainedEnemySpriteIDs: Set<String>
     /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
@@ -79,7 +77,6 @@ final class AppSession {
         letterSpriteSetLibrary: LetterSpriteSetLibrary? = nil,
         pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
-        treasureIcons: SpriteIconLibrary? = nil,
         retainedEnemySpriteIDs: Set<String> = []
     ) {
         self.appConfig = appConfig
@@ -108,7 +105,6 @@ final class AppSession {
         self.letterSpriteSetLibrary = letterSpriteSetLibrary ?? LetterSpriteSetLibrary()
         self.pitSpriteSetLibrary = pitSpriteSetLibrary ?? PitSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
-        self.treasureIcons = treasureIcons ?? SpriteIconLibrary()
         self.retainedEnemySpriteIDs = retainedEnemySpriteIDs
     }
 
@@ -170,7 +166,7 @@ final class AppSession {
     func ensureTreasureIconsLoaded(ids: [String]) async {
         for id in ids {
             guard let sprite = itemsConfig.spriteConfig(id: id) else { continue }
-            await treasureIcons.ensureLoaded(sprite, id: id)
+            await spriteLibrary.ensureLoaded(sprite, id: id)
         }
     }
 
@@ -181,6 +177,7 @@ final class AppSession {
             "player_combat",
             "energy",
             "health",
+            "coin",
             "treasure",
             "logo",
             "kam",
@@ -378,6 +375,10 @@ final class AppSession {
             try loaded.validate()
             return loaded
         }
+        // Warm shared + player FX so the first gameplay cue does not decode on the main thread.
+        var warmTrackIDs = Array(soundSettings.fx.events.values)
+        warmTrackIDs.append(contentsOf: playerConfig.fx.events.values)
+        SoundEffectsController.shared.prepare(trackIDs: warmTrackIDs)
 
         let enemyConfig = ConfigStore.loadOrFallback("enemies", fallback: EnemyConfig.fallback) {
             let loaded = try EnemyConfig.loadFromBundle()
@@ -428,7 +429,6 @@ final class AppSession {
         await report(configEnd)
 
         let backgroundLibrary = BackgroundLibrary()
-        let treasureIcons = SpriteIconLibrary()
         let levelDescriptors = LevelCatalog.loadFromBundle()
 
         // 1) Level-select planet art (+ upright UIImages for first paint).
@@ -458,23 +458,9 @@ final class AppSession {
         }
         await report(backgroundsEnd)
 
-        // 3) Inventory treasure icons + coin + HUD vitals.
+        // 3) (Treasure / coin / HUD icons seed after item sprites load in step 5.)
         let treasureIDs = levelDescriptors.compactMap(\.treasure)
-        let iconsEnd = treasureIDs.isEmpty ? backgroundsEnd : 0.48
-        if !treasureIDs.isEmpty {
-            let total = treasureIDs.count
-            for (index, id) in treasureIDs.enumerated() {
-                if let sprite = itemsConfig.spriteConfig(id: id) {
-                    await treasureIcons.ensureLoaded(sprite, id: id)
-                }
-                onProgress?(
-                    LoadProgress.map(Double(index + 1) / Double(total), from: backgroundsEnd, to: iconsEnd)
-                )
-            }
-        }
-        _ = ScoreCoinIcon.uiImage()
-        _ = HudVitalIcon.health.uiImage()
-        _ = HudVitalIcon.energy.uiImage()
+        let iconsEnd = backgroundsEnd
         await report(iconsEnd)
 
         // 4) Player walk / combat sprites.
@@ -491,11 +477,12 @@ final class AppSession {
         }
         await report(playerEnd)
 
-        // 5) Shared pickups + every level treasure part animation.
+        // 5) Shared pickups + coin + every level treasure part animation.
         var itemIDs: Set<String> = [
             PickupKind.health.rawValue,
             PickupKind.energy.rawValue,
             PickupKind.treasure.rawValue,
+            "coin",
         ]
         itemIDs.formUnion(treasureIDs)
         let itemEntries = itemsConfig.items
@@ -516,6 +503,9 @@ final class AppSession {
                 }
             }
         }
+        ScoreCoinIcon.seed(spriteLibrary.uiImage(id: "coin"))
+        HudVitalIcon.health.seed(spriteLibrary.uiImage(id: "health"))
+        HudVitalIcon.energy.seed(spriteLibrary.uiImage(id: "energy"))
         await report(itemsEnd)
 
         // 6) Enemy sprites used by any playable level (not the entire unused catalog).
@@ -610,7 +600,6 @@ final class AppSession {
             letterSpriteSetLibrary: letterSpriteSetLibrary,
             pitSpriteSetLibrary: pitSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary,
-            treasureIcons: treasureIcons,
             retainedEnemySpriteIDs: enemySpriteIDs
         )
     }

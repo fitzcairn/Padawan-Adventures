@@ -131,4 +131,31 @@ struct ConfigAuditTests {
             )
         }
     }
+
+    @Test func misfiledMusicFailsAudit() throws {
+        let app = try WorldLoader.loadConfigFromBundle()
+        let words = try WordCatalog.loadFromBundle()
+        let letters = try LetterCatalog.loadFromBundle()
+        var level = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory,
+            wordCatalog: words,
+            letterCatalog: letters
+        )
+        // sfx_win exists under Audio/FX only — must not satisfy a music cue.
+        level.music = "sfx_win"
+        #expect(throws: ConfigAuditError.self) {
+            try ConfigAudit.run(
+                app: app,
+                levels: [level],
+                enemies: try EnemyConfig.loadFromBundle(),
+                items: try ItemsConfig.loadFromBundle(),
+                words: words,
+                letters: letters,
+                audio: try SoundSettings.loadFromBundle(),
+                screens: try ScreensConfig.loadFromBundle(),
+                player: try PlayerConfig.loadFromBundle()
+            )
+        }
+    }
 }

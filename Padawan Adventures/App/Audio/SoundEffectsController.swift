@@ -28,6 +28,11 @@ final class SoundEffectsController {
         self.commonFx = commonFx
     }
 
+    /// Warms the clip pool for the given track ids without starting playback.
+    func prepare(trackIDs: [String]) {
+        player.prepare(trackIDs: trackIDs)
+    }
+
     /// Plays a track by basename under `Resources/Audio/FX/`. Missing assets are ignored.
     func play(trackID: String) {
         guard soundEffectsEnabled else { return }
@@ -51,5 +56,18 @@ final class SoundEffectsController {
             return
         }
         play(event: event, from: commonFx)
+    }
+
+    /// Clip length, or nil for a blank or unresolvable track.
+    func duration(of trackID: String?) -> TimeInterval? {
+        guard let trimmed = trackID?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        return player.duration(of: trimmed)
+    }
+
+    /// Clip length for timing a follow-up action, with the puzzle scenes' historic
+    /// 0.7s fallback and 0.35s floor.
+    func cueDuration(of trackID: String?) -> TimeInterval {
+        max(duration(of: trackID) ?? 0.7, 0.35)
     }
 }

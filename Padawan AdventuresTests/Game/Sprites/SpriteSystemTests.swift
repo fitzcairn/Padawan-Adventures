@@ -189,8 +189,13 @@ struct SpriteSystemTests {
 
     @Test func chromaKeyPreservesSpritesheetTopLeftOrigin() throws {
         // Regression: a Y-flip inside chroma-key makes atlas (0,0) read the bottom row.
-        let sheetURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        // Use the unbaked source sheet — baked art already had chroma applied offline.
+        let sheetURL = try SpriteSheetLoader.resourceURL(
+            named: "idle_northeast-spritesheet",
+            extensions: ["png"],
+            root: "Sprites/Player",
+            bundle: .main,
+            preferBaked: false
         )
         let original = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(to: original, key: (0, 0, 0))
@@ -441,8 +446,13 @@ struct SpriteSystemTests {
     }
 
     @Test @MainActor func idleNortheastPlaysSpritesheetTopLeftToBottomRight() throws {
-        let atlasURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        // Source (unbaked) atlas is a regular 5×5 grid of 256×256 cells.
+        let atlasURL = try SpriteSheetLoader.resourceURL(
+            named: "idle_northeast-atlas",
+            extensions: ["json"],
+            root: "Sprites/Player",
+            bundle: .main,
+            preferBaked: false
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let ordered = atlas.orderedFrames
@@ -460,8 +470,12 @@ struct SpriteSystemTests {
             #expect(entry.frame.h == frameH)
         }
 
-        let sheetURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        let sheetURL = try SpriteSheetLoader.resourceURL(
+            named: "idle_northeast-spritesheet",
+            extensions: ["png"],
+            root: "Sprites/Player",
+            bundle: .main,
+            preferBaked: false
         )
         let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(
@@ -482,12 +496,14 @@ struct SpriteSystemTests {
         let expectedTrimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(atlasCrops)
             .map(SpriteSheetLoader.flipAroundXAxis)
 
-        // Production load path (same as SpriteLibrary / AnimatedSpriteNode).
+        // Unbaked load path: chroma + shared trim + X-flip (matches expectedTrimmed).
+        // Production prefers Baked/ when present; this regression pins the source pipeline.
         let idle = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
             root: "Sprites/Player",
-            chromaKey: "#000000"
+            chromaKey: "#000000",
+            preferBaked: false
         )
         #expect(idle.frames.count == expectedTrimmed.count)
 
@@ -520,12 +536,13 @@ struct SpriteSystemTests {
     }
 
     @Test func loadAnimationTrimFalseKeepsAtlasRectSize() throws {
-        let atlasURL = try #require(
-            Bundle.main.url(
-                forResource: "idle_northeast-atlas",
-                withExtension: "json",
-                subdirectory: "Sprites/Player"
-            ) ?? Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        // Trim only applies on the unbaked path; baked sheets are already trimmed.
+        let atlasURL = try SpriteSheetLoader.resourceURL(
+            named: "idle_northeast-atlas",
+            extensions: ["json"],
+            root: "Sprites/Player",
+            bundle: .main,
+            preferBaked: false
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let frame = try #require(atlas.orderedFrames.first?.frame)
@@ -535,14 +552,16 @@ struct SpriteSystemTests {
             atlas: "idle_northeast-atlas",
             root: "Sprites/Player",
             chromaKey: "#000000",
-            trim: true
+            trim: true,
+            preferBaked: false
         )
         let untrimmed = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
             root: "Sprites/Player",
             chromaKey: "#000000",
-            trim: false
+            trim: false,
+            preferBaked: false
         )
 
         let untrimmedSize = untrimmed.frames[0].texture.size()

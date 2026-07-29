@@ -63,7 +63,7 @@ struct LevelSelectView: View {
         // Prefer already-warmed treasure icons so inventory never flashes SF Symbols.
         var seededIcons: [String: UIImage] = [:]
         for level in resolvedLevels {
-            if let id = level.treasure, let image = session.treasureIcons.uiImage(id: id) {
+            if let id = level.treasure, let image = session.spriteLibrary.uiImage(id: id) {
                 seededIcons[id] = image
             }
         }
@@ -243,7 +243,7 @@ struct LevelSelectView: View {
         // Warm the new treasure icon before fading it in.
         if let treasureID = levels.first(where: { $0.resourceName == completed })?.treasure {
             await session.ensureTreasureIconsLoaded(ids: [treasureID])
-            if let image = session.treasureIcons.uiImage(id: treasureID) {
+            if let image = session.spriteLibrary.uiImage(id: treasureID) {
                 inventoryIcons[treasureID] = image
             }
         }
@@ -450,7 +450,7 @@ struct LevelSelectView: View {
     private func refreshInventoryIcons(ids: [String]) {
         var icons: [String: UIImage] = [:]
         for id in ids {
-            if let image = session.treasureIcons.uiImage(id: id) {
+            if let image = session.spriteLibrary.uiImage(id: id) {
                 icons[id] = image
             }
         }

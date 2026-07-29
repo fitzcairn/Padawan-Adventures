@@ -1,4 +1,3 @@
-import AVFoundation
 import SpriteKit
 import UIKit
 
@@ -743,7 +742,7 @@ final class PitScene: SKScene {
             actions.append(SKAction.run {
                 SoundEffectsController.shared.play(trackID: progressiveID)
             })
-            actions.append(SKAction.wait(forDuration: audioDuration(for: progressiveID)))
+            actions.append(SKAction.wait(forDuration: SoundEffectsController.shared.cueDuration(of: progressiveID)))
         }
         if let completion {
             actions.append(SKAction.run(completion))
@@ -753,17 +752,6 @@ final class PitScene: SKScene {
             return
         }
         run(SKAction.sequence(actions), withKey: Self.connectedSoundActionKey)
-    }
-
-    private func audioDuration(for trackID: String) -> TimeInterval {
-        guard let url = BundleMusicAudioPlayer.audioURL(
-            for: trackID,
-            subdirectories: ["Audio/FX", "Audio"]
-        ),
-        let player = try? AVAudioPlayer(contentsOf: url) else {
-            return 0.7
-        }
-        return max(player.duration, 0.35)
     }
 
     private func publishTimer() {
@@ -782,7 +770,7 @@ final class PitScene: SKScene {
             actions.append(SKAction.run {
                 SoundEffectsController.shared.play(trackID: spellingID)
             })
-            actions.append(SKAction.wait(forDuration: audioDuration(for: spellingID)))
+            actions.append(SKAction.wait(forDuration: SoundEffectsController.shared.cueDuration(of: spellingID)))
         }
         actions.append(SKAction.run { [weak self] in
             guard let self else { return }
@@ -916,15 +904,10 @@ final class PitScene: SKScene {
             completion()
             return
         }
-        let flash = SKAction.sequence([
-            SKAction.run { self.applyPlatformTint(platform, color: self.platformWrongFlash, blend: 0.55) },
-            SKAction.wait(forDuration: 0.12),
-            SKAction.run { self.clearPlatformTint(platform) },
-            SKAction.wait(forDuration: 0.12),
-            SKAction.run { self.applyPlatformTint(platform, color: self.platformWrongFlash, blend: 0.55) },
-            SKAction.wait(forDuration: 0.12),
-            SKAction.run { self.clearPlatformTint(platform) },
-        ])
+        let flash = SKAction.doubleFlash(
+            apply: { self.applyPlatformTint(platform, color: self.platformWrongFlash, blend: 0.55) },
+            clear: { self.clearPlatformTint(platform) }
+        )
         platform.run(flash, completion: completion)
     }
 }

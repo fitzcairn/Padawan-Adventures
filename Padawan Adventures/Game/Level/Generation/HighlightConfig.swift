@@ -52,6 +52,20 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
     }
 
     init(from decoder: Decoder) throws {
+        let single = try? decoder.singleValueContainer()
+        if let single, let name = try? single.decode(String.self) {
+            switch name {
+            case "treasure_gold": self = .treasureGold
+            case "enemy_defeat": self = .enemyDefeat
+            case "combat_impact": self = .combatImpact
+            default:
+                throw DecodingError.dataCorruptedError(
+                    in: single,
+                    debugDescription: "unknown highlight preset '\(name)'"
+                )
+            }
+            return
+        }
         let container = try decoder.container(keyedBy: CodingKeys.self)
         color = try container.decodeIfPresent(String.self, forKey: .color) ?? "#FFD54F"
         birthRate = try container.decodeIfPresent(Double.self, forKey: .birthRate) ?? 22
@@ -64,6 +78,9 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
 
     /// Parsed tint, or a fallback yellow when the hex string is malformed.
     var uiColor: UIColor { UIColor(hex: color) ?? .systemYellow }
+
+    /// Shared gold halo for level treasure pickups (`highlight: treasure_gold`).
+    static let treasureGold = HighlightConfig()
 
     /// Red burst used when a defeated enemy fades out of the world.
     static let enemyDefeat = HighlightConfig(

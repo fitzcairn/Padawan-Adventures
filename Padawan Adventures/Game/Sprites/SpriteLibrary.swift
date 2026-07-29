@@ -224,19 +224,27 @@ final class SpriteLibrary {
         return built
     }
 
+    /// Test seam: entries in the all-frames UIImage cache (must stay 0 after `uiImage`).
+    var uiImagesCacheCount: Int { uiImagesCache.count }
+
     /// First frame as a UIKit image oriented for SwiftUI / UIKit.
     ///
     /// Undoes the SpriteKit prep flip applied in `SpriteSheetLoader.loadAnimation`.
+    /// Converts only frame 0 — does not materialise the full clip via `uiImages`.
     func uiImage(id: String, named name: String = "idle") -> UIImage? {
         let key = "\(id)|\(name)"
         if let cached = uiImageCache[key] {
             return cached
         }
-        guard let frames = uiImages(id: id, named: name), let first = frames.first else {
+        guard let animation = animation(id: id, named: name),
+              let frame = animation.frames.first else {
             return nil
         }
-        uiImageCache[key] = first.image
-        return first.image
+        let cgImage = frame.texture.cgImage()
+        let upright = SpriteSheetLoader.flipAroundXAxis(cgImage)
+        let image = UIImage(cgImage: upright, scale: 1, orientation: .up).preparedForScreen()
+        uiImageCache[key] = image
+        return image
     }
 
     /// All frames as upright UIKit images with per-frame durations (for SwiftUI looping).

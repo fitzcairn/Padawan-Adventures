@@ -5,7 +5,9 @@ import Testing
 @MainActor
 final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var playCalls: [(trackID: String, volume: Float)] = []
+    private(set) var preparedTrackIDs: [String] = []
     var missingTrackIDs: Set<String> = []
+    var durations: [String: TimeInterval] = [:]
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
@@ -14,6 +16,14 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
         }
         playCalls.append((trackID, volume))
         return true
+    }
+
+    func duration(of trackID: String) -> TimeInterval? {
+        durations[trackID]
+    }
+
+    func prepare(trackIDs: [String]) {
+        preparedTrackIDs.append(contentsOf: trackIDs)
     }
 
     var playedTrackIDs: [String] {
@@ -110,6 +120,38 @@ struct SoundEffectsControllerTests {
         controller.play(trackID: "sfx_b")
         controller.play(trackID: "sfx_c")
         #expect(mock.playedTrackIDs == ["sfx_a", "sfx_b", "sfx_c"])
+    }
+
+    @Test func durationReturnsNilForBlankOrUnknown() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        #expect(controller.duration(of: nil) == nil)
+        #expect(controller.duration(of: "") == nil)
+        #expect(controller.duration(of: "   ") == nil)
+        #expect(controller.duration(of: "missing") == nil)
+    }
+
+    @Test func durationReadsFromPlayer() {
+        let mock = MockSoundEffectPlayer()
+        mock.durations = ["sfx_win": 1.25]
+        let controller = SoundEffectsController(player: mock)
+        #expect(controller.duration(of: "sfx_win") == 1.25)
+    }
+
+    @Test func cueDurationAppliesFallbackAndFloor() {
+        let mock = MockSoundEffectPlayer()
+        mock.durations = ["short": 0.1, "long": 1.25]
+        let controller = SoundEffectsController(player: mock)
+        #expect(controller.cueDuration(of: "missing") == 0.7)
+        #expect(controller.cueDuration(of: "short") == 0.35)
+        #expect(controller.cueDuration(of: "long") == 1.25)
+    }
+
+    @Test func prepareForwardsTrackIDs() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.prepare(trackIDs: ["sfx_win", "sfx_error"])
+        #expect(mock.preparedTrackIDs == ["sfx_win", "sfx_error"])
     }
 }
 

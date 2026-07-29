@@ -44,7 +44,6 @@ final class GateScene: SKScene {
     /// Connected prefix when the current drag began; used to detect non-advancing moves.
     private var connectedPrefixAtDragStart: String?
     private var placementRNG = SystemRandomNumberGenerator()
-    private var capacitorTexture: SKTexture?
 
     private let capacitorWrongFlash = UIColor.systemRed
     /// Bright blue tint for the completed start → letters → stop chain.
@@ -65,6 +64,14 @@ final class GateScene: SKScene {
         let bolt: SKShapeNode
         let core: SKShapeNode
         let branch: SKShapeNode
+        let boltVariants: [CGPath]
+        let branchVariants: [CGPath]
+    }
+
+    /// Test seam: pre-baked path counts per connector, to prove geometry is not
+    /// regenerated per frame.
+    var electricityVariantCounts: [(bolt: Int, branch: Int)] {
+        connectorSegments.map { ($0.boltVariants.count, $0.branchVariants.count) }
     }
 
     init(
@@ -195,10 +202,6 @@ final class GateScene: SKScene {
         letterNodes = [:]
         connectorSegments = []
         electricityRefreshAccumulator = 0
-        if capacitorTexture == nil {
-            capacitorTexture = GateSpellingCapacitorSprites.load()
-        }
-
         if let background = GateMinigameBackground.spelling(sceneSize: size) {
             addChild(background)
         }
@@ -261,7 +264,7 @@ final class GateScene: SKScene {
 
         var labelOffsetY: CGFloat = 0
         var spriteHeight: CGFloat = radius * 2
-        if let texture = capacitorTexture,
+        if let texture = GateSpellingCapacitorSprites.load(),
            let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: radius * 2) {
             capacitor.zPosition = 0
             root.addChild(capacitor)
@@ -341,7 +344,7 @@ final class GateScene: SKScene {
     }
 
     private func makeEndpointNode(radius: CGFloat, name: String) -> SKNode {
-        if let texture = capacitorTexture,
+        if let texture = GateSpellingCapacitorSprites.load(),
            let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: radius * 2) {
             let root = SKNode()
             root.name = name
@@ -362,32 +365,43 @@ final class GateScene: SKScene {
         return circle
     }
 
+    /// Test seam: builds one connector with pre-baked bolt/branch variants.
+    func addConnectorLineForTesting(from start: CGPoint, to end: CGPoint) {
+        addConnectorLine(from: start, to: end)
+    }
+
+    /// Test seam: force one electricity refresh cycle.
+    func refreshElectricityConnectorsForTesting() {
+        electricityRefreshAccumulator = Self.electricityRefreshInterval
+        refreshElectricityConnectors(dt: 0)
+    }
+
     private func addConnectorLine(from start: CGPoint, to end: CGPoint) {
         let container = SKNode()
         container.name = "connector"
         container.zPosition = 5
 
-        let baseline = makeConnectorStrokeNode(
+        let baseline = makeGlowStroke(
             lineWidth: 4,
             color: connectorColor.withAlphaComponent(0.35),
             glowWidth: 0
         )
-        let glow = makeConnectorStrokeNode(
+        let glow = makeGlowStroke(
             lineWidth: 10,
             color: connectorColor.withAlphaComponent(0.45),
             glowWidth: 6
         )
-        let bolt = makeConnectorStrokeNode(
+        let bolt = makeGlowStroke(
             lineWidth: 4.5,
             color: connectorColor,
             glowWidth: 2
         )
-        let core = makeConnectorStrokeNode(
+        let core = makeGlowStroke(
             lineWidth: 1.8,
             color: connectorCoreColor,
             glowWidth: 0
         )
-        let branch = makeConnectorStrokeNode(
+        let branch = makeGlowStroke(
             lineWidth: 2.2,
             color: connectorColor.withAlphaComponent(0.9),
             glowWidth: 1
@@ -404,6 +418,18 @@ final class GateScene: SKScene {
         container.addChild(branch)
         addChild(container)
 
+        let straight = CGMutablePath()
+        straight.move(to: start)
+        straight.addLine(to: end)
+        baseline.path = straight
+
+        let boltVariants = (0..<6).map { _ in
+            makeElectricityPath(from: start, to: end, using: &electricityRNG)
+        }
+        let branchVariants = (0..<4).compactMap { _ in
+            makeElectricityBranchPath(from: start, to: end, using: &electricityRNG)
+        }
+
         var connector = ElectricConnector(
             start: start,
             end: end,
@@ -412,26 +438,12 @@ final class GateScene: SKScene {
             glow: glow,
             bolt: bolt,
             core: core,
-            branch: branch
+            branch: branch,
+            boltVariants: boltVariants,
+            branchVariants: branchVariants
         )
         applyElectricityPaths(to: &connector)
         connectorSegments.append(connector)
-    }
-
-    private func makeConnectorStrokeNode(
-        lineWidth: CGFloat,
-        color: UIColor,
-        glowWidth: CGFloat
-    ) -> SKShapeNode {
-        let node = SKShapeNode()
-        node.strokeColor = color
-        node.fillColor = .clear
-        node.lineWidth = lineWidth
-        node.lineCap = .round
-        node.lineJoin = .round
-        node.glowWidth = glowWidth
-        node.isAntialiased = true
-        return node
     }
 
     private func clearConnectorSegments() {
@@ -454,18 +466,11 @@ final class GateScene: SKScene {
     }
 
     private func applyElectricityPaths(to connector: inout ElectricConnector) {
-        let start = connector.start
-        let end = connector.end
-
-        let straight = CGMutablePath()
-        straight.move(to: start)
-        straight.addLine(to: end)
-        connector.baseline.path = straight
-
-        let boltPath = makeElectricityPath(from: start, to: end, using: &electricityRNG)
-        connector.glow.path = boltPath
-        connector.bolt.path = boltPath
-        connector.core.path = boltPath
+        if let boltPath = connector.boltVariants.randomElement(using: &electricityRNG) {
+            connector.glow.path = boltPath
+            connector.bolt.path = boltPath
+            connector.core.path = boltPath
+        }
 
         // Brightness flicker — keeps the arc feeling alive between re-jags.
         let boltAlpha = CGFloat.random(in: 0.72...1.0, using: &electricityRNG)
@@ -476,7 +481,7 @@ final class GateScene: SKScene {
 
         // Occasional short side-arc branching off the main span.
         if CGFloat.random(in: 0...1, using: &electricityRNG) < 0.32,
-           let branchPath = makeElectricityBranchPath(from: start, to: end, using: &electricityRNG) {
+           let branchPath = connector.branchVariants.randomElement(using: &electricityRNG) {
             connector.branch.path = branchPath
             connector.branch.alpha = CGFloat.random(in: 0.35...0.85, using: &electricityRNG)
             connector.branch.isHidden = false

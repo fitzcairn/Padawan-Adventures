@@ -9,6 +9,14 @@ enum ScoreCoinIcon {
     @MainActor
     private static var didAttemptLoad = false
 
+    /// Seeds the cache from a bootstrap-loaded sprite. Ignores `nil` so the lazy fallback remains.
+    @MainActor
+    static func seed(_ image: UIImage?) {
+        guard let image else { return }
+        cached = image
+        didAttemptLoad = true
+    }
+
     /// Upright coin UIImage, or nil when the sprite is missing / malformed.
     @MainActor
     static func uiImage() -> UIImage? {
@@ -64,26 +72,6 @@ enum ScoreCoinIcon {
 
     @MainActor
     private static func load() -> UIImage? {
-        guard let items = try? ItemsConfig.loadFromBundle(),
-              let config = items.spriteConfig(id: "coin"),
-              case let .sheet(sheet, atlas)? = config.animations["idle"]
-        else {
-            return nil
-        }
-
-        let animation = try? SpriteSheetLoader.loadAnimation(
-            sheet: sheet,
-            atlas: atlas,
-            root: config.root,
-            chromaKey: config.chromaKey,
-            chromaKeyTolerance: config.chromaKeyTolerance,
-            chromaKeyFeather: config.chromaKeyFeather,
-            chromaKeySmooth: config.chromaKeySmooth,
-            trim: config.trim
-        )
-        guard let frame = animation?.frames.first else { return nil }
-        // Undo the SpriteKit prep flip, exactly as `SpriteLibrary.uiImage` does.
-        let upright = SpriteSheetLoader.flipAroundXAxis(frame.texture.cgImage())
-        return UIImage(cgImage: upright, scale: 1, orientation: .up).preparedForScreen()
+        ItemIconLoader.firstFrameImage(itemID: "coin")
     }
 }

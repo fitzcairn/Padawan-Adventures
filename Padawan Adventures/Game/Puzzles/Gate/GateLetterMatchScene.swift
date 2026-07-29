@@ -1,4 +1,3 @@
-import AVFoundation
 import SpriteKit
 import UIKit
 
@@ -392,8 +391,8 @@ final class GateLetterMatchScene: SKScene {
 
         let playNextPrompt = events.contains(.playTargetPronunciation)
         let didWin = events.contains(.won)
-        let nameDuration = audioDuration(for: nameTrackID)
-        let correctDuration = audioDuration(for: correctSoundTrackID)
+        let nameDuration = SoundEffectsController.shared.cueDuration(of: nameTrackID)
+        let correctDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
         /// Beat between “correct” feedback and the next target pronunciation.
         let nextLetterPause: TimeInterval = 0.45
 
@@ -449,30 +448,27 @@ final class GateLetterMatchScene: SKScene {
         inputLocked = true
         let switchNode = switchNodes[id]
         let fallback = letterNodes[id]?.childNode(withName: "switchFallback") as? SKShapeNode
-        let nameDuration = audioDuration(for: engine.letters.first { $0.id == id }?.nameTrackID)
+        let nameDuration = SoundEffectsController.shared.cueDuration(
+            of: engine.letters.first { $0.id == id }?.nameTrackID
+        )
         let waitName = SKAction.wait(forDuration: nameDuration)
-        let flashOn = SKAction.run { [weak self] in
-            if let switchNode {
-                switchNode.color = self?.squareWrongFill ?? .systemRed
-                switchNode.colorBlendFactor = 0.55
-            } else {
-                fallback?.fillColor = self?.squareWrongFill ?? .systemRed
+        let flashTwice = SKAction.doubleFlash(
+            apply: { [weak self] in
+                if let switchNode {
+                    switchNode.color = self?.squareWrongFill ?? .systemRed
+                    switchNode.colorBlendFactor = 0.55
+                } else {
+                    fallback?.fillColor = self?.squareWrongFill ?? .systemRed
+                }
+            },
+            clear: { [weak self] in
+                if let switchNode {
+                    switchNode.colorBlendFactor = 0
+                } else {
+                    fallback?.fillColor = self?.squareFill ?? .brown
+                }
             }
-        }
-        let flashOff = SKAction.run { [weak self] in
-            if let switchNode {
-                switchNode.colorBlendFactor = 0
-            } else {
-                fallback?.fillColor = self?.squareFill ?? .brown
-            }
-        }
-        let flash = SKAction.sequence([
-            flashOn,
-            SKAction.wait(forDuration: 0.12),
-            flashOff,
-            SKAction.wait(forDuration: 0.12),
-        ])
-        let flashTwice = SKAction.repeat(flash, count: 2)
+        )
         let playWrongPronunciation = SKAction.run {
             SoundEffectsController.shared.play(trackID: pronunciationTrackID)
         }
@@ -480,18 +476,6 @@ final class GateLetterMatchScene: SKScene {
             self?.inputLocked = false
         }
         run(SKAction.sequence([waitName, flashTwice, playWrongPronunciation, unlock]))
-    }
-
-    private func audioDuration(for trackID: String?) -> TimeInterval {
-        guard let trackID, !trackID.isEmpty,
-              let url = BundleMusicAudioPlayer.audioURL(
-                for: trackID,
-                subdirectories: ["Audio/FX", "Audio"]
-              ),
-              let player = try? AVAudioPlayer(contentsOf: url) else {
-            return 0.7
-        }
-        return max(player.duration, 0.35)
     }
 
     private func publishTimer() {
