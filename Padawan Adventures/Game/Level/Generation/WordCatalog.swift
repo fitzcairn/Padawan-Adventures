@@ -10,7 +10,7 @@ nonisolated struct WordSpec: Decodable, Equatable, Sendable {
 
 /// Shared vocabulary + word FX loaded from `Resources/Config/Catalogs/words.yaml` for reuse across minigames.
 nonisolated struct WordCatalog: Equatable, Sendable {
-    static let subdirectory = "Catalogs"
+    static let subdirectory = ConfigPath.catalogRoot
     static let defaultFxPrefix = "sfx_word_"
 
     /// Sorted by word for deterministic iteration / RNG.

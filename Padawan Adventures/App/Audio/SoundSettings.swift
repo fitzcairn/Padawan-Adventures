@@ -45,9 +45,7 @@ nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
         named name: String = "audio",
         withExtension ext: String = "yaml"
     ) throws -> SoundSettings {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: nil)
-        )
+        let data = try ConfigStore.data(at: .config(name))
         return try decode(from: data)
     }
 

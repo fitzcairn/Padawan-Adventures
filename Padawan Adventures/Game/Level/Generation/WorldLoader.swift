@@ -59,9 +59,7 @@ nonisolated enum WorldLoader {
         levelNamed levelName: String = "_defaults",
         levelSubdirectory: String? = LevelCatalog.subdirectory
     ) throws -> (config: AppConfig, level: LevelConfig) {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: nil)
-        )
+        let data = try ConfigStore.data(at: .config(name))
         let config = try decodeConfig(from: data)
         let level = try LevelConfig.loadFromBundle(
             named: levelName,

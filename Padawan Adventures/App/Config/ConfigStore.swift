@@ -70,10 +70,7 @@ nonisolated enum ConfigStore {
         return try rawTree(
             from: data,
             parentDataNamed: { parentName in
-                try self.data(
-                    at: ConfigPath(basename: parentName, subdirectory: nil),
-                    bundle: bundle
-                )
+                try self.data(at: .config(parentName), bundle: bundle)
             },
             fileLabel: path.description
         )

@@ -10,7 +10,7 @@ nonisolated struct LetterSpec: Decodable, Equatable, Sendable {
 
 /// Shared letter FX loaded from `Resources/Config/Catalogs/letters.yaml` for reuse across minigames.
 nonisolated struct LetterCatalog: Equatable, Sendable {
-    static let subdirectory = "Catalogs"
+    static let subdirectory = ConfigPath.catalogRoot
     static let defaultFxPrefix = "sfx_letter_"
 
     /// Sorted by letter for deterministic iteration / RNG.

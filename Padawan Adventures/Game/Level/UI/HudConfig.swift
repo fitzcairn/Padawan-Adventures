@@ -28,9 +28,7 @@ struct HudConfig: Codable, Equatable, Sendable {
         named name: String = "hud",
         withExtension ext: String = "yaml"
     ) throws -> HudConfig {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: nil)
-        )
+        let data = try ConfigStore.data(at: .config(name))
         return try decode(from: data)
     }
 

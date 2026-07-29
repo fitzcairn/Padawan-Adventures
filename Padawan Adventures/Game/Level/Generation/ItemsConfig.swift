@@ -96,9 +96,7 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
         named name: String = "items",
         withExtension ext: String = "yaml"
     ) throws -> ItemsConfig {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: "Catalogs")
-        )
+        let data = try ConfigStore.data(at: .catalog(name))
         return try decode(from: data)
     }
 

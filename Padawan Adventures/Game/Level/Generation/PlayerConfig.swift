@@ -84,9 +84,7 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
         named name: String = "player",
         withExtension ext: String = "yaml"
     ) throws -> PlayerConfig {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: nil)
-        )
+        let data = try ConfigStore.data(at: .config(name))
         return try decode(from: data)
     }
 

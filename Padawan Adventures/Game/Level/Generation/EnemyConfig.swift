@@ -258,9 +258,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         named name: String = "enemies",
         withExtension ext: String = "yaml"
     ) throws -> EnemyConfig {
-        let data = try ConfigStore.data(
-            at: ConfigPath(basename: name, subdirectory: "Catalogs")
-        )
+        let data = try ConfigStore.data(at: .catalog(name))
         return try decode(from: data)
     }
 

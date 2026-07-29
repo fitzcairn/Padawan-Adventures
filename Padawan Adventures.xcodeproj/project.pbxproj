@@ -52,8 +52,7 @@
 			explicitFolders = (
 				Resources/Audio,
 				Resources/Backgrounds,
-				Resources/Config/Catalogs,
-				Resources/Config/UI,
+				Resources/Config,
 				Resources/Levels,
 				Resources/Sprites,
 			);
