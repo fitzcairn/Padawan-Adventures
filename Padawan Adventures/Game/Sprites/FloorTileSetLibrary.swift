@@ -31,8 +31,8 @@ final class FloorTileSetLibrary {
             let loaded = try FloorTileSet.loadFromBundle(set: name, bundle: bundle)
             onProgress?(0.3)
 
-            let sheetName = "\(name)-floor-spritesheet"
-            let root = "Sprites/Floor/\(name)"
+            let sheetName = LevelAssetPaths.basename(set: name, .floor, .spritesheet)
+            let root = LevelAssetPaths.root(set: name, .floor)
             let sheetURL = try SpriteSheetLoader.resourceURL(
                 named: sheetName,
                 extensions: ["png", "jpg", "jpeg"],

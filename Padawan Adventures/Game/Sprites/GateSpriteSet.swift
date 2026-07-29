@@ -72,8 +72,8 @@ nonisolated struct GateSpriteSet: Codable, Equatable, Sendable {
     }
 
     static func loadFromBundle(set name: String, bundle: Bundle = .main) throws -> GateSpriteSet {
-        let atlasName = "\(name)-gate-atlas"
-        let root = "Sprites/Gate/Floor/\(name)"
+        let atlasName = LevelAssetPaths.basename(set: name, .gate, .atlas)
+        let root = LevelAssetPaths.root(set: name, .gate)
         let url = try SpriteSheetLoader.resourceURL(
             named: atlasName,
             extensions: ["json"],

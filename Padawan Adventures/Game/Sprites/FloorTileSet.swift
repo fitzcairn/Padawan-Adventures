@@ -259,8 +259,8 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
     }
 
     static func loadFromBundle(set name: String, bundle: Bundle = .main) throws -> FloorTileSet {
-        let atlasName = "\(name)-floor-atlas"
-        let root = "Sprites/Floor/\(name)"
+        let atlasName = LevelAssetPaths.basename(set: name, .floor, .atlas)
+        let root = LevelAssetPaths.root(set: name, .floor)
         let url = try SpriteSheetLoader.resourceURL(
             named: atlasName,
             extensions: ["json"],

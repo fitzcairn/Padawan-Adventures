@@ -31,8 +31,8 @@ final class LetterSpriteSetLibrary {
             let loaded = try LetterSpriteSet.loadFromBundle(set: name, bundle: bundle)
             onProgress?(0.3)
 
-            let sheetName = "\(name)-letters-spritesheet"
-            let root = "Sprites/Letters/\(name)"
+            let sheetName = LevelAssetPaths.basename(set: name, .letters, .spritesheet)
+            let root = LevelAssetPaths.root(set: name, .letters)
             let sheetURL = try SpriteSheetLoader.resourceURL(
                 named: sheetName,
                 extensions: ["png", "jpg", "jpeg"],

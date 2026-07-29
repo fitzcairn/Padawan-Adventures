@@ -34,8 +34,8 @@ final class PitSpriteSetLibrary {
             let loaded = try PitSpriteSet.loadFromBundle(set: name, bundle: bundle)
             onProgress?(0.3)
 
-            let sheetName = "\(name)-pit-spritesheet"
-            let root = "Sprites/Pit/\(name)"
+            let sheetName = LevelAssetPaths.basename(set: name, .pit, .spritesheet)
+            let root = LevelAssetPaths.root(set: name, .pit)
             let sheetURL = try SpriteSheetLoader.resourceURL(
                 named: sheetName,
                 extensions: ["png", "jpg", "jpeg"],

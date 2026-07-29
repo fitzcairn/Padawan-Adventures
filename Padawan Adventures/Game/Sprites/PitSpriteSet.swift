@@ -42,8 +42,8 @@ nonisolated struct PitSpriteSet: Codable, Equatable, Sendable {
     }
 
     static func loadFromBundle(set name: String, bundle: Bundle = .main) throws -> PitSpriteSet {
-        let atlasName = "\(name)-pit-atlas"
-        let root = "Sprites/Pit/\(name)"
+        let atlasName = LevelAssetPaths.basename(set: name, .pit, .atlas)
+        let root = LevelAssetPaths.root(set: name, .pit)
         let url = try SpriteSheetLoader.resourceURL(
             named: atlasName,
             extensions: ["json"],

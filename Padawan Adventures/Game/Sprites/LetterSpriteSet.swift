@@ -44,8 +44,8 @@ nonisolated struct LetterSpriteSet: Codable, Equatable, Sendable {
     }
 
     static func loadFromBundle(set name: String, bundle: Bundle = .main) throws -> LetterSpriteSet {
-        let atlasName = "\(name)-letters-atlas"
-        let root = "Sprites/Letters/\(name)"
+        let atlasName = LevelAssetPaths.basename(set: name, .letters, .atlas)
+        let root = LevelAssetPaths.root(set: name, .letters)
         let url = try SpriteSheetLoader.resourceURL(
             named: atlasName,
             extensions: ["json"],

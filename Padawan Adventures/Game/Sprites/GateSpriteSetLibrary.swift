@@ -32,8 +32,8 @@ final class GateSpriteSetLibrary {
             let loaded = try GateSpriteSet.loadFromBundle(set: name, bundle: bundle)
             onProgress?(0.3)
 
-            let sheetName = "\(name)-gate-spritesheet"
-            let root = "Sprites/Gate/Floor/\(name)"
+            let sheetName = LevelAssetPaths.basename(set: name, .gate, .spritesheet)
+            let root = LevelAssetPaths.root(set: name, .gate)
             let sheetURL = try SpriteSheetLoader.resourceURL(
                 named: sheetName,
                 extensions: ["png", "jpg", "jpeg"],
