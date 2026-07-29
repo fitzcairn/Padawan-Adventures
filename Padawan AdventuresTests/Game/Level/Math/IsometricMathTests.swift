@@ -30,30 +30,62 @@ struct IsometricMathTests {
         #expect(entityZ > floorZ)
     }
 
-    @Test func higherGridYFloorDrawsOverLowerGridYWall() {
+    /// Floors live in a lower parent band, so even a far-front floor cannot cover a sprite.
+    @Test func entityAlwaysDrawsAboveAnyFloor() {
         let config = IsometricConfig()
-        let wallBack = GridCoord(x: 0, y: 100, story: 0)
-        let floorMid = GridCoord(x: 0, y: 200, story: 0)
-        let wallFront = GridCoord(x: 0, y: 300, story: 0)
-
+        let entity = GridCoord(x: 0, y: 0, story: 0)
+        let frontFloor = GridCoord(x: 0, y: 500, story: 0)
         #expect(
-            IsometricMath.effectiveFloorZ(for: floorMid, config: config)
-                > IsometricMath.floorBandBase + IsometricMath.wallSortValue(for: wallBack, config: config)
-        )
-        #expect(
-            IsometricMath.floorBandBase + IsometricMath.wallSortValue(for: wallFront, config: config)
-                > IsometricMath.effectiveFloorZ(for: floorMid, config: config)
+            IsometricMath.effectiveEntityZ(for: entity, config: config)
+                > IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
         )
     }
 
-    @Test func frontFloorDrawsOverBackEntity() {
+    @Test func fractionalEntitySortMatchesIntegerAtWholeCells() {
         let config = IsometricConfig()
-        let entity = GridCoord(x: 0, y: 100, story: 0)
-        let frontFloor = GridCoord(x: 0, y: 200, story: 0)
+        let coord = GridCoord(x: 2, y: 7, story: 0)
         #expect(
-            IsometricMath.effectiveFloorZ(for: frontFloor, config: config)
-                > IsometricMath.effectiveEntityZ(for: entity, config: config)
+            IsometricMath.entitySortValue(for: coord, config: config)
+                == IsometricMath.entitySortValue(
+                    x: Double(coord.x),
+                    y: Double(coord.y),
+                    story: coord.story,
+                    config: config
+                )
         )
+    }
+
+    /// Mid-move: occupancy may lag/lead the feet; fractional sort keeps z aligned with the sprite.
+    @Test func midMoveFractionalSortTracksVisualPose() {
+        let config = IsometricConfig()
+        let start = GridCoord(x: 3, y: 4, story: 0)
+        let end = GridCoord(x: 3, y: 5, story: 0)
+        let midY = 4.25
+        let midZ = IsometricMath.entitySortValue(
+            x: Double(start.x),
+            y: midY,
+            story: start.story,
+            config: config
+        )
+        #expect(midZ > IsometricMath.entitySortValue(for: start, config: config))
+        #expect(midZ < IsometricMath.entitySortValue(for: end, config: config))
+    }
+
+    @Test func wallsAndEntitiesInterleaveAboveFloorBand() {
+        let config = IsometricConfig()
+        let wallBack = GridCoord(x: 0, y: 100, story: 0)
+        let wallFront = GridCoord(x: 0, y: 300, story: 0)
+        let floorMid = GridCoord(x: 0, y: 200, story: 0)
+
+        let wallBackZ = IsometricMath.occlusionBandBase
+            + IsometricMath.wallSortValue(for: wallBack, config: config)
+        let wallFrontZ = IsometricMath.occlusionBandBase
+            + IsometricMath.wallSortValue(for: wallFront, config: config)
+        let floorZ = IsometricMath.effectiveFloorZ(for: floorMid, config: config)
+
+        #expect(wallBackZ > floorZ)
+        #expect(wallFrontZ > wallBackZ)
+        #expect(wallFrontZ > floorZ)
     }
 
     @Test func higherGridYWallDrawsOverLowerGridYEntity() {

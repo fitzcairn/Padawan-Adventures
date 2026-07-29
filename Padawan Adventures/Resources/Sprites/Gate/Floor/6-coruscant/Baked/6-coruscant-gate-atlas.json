@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "6-coruscant",
+    "size": {
+      "w": 1160,
+      "h": 1911
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 706,
+      "h": 949,
+      "anchor": {
+        "x": 353.0,
+        "y": 949.0
+      },
+      "base_w": 706
+    },
+    "along_y": {
+      "x": 0,
+      "y": 953,
+      "w": 705,
+      "h": 958,
+      "anchor": {
+        "x": 352.5,
+        "y": 958.0
+      },
+      "base_w": 705
+    }
+  }
+}

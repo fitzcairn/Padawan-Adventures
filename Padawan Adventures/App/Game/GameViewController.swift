@@ -65,6 +65,7 @@ final class GameViewController: LandscapeHostingController {
             itemsConfig: session.itemsConfig,
             treasureItemID: session.selectedLevel.treasure,
             floorTileSetLibrary: session.floorTileSetLibrary,
+            gateSpriteSetLibrary: session.gateSpriteSetLibrary,
             saveService: session.saveService
         )
         scene.scaleMode = .aspectFill
@@ -83,8 +84,11 @@ final class GameViewController: LandscapeHostingController {
         scene.onPickupCollected = { [weak self] kind in
             self?.handlePickupCollected(kind)
         }
-        scene.onTreasureCollected = { [weak self] in
+        scene.onTreasureCelebrationStarted = { [weak self] in
             self?.playPlayerFx("pickup_treasure")
+            BackgroundMusicController.shared.applyScreen(named: "you_win")
+        }
+        scene.onTreasureCollected = { [weak self] in
             self?.presentYouWin()
         }
         scene.onWorldSaved = { [weak self] snapshot in
@@ -434,7 +438,6 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentYouWin() {
-        BackgroundMusicController.shared.applyScreen(named: "you_win")
         Task { @MainActor in
             var didBeatPrevious = false
             var newScore = 0

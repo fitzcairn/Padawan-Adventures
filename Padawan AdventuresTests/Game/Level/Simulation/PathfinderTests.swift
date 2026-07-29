@@ -107,14 +107,14 @@ struct PathfinderTests {
         world.setTile(Tile(kind: .gate(minigame: .spelling)), at: soft)
 
         let opened = world.openGate(at: soft)
-        #expect(opened)
+        #expect(opened == [soft])
         if case .floor(let isPit) = world.tile(at: soft)?.kind {
             #expect(!isPit)
         } else {
             Issue.record("Expected floor after openGate")
         }
         let openedAgain = world.openGate(at: soft)
-        #expect(!openedAgain)
+        #expect(openedAgain.isEmpty)
     }
 
     @Test func openGateClearsContiguousGateGroup() {
@@ -125,7 +125,7 @@ struct PathfinderTests {
         world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
 
         let opened = world.openGate(at: a)
-        #expect(opened)
+        #expect(Set(opened) == [a, b])
         #expect(world.tile(at: a)?.isGate == false)
         #expect(world.tile(at: b)?.isGate == false)
         #expect(world.isEnterable(at: a))
@@ -140,7 +140,7 @@ struct PathfinderTests {
         world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
 
         let opened = world.openGate(at: a)
-        #expect(opened)
+        #expect(Set(opened) == [a, b])
         #expect(world.tile(at: a)?.isGate == false)
         #expect(world.tile(at: b)?.isGate == false)
         #expect(world.isEnterable(at: a))
@@ -155,7 +155,7 @@ struct PathfinderTests {
         world.setTile(Tile(kind: .gate(minigame: .letterMatch)), at: letterMatch)
 
         let opened = world.openGate(at: spelling)
-        #expect(opened)
+        #expect(opened == [spelling])
         #expect(world.tile(at: spelling)?.isGate == false)
         #expect(world.tile(at: letterMatch)?.gateMinigame == .letterMatch)
     }

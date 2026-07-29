@@ -166,52 +166,52 @@ struct ProceduralGeneratorTests {
         }
         #expect(hasOrganic)
 
-        // Unused map tiles are expected — rooms must not fill the whole grid.
+        // Packed rooms leave only wall seams and margins — still not the whole grid.
         let roomCells = result.rooms.reduce(0) { $0 + $1.cells.count }
-        #expect(roomCells < result.world.width * result.world.height / 2)
+        #expect(roomCells < result.world.width * result.world.height * 3 / 4)
     }
 
-    @Test func hallwayFloorsAreSparse() throws {
+    @Test func noFloorOutsideRooms() throws {
         let config = roomsDoorsConfig(seed: 22, roomCount: 9)
         let result = try ProceduralGenerator().generateDetailed(from: config)
         let outside = floorCellsOutsideRooms(world: result.world, rooms: result.rooms)
-        let roomFloor = result.rooms.reduce(0) { $0 + $1.cells.count }
-        // Short tunnels are OK; they should stay much smaller than room floors.
-        #expect(outside < max(roomFloor / 2, 1))
+        #expect(outside == 0, "packed joins must not carve hallway floors")
     }
 
-    @Test func traversablePassagesAreAtLeastTwoWide() throws {
-        let config = roomsDoorsConfig(seed: 33, roomCount: 8)
-        let result = try ProceduralGenerator().generateDetailed(from: config)
-        let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
-
-        for y in 0..<result.world.height {
-            for x in 0..<result.world.width {
-                let coord = GridCoord(x: x, y: y, story: 0)
-                guard case .floor = result.world.tile(at: coord)?.kind else { continue }
-                // Room interiors can be irregular; gates are intentional chokepoints.
-                guard !roomCells.contains(coord) else { continue }
-                #expect(
-                    !isSingleFilePassage(coord, in: result.world),
-                    "1-tile-wide passage at \(coord.x),\(coord.y)"
-                )
+    @Test func everyGateIsExactlyTwoAdjacentCells() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.generation.room.partitionGateChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            var visited = Set<GridCoord>()
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let start = GridCoord(x: x, y: y, story: 0)
+                    guard case .gate(let minigame)? = result.world.tile(at: start)?.kind else { continue }
+                    guard visited.insert(start).inserted else { continue }
+                    var group = [start]
+                    var head = 0
+                    while head < group.count {
+                        let current = group[head]
+                        head += 1
+                        for (dx, dy) in GridCoord.cardinals {
+                            let next = current.neighbor(dx: dx, dy: dy)
+                            guard result.world.tile(at: next)?.isGate == true else { continue }
+                            guard visited.insert(next).inserted else { continue }
+                            group.append(next)
+                        }
+                    }
+                    #expect(group.count == 2, "gate component size \(group.count) at seed \(seed)")
+                    let a = group[0]
+                    let b = group[1]
+                    #expect(abs(a.x - b.x) + abs(a.y - b.y) == 1, "gate cells not adjacent (seed \(seed))")
+                    // Renderer needs a contiguous strip so the 2-tile sprite can span both cells.
+                    let strip = PlaceholderFactory.gateStrip(at: a, minigame: minigame, in: result.world)
+                    #expect(strip != nil, "gate strip undetected at \(a) (seed \(seed))")
+                    #expect(strip?.partner == b, "strip partner \(String(describing: strip?.partner)) != \(b)")
+                }
             }
         }
-    }
-
-    /// True when a cell is only open along one axis with both sides blocked (1-tile corridor).
-    private func isSingleFilePassage(_ coord: GridCoord, in world: GameWorld) -> Bool {
-        func walkable(_ dx: Int, _ dy: Int) -> Bool {
-            let next = coord.neighbor(dx: dx, dy: dy)
-            return world.isInBounds(next) && world.isEnterable(at: next)
-        }
-        let n = walkable(0, -1)
-        let s = walkable(0, 1)
-        let e = walkable(1, 0)
-        let w = walkable(-1, 0)
-        let northSouthFile = (n || s) && !e && !w
-        let eastWestFile = (e || w) && !n && !s
-        return northSouthFile || eastWestFile
     }
 
     @Test func spawnAreaHasNoPits() throws {
@@ -958,6 +958,85 @@ struct ProceduralGeneratorTests {
             #expect(
                 ProceduralGenerator.roomsAreSeparatedByGates(rooms: result.rooms, tiles: tiles),
                 "rooms should be separated by gates for seed \(seed)"
+            )
+        }
+    }
+
+    @Test func joinedRoomsAreExactlyOneTileApart() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            let result = try ProceduralGenerator().generateDetailed(
+                from: roomsDoorsConfig(seed: seed, roomCount: 12)
+            )
+            #expect(result.joinPairs.count == max(0, result.rooms.count - 1))
+            for (aIndex, bIndex) in result.joinPairs {
+                let roomA = result.rooms[aIndex]
+                let roomB = result.rooms[bIndex]
+                var minDist = Int.max
+                var midpoints: [GridCoord] = []
+                for a in roomA.cells {
+                    for b in roomB.cells {
+                        let dist = abs(a.x - b.x) + abs(a.y - b.y)
+                        if dist < minDist {
+                            minDist = dist
+                            midpoints = []
+                        }
+                        if dist == 2 {
+                            let mid = GridCoord(
+                                x: (a.x + b.x) / 2,
+                                y: (a.y + b.y) / 2,
+                                story: 0
+                            )
+                            // Only axis-aligned gaps (not diagonal) produce an integer midpoint cell.
+                            if abs(a.x - b.x) == 2 && a.y == b.y || abs(a.y - b.y) == 2 && a.x == b.x {
+                                midpoints.append(mid)
+                            }
+                        }
+                    }
+                }
+                #expect(minDist == 2, "join \(aIndex)-\(bIndex) minDist \(minDist) seed \(seed)")
+                let hasGateBetween = midpoints.contains { result.world.tile(at: $0)?.isGate == true }
+                #expect(hasGateBetween, "no gate between rooms \(aIndex)-\(bIndex) seed \(seed)")
+            }
+        }
+    }
+
+    @Test func everyGateSeparatesTwoDistinctRooms() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.generation.room.partitionGateChance = 1.0
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
+                for cell in room.cells { map[cell] = room.id }
+            }
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    let coord = GridCoord(x: x, y: y, story: 0)
+                    guard result.world.tile(at: coord)?.isGate == true else { continue }
+                    let separates = GridCoord.cardinals.contains { dx, dy in
+                        let a = coord.neighbor(dx: dx, dy: dy)
+                        let b = coord.neighbor(dx: -dx, dy: -dy)
+                        guard let idA = roomByCell[a], let idB = roomByCell[b] else { return false }
+                        return idA != idB
+                    }
+                    #expect(separates, "gate at \(x),\(y) does not separate two rooms (seed \(seed))")
+                }
+            }
+        }
+    }
+
+    @Test func allRoomsGateConnectedAcrossSeeds() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            let result = try ProceduralGenerator().generateDetailed(
+                from: roomsDoorsConfig(seed: seed, roomCount: 12)
+            )
+            let tiles = result.world.tiles.first ?? []
+            #expect(
+                ProceduralGenerator.allRoomsGateConnected(
+                    rooms: result.rooms,
+                    spawn: result.world.spawn,
+                    tiles: tiles
+                ),
+                "rooms not gate-connected for seed \(seed)"
             )
         }
     }

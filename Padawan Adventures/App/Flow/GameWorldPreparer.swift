@@ -58,7 +58,10 @@ enum GameWorldPreparer {
             report(LoadProgress.map(local, from: 0.44, to: 0.46))
         }
         await session.ensurePitSpriteSetLoaded { local in
-            report(LoadProgress.map(local, from: 0.46, to: assetsEnd))
+            report(LoadProgress.map(local, from: 0.46, to: 0.48))
+        }
+        await session.ensureGateSpriteSetLoaded { local in
+            report(LoadProgress.map(local, from: 0.48, to: assetsEnd))
         }
 
         let textures =
@@ -66,6 +69,7 @@ enum GameWorldPreparer {
             + session.floorTileSetLibrary.allTextures()
             + session.letterSpriteSetLibrary.allTextures()
             + session.pitSpriteSetLibrary.allTextures()
+            + session.gateSpriteSetLibrary.allTextures()
         await withCheckedContinuation { continuation in
             SKTexture.preload(textures) {
                 continuation.resume()
@@ -122,6 +126,7 @@ enum GameWorldPreparer {
         await session.ensureFloorTileSetLoaded()
         await session.ensureLetterSpriteSetLoaded()
         await session.ensurePitSpriteSetLoaded()
+        await session.ensureGateSpriteSetLoaded()
         let floorTileSet: FloorTileSet
         if let loaded = session.floorTileSetLibrary.tileSet {
             floorTileSet = loaded
@@ -189,6 +194,7 @@ enum GameWorldPreparer {
         await session.ensureFloorTileSetLoaded()
         await session.ensureLetterSpriteSetLoaded()
         await session.ensurePitSpriteSetLoaded()
+        await session.ensureGateSpriteSetLoaded()
         if let set = session.floorTileSetLibrary.tileSet {
             world.floorSet = set
             world.floorSetName = set.meta.floorSet

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "2-tatooine",
+    "size": {
+      "w": 1162,
+      "h": 1858
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 727,
+      "h": 932,
+      "anchor": {
+        "x": 363.5,
+        "y": 932.0
+      },
+      "base_w": 727
+    },
+    "along_y": {
+      "x": 0,
+      "y": 936,
+      "w": 728,
+      "h": 922,
+      "anchor": {
+        "x": 364.0,
+        "y": 922.0
+      },
+      "base_w": 728
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "7-mustafar",
+    "size": {
+      "w": 1172,
+      "h": 1954
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 707,
+      "h": 979,
+      "anchor": {
+        "x": 353.5,
+        "y": 979.0
+      },
+      "base_w": 707
+    },
+    "along_y": {
+      "x": 0,
+      "y": 983,
+      "w": 700,
+      "h": 971,
+      "anchor": {
+        "x": 350.0,
+        "y": 971.0
+      },
+      "base_w": 700
+    }
+  }
+}

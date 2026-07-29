@@ -40,6 +40,7 @@ nonisolated enum ConfigAudit {
             problems.append(contentsOf: checkFloorSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkLetterSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkPitSet(level: level, label: label, bundle: bundle))
+            problems.append(contentsOf: checkGateSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkEnemyTypes(level: level, enemies: enemies, label: label))
             problems.append(contentsOf: checkWordIDs(level: level, words: words, label: label))
             problems.append(contentsOf: checkLetterIDs(level: level, letters: letters, label: label))
@@ -232,6 +233,31 @@ nonisolated enum ConfigAudit {
             }
         } catch {
             return ["\(label).pit set '\(setName)': missing or invalid atlas (\(error))"]
+        }
+        return []
+    }
+
+    /// World gate walls share the floor set name (`Sprites/Gate/Floor/{floor.set}/`).
+    private static func checkGateSet(
+        level: LevelConfig,
+        label: String,
+        bundle: Bundle
+    ) -> [String] {
+        let setName = level.floor.set.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !setName.isEmpty else {
+            return ["\(label).floor.set: empty (required for gate sprites)"]
+        }
+        do {
+            let gateSet = try GateSpriteSet.loadFromBundle(set: setName, bundle: bundle)
+            let axes = Set(gateSet.axisIDs)
+            let expected = Set(GateSpriteSet.Axis.allCases.map(\.rawValue))
+            if axes != expected {
+                return [
+                    "\(label).gate set '\(setName)': expected frames \(expected.sorted()), got \(axes.sorted())"
+                ]
+            }
+        } catch {
+            return ["\(label).gate set '\(setName)': missing or invalid atlas (\(error))"]
         }
         return []
     }

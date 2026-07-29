@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "5-dagobah",
+    "size": {
+      "w": 1269,
+      "h": 1916
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 852,
+      "h": 952,
+      "anchor": {
+        "x": 426.0,
+        "y": 952.0
+      },
+      "base_w": 852
+    },
+    "along_y": {
+      "x": 0,
+      "y": 956,
+      "w": 830,
+      "h": 960,
+      "anchor": {
+        "x": 415.0,
+        "y": 960.0
+      },
+      "base_w": 830
+    }
+  }
+}

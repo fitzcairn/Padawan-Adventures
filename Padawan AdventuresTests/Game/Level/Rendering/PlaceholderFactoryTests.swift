@@ -274,6 +274,187 @@ struct PlaceholderFactoryTests {
         #expect(culled == "gate|spelling|\(WallFaceSet([.left, .top]).rawValue)")
     }
 
+    @Test @MainActor func wallIdentityUsesSpriteStripWhenLibraryLoaded() {
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 3)
+        let a = GridCoord(x: 1, y: 1, story: 0)
+        let b = GridCoord(x: 2, y: 1, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
+
+        let library = GateSpriteSetLibrary()
+        let gateSet = GateSpriteSet(
+            meta: GateSpriteSet.Meta(
+                version: 1,
+                gateSet: "test",
+                size: .init(w: 10, h: 10),
+                frameCount: 2,
+                footprintTiles: 2,
+                footprintScreenWidths: 1.5
+            ),
+            frames: [
+                "along_x": .init(x: 0, y: 0, w: 10, h: 10),
+                "along_y": .init(x: 0, y: 0, w: 10, h: 10),
+            ]
+        )
+        library.seedForTesting(gateSet: gateSet, textures: [:])
+
+        let canonical = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .gate(minigame: .spelling)),
+            at: a,
+            in: world,
+            gateSpriteSetLibrary: library
+        )
+        let partner = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .gate(minigame: .spelling)),
+            at: b,
+            in: world,
+            gateSpriteSetLibrary: library
+        )
+        #expect(canonical == "gate|sprite|spelling|along_x")
+        #expect(partner == nil)
+
+        let strip = PlaceholderFactory.gateStrip(at: a, minigame: .spelling, in: world)
+        #expect(strip?.axis == .alongX)
+        #expect(strip?.isCanonical == true)
+
+        // South-tip anchor sits on the south tip of the strip's floor diamonds so the
+        // cobblestone base lands in the seam between the two rooms.
+        let config = IsometricConfig()
+        let pos = PlaceholderFactory.wallScreenPosition(
+            for: Tile(kind: .gate(minigame: .spelling)),
+            at: a,
+            in: world,
+            config: config,
+            gateSpriteSetLibrary: library
+        )
+        let expected = PlaceholderFactory.gateStripSouthTip(coord: a, partner: b, config: config)
+        #expect(pos == expected)
+        let northMid =
+            CGPoint(
+                x: (IsometricMath.gridToScreen(a, config: config).x
+                    + IsometricMath.gridToScreen(b, config: config).x) / 2,
+                y: (IsometricMath.gridToScreen(a, config: config).y
+                    + IsometricMath.gridToScreen(b, config: config).y) / 2
+            )
+        let nudge = PlaceholderFactory.gateSpriteSouthwestNudge
+        #expect(
+            abs((pos?.x ?? 0) - (northMid.x - config.tileWidth * 0.5 * nudge)) < 0.001
+        )
+        #expect(
+            abs(
+                (pos?.y ?? 0)
+                    - (northMid.y - config.tileHeight - config.tileHeight * 0.5 * nudge)
+            ) < 0.001
+        )
+    }
+
+    @Test func entityInFrontOfAlongYGateDrawsAboveEvenAtLowerY() {
+        // Gate runs along Y at x=5; front cell is (5,5). Entity east at (6,4) is on the
+        // camera-near side of the doorway but has lower Y than the front pillar.
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let nearZ = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 6, y: 4, story: 0, gates: [gate], config: config
+        )
+        let farZ = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 4, y: 6, story: 0, gates: [gate], config: config
+        )
+        #expect(nearZ > gateZ, "near-side entity must draw above the gate")
+        #expect(farZ < gateZ, "far-side entity must draw below the gate")
+    }
+
+    @Test func entityInFrontOfAlongXGateDrawsAboveEvenAtLowerX() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongX,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 6, y: 4, story: 0),
+            sortCoord: GridCoord(x: 6, y: 4, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let nearZ = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 4, y: 5, story: 0, gates: [gate], config: config
+        )
+        let farZ = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 7, y: 3, story: 0, gates: [gate], config: config
+        )
+        #expect(nearZ > gateZ)
+        #expect(farZ < gateZ)
+    }
+
+    @Test func gateDoesNotOccludeEntityStandingWellInFrontOfIt() {
+        // Gate runs along Y at x=5 (cells (5,4),(5,5)). An entity in the west room at
+        // (4,8) is on the far side by X, but eight rows south — visually well in front of
+        // the gate and outside the art's reach, so plain depth sorting must stand.
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let natural = IsometricMath.entitySortValue(x: 4, y: 8, story: 0, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 4, y: 8, story: 0, gates: [gate], config: config
+        )
+        #expect(z == natural, "far-but-distant entity must keep its natural depth")
+        #expect(z > gateZ, "entity rows in front of the gate must draw above it")
+    }
+
+    @Test func gateStillOccludesEntityBehindItWithinItsSpan() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 4, y: 5, story: 0, gates: [gate], config: config
+        )
+        #expect(z < gateZ, "entity in the doorway on the far side stays behind the gate")
+    }
+
+    @Test func pickupUsesSameGateOcclusionAsPlayer() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongX,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 6, y: 4, story: 0),
+            sortCoord: GridCoord(x: 6, y: 4, story: 0)
+        )
+        let near = GridCoord(x: 4, y: 5, story: 0)
+        let far = GridCoord(x: 7, y: 3, story: 0)
+        let playerNear = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(near.x), y: Double(near.y), story: near.story,
+            gates: [gate], config: config
+        )
+        let pickupNear = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(near.x), y: Double(near.y), story: near.story,
+            gates: [gate], config: config
+        )
+        let playerFar = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(far.x), y: Double(far.y), story: far.story,
+            gates: [gate], config: config
+        )
+        let pickupFar = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(far.x), y: Double(far.y), story: far.story,
+            gates: [gate], config: config
+        )
+        #expect(pickupNear == playerNear)
+        #expect(pickupFar == playerFar)
+        #expect(pickupNear > IsometricMath.wallSortValue(for: gate.sortCoord, config: config))
+        #expect(pickupFar < IsometricMath.wallSortValue(for: gate.sortCoord, config: config))
+    }
+
     @Test func solidWallTileNodeDrawsNothing() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
@@ -464,5 +645,41 @@ struct PlaceholderFactoryTests {
         #expect(burst.numParticlesToEmit == 24)
         #expect(burst.particleBirthRate > 0)
         #expect(burst.particleColorBlendFactor == 1)
+    }
+
+    @Test @MainActor
+    func gateOpenAnimationSparksGateAndFadesFloorsIn() throws {
+        let gate = SKNode()
+        let body = SKSpriteNode(color: .gray, size: CGSize(width: 40, height: 80))
+        gate.addChild(body)
+        let floorA = SKNode()
+        floorA.alpha = 1
+        let floorB = SKNode()
+        floorB.alpha = 1
+        let timing = SKNode()
+
+        var completed = false
+        PlaceholderFactory.playGateOpenAnimation(
+            on: gate,
+            floorNodes: [floorA, floorB],
+            duration: PlaceholderFactory.gateOpenDuration,
+            referenceHeight: 80,
+            timingNode: timing
+        ) {
+            completed = true
+        }
+
+        let glow = try #require(
+            gate.childNode(withName: SparkleEmitterFactory.nodeName) as? SKEmitterNode
+        )
+        #expect(glow.particleBirthRate > 0)
+        #expect(HighlightConfig.gateOpen.color == "#FFE082")
+        #expect(PlaceholderFactory.gateOpenDuration == 2)
+        #expect(floorA.alpha == 0)
+        #expect(floorB.alpha == 0)
+        #expect(floorA.action(forKey: "gateOpenFloorFade") != nil)
+        #expect(body.action(forKey: "gateOpenFade") != nil)
+        #expect(gate.action(forKey: "gateOpenDissolve") != nil)
+        #expect(!completed)
     }
 }

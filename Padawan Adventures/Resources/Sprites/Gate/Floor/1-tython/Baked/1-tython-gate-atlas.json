@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "1-tython",
+    "size": {
+      "w": 1243,
+      "h": 1901
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 837,
+      "h": 948,
+      "anchor": {
+        "x": 418.5,
+        "y": 948.0
+      },
+      "base_w": 837
+    },
+    "along_y": {
+      "x": 0,
+      "y": 952,
+      "w": 790,
+      "h": 949,
+      "anchor": {
+        "x": 395.0,
+        "y": 949.0
+      },
+      "base_w": 790
+    }
+  }
+}

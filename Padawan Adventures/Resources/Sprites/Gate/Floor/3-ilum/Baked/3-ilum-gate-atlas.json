@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "3-ilum",
+    "size": {
+      "w": 1176,
+      "h": 1878
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 740,
+      "h": 945,
+      "anchor": {
+        "x": 370.0,
+        "y": 945.0
+      },
+      "base_w": 740
+    },
+    "along_y": {
+      "x": 0,
+      "y": 949,
+      "w": 734,
+      "h": 929,
+      "anchor": {
+        "x": 367.0,
+        "y": 929.0
+      },
+      "base_w": 734
+    }
+  }
+}

@@ -5,6 +5,8 @@ nonisolated struct EntityDisplayPose: Sendable {
     var entityID: UUID
     var occupancy: GridCoord
     var screenPosition: CGPoint
+    /// Continuous feet pose used for depth sort (matches `screenPosition`).
+    var sortPose: FractionalGridPose
     /// On-screen facing from the active movement segment; nil when idle or ambiguous.
     var facing: CompassDirection? = nil
     var isMoving: Bool = false
@@ -15,6 +17,8 @@ nonisolated struct SimulationTickResult: Sendable {
     var cameraCoord: GridCoord?
     var playerDisplayCoord: GridCoord?
     var playerDisplayPoint: CGPoint?
+    /// Continuous feet pose for player depth sort (matches `playerDisplayPoint`).
+    var playerSortPose: FractionalGridPose?
     var enemyDisplayPoses: [EntityDisplayPose] = []
     var animationFrame: Int = 0
     var movementEvents: [MovementEvent] = []
@@ -74,6 +78,7 @@ struct SimulationLoop: Sendable {
             let occupancy = world.playerPosition ?? world.spawn
             result.playerDisplayCoord = occupancy
             result.playerDisplayPoint = movement.interpolatedScreenPosition(in: world, config: isoConfig)
+            result.playerSortPose = playerSortPose(occupancy: occupancy, movement: movement)
             result.cameraCoord = occupancy
             result.enemyDisplayPoses = enemyDisplayPoses(world: world)
             return result
@@ -150,11 +155,23 @@ struct SimulationLoop: Sendable {
         let occupancy = world.playerPosition ?? world.spawn
         result.playerDisplayCoord = occupancy
         result.playerDisplayPoint = movement.interpolatedScreenPosition(in: world, config: isoConfig)
+        result.playerSortPose = playerSortPose(occupancy: occupancy, movement: movement)
 
         result.cameraCoord = result.cameraCoord ?? occupancy
         result.shouldPersist = wasMoving && !movement.isMoving
 
         return result
+    }
+
+    private func playerSortPose(occupancy: GridCoord, movement: MovementSystem) -> FractionalGridPose {
+        if movement.isMoving {
+            return movement.fractionalPosition()
+        }
+        return FractionalGridPose(
+            x: Double(occupancy.x),
+            y: Double(occupancy.y),
+            story: occupancy.story
+        )
     }
 
     private func enemyDisplayPoses(world: GameWorld) -> [EntityDisplayPose] {
@@ -165,14 +182,21 @@ struct SimulationLoop: Sendable {
             let isMoving = movement?.isMoving ?? false
 
             let screen: CGPoint
+            let sortPose: FractionalGridPose
             if let movement, isMoving {
                 screen = movement.interpolatedScreenPosition(
                     in: world,
                     entityID: entity.id,
                     config: isoConfig
                 )
+                sortPose = movement.fractionalPosition()
             } else {
                 screen = IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
+                sortPose = FractionalGridPose(
+                    x: Double(occupancy.x),
+                    y: Double(occupancy.y),
+                    story: occupancy.story
+                )
             }
 
             var facing: CompassDirection?
@@ -186,6 +210,7 @@ struct SimulationLoop: Sendable {
                 entityID: entity.id,
                 occupancy: occupancy,
                 screenPosition: screen,
+                sortPose: sortPose,
                 facing: facing,
                 isMoving: isMoving
             )

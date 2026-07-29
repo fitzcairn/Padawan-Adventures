@@ -8,12 +8,14 @@ final class IsometricRenderer {
     private let itemsConfig: ItemsConfig?
     private let treasureItemID: String?
     private let floorTileSetLibrary: FloorTileSetLibrary?
+    private let gateSpriteSetLibrary: GateSpriteSetLibrary?
     private let worldRoot = SKNode()
     /// Floor terrain — shared band with walls/entities; local z uses increasing grid Y.
     private let floorLayer = SKNode()
-    /// Walls / ceilings — same parent band as floors so Y-order can cover either way.
+    /// Solid walls / ceilings — same occlusion band as entities (accumulated z interleaves).
     private let wallLayer = SKNode()
-    /// Players, enemies, pickups, effects — same band; +0.5 above same-cell tiles.
+    /// Players, enemies, pickups, effects, and gate sprites — siblings so gate occlusion
+    /// applies equally to every entity type (not only the moving player).
     private let occlusionLayer = SKNode()
     private var entityNodes: [UUID: SKNode] = [:]
     /// Stable floor nodes keyed by grid coord so animations are not restarted each render.
@@ -25,6 +27,8 @@ final class IsometricRenderer {
     /// Stable ceiling diamonds keyed by grid coord.
     private var ceilingNodes: [GridCoord: SKNode] = [:]
     private var ceilingIdentities: [GridCoord: String] = [:]
+    /// Canonical gate strips on the visible story — used for entity/gate occlusion.
+    private var gateOccluders: [PlaceholderFactory.GateOccluder] = []
     private var viewCenter: CGPoint = .zero
     private var viewportFocus: CGPoint = .zero
     private var viewSize: CGSize = .zero
@@ -40,7 +44,8 @@ final class IsometricRenderer {
         playerSpriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
         treasureItemID: String? = nil,
-        floorTileSetLibrary: FloorTileSetLibrary? = nil
+        floorTileSetLibrary: FloorTileSetLibrary? = nil,
+        gateSpriteSetLibrary: GateSpriteSetLibrary? = nil
     ) {
         self.config = config
         self.enemyConfig = enemyConfig
@@ -48,6 +53,7 @@ final class IsometricRenderer {
         self.playerSpriteConfig = playerSpriteConfig
         self.itemsConfig = itemsConfig
         self.treasureItemID = treasureItemID
+        self.gateSpriteSetLibrary = gateSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
     }
 
@@ -64,6 +70,7 @@ final class IsometricRenderer {
         wallIdentities.removeAll()
         ceilingNodes.removeAll()
         ceilingIdentities.removeAll()
+        gateOccluders = []
         visibleStory = 0
         worldScale = 1
 
@@ -73,10 +80,10 @@ final class IsometricRenderer {
             y: scene.size.height * (0.5 - scene.anchorPoint.y)
         )
 
-        // Shared parent band: floors, walls, and entities interleave by increasing grid Y.
-        // Accents are a sibling added after bases so they paint above base floor art.
+        // Floors sit in a lower band so floor/decor art never covers sprites.
+        // Walls and entities share the occlusion band and interleave by grid Y.
         floorLayer.zPosition = IsometricMath.floorBandBase
-        wallLayer.zPosition = IsometricMath.floorBandBase
+        wallLayer.zPosition = IsometricMath.occlusionBandBase
         occlusionLayer.zPosition = IsometricMath.occlusionBandBase
 
         worldRoot.addChild(floorLayer)
@@ -167,25 +174,43 @@ final class IsometricRenderer {
 
 
     /// Reuses wall / gate block nodes when kind, destructible flag, and faces are unchanged.
+    /// Gates are parented under `occlusionLayer` with entities so pickup/player/enemy
+    /// z adjustments can win or lose against the gate sprite as siblings.
     private func syncWallNodes(world: GameWorld, story: Int) {
         var liveCoords = Set<GridCoord>()
+        gateOccluders = PlaceholderFactory.gateOccluders(in: world, story: story)
 
         for y in 0..<world.height {
             for x in 0..<world.width {
                 let coord = GridCoord(x: x, y: y, story: story)
                 let tile = world.tiles[story][y][x]
-                guard let identity = PlaceholderFactory.wallIdentity(for: tile, at: coord, in: world) else {
+                guard let identity = PlaceholderFactory.wallIdentity(
+                    for: tile,
+                    at: coord,
+                    in: world,
+                    gateSpriteSetLibrary: gateSpriteSetLibrary
+                ) else {
                     continue
                 }
                 liveCoords.insert(coord)
 
+                let sortCoord = PlaceholderFactory.wallSortCoord(for: tile, at: coord, in: world) ?? coord
+                let screen = PlaceholderFactory.wallScreenPosition(
+                    for: tile,
+                    at: coord,
+                    in: world,
+                    config: config,
+                    gateSpriteSetLibrary: gateSpriteSetLibrary
+                ) ?? IsometricMath.gridToScreen(coord, config: config)
+                let parentLayer = occlusionParent(for: tile)
+
                 if let existing = wallNodes[coord], wallIdentities[coord] == identity {
-                    if existing.parent !== wallLayer {
+                    if existing.parent !== parentLayer {
                         existing.removeFromParent()
-                        wallLayer.addChild(existing)
+                        parentLayer.addChild(existing)
                     }
-                    existing.position = IsometricMath.gridToScreen(coord, config: config)
-                    existing.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
+                    existing.position = screen
+                    existing.zPosition = IsometricMath.wallSortValue(for: sortCoord, config: config)
                     continue
                 }
 
@@ -194,10 +219,12 @@ final class IsometricRenderer {
                     for: tile,
                     at: coord,
                     in: world,
-                    config: config
+                    config: config,
+                    floorTileSetLibrary: floorTileSetLibrary,
+                    gateSpriteSetLibrary: gateSpriteSetLibrary
                 )
-                node.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                wallLayer.addChild(node)
+                node.zPosition = IsometricMath.wallSortValue(for: sortCoord, config: config)
+                parentLayer.addChild(node)
                 wallNodes[coord] = node
                 wallIdentities[coord] = identity
             }
@@ -208,6 +235,12 @@ final class IsometricRenderer {
             wallNodes[coord] = nil
             wallIdentities[coord] = nil
         }
+    }
+
+    /// Gates share the entity layer; ordinary walls stay on `wallLayer`.
+    private func occlusionParent(for tile: Tile) -> SKNode {
+        if case .gate = tile.kind { return occlusionLayer }
+        return wallLayer
     }
 
     /// Reuses ceiling diamonds when a cell still needs a roof overlay.
@@ -255,6 +288,7 @@ final class IsometricRenderer {
         }
         wallNodes.removeAll()
         wallIdentities.removeAll()
+        gateOccluders = []
     }
 
     private func clearCeilingNodes() {
@@ -310,7 +344,7 @@ final class IsometricRenderer {
                         node.removeFromParent()
                         occlusionLayer.addChild(node)
                     }
-                    PlaceholderFactory.updateEntityNode(node, entity: entity, config: config)
+                    updateEntityNode(node, entity: entity)
                 } else {
                     node.removeFromParent()
                 }
@@ -327,9 +361,18 @@ final class IsometricRenderer {
                 )
                 entityNodes[entity.id] = node
                 occlusionLayer.addChild(node)
-                PlaceholderFactory.updateEntityNode(node, entity: entity, config: config)
+                updateEntityNode(node, entity: entity)
             }
         }
+    }
+
+    private func updateEntityNode(_ node: SKNode, entity: GameEntity) {
+        PlaceholderFactory.updateEntityNode(
+            node,
+            entity: entity,
+            config: config,
+            gates: gateOccluders
+        )
     }
 
     func entityNode(id: UUID) -> SKNode? {
@@ -340,6 +383,59 @@ final class IsometricRenderer {
     func detachEntityNode(id: UUID) -> SKNode? {
         guard let node = entityNodes.removeValue(forKey: id) else { return nil }
         return node
+    }
+
+    /// Detaches a wall/gate node from sync so an open animation can finish.
+    func detachWallNode(at coord: GridCoord) -> SKNode? {
+        wallIdentities[coord] = nil
+        return wallNodes.removeValue(forKey: coord)
+    }
+
+    /// Detaches the visible gate sprite for the strip containing `coord`, if any.
+    func detachGateNode(at coord: GridCoord, in world: GameWorld) -> SKNode? {
+        guard case .gate(let minigame) = world.tile(at: coord)?.kind else {
+            return detachWallNode(at: coord)
+        }
+        if let strip = PlaceholderFactory.gateStrip(at: coord, minigame: minigame, in: world) {
+            let canonical = strip.isCanonical ? coord : strip.partner
+            if let node = detachWallNode(at: canonical) { return node }
+            if let node = detachWallNode(at: strip.partner) { return node }
+        }
+        return detachWallNode(at: coord)
+    }
+
+    /// Sets alpha on floor nodes at `coords` (no-op for missing nodes).
+    func setFloorNodesAlpha(_ alpha: CGFloat, at coords: [GridCoord]) {
+        for coord in coords {
+            floorNodes[coord]?.alpha = alpha
+        }
+    }
+
+    func floorNodes(at coords: [GridCoord]) -> [SKNode] {
+        coords.compactMap { floorNodes[$0] }
+    }
+
+    /// Gate sparkle dissolve + connecting floor fade-in (see `PlaceholderFactory.gateOpenDuration`).
+    func playGateOpenAnimation(
+        gateNode: SKNode?,
+        floorCoords: [GridCoord],
+        completion: @escaping () -> Void
+    ) {
+        let floors = floorNodes(at: floorCoords)
+        let referenceHeight: CGFloat
+        if let gateNode {
+            let frame = gateNode.calculateAccumulatedFrame()
+            referenceHeight = max(frame.height, config.wallHeight * 2)
+        } else {
+            referenceHeight = config.wallHeight * 2
+        }
+        PlaceholderFactory.playGateOpenAnimation(
+            on: gateNode,
+            floorNodes: floors,
+            referenceHeight: referenceHeight,
+            timingNode: worldRoot,
+            completion: completion
+        )
     }
 
     func playPickupCollectAnimation(id: UUID, completion: @escaping () -> Void) {
@@ -418,19 +514,32 @@ final class IsometricRenderer {
         updateEntityDisplayPosition(
             entity,
             screenPosition: IsometricMath.entityScreenPosition(gridCoord, config: config),
-            sortCoord: gridCoord
+            sortX: Double(gridCoord.x),
+            sortY: Double(gridCoord.y),
+            sortStory: gridCoord.story
         )
     }
 
-    /// Places an entity at a continuous screen position while sorting by occupancy tile.
+    /// Places an entity at a continuous screen position, sorting by the same fractional
+    /// grid pose used for drawing so floors under the sprite cannot win mid-move.
+    /// Gate strips use axis-aware occlusion for players, enemies, and pickups:
+    /// near-side poses draw above the gate; far-side poses draw below it.
     func updateEntityDisplayPosition(
         _ entity: GameEntity,
         screenPosition: CGPoint,
-        sortCoord: GridCoord
+        sortX: Double,
+        sortY: Double,
+        sortStory: Int
     ) {
         guard let node = entityNodes[entity.id] else { return }
         node.position = screenPosition
-        node.zPosition = IsometricMath.entitySortValue(for: sortCoord, config: config)
+        node.zPosition = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: sortX,
+            y: sortY,
+            story: sortStory,
+            gates: gateOccluders,
+            config: config
+        )
     }
 
     func applyAnimation(to entities: [GameEntity], frame: Int) {

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "8-geonosis",
+    "size": {
+      "w": 944,
+      "h": 1407
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 632,
+      "h": 702,
+      "anchor": {
+        "x": 316.0,
+        "y": 702.0
+      },
+      "base_w": 632
+    },
+    "along_y": {
+      "x": 0,
+      "y": 706,
+      "w": 636,
+      "h": 701,
+      "anchor": {
+        "x": 318.0,
+        "y": 701.0
+      },
+      "base_w": 636
+    }
+  }
+}

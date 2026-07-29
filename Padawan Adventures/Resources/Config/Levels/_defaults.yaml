@@ -32,6 +32,7 @@ letters:
 algorithm: rooms_doors
 # How many rooms to place on the map.
 room_count: 5
+# Legacy config key (validated >= 2). Packed joins use fixed 2-tile gate strips to match gate sprites.
 corridor_width: 2
 room:
   min_room_size: 4

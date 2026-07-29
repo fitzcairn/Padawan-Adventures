@@ -58,6 +58,7 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
             case "treasure_gold": self = .treasureGold
             case "enemy_defeat": self = .enemyDefeat
             case "combat_impact": self = .combatImpact
+            case "gate_open": self = .gateOpen
             default:
                 throw DecodingError.dataCorruptedError(
                     in: single,
@@ -102,5 +103,16 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
         particleSize: 0.18,
         alpha: 0.95,
         yOffset: 0
+    )
+
+    /// Gold sparkles while a beaten gate dissolves and connecting floors fade in.
+    static let gateOpen = HighlightConfig(
+        color: "#FFE082",
+        birthRate: 48,
+        lifetime: 1.2,
+        radius: 0.85,
+        particleSize: 0.13,
+        alpha: 0.92,
+        yOffset: 0.55
     )
 }

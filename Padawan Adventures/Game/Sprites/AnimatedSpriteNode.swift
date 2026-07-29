@@ -120,6 +120,41 @@ final class AnimatedSpriteNode: SKSpriteNode {
         )
     }
 
+    /// Plays `name` from frame 0 a fixed number of times, then calls `completion`. Always restarts.
+    @MainActor
+    func play(
+        name: String,
+        library: SpriteLibrary,
+        libraryID: String = "player",
+        count: Int,
+        completion: (() -> Void)? = nil
+    ) {
+        guard count > 0,
+              let animation = library.animation(id: libraryID, named: name),
+              !animation.frames.isEmpty else {
+            completion?()
+            return
+        }
+        preparePlayback(animation: animation, name: name)
+        guard animation.frames.count > 1 else {
+            currentAnimationName = nil
+            completion?()
+            return
+        }
+        let once = Self.makeOnceAction(for: animation)
+        let body: SKAction = count == 1 ? once : .repeat(once, count: count)
+        run(
+            .sequence([
+                body,
+                .run { [weak self] in
+                    self?.currentAnimationName = nil
+                    completion?()
+                },
+            ]),
+            withKey: Self.animationActionKey
+        )
+    }
+
     /// Builds a forever-looping texture animation action (uncached; used by floors and cache fill).
     static func makeLoopingAction(for animation: SpriteAnimation) -> SKAction {
         .repeatForever(makeOnceAction(for: animation))

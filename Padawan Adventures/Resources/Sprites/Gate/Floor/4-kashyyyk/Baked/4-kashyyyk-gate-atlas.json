@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": 1,
+    "gate_set": "4-kashyyyk",
+    "size": {
+      "w": 957,
+      "h": 1432
+    },
+    "frame_count": 2,
+    "footprint_tiles": 2,
+    "footprint_screen_widths": 1.5
+  },
+  "frames": {
+    "along_x": {
+      "x": 0,
+      "y": 0,
+      "w": 642,
+      "h": 721,
+      "anchor": {
+        "x": 321.0,
+        "y": 721.0
+      },
+      "base_w": 642
+    },
+    "along_y": {
+      "x": 0,
+      "y": 725,
+      "w": 639,
+      "h": 707,
+      "anchor": {
+        "x": 319.5,
+        "y": 707.0
+      },
+      "base_w": 639
+    }
+  }
+}

@@ -45,6 +45,8 @@ final class AppSession {
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
     /// Session-scoped cache of the active level's baked pit platform tile set.
     let pitSpriteSetLibrary: PitSpriteSetLibrary
+    /// Session-scoped cache of the active level's baked world gate wall sprites.
+    let gateSpriteSetLibrary: GateSpriteSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
     /// Enemy sprite ids warmed at bootstrap for every playable level; kept across levels.
@@ -76,6 +78,7 @@ final class AppSession {
         floorTileSetLibrary: FloorTileSetLibrary? = nil,
         letterSpriteSetLibrary: LetterSpriteSetLibrary? = nil,
         pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
+        gateSpriteSetLibrary: GateSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
         retainedEnemySpriteIDs: Set<String> = []
     ) {
@@ -104,6 +107,7 @@ final class AppSession {
         self.floorTileSetLibrary = floorTileSetLibrary ?? FloorTileSetLibrary()
         self.letterSpriteSetLibrary = letterSpriteSetLibrary ?? LetterSpriteSetLibrary()
         self.pitSpriteSetLibrary = pitSpriteSetLibrary ?? PitSpriteSetLibrary()
+        self.gateSpriteSetLibrary = gateSpriteSetLibrary ?? GateSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.retainedEnemySpriteIDs = retainedEnemySpriteIDs
     }
@@ -278,6 +282,13 @@ final class AppSession {
     func ensurePitSpriteSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
         let setName = selectedLevel.floor.set
         await pitSpriteSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
+    }
+
+    /// Loads the baked world gate wall sprites for the currently selected level.
+    /// Uses the same set name as the level floor set (`1-tython`, …).
+    func ensureGateSpriteSetLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let setName = selectedLevel.floor.set
+        await gateSpriteSetLibrary.ensureLoaded(set: setName, onProgress: onProgress)
     }
 
     /// Ensures level-select planet sprites are loaded for this session.
@@ -565,10 +576,11 @@ final class AppSession {
         }
         await report(1)
 
-        // Floor / letter / pit sets stay per-level (single active set in each library).
+        // Floor / letter / pit / gate sets stay per-level (single active set in each library).
         let floorTileSetLibrary = FloorTileSetLibrary()
         let letterSpriteSetLibrary = LetterSpriteSetLibrary()
         let pitSpriteSetLibrary = PitSpriteSetLibrary()
+        let gateSpriteSetLibrary = GateSpriteSetLibrary()
 
         do {
             try ConfigAudit.run(
@@ -599,6 +611,7 @@ final class AppSession {
             floorTileSetLibrary: floorTileSetLibrary,
             letterSpriteSetLibrary: letterSpriteSetLibrary,
             pitSpriteSetLibrary: pitSpriteSetLibrary,
+            gateSpriteSetLibrary: gateSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary,
             retainedEnemySpriteIDs: enemySpriteIDs
         )

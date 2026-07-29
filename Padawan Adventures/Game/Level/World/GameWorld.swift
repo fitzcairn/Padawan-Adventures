@@ -115,9 +115,11 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     }
 
     /// Opens a gate cell and every orthogonally contiguous gate of the same minigame kind.
+    ///
+    /// - Returns: The cells converted to floor (empty when `coord` was not a gate).
     @discardableResult
-    mutating func openGate(at coord: GridCoord) -> Bool {
-        guard let startKind = tile(at: coord)?.gateMinigame else { return false }
+    mutating func openGate(at coord: GridCoord) -> [GridCoord] {
+        guard let startKind = tile(at: coord)?.gateMinigame else { return [] }
         var queue = [coord]
         var visited: Set<GridCoord> = [coord]
         var head = 0
@@ -133,8 +135,9 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 queue.append(next)
             }
         }
-        retileFloors(around: Array(visited))
-        return true
+        let opened = Array(visited)
+        retileFloors(around: opened)
+        return opened
     }
 
     /// Fills a pit cell and every orthogonally contiguous pit in its blob into ordinary floor.

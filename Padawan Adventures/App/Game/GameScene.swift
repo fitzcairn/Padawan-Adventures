@@ -37,7 +37,9 @@ final class GameScene: SKScene {
     var onGateEntered: ((_ gate: GridCoord, _ approach: GridCoord) -> Void)?
     /// Called after a health/energy pickup finishes its collect animation.
     var onPickupCollected: ((PickupKind) -> Void)?
-    /// Called after treasure shake + fade completes.
+    /// Called when the treasure celebration animation (and victory music) should start.
+    var onTreasureCelebrationStarted: (() -> Void)?
+    /// Called after treasure shake, celebrate, and fade complete.
     var onTreasureCollected: (() -> Void)?
     /// Called with a world snapshot whenever a mid-run save is scheduled.
     var onWorldSaved: ((GameWorld) -> Void)?
@@ -65,6 +67,7 @@ final class GameScene: SKScene {
         itemsConfig: ItemsConfig? = nil,
         treasureItemID: String? = nil,
         floorTileSetLibrary: FloorTileSetLibrary? = nil,
+        gateSpriteSetLibrary: GateSpriteSetLibrary? = nil,
         saveService: GameSaveService?
     ) {
         self.world = world
@@ -83,7 +86,8 @@ final class GameScene: SKScene {
             playerSpriteConfig: playerSpriteConfig,
             itemsConfig: itemsConfig,
             treasureItemID: treasureItemID,
-            floorTileSetLibrary: floorTileSetLibrary
+            floorTileSetLibrary: floorTileSetLibrary,
+            gateSpriteSetLibrary: gateSpriteSetLibrary
         )
         super.init(size: size)
     }
@@ -262,17 +266,28 @@ final class GameScene: SKScene {
         }
     }
 
-    /// De-spawns a gate strip after a successful puzzle, then fades the world back in.
+    /// Opens a beaten gate: fade the world back in, then dissolve the gate with sparkles
+    /// while the two connecting floor tiles fade in (`gateOpenDuration`).
     func resolveGateEncounter(at coord: GridCoord, completion: (() -> Void)? = nil) {
-        if world.openGate(at: coord) {
-            SoundEffectsController.shared.play(event: "gate_opened", from: worldFx)
-        }
         pendingInput = PendingInput()
+        // Keep the gate sprite around for the dissolve; openGate converts cells to floor.
+        let gateNode = renderer.detachGateNode(at: coord, in: world)
+        let openedCoords = world.openGate(at: coord)
         renderer.render(world: world, focus: viewportFocus)
+        renderer.setFloorNodesAlpha(0, at: openedCoords)
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
-            self?.isPausedForEncounter = false
-            completion?()
+            guard let self else { return }
+            if !openedCoords.isEmpty {
+                SoundEffectsController.shared.play(event: "gate_opened", from: self.worldFx)
+            }
+            self.renderer.playGateOpenAnimation(
+                gateNode: gateNode,
+                floorCoords: openedCoords
+            ) {
+                self.isPausedForEncounter = false
+                completion?()
+            }
         }
     }
 
@@ -375,12 +390,31 @@ final class GameScene: SKScene {
         renderer.syncEntities(world.entities)
         renderer.shakeWorld { [weak self] in
             guard let self else { return }
-            self.renderer.fadeWorld { [weak self] in
+            self.playTreasureCelebration { [weak self] in
                 guard let self else { return }
-                self.onTreasureCollected?()
-                self.scheduleSave()
+                self.renderer.fadeWorld { [weak self] in
+                    guard let self else { return }
+                    self.onTreasureCollected?()
+                    self.scheduleSave()
+                }
             }
         }
+    }
+
+    /// Plays Kam's `celebrate_down` clip twice, then invokes `completion`.
+    private func playTreasureCelebration(completion: @escaping () -> Void) {
+        onTreasureCelebrationStarted?()
+        guard let library = spriteLibrary,
+              let sprite = renderer.playerAnimatedSprite() else {
+            completion()
+            return
+        }
+        sprite.play(
+            name: "celebrate_down",
+            library: library,
+            count: 2,
+            completion: completion
+        )
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
@@ -414,10 +448,17 @@ final class GameScene: SKScene {
 
         if let player = world.entities.first(where: \.isPlayer),
            player.position.story == renderer.visibleStory {
+            let sortPose = result.playerSortPose ?? FractionalGridPose(
+                x: Double(occupancy.x),
+                y: Double(occupancy.y),
+                story: occupancy.story
+            )
             renderer.updateEntityDisplayPosition(
                 player,
                 screenPosition: displayPoint,
-                sortCoord: occupancy
+                sortX: sortPose.x,
+                sortY: sortPose.y,
+                sortStory: sortPose.story
             )
         }
 
@@ -427,7 +468,9 @@ final class GameScene: SKScene {
             renderer.updateEntityDisplayPosition(
                 entity,
                 screenPosition: pose.screenPosition,
-                sortCoord: pose.occupancy
+                sortX: pose.sortPose.x,
+                sortY: pose.sortPose.y,
+                sortStory: pose.sortPose.story
             )
         }
 
