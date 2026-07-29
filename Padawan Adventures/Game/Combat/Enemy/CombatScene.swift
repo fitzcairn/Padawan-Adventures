@@ -51,6 +51,7 @@ final class CombatScene: SKScene {
     private var didEnd = false
     private var didSetup = false
     private var lastUpdateTime: TimeInterval?
+    private var activeLoopTrackID: String?
 
     private let shotBaseSize: CGFloat = 72
     private let playerFlashActionKey = "playerFlash"
@@ -104,8 +105,17 @@ final class CombatScene: SKScene {
         didSetup = true
         buildArena()
         engine.begin()
+        SoundEffectsController.shared.play(event: "combat_start", from: playerFx)
+        activeLoopTrackID = SoundEffectsController.shared.startLoop(
+            event: "combat_loop",
+            from: playerFx
+        )
         publishTimer()
         combatDelegate?.combatSceneDidUpdateStars(0)
+    }
+
+    override func willMove(from view: SKView) {
+        stopCombatLoop()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -440,6 +450,7 @@ final class CombatScene: SKScene {
     }
 
     private func playExplosion(at position: CGPoint) {
+        SoundEffectsController.shared.play(event: "slash_hit", from: playerFx)
         let circle = SKShapeNode(circleOfRadius: 12)
         circle.fillColor = .yellow
         circle.strokeColor = UIColor.orange
@@ -530,6 +541,7 @@ final class CombatScene: SKScene {
     }
 
     private func beginSlash(at point: CGPoint, time: TimeInterval) {
+        SoundEffectsController.shared.play(event: "slash", from: playerFx)
         isSlashActive = true
         slashStartedAt = time
         slashPoints = [point]
@@ -763,6 +775,8 @@ final class CombatScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         engine.end()
+        stopCombatLoop()
+        SoundEffectsController.shared.playCommon(event: "win")
         for id in Array(shotVisuals.keys) {
             removeShotNode(id: id)
         }
@@ -775,7 +789,14 @@ final class CombatScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         engine.end()
+        stopCombatLoop()
+        SoundEffectsController.shared.playCommon(event: "lose")
         clearSlashLine()
         combatDelegate?.combatSceneDidLose()
+    }
+
+    private func stopCombatLoop() {
+        SoundEffectsController.shared.stopLoop(trackID: activeLoopTrackID)
+        activeLoopTrackID = nil
     }
 }

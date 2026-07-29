@@ -170,7 +170,7 @@ struct AppConfigTests {
         let app = AppConfig(version: 1, seed: 1, world: .init(stories: 1))
         let level = LevelConfig.fallback
         let generation = WorldGenerationConfig.compose(app: app, level: level)
-        #expect(level.worldFx.trackID(for: "gate_opened") == "sfx_gate_opened")
+        #expect(level.worldFx.trackID(for: "gate_opened") == "gate-open")
         #expect(generation.enemies?.type == "spider")
         #expect(generation.enemies?.spawnChancePerRoom == 0.8)
     }

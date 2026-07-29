@@ -7,7 +7,7 @@ struct BundleSoundEffectPlayerTests {
     @Test func retriggeringOneTrackIsBounded() {
         let player = BundleSoundEffectPlayer()
         for _ in 0..<5 {
-            #expect(player.play(trackID: "sfx_win", volume: 1))
+            #expect(player.play(trackID: "win", volume: 1))
         }
         #expect(player.decodeCount >= 1)
         #expect(player.decodeCount <= 2)
@@ -16,9 +16,9 @@ struct BundleSoundEffectPlayerTests {
 
     @Test func distinctTracksGetSeparatePools() {
         let player = BundleSoundEffectPlayer()
-        #expect(player.play(trackID: "sfx_win", volume: 1))
-        #expect(player.play(trackID: "sfx_error", volume: 1))
-        #expect(player.play(trackID: "sfx_correct", volume: 1))
+        #expect(player.play(trackID: "win", volume: 1))
+        #expect(player.play(trackID: "error", volume: 1))
+        #expect(player.play(trackID: "correct", volume: 1))
         #expect(player.cachedTrackCount == 3)
         #expect(player.decodeCount == 3)
     }
@@ -56,7 +56,7 @@ struct BundleSoundEffectPlayerTests {
 
     @Test func durationDoesNotStartPlayback() {
         let player = BundleSoundEffectPlayer()
-        let duration = player.duration(of: "sfx_win")
+        let duration = player.duration(of: "win")
         #expect(duration != nil)
         #expect((duration ?? 0) > 0)
         #expect(player.anyPooledPlayerIsPlaying == false)

@@ -35,8 +35,6 @@ struct LevelSelectView: View {
     private static let planetJitterToDiameter: CGFloat = 0.32
     private let inventoryIconSide: CGFloat = 52
     private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
-    private static let celebrationRevealSeconds: TimeInterval = 0.85
-    private static let celebrationSparkleNanoseconds: UInt64 = 1_200_000_000
 
     init(
         session: AppSession,
@@ -251,13 +249,16 @@ struct LevelSelectView: View {
         try? await Task.sleep(nanoseconds: Self.celebrationHoldNanoseconds)
         guard !Task.isCancelled else { return }
 
+        let artifactTrackID = SoundEffectsController.shared.commonFx.trackID(for: "artifact_appear")
+        let revealSeconds = SoundEffectsController.shared.cueDuration(of: artifactTrackID)
+        SoundEffectsController.shared.playCommon(event: "artifact_appear")
         inventorySparklesActive = true
         planetSparklesActive = celebratingUnlockResource != nil
-        withAnimation(.easeIn(duration: Self.celebrationRevealSeconds)) {
+        withAnimation(.easeIn(duration: revealSeconds)) {
             celebrationRevealed = true
         }
 
-        try? await Task.sleep(nanoseconds: Self.celebrationSparkleNanoseconds)
+        try? await Task.sleep(nanoseconds: UInt64(revealSeconds * 1_000_000_000))
         guard !Task.isCancelled else { return }
         inventorySparklesActive = false
         planetSparklesActive = false

@@ -15,10 +15,11 @@ nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
     static let fallback = SoundSettings(
         fadeSeconds: 1.0,
         fx: SoundEffectTable(events: [
-            "win": "sfx_win",
-            "lose": "sfx_lose",
-            "error": "sfx_error",
-            "correct": "sfx_correct",
+            "win": "win",
+            "lose": "lose",
+            "error": "error",
+            "correct": "correct",
+            "artifact_appear": "level-screen-artifact-appear",
         ])
     )
 

@@ -24,6 +24,8 @@ nonisolated struct SimulationTickResult: Sendable {
     var movementEvents: [MovementEvent] = []
     /// Enemy that shares the player's occupancy tile this tick, if any.
     var enemyContactID: UUID?
+    /// Enemies that newly acquired line of sight on the player this tick.
+    var noticedEnemyIDs: [UUID] = []
     /// Pickup that shares the player's occupancy tile this tick, if any.
     var pickupContactID: UUID?
     /// True when the player entered a pit this tick (fell or hazard).
@@ -85,7 +87,7 @@ struct SimulationLoop: Sendable {
         }
 
         runControls(world: &world, movement: &movement, pendingInput: &pendingInput)
-        enemyAI.update(
+        result.noticedEnemyIDs = enemyAI.update(
             world: &world,
             states: &enemyStates,
             movements: &enemyMovements,

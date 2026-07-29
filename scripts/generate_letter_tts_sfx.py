@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate letter name/pronunciation and wall-yay placeholder SFX via macOS `say` + afconvert."""
+"""Generate letter name/pronunciation SFX via macOS `say` + afconvert into FX/Phonetics/."""
 
 from __future__ import annotations
 
@@ -70,7 +70,9 @@ def generate(text: str, out_m4a: Path) -> None:
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
-    out_dir = repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX"
+    out_dir = (
+        repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Phonetics"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for letter in LETTERS:
@@ -79,12 +81,6 @@ def main() -> int:
             PRONUNCIATION_TEXT[letter],
             out_dir / f"sfx_letter_{letter}_pronunciation.m4a",
         )
-
-    generate("yay!", out_dir / "sfx_correct.m4a")
-    generate("ta-da!", out_dir / "sfx_win.m4a")
-    generate("you're falling!", out_dir / "sfx_lose.m4a")
-    generate("ta-da!", out_dir / "sfx_pit_yay.m4a")
-    generate("you're falling!", out_dir / "sfx_pit_fall.m4a")
     return 0
 
 

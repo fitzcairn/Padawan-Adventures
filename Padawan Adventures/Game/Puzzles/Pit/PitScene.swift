@@ -869,6 +869,7 @@ final class PitScene: SKScene {
         landAnimation: String? = nil,
         completion: @escaping () -> Void
     ) {
+        SoundEffectsController.shared.play(event: "jump", from: puzzleConfig.fx)
         let start = playerNode.position
         playJumpAnimation(toward: target)
         let arcHeight = max(letterRadius * 2.2, hypot(target.x - start.x, target.y - start.y) * 0.35)

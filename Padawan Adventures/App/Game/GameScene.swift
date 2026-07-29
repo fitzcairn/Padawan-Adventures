@@ -31,6 +31,8 @@ final class GameScene: SKScene {
 
     /// Called when the player contacts an enemy (same occupancy tile).
     var onEnemyContact: ((UUID) -> Void)?
+    /// Called the first time an enemy acquires line of sight on the player.
+    var onEnemyNoticed: ((UUID) -> Void)?
     /// Called when the player enters a pit tile (`approach` retreat tile).
     var onPitEntered: ((_ approach: GridCoord) -> Void)?
     /// Called when the player walks onto a gate (`gate` tile, `approach` retreat tile).
@@ -420,6 +422,10 @@ final class GameScene: SKScene {
     }
 
     private func applyTickResult(_ result: SimulationTickResult) {
+        for enemyID in result.noticedEnemyIDs {
+            onEnemyNoticed?(enemyID)
+        }
+
         for event in result.movementEvents {
             if case .reached = event {
                 SoundEffectsController.shared.play(event: "move", from: playerFx)

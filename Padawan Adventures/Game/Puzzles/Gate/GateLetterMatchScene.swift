@@ -487,6 +487,7 @@ final class GateLetterMatchScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
+        SoundEffectsController.shared.playCommon(event: "win")
         if case let .won(stars) = engine.outcome {
             letterMatchDelegate?.gateLetterMatchSceneDidWin(starsAwarded: stars)
         } else {
@@ -498,6 +499,7 @@ final class GateLetterMatchScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
+        SoundEffectsController.shared.playCommon(event: "lose")
         letterMatchDelegate?.gateLetterMatchSceneDidLose()
     }
 
@@ -516,8 +518,20 @@ final class GateLetterMatchScene: SKScene {
         guard let id = letterID(at: location),
               !engine.matchedIDs.contains(id) else { return }
 
+        // Click first, then letter name — playing both at once lets the push mask the cue.
+        SoundEffectsController.shared.play(event: "switch_push", from: puzzleConfig.fx)
         let events = engine.tapLetter(id: id)
-        handleTapEvents(events)
+        guard !events.isEmpty else { return }
+        let pushDuration = SoundEffectsController.shared.cueDuration(
+            of: puzzleConfig.fx.trackID(for: "switch_push")
+        )
+        inputLocked = true
+        run(SKAction.sequence([
+            SKAction.wait(forDuration: pushDuration),
+            SKAction.run { [weak self] in
+                self?.handleTapEvents(events)
+            },
+        ]))
     }
 
     private func flashReplayBox() {

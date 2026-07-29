@@ -10,6 +10,8 @@ struct EnemyAIState: Equatable, Sendable {
     var mode: EnemyAIMode = .idle
     var forgetElapsed: TimeInterval = 0
     var chaseGoal: GridCoord?
+    /// True after the enemy first acquires line of sight; survives forget resets.
+    var hasNoticedPlayer: Bool = false
 }
 
 struct EnemyAISystem: Sendable {
@@ -21,13 +23,16 @@ struct EnemyAISystem: Sendable {
         self.pathfinder = pathfinder
     }
 
+    /// Updates chase / search AI. Returns enemy ids that newly noticed the player this tick.
+    @discardableResult
     mutating func update(
         world: inout GameWorld,
         states: inout [UUID: EnemyAIState],
         movements: inout [UUID: MovementSystem],
         deltaTime: TimeInterval
-    ) {
-        guard let playerPosition = world.playerPosition else { return }
+    ) -> [UUID] {
+        var noticed: [UUID] = []
+        guard let playerPosition = world.playerPosition else { return noticed }
 
         let enemyIDs = Set(world.entities.filter(\.isEnemy).map(\.id))
         for id in states.keys where !enemyIDs.contains(id) {
@@ -55,6 +60,10 @@ struct EnemyAISystem: Sendable {
             )
 
             if seesPlayer {
+                if !state.hasNoticedPlayer {
+                    state.hasNoticedPlayer = true
+                    noticed.append(entity.id)
+                }
                 state.mode = .chasing
                 state.forgetElapsed = 0
                 let liveEnemy = world.entity(id: entity.id) ?? entity
@@ -73,7 +82,9 @@ struct EnemyAISystem: Sendable {
                 state.mode = .searching
                 state.forgetElapsed += deltaTime
                 if state.forgetElapsed >= typeConfig.forgetSeconds {
+                    let hadNoticed = state.hasNoticedPlayer
                     state = EnemyAIState()
+                    state.hasNoticedPlayer = hadNoticed
                     if movement.isMoving {
                         movement.finishCurrentSegmentAndStop()
                     } else {
@@ -86,6 +97,7 @@ struct EnemyAISystem: Sendable {
             states[entity.id] = state
             movements[entity.id] = movement
         }
+        return noticed
     }
 
     private func repathIfNeeded(

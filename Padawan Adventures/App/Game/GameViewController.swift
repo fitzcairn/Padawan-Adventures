@@ -70,15 +70,16 @@ final class GameViewController: LandscapeHostingController {
         )
         scene.scaleMode = .aspectFill
         scene.onEnemyContact = { [weak self] enemyID in
-            self?.playEnemyContactFx(enemyID: enemyID)
             self?.presentEnemyFight(enemyID: enemyID)
+        }
+        scene.onEnemyNoticed = { [weak self] enemyID in
+            self?.playEnemyNoticeFx(enemyID: enemyID)
         }
         scene.onPitEntered = { [weak self] approach in
             self?.playPlayerFx("pit")
             self?.presentPit(approach: approach)
         }
         scene.onGateEntered = { [weak self] gate, approach in
-            self?.playPlayerFx("gate")
             self?.presentGate(at: gate, approach: approach)
         }
         scene.onPickupCollected = { [weak self] kind in
@@ -158,15 +159,10 @@ final class GameViewController: LandscapeHostingController {
         SoundEffectsController.shared.play(event: event, from: session.playerConfig.fx)
     }
 
-    private func playEnemyContactFx(enemyID: UUID) {
-        let typeID = gameScene?.currentWorld.entity(id: enemyID)?.enemyTypeID
-        if let typeID,
-           let typeFx = session.enemyConfig.type(named: typeID)?.fx,
-           typeFx.trackID(for: "contact") != nil {
-            SoundEffectsController.shared.play(event: "contact", from: typeFx)
-            return
-        }
-        playPlayerFx("enemy_contact")
+    private func playEnemyNoticeFx(enemyID: UUID) {
+        guard let typeID = gameScene?.currentWorld.entity(id: enemyID)?.enemyTypeID,
+              let typeFx = session.enemyConfig.type(named: typeID)?.fx else { return }
+        SoundEffectsController.shared.play(event: "notice", from: typeFx)
     }
 
     @MainActor

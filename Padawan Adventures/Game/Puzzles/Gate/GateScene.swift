@@ -40,6 +40,7 @@ final class GateScene: SKScene {
     private var isCompletingWin = false
     private var didSetup = false
     private var lastUpdateTime: TimeInterval?
+    private var activeLoopTrackID: String?
     private var lastConnectedPrefix = ""
     /// Connected prefix when the current drag began; used to detect non-advancing moves.
     private var connectedPrefixAtDragStart: String?
@@ -101,7 +102,15 @@ final class GateScene: SKScene {
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         buildPuzzle()
         playWordSound()
+        activeLoopTrackID = SoundEffectsController.shared.startLoop(
+            event: "loop",
+            from: puzzleConfig.fx
+        )
         publishTimer()
+    }
+
+    override func willMove(from view: SKView) {
+        stopGateLoop()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -745,6 +754,7 @@ final class GateScene: SKScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
+        stopGateLoop()
         SoundEffectsController.shared.play(
             event: "win",
             from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
@@ -761,7 +771,17 @@ final class GateScene: SKScene {
         didEnd = true
         isUserInteractionEnabled = false
         removeAction(forKey: Self.winSequenceActionKey)
+        stopGateLoop()
+        SoundEffectsController.shared.play(
+            event: "lose",
+            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
+        )
         gateDelegate?.gateSceneDidLose()
+    }
+
+    private func stopGateLoop() {
+        SoundEffectsController.shared.stopLoop(trackID: activeLoopTrackID)
+        activeLoopTrackID = nil
     }
 
     // MARK: - Touch / drag

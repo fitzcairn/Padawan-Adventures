@@ -6,6 +6,9 @@ import Testing
 final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var playCalls: [(trackID: String, volume: Float)] = []
     private(set) var preparedTrackIDs: [String] = []
+    private(set) var startedLoops: [String] = []
+    private(set) var stoppedLoops: [String] = []
+    var activeLoops: Set<String> = []
     var missingTrackIDs: Set<String> = []
     var durations: [String: TimeInterval] = [:]
 
@@ -24,6 +27,29 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
 
     func prepare(trackIDs: [String]) {
         preparedTrackIDs.append(contentsOf: trackIDs)
+    }
+
+    @discardableResult
+    func startLoop(trackID: String, volume: Float) -> Bool {
+        if missingTrackIDs.contains(trackID) {
+            return false
+        }
+        startedLoops.append(trackID)
+        activeLoops.insert(trackID)
+        _ = volume
+        return true
+    }
+
+    func stopLoop(trackID: String) {
+        stoppedLoops.append(trackID)
+        activeLoops.remove(trackID)
+    }
+
+    func stopAllLoops() {
+        for trackID in activeLoops.sorted() {
+            stoppedLoops.append(trackID)
+        }
+        activeLoops.removeAll()
     }
 
     var playedTrackIDs: [String] {
@@ -152,6 +178,44 @@ struct SoundEffectsControllerTests {
         let controller = SoundEffectsController(player: mock)
         controller.prepare(trackIDs: ["sfx_win", "sfx_error"])
         #expect(mock.preparedTrackIDs == ["sfx_win", "sfx_error"])
+    }
+
+    @Test func startLoopEventReturnsTrackIDAndRecordsStart() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        let table = SoundEffectTable(events: ["combat_loop": "combat-loop-lightsaber-hum"])
+        let trackID = controller.startLoop(event: "combat_loop", from: table)
+        #expect(trackID == "combat-loop-lightsaber-hum")
+        #expect(mock.startedLoops == ["combat-loop-lightsaber-hum"])
+        #expect(mock.activeLoops == ["combat-loop-lightsaber-hum"])
+    }
+
+    @Test func stopLoopRemovesActiveLoop() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        let table = SoundEffectTable(events: ["loop": "gate-spelling-loop-arc"])
+        let trackID = controller.startLoop(event: "loop", from: table)
+        controller.stopLoop(trackID: trackID)
+        #expect(mock.activeLoops.isEmpty)
+        #expect(mock.stoppedLoops == ["gate-spelling-loop-arc"])
+    }
+
+    @Test func disablingSoundEffectsStopsAllLoops() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.startLoop(trackID: "hum-a")
+        controller.startLoop(trackID: "hum-b")
+        controller.setSoundEffectsEnabled(false)
+        #expect(mock.activeLoops.isEmpty)
+        #expect(Set(mock.stoppedLoops) == ["hum-a", "hum-b"])
+    }
+
+    @Test func startLoopUnmappedEventIsNoOp() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        let trackID = controller.startLoop(event: "missing", from: .empty)
+        #expect(trackID == nil)
+        #expect(mock.startedLoops.isEmpty)
     }
 }
 

@@ -125,7 +125,9 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
 
     static func audioURL(
         for trackID: String,
-        subdirectories: [String] = ["Audio/Music", "Audio/FX", "Audio"]
+        subdirectories: [String] = AudioBundleLayout.musicSubdirectories
+            + AudioBundleLayout.fxSubdirectories
+            + ["Audio"]
     ) -> URL? {
         let extensions = ["m4a", "caf", "wav", "mp3"]
         for ext in extensions {

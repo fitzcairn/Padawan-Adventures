@@ -6,15 +6,17 @@ starting_energy: 2
 
 # Event key → sound track basename (Resources/Audio/FX/<name>.m4a).
 fx:
-  move: sfx_player_move
-  pickup_health: sfx_pickup_health
-  pickup_energy: sfx_pickup_energy
-  pickup_treasure: sfx_pickup_treasure
-  pit: sfx_pit
-  gate: sfx_gate
-  enemy_contact: sfx_enemy_contact
-  damage: sfx_player_damage
-  timer_tick: sfx_timer_tick
+  move: world-player-step
+  pickup_health: pickup-health
+  pickup_energy: pickup-energy
+  pickup_treasure: pickup-treasure
+  pit: pit-start
+  damage: combat-damage
+  timer_tick: timer-tick
+  combat_start: combat-start-lightsaber-ignite
+  combat_loop: combat-loop-lightsaber-hum
+  slash: combat-lightsaber-slash
+  slash_hit: lightsaber-cut
 
 # Animated sprite sheets under Resources/Sprites/Player/<name>/.
 # Cardinals: up / down / left / right. Diagonals keep compass names.

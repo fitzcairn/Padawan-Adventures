@@ -19,10 +19,11 @@ struct SoundSettingsTests {
             fade_seconds: 0.5
             """)
         #expect(settings.fadeSeconds == 0.5)
-        #expect(settings.fx.trackID(for: "win") == "sfx_win")
-        #expect(settings.fx.trackID(for: "lose") == "sfx_lose")
-        #expect(settings.fx.trackID(for: "error") == "sfx_error")
-        #expect(settings.fx.trackID(for: "correct") == "sfx_correct")
+        #expect(settings.fx.trackID(for: "win") == "win")
+        #expect(settings.fx.trackID(for: "lose") == "lose")
+        #expect(settings.fx.trackID(for: "error") == "error")
+        #expect(settings.fx.trackID(for: "correct") == "correct")
+        #expect(settings.fx.trackID(for: "artifact_appear") == "level-screen-artifact-appear")
     }
 
     @Test func validateRejectsNegativeFade() {
@@ -36,9 +37,10 @@ struct SoundSettingsTests {
         let settings = try SoundSettings.loadFromBundle()
         try settings.validate()
         #expect(settings.fadeSeconds == 1.0)
-        #expect(settings.fx.trackID(for: "win") == "sfx_win")
-        #expect(settings.fx.trackID(for: "lose") == "sfx_lose")
-        #expect(settings.fx.trackID(for: "error") == "sfx_error")
-        #expect(settings.fx.trackID(for: "correct") == "sfx_correct")
+        #expect(settings.fx.trackID(for: "win") == "win")
+        #expect(settings.fx.trackID(for: "lose") == "lose")
+        #expect(settings.fx.trackID(for: "error") == "error")
+        #expect(settings.fx.trackID(for: "correct") == "correct")
+        #expect(settings.fx.trackID(for: "artifact_appear") == "level-screen-artifact-appear")
     }
 }

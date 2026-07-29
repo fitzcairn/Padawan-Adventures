@@ -247,18 +247,17 @@ defaults:
   shot_travel_seconds: 8
   stars_to_win: 5
   shot_letters: [a, b, c]
-  fx:
-    contact: sfx_enemy_contact
 
 # Each type inherits everything from `defaults:`; any same-name key here wins.
+# `fx.notice` plays once, the first time that enemy gets line of sight on the player.
 enemies:
-  centipede:   { sprite: centipede }
-  dino:        { sprite: dino }
-  drone:       { sprite: drone }
-  ice_monster: { sprite: ice_monster }
-  lava_lizard: { sprite: lava_lizard }
-  moth:        { sprite: moth }
-  robot:       { sprite: robot }
-  snake:       { sprite: snake }
-  spider:      { sprite: spider }
-  treant:      { sprite: treant }
+  centipede:   { sprite: centipede,   fx: { notice: enemy-centipede } }
+  dino:        { sprite: dino,        fx: { notice: enemy-dino } }
+  drone:       { sprite: drone,       fx: { notice: enemy-drone } }
+  ice_monster: { sprite: ice_monster, fx: { notice: enemy-ice_monster } }
+  lava_lizard: { sprite: lava_lizard, fx: { notice: enemy-lava_lizard } }
+  moth:        { sprite: moth,        fx: { notice: enemy-moth } }
+  robot:       { sprite: robot,       fx: { notice: enemy-robot } }
+  snake:       { sprite: snake,       fx: { notice: enemy-snake } }
+  spider:      { sprite: spider,      fx: { notice: enemy-spider } }
+  treant:      { sprite: treant,      fx: { notice: enemy-treant } }

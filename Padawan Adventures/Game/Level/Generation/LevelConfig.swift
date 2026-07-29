@@ -147,8 +147,8 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     nonisolated static let fallback = PitPuzzleConfig(
         timerSeconds: 30,
         fx: SoundEffectTable(events: [
-            "win": "sfx_pit_yay",
-            "lose": "sfx_pit_fall",
+            "lose": "pit-falling",
+            "jump": "pit-jump",
         ]),
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words.filter { ["cat", "dog", "star"].contains($0.word) }
@@ -157,8 +157,8 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     nonisolated init(
         timerSeconds: Double,
         fx: SoundEffectTable = SoundEffectTable(events: [
-            "win": "sfx_pit_yay",
-            "lose": "sfx_pit_fall",
+            "lose": "pit-falling",
+            "jump": "pit-jump",
         ]),
         numPaddingLetters: Int = 6,
         wordIDs: [String]? = nil,
@@ -361,7 +361,7 @@ nonisolated struct GateConfig: Equatable, Sendable {
     var minigames: [GateMinigameConfig]
 
     nonisolated static let fallback = GateConfig(
-        fx: SoundEffectTable(events: ["opened": "sfx_gate_opened"]),
+        fx: SoundEffectTable(events: ["opened": "gate-open"]),
         minigames: [
             .spelling(.fallback),
             .letterMatch(.fallback),
@@ -1137,7 +1137,7 @@ extension GateConfig {
             return
         }
         let dto = try container.decode(GateConfigDTO.self, forKey: .gate)
-        fx = dto.fx ?? SoundEffectTable(events: ["opened": "sfx_gate_opened"])
+        fx = dto.fx ?? SoundEffectTable(events: ["opened": "gate-open"])
         guard let entries = dto.minigames, !entries.isEmpty else {
             throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
         }

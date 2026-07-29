@@ -329,4 +329,64 @@ struct EnemyAITests {
         #expect(world.entities.contains(where: \.isEnemy) == false)
         #expect(world.enemyInContactWithPlayer() == nil)
     }
+
+    @Test func noticeFiresOnceEvenAfterForgetAndReacquire() {
+        // Place a permanent wall column first so LOS cannot reopen while the enemy moves.
+        var world = worldWithEnemy(
+            playerAt: GridCoord(x: 0, y: 1, story: 0),
+            enemyAt: GridCoord(x: 4, y: 1, story: 0)
+        )
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 0, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 2, story: 0))
+        // Open a temporary gap so the enemy can acquire the player.
+        world.setTile(Tile(kind: .floor(isPit: false)), at: GridCoord(x: 2, y: 1, story: 0))
+
+        let enemyID = world.entities.first(where: \.isEnemy)!.id
+        var ai = EnemyAISystem(enemyConfig: enemyConfig)
+        var states: [UUID: EnemyAIState] = [:]
+        var movements: [UUID: MovementSystem] = [:]
+
+        let first = ai.update(
+            world: &world,
+            states: &states,
+            movements: &movements,
+            deltaTime: SimulationClock.tickDuration
+        )
+        #expect(first == [enemyID])
+        #expect(states[enemyID]?.hasNoticedPlayer == true)
+
+        let second = ai.update(
+            world: &world,
+            states: &states,
+            movements: &movements,
+            deltaTime: SimulationClock.tickDuration
+        )
+        #expect(second.isEmpty)
+
+        // Close LOS and wait out forget_seconds.
+        world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
+        let forgetTicks = Int(ceil(3.0 / SimulationClock.tickDuration)) + 2
+        for _ in 0..<forgetTicks {
+            _ = ai.update(
+                world: &world,
+                states: &states,
+                movements: &movements,
+                deltaTime: SimulationClock.tickDuration
+            )
+        }
+        #expect(states[enemyID]?.mode == .idle)
+        #expect(states[enemyID]?.hasNoticedPlayer == true)
+
+        // Re-open LOS — notice must not fire again.
+        world.setTile(Tile(kind: .floor(isPit: false)), at: GridCoord(x: 2, y: 1, story: 0))
+        let reacquire = ai.update(
+            world: &world,
+            states: &states,
+            movements: &movements,
+            deltaTime: SimulationClock.tickDuration
+        )
+        #expect(reacquire.isEmpty)
+        #expect(states[enemyID]?.mode == .chasing)
+    }
 }

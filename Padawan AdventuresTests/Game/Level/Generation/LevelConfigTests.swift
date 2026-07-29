@@ -698,7 +698,7 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
+        #expect(tython.gate.fx.trackID(for: "opened") == "gate-open")
         #expect(!tython.gate.minigames.isEmpty)
         let spellingConfigs = tython.gate.minigames.compactMap { minigame -> GateSpellingConfig? in
             if case .spelling(let c) = minigame { return c }
@@ -722,8 +722,9 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.timerSeconds == 30)
-        #expect(tython.pit.fx.trackID(for: "win") == "sfx_pit_yay")
-        #expect(tython.pit.fx.trackID(for: "lose") == "sfx_pit_fall")
+        #expect(tython.pit.fx.trackID(for: "win") == nil)
+        #expect(tython.pit.fx.trackID(for: "lose") == "pit-falling")
+        #expect(tython.pit.fx.trackID(for: "jump") == "pit-jump")
         #expect(tython.pit.numPaddingLetters == 6)
         #expect(tython.pit.words.map(\.word) == ["cat", "dog", "star"])
         #expect(tython.pit.words.contains {

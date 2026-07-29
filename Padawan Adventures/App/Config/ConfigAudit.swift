@@ -425,7 +425,7 @@ nonisolated enum ConfigAudit {
         }
         guard let url = resolveAudioURL(
             basename: trimmed,
-            subdirectory: "Audio/Music",
+            subdirectories: AudioBundleLayout.musicSubdirectories,
             bundle: bundle
         ) else {
             return ["\(kind): missing music track '\(trimmed)'"]
@@ -447,7 +447,7 @@ nonisolated enum ConfigAudit {
         }
         guard let url = resolveAudioURL(
             basename: trimmed,
-            subdirectory: "Audio/FX",
+            subdirectories: AudioBundleLayout.fxSubdirectories,
             bundle: bundle
         ) else {
             return ["\(kind): missing fx track '\(trimmed)'"]
@@ -478,24 +478,19 @@ nonisolated enum ConfigAudit {
             }
         }
 
-        // 2) Both searched directories present and non-empty.
+        // 2) Both searched directories present and non-empty (recursive).
         for subdirectory in ["Audio/FX", "Audio/Music"] {
-            let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: subdirectory) ?? []
-            let audioFiles = urls.filter(isAudioFile)
+            let audioFiles = audioFiles(under: subdirectory, in: resourceURL)
             if audioFiles.isEmpty {
                 problems.append("audio layout: '\(subdirectory)' is missing or empty")
             }
         }
 
-        // 3) No basename collisions between searchable Music and FX trees.
-        // `Audio/FX/New/` is staging and excluded — those clips are not looked up by basename.
+        // 3) No basename collisions between searchable Music and FX trees
+        // (includes nested Phonetics/ and UI/ under FX).
         var locationsByBasename: [String: Set<String>] = [:]
         for subdirectory in ["Audio/Music", "Audio/FX"] {
-            guard let urls = bundle.urls(forResourcesWithExtension: nil, subdirectory: subdirectory)
-            else { continue }
-            for url in urls where isAudioFile(url) {
-                // Skip staged WIP under Audio/FX/New/.
-                if url.path.contains("/Audio/FX/New/") { continue }
+            for url in audioFiles(under: subdirectory, in: resourceURL) {
                 let basename = url.deletingPathExtension().lastPathComponent
                 locationsByBasename[basename, default: []].insert(subdirectory)
             }
@@ -511,6 +506,23 @@ nonisolated enum ConfigAudit {
         return problems
     }
 
+    /// Recursively lists audio files under `subdirectory` of the bundle resource root.
+    private static func audioFiles(under subdirectory: String, in resourceURL: URL) -> [URL] {
+        let root = resourceURL.appendingPathComponent(subdirectory)
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        var urls: [URL] = []
+        for case let url as URL in enumerator where isAudioFile(url) {
+            urls.append(url)
+        }
+        return urls
+    }
+
     // MARK: - Bundle helpers
 
     private static func isAudioFile(_ url: URL) -> Bool {
@@ -519,16 +531,18 @@ nonisolated enum ConfigAudit {
 
     private static func resolveAudioURL(
         basename: String,
-        subdirectory: String,
+        subdirectories: [String],
         bundle: Bundle
     ) -> URL? {
-        for ext in audioExtensions {
-            if let url = bundle.url(
-                forResource: basename,
-                withExtension: ext,
-                subdirectory: subdirectory
-            ) {
-                return url
+        for subdirectory in subdirectories {
+            for ext in audioExtensions {
+                if let url = bundle.url(
+                    forResource: basename,
+                    withExtension: ext,
+                    subdirectory: subdirectory
+                ) {
+                    return url
+                }
             }
         }
         return nil

@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-/// Minimal one-shot player surface used by `SoundEffectsController` (mockable in tests).
+/// Minimal one-shot / loop player surface used by `SoundEffectsController` (mockable in tests).
 @MainActor
 protocol SoundEffectPlaying: AnyObject {
     /// Plays a short effect. Returns `false` when the track cannot be loaded.
@@ -13,6 +13,14 @@ protocol SoundEffectPlaying: AnyObject {
 
     /// Warms the clip pool for the given track ids without starting playback.
     func prepare(trackIDs: [String])
+
+    /// Starts (or restarts) an indefinitely looping track. Returns `false` when it cannot be loaded.
+    @discardableResult
+    func startLoop(trackID: String, volume: Float) -> Bool
+
+    func stopLoop(trackID: String)
+
+    func stopAllLoops()
 }
 
 /// Bundle-backed per-track `AVAudioPlayer` pool for overlapping one-shots.
@@ -22,6 +30,8 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     private var pools: [String: [AVAudioPlayer]] = [:]
     private var trackOrder: [String] = []
     private var durationCache: [String: TimeInterval] = [:]
+    /// Separate from the one-shot LRU pool so loops are never evicted mid-play.
+    private var loopPlayers: [String: AVAudioPlayer] = [:]
     private var didConfigureSession = false
 
     /// Simultaneous instances of the *same* effect before the oldest is retriggered.
@@ -69,13 +79,51 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         }
     }
 
+    @discardableResult
+    func startLoop(trackID: String, volume: Float) -> Bool {
+        let clamped = min(1, max(0, volume))
+        if let existing = loopPlayers[trackID] {
+            existing.volume = clamped
+            if !existing.isPlaying {
+                existing.currentTime = 0
+                return existing.play()
+            }
+            return true
+        }
+        guard let url = resolvedURL(for: trackID) else { return false }
+        configureSessionIfNeeded()
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.volume = clamped
+            player.prepareToPlay()
+            decodeCount += 1
+            loopPlayers[trackID] = player
+            return player.play()
+        } catch {
+            return false
+        }
+    }
+
+    func stopLoop(trackID: String) {
+        guard let player = loopPlayers.removeValue(forKey: trackID) else { return }
+        player.stop()
+    }
+
+    func stopAllLoops() {
+        for player in loopPlayers.values {
+            player.stop()
+        }
+        loopPlayers.removeAll()
+    }
+
     private func resolvedURL(for trackID: String) -> URL? {
         if let cached = urlCache[trackID] {
             return cached
         }
         guard let url = BundleMusicAudioPlayer.audioURL(
             for: trackID,
-            subdirectories: ["Audio/FX", "Audio"]
+            subdirectories: AudioBundleLayout.fxSubdirectories + ["Audio"]
         ) else {
             return nil
         }

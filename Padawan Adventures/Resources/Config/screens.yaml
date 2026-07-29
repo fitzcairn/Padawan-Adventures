@@ -21,6 +21,6 @@ screens:
   player_selfie:
     music: title_menu
   you_win:
-    music: win
+    music: victory
   defeat:
     music: silence

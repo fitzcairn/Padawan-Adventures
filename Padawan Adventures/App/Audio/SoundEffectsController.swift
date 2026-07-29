@@ -18,6 +18,9 @@ final class SoundEffectsController {
 
     func setSoundEffectsEnabled(_ enabled: Bool) {
         soundEffectsEnabled = enabled
+        if !enabled {
+            stopAllLoops()
+        }
     }
 
     func setSoundEffectsVolume(_ volume: Float) {
@@ -56,6 +59,33 @@ final class SoundEffectsController {
             return
         }
         play(event: event, from: commonFx)
+    }
+
+    /// Starts an indefinitely looping ambience track (lightsaber hum, gate arc).
+    func startLoop(trackID: String) {
+        guard soundEffectsEnabled else { return }
+        let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        player.startLoop(trackID: trimmed, volume: soundEffectsVolume)
+    }
+
+    /// Looks up `event` in `table` and starts it as a loop. Returns the track id so
+    /// the caller can stop the exact track it started.
+    @discardableResult
+    func startLoop(event: String, from table: SoundEffectTable) -> String? {
+        guard let trackID = table.trackID(for: event) else { return nil }
+        startLoop(trackID: trackID)
+        return trackID
+    }
+
+    func stopLoop(trackID: String?) {
+        guard let trimmed = trackID?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return }
+        player.stopLoop(trackID: trimmed)
+    }
+
+    func stopAllLoops() {
+        player.stopAllLoops()
     }
 
     /// Clip length, or nil for a blank or unresolvable track.

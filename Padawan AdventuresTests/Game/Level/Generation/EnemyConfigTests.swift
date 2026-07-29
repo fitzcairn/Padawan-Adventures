@@ -17,7 +17,7 @@ struct EnemyConfigTests {
             stars_to_win: 10
             shot_letters: [a, b, c]
             fx:
-              contact: sfx_enemy_contact
+              notice: enemy-spider
           scout:
             letter: S
             color: "#00FF00"
@@ -37,7 +37,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.combatTimerSeconds == 10)
         #expect(config.type(named: "spider")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "spider")?.starsToWin == 10)
-        #expect(config.type(named: "spider")?.fx.trackID(for: "contact") == "sfx_enemy_contact")
+        #expect(config.type(named: "spider")?.fx.trackID(for: "notice") == "enemy-spider")
         #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
         #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
@@ -107,7 +107,7 @@ struct EnemyConfigTests {
           stars_to_win: 5
           shot_letters: [a, b, c]
           fx:
-            contact: sfx_enemy_contact
+            notice: enemy-spider
         enemies:
           spider:
           scout:
