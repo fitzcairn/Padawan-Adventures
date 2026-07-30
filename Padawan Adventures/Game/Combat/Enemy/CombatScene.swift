@@ -112,8 +112,9 @@ final class CombatScene: SKScene {
         didSetup = true
         buildArena()
         engine.begin()
-        // Enable before combat FX so hum/slash sit under letter cues.
+        // Enable before combat FX so hum/slash sit under letter cues; music −20%.
         SoundEffectsController.shared.setCombatMixActive(true)
+        BackgroundMusicController.shared.setCombatMixActive(true)
         SoundEffectsController.shared.play(event: "combat_start", from: playerFx)
         activeLoopTrackID = SoundEffectsController.shared.startLoop(
             event: "combat_loop",
@@ -125,7 +126,7 @@ final class CombatScene: SKScene {
 
     override func willMove(from view: SKView) {
         stopCombatLoop()
-        SoundEffectsController.shared.setCombatMixActive(false)
+        clearCombatMix()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -735,16 +736,12 @@ final class CombatScene: SKScene {
     private func resolveSlashHits() {
         guard isSlashActive, slashPoints.count >= 2 else { return }
 
-        // Use the full active stroke so enter→exit across the sprite can be detected.
+        // Any overlap between the stroke and the letter sprite bounds counts as a hit.
         let stroke = slashPoints
 
         for (id, visual) in shotVisuals {
-            let side = shotSpriteSide(for: visual.node)
-            guard CombatSlashGeometry.slashBisectsSquare(
-                points: stroke,
-                center: visual.node.position,
-                side: side
-            ) else {
+            let bounds = shotSpriteBounds(for: visual.node)
+            guard CombatSlashGeometry.slashIntersectsRect(points: stroke, rect: bounds) else {
                 continue
             }
 
@@ -772,8 +769,25 @@ final class CombatScene: SKScene {
         }
     }
 
-    private func shotSpriteSide(for node: SKNode) -> CGFloat {
-        shotBaseSize * max(abs(node.xScale), abs(node.yScale))
+    /// Axis-aligned bounds of the on-screen letter sprite (scaled size, not the base square).
+    private func shotSpriteBounds(for node: SKNode) -> CGRect {
+        if let sprite = node as? SKSpriteNode {
+            let width = sprite.size.width * abs(sprite.xScale)
+            let height = sprite.size.height * abs(sprite.yScale)
+            return CGRect(
+                x: sprite.position.x - width * 0.5,
+                y: sprite.position.y - height * 0.5,
+                width: width,
+                height: height
+            )
+        }
+        let side = shotBaseSize * max(abs(node.xScale), abs(node.yScale))
+        return CGRect(
+            x: node.position.x - side * 0.5,
+            y: node.position.y - side * 0.5,
+            width: side,
+            height: side
+        )
     }
 
     // MARK: - End states
@@ -810,6 +824,11 @@ final class CombatScene: SKScene {
     private func stopCombatLoop() {
         SoundEffectsController.shared.stopLoop(trackID: activeLoopTrackID)
         activeLoopTrackID = nil
+        clearCombatMix()
+    }
+
+    private func clearCombatMix() {
         SoundEffectsController.shared.setCombatMixActive(false)
+        BackgroundMusicController.shared.setCombatMixActive(false)
     }
 }

@@ -18,6 +18,8 @@ final class SoundEffectsController {
     static let phoneticCueDuckScale: Float = 0.35
     /// Extra phonetic-vs-FX separation while combat mix is active (+30% relative).
     static let combatPhoneticRelativeBoost: Float = 1.3
+    /// Extra attenuation for lightsaber hum / slash / ignite / cut clips.
+    static let lightsaberSFXVolumeScale: Float = 0.45
 
     private(set) var soundEffectsEnabled = true
     private(set) var soundEffectsVolume: Float = 1
@@ -156,12 +158,20 @@ final class SoundEffectsController {
         if isCombatMixActive {
             scale /= Self.combatPhoneticRelativeBoost
         }
+        if Self.isLightsaberTrack(trackID) {
+            scale *= Self.lightsaberSFXVolumeScale
+        }
         return soundEffectsVolume * scale
     }
 
     /// Phonetic clips use `sfx_letter_*` / `sfx_word_*` basenames under `Audio/FX/Phonetics/`.
     static func isPhoneticTrack(_ trackID: String) -> Bool {
         trackID.hasPrefix("sfx_letter_") || trackID.hasPrefix("sfx_word_")
+    }
+
+    /// Combat saber one-shots and the looping hum (`*lightsaber*` basenames).
+    static func isLightsaberTrack(_ trackID: String) -> Bool {
+        trackID.localizedCaseInsensitiveContains("lightsaber")
     }
 
     private func duckAmbienceForPhoneticCue(duration: TimeInterval) {

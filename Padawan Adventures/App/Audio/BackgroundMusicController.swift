@@ -13,6 +13,8 @@ final class BackgroundMusicController {
 
     /// Ducks music so phonetic cues at `phoneticVolumeScale` stay ~20% clearer in the mix.
     static let musicMixScale: Float = 1 / SoundEffectsController.phoneticVolumeScale
+    /// Extra music attenuation while combat is active (−20%).
+    static let combatMusicMixScale: Float = 0.8
 
     private let player: any MusicAudioPlaying
     private var transitionTask: Task<Void, Never>?
@@ -20,9 +22,13 @@ final class BackgroundMusicController {
     private var phoneticDuckTask: Task<Void, Never>?
     private var phoneticDuckGeneration = 0
     private(set) var isPhoneticDucked = false
+    private(set) var isCombatMixActive = false
 
     var effectiveVolume: Float {
-        let base = musicEnabled ? musicVolume * Self.musicMixScale : 0
+        var base = musicEnabled ? musicVolume * Self.musicMixScale : 0
+        if isCombatMixActive {
+            base *= Self.combatMusicMixScale
+        }
         return isPhoneticDucked ? base * SoundEffectsController.phoneticCueDuckScale : base
     }
 
@@ -44,6 +50,13 @@ final class BackgroundMusicController {
         let clamped = min(1, max(0, volume))
         guard musicVolume != clamped else { return }
         musicVolume = clamped
+        applyEffectiveVolumeLive()
+    }
+
+    /// Combat-only music duck (−20%). Call when entering/leaving the fight.
+    func setCombatMixActive(_ active: Bool) {
+        guard isCombatMixActive != active else { return }
+        isCombatMixActive = active
         applyEffectiveVolumeLive()
     }
 

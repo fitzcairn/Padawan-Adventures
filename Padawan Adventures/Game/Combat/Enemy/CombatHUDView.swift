@@ -13,8 +13,8 @@ final class CombatHUDView: UIView {
     private var displayedProgress: CGFloat = 0
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
-    private static let progressBarHeight: CGFloat = 14
-    private static let progressBarWidthFraction: CGFloat = 0.05
+    private static let progressBarHeight: CGFloat = 17.5
+    private static let progressBarWidthFraction: CGFloat = 0.0625
 
     init(config: HudConfig, healthCount: Int, progress: Int = 0, progressGoal: Int = 1, timerSeconds: Int) {
         self.config = config
@@ -98,11 +98,11 @@ final class CombatHUDView: UIView {
         progressTrack.translatesAutoresizingMaskIntoConstraints = false
         progressTrack.accessibilityIdentifier = "combat.progress"
 
-        progressFill.backgroundColor = UIColor.systemGreen
         progressFill.translatesAutoresizingMaskIntoConstraints = false
         progressTrack.addSubview(progressFill)
 
         displayedProgress = Self.clampedFraction(current: progress, goal: progressGoal)
+        progressFill.backgroundColor = Self.color(forProgress: displayedProgress)
         let fillWidth = progressFill.widthAnchor.constraint(equalToConstant: 0)
         progressFillWidth = fillWidth
 
@@ -152,8 +152,10 @@ final class CombatHUDView: UIView {
         let trackWidth = progressTrack.bounds.width
         guard trackWidth > 0 else { return }
         let targetWidth = trackWidth * displayedProgress
+        let targetColor = Self.color(forProgress: displayedProgress)
         progressFillWidth?.constant = targetWidth
         guard animated else {
+            progressFill.backgroundColor = targetColor
             layoutIfNeeded()
             return
         }
@@ -162,12 +164,47 @@ final class CombatHUDView: UIView {
             delay: 0,
             options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
         ) {
+            self.progressFill.backgroundColor = targetColor
             self.layoutIfNeeded()
         }
     }
 
     private static func clampedFraction(current: Int, goal: Int) -> CGFloat {
         CGFloat(min(1, max(0, Double(current) / Double(max(goal, 1)))))
+    }
+
+    /// Red → orange → yellow → green as the bar fills.
+    private static func color(forProgress progress: CGFloat) -> UIColor {
+        let stops: [(CGFloat, UIColor)] = [
+            (0, UIColor(red: 0.90, green: 0.18, blue: 0.16, alpha: 1)),
+            (1 / 3, UIColor(red: 1.00, green: 0.55, blue: 0.10, alpha: 1)),
+            (2 / 3, UIColor(red: 0.98, green: 0.84, blue: 0.12, alpha: 1)),
+            (1, UIColor(red: 0.22, green: 0.78, blue: 0.30, alpha: 1)),
+        ]
+        let t = min(1, max(0, progress))
+        for index in 0..<(stops.count - 1) {
+            let start = stops[index]
+            let end = stops[index + 1]
+            if t <= end.0 || index == stops.count - 2 {
+                let span = end.0 - start.0
+                let local = span > 0 ? (t - start.0) / span : 1
+                return lerp(start.1, end.1, CGFloat(min(1, max(0, local))))
+            }
+        }
+        return stops[stops.count - 1].1
+    }
+
+    private static func lerp(_ a: UIColor, _ b: UIColor, _ t: CGFloat) -> UIColor {
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        a.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        b.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        return UIColor(
+            red: ar + (br - ar) * t,
+            green: ag + (bg - ag) * t,
+            blue: ab + (bb - ab) * t,
+            alpha: aa + (ba - aa) * t
+        )
     }
 
     private func addIcon(image: UIImage?, to stack: UIStackView) {

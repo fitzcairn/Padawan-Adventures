@@ -143,6 +143,8 @@ nonisolated struct CombatMinigameEngine {
     static let correctSlashesPerCueMean: Double = 3
     static let spawnIntervalJitterRange: ClosedRange<Double> = 0.5...1.5
     static let correctSlashesJitterRange: ClosedRange<Double> = 0.5...1.5
+    /// Spawn weight for the currently cued letter vs `1` for each other letter.
+    static let cuedLetterSpawnWeight: Double = 2.5
 
     init(
         config: Config,
@@ -219,7 +221,7 @@ nonisolated struct CombatMinigameEngine {
                 beginNewSequence(&events)
             }
 
-            let visual = randomShotLetter()
+            let visual = randomSpawnVisualLetter()
             let required = sequenceRequiredLetter
             let id = UUID()
             let shot = Shot(
@@ -314,17 +316,46 @@ nonisolated struct CombatMinigameEngine {
     }
 
     private mutating func beginNewSequence(_ events: inout [CombatEngineEvent]) {
-        let required = randomShotLetter()
+        // Cue letter stays uniform so sequences don't stick on one letter.
+        let required = randomUniformShotLetter()
         sequenceRequiredLetter = required
         correctSlashesRemainingInSequence = scheduleCorrectSlashesRequired()
         nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
         events.append(.sequenceCue(requiredLetter: required))
     }
 
-    private mutating func randomShotLetter() -> String {
+    private mutating func randomUniformShotLetter() -> String {
         let letters = config.shotLetters
         guard !letters.isEmpty else { return "A" }
         let index = Int.random(in: 0..<letters.count, using: &rng)
         return letters[index]
+    }
+
+    /// Biases toward the live phonetic cue so matching letters appear more often.
+    private mutating func randomSpawnVisualLetter() -> String {
+        let letters = config.shotLetters
+        guard !letters.isEmpty else { return "A" }
+        let cued = sequenceRequiredLetter
+        guard !cued.isEmpty, letters.contains(cued) else {
+            return randomUniformShotLetter()
+        }
+
+        var totalWeight = 0.0
+        var weights: [Double] = []
+        weights.reserveCapacity(letters.count)
+        for letter in letters {
+            let weight = letter == cued ? Self.cuedLetterSpawnWeight : 1.0
+            weights.append(weight)
+            totalWeight += weight
+        }
+
+        var roll = Double.random(in: 0..<totalWeight, using: &rng)
+        for (index, weight) in weights.enumerated() {
+            roll -= weight
+            if roll < 0 {
+                return letters[index]
+            }
+        }
+        return letters[letters.count - 1]
     }
 }

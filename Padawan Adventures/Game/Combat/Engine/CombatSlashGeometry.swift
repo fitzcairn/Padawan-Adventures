@@ -3,6 +3,51 @@ import Foundation
 
 /// Pure geometry for combat slash hit tests.
 nonisolated enum CombatSlashGeometry {
+    /// True when the polyline intersects the axis-aligned `rect` at all — any point
+    /// inside, or any segment that crosses the boundary.
+    static func slashIntersectsRect(points: [CGPoint], rect: CGRect) -> Bool {
+        guard points.count >= 2,
+              rect.width > 0,
+              rect.height > 0,
+              !rect.isNull,
+              !rect.isInfinite else {
+            return false
+        }
+
+        if points.contains(where: { rect.contains($0) }) {
+            return true
+        }
+
+        for i in 1..<points.count {
+            let a = points[i - 1]
+            let b = points[i]
+            if rect.contains(a) || rect.contains(b) {
+                return true
+            }
+            if !orderedBoundaryCrossings(a, b, rect: rect).isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Convenience for a square sprite bounds centered at `center`.
+    static func slashIntersectsSquare(
+        points: [CGPoint],
+        center: CGPoint,
+        side: CGFloat
+    ) -> Bool {
+        guard side > 0 else { return false }
+        let half = side * 0.5
+        let rect = CGRect(
+            x: center.x - half,
+            y: center.y - half,
+            width: side,
+            height: side
+        )
+        return slashIntersectsRect(points: points, rect: rect)
+    }
+
     /// True when `points` fully cuts through the axis-aligned square centered at `center`
     /// with side length `side`. The path must enter across one edge and leave across a
     /// *different* edge (a poke that reverses out the same side does not count).

@@ -195,6 +195,23 @@ struct BackgroundMusicControllerTests {
         #expect(mock.volume == base)
     }
 
+    @Test func combatMixLowersMusicByTwentyPercent() async {
+        let mock = MockMusicAudioPlayer()
+        let controller = BackgroundMusicController(player: mock)
+        controller.configure(fadeSeconds: 0)
+        let base = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
+        controller.apply(.track("combat"))
+        await waitFor { mock.volume == base }
+
+        controller.setCombatMixActive(true)
+        #expect(controller.isCombatMixActive)
+        #expect(mock.volume == base * BackgroundMusicController.combatMusicMixScale)
+
+        controller.setCombatMixActive(false)
+        #expect(!controller.isCombatMixActive)
+        #expect(mock.volume == base)
+    }
+
     private func waitFor(
         timeoutNanoseconds: UInt64 = 200_000_000,
         _ condition: @MainActor () -> Bool

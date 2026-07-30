@@ -101,7 +101,7 @@ struct SoundEffectsControllerTests {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(0.4)
-        controller.play(trackID: "combat-lightsaber-slash")
+        controller.play(trackID: "pit-jump")
         #expect(mock.playCalls.map(\.volume) == [0.4 * SoundEffectsController.backgroundSFXVolumeScale])
     }
 
@@ -127,11 +127,22 @@ struct SoundEffectsControllerTests {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(1)
-        controller.play(trackID: "combat-lightsaber-slash")
         controller.play(trackID: "pit-jump")
         controller.play(trackID: "gate-letter_match-switch-push")
         let expected = SoundEffectsController.backgroundSFXVolumeScale
-        #expect(mock.playCalls.map(\.volume) == [expected, expected, expected])
+        #expect(mock.playCalls.map(\.volume) == [expected, expected])
+    }
+
+    @Test func lightsaberTracksPlayQuieterThanOtherBackgroundSFX() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(1)
+        controller.play(trackID: "combat-lightsaber-slash")
+        controller.play(trackID: "pit-jump")
+        let lightsaber = SoundEffectsController.backgroundSFXVolumeScale
+            * SoundEffectsController.lightsaberSFXVolumeScale
+        let other = SoundEffectsController.backgroundSFXVolumeScale
+        #expect(mock.playCalls.map(\.volume) == [lightsaber, other])
     }
 
     @Test func playEventResolvesFromTable() {
@@ -232,7 +243,11 @@ struct SoundEffectsControllerTests {
         #expect(trackID == "combat-loop-lightsaber-hum")
         #expect(mock.startedLoopTrackIDs == ["combat-loop-lightsaber-hum"])
         #expect(mock.activeLoops == ["combat-loop-lightsaber-hum"])
-        #expect(mock.startedLoops.first?.volume == SoundEffectsController.backgroundSFXVolumeScale)
+        #expect(
+            mock.startedLoops.first?.volume
+                == SoundEffectsController.backgroundSFXVolumeScale
+                * SoundEffectsController.lightsaberSFXVolumeScale
+        )
     }
 
     @Test func stopLoopRemovesActiveLoop() {
@@ -313,14 +328,16 @@ struct SoundEffectsControllerTests {
 
         controller.play(trackID: "sfx_letter_b_name")
         controller.play(trackID: "combat-lightsaber-slash")
+        controller.play(trackID: "pit-jump")
 
         let phonetic = 0.5
             * SoundEffectsController.phoneticVolumeScale
             * SoundEffectsController.combatPhoneticRelativeBoost
-        let other = 0.5
+        let combatOther = 0.5
             * SoundEffectsController.backgroundSFXVolumeScale
             / SoundEffectsController.combatPhoneticRelativeBoost
-        #expect(mock.playCalls.map(\.volume) == [phonetic, other])
+        let lightsaber = combatOther * SoundEffectsController.lightsaberSFXVolumeScale
+        #expect(mock.playCalls.map(\.volume) == [phonetic, lightsaber, combatOther])
     }
 }
 

@@ -204,6 +204,42 @@ struct CombatMinigameEngineTests {
         #expect(visuals.count > 1)
     }
 
+    @Test func cuedLetterSpawnsMoreOftenThanEachOtherLetter() {
+        var engine = makeEngine(
+            starsToWin: 99,
+            shotLetters: ["A", "B", "C"],
+            meanInterval: 0.01,
+            seed: 17
+        )
+        // Establish a cue, then keep slashing only mismatches so the cue stays fixed.
+        var cue: String?
+        for _ in 0..<40 {
+            for event in engine.tick(dt: 0.05) {
+                if case let .sequenceCue(letter) = event {
+                    cue = letter
+                }
+            }
+            if cue != nil { break }
+        }
+        let required = try! #require(cue)
+
+        var counts: [String: Int] = ["A": 0, "B": 0, "C": 0]
+        for _ in 0..<400 {
+            for event in engine.tick(dt: 0.05) {
+                guard case let .spawnShot(id, _, visual) = event else { continue }
+                counts[visual, default: 0] += 1
+                if visual != required {
+                    _ = engine.registerSlashHit(shotID: id)
+                }
+            }
+        }
+
+        let cuedCount = counts[required] ?? 0
+        for letter in ["A", "B", "C"] where letter != required {
+            #expect(cuedCount > (counts[letter] ?? 0))
+        }
+    }
+
     @Test func correctSlashIncreasesNetProgressAndWrongDecreasesIt() {
         var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, seed: 5)
         var correctID: UUID?
