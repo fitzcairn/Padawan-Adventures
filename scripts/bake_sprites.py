@@ -28,12 +28,13 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + gates + planets + loading + gate
+  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + gates + planets + loading + cutscene + gate
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
   python3 scripts/bake_sprites.py --pits       # bake per-level pit platform tile sets
   python3 scripts/bake_sprites.py --gates      # bake per-level world gate wall sprites
   python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
+  python3 scripts/bake_sprites.py --cutscene   # bake cutscene UI sprites
   python3 scripts/bake_sprites.py --gate       # bake gate letter-match UI sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
@@ -990,6 +991,32 @@ def collect_loading(plan: BakePlan) -> None:
         )
 
 
+def collect_cutscene(plan: BakePlan) -> None:
+    path = CONFIG / "UI" / "cutscene.yaml"
+    add_config_input(plan, path)
+    if not path.is_file():
+        plan.errors.append(f"cutscene: missing {path.relative_to(RESOURCES.parent)}")
+        return
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        plan.errors.append("cutscene: Config/UI/cutscene.yaml must be a mapping")
+        return
+    for name, entry in data.items():
+        if not isinstance(entry, dict):
+            plan.errors.append(f"cutscene.{name}: expected mapping with sprite:")
+            continue
+        sprite = entry.get("sprite")
+        if not isinstance(sprite, dict):
+            plan.errors.append(f"cutscene.{name}: missing sprite:")
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"cutscene.{name}",
+            sprite=sprite,
+            flip_vertical=True,
+        )
+
+
 def collect_gate_letter_match(plan: BakePlan) -> None:
     """Bake gate letter-match UI sheets (switch off/on). No SpriteKit prep flip."""
     path = CONFIG / "UI" / "gate_letter_match.yaml"
@@ -1035,6 +1062,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_gates = args.all or args.default_set or args.gates
     bake_planets = args.all or args.default_set or args.planets
     bake_loading = args.all or args.default_set or args.loading
+    bake_cutscene = args.all or args.default_set or args.cutscene
     bake_gate = args.all or args.default_set or args.gate
     bake_enemies = args.all or args.enemies or bool(args.enemy)
 
@@ -1052,13 +1080,14 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.gates,
             args.planets,
             args.loading,
+            args.cutscene,
             args.gate,
             args.verify,
         ]
     ):
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
-        ) = bake_planets = bake_loading = bake_gate = True
+        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = True
 
     if args.verify and not any(
         [
@@ -1073,6 +1102,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.gates,
             args.planets,
             args.loading,
+            args.cutscene,
             args.gate,
         ]
     ):
@@ -1080,7 +1110,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         # so a missing manifest can explain expected scope.
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
-        ) = bake_planets = bake_loading = bake_gate = True
+        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = True
 
     if bake_player:
         collect_player(plan)
@@ -1098,6 +1128,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_planets(plan)
     if bake_loading:
         collect_loading(plan)
+    if bake_cutscene:
+        collect_cutscene(plan)
     if bake_gate:
         collect_gate_letter_match(plan)
     if bake_enemies:
@@ -1394,7 +1426,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, gates, planets, loading, gate, enemies",
+        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, enemies",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument(
@@ -1411,6 +1443,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--gates", action="store_true", help="Bake per-level world gate wall sprites")
     p.add_argument("--planets", action="store_true", help="Bake level planet sprites")
     p.add_argument("--loading", action="store_true", help="Bake loading-screen UI sprites")
+    p.add_argument("--cutscene", action="store_true", help="Bake cutscene UI sprites")
     p.add_argument("--gate", action="store_true", help="Bake gate letter-match UI sprites")
     p.add_argument(
         "--verify",
@@ -1436,6 +1469,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.gates,
             args.planets,
             args.loading,
+            args.cutscene,
             args.gate,
         ]
     )

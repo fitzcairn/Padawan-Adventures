@@ -10,6 +10,7 @@ enum FlowRoot: Hashable, Sendable {
 enum FlowRoute: Hashable, Sendable {
     case levelSelect
     case settings
+    case cutscene
     case preparing(GameLaunchMode)
 }
 
@@ -41,6 +42,11 @@ final class FlowRouter {
 
     func navigate(to route: FlowRoute) {
         path.append(route)
+    }
+
+    /// Replaces the cutscene with the planet map so Back cannot return to it.
+    func showLevelSelect() {
+        path = [.levelSelect]
     }
 
     func pop() {

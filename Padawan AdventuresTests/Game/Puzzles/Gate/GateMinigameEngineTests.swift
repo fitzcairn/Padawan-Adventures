@@ -120,7 +120,7 @@ struct GateMinigameEngineTests {
         )
     }
 
-    @Test func timerExpiryProducesLostAndUrgentTicks() {
+    @Test func timerExpiryDoesNotEndSessionAndEmitsUrgentTicks() {
         var engine = makeEngine(timer: 3, words: ["cat"], seed: 1)
         var ticks = 0
         for _ in 0..<3 {
@@ -128,26 +128,30 @@ struct GateMinigameEngineTests {
             ticks += events.filter { $0 == .timerTick }.count
         }
         #expect(ticks >= 1)
-        #expect(engine.outcome == .lost)
-        #expect(engine.isFrozen)
-        #expect(engine.tick(dt: 0.5).isEmpty)
+        #expect(engine.outcome == nil)
+        #expect(!engine.isFrozen)
+        #expect(engine.remainingTime == 0)
+        #expect(!engine.tick(dt: 0.5).contains(.lost))
     }
 
     @Test func evaluateIgnoredAfterFrozen() {
-        var engine = makeEngine(timer: 1, words: ["cat"], seed: 1)
-        _ = engine.tick(dt: 1.1)
-        #expect(engine.outcome == .lost)
+        var engine = makeEngine(timer: 30, words: ["cat"], seed: 1)
         let won = engine.evaluateStaging(orderedLetters: ["c", "a", "t"])
-        #expect(!won)
+        #expect(won)
+        #expect(engine.outcome == .won(starsAwarded: 3))
+        let wonAgain = engine.evaluateStaging(orderedLetters: ["c", "a", "t"])
+        #expect(!wonAgain)
     }
 
-    @Test func tickOnlyEmitsTimerAndOutcomeEvents() {
+    @Test func tickOnlyEmitsTimerEvents() {
         var engine = makeEngine(timer: 30, words: ["cat"], seed: 1)
         let events = engine.tick(dt: 15.0)
         #expect(events.allSatisfy { event in
             switch event {
-            case .timerTick, .lost, .won:
+            case .timerTick:
                 true
+            case .lost, .won:
+                false
             }
         })
     }

@@ -79,9 +79,10 @@ struct ScreenConfigTests {
         #expect(all.screens["menu"]?.musicCue == .track("title_menu"))
         #expect(all.screens["loading"]?.musicCue == .track("title_menu"))
         #expect(all.screens["preparing"]?.musicCue == .unchanged)
+        #expect(all.screens["cutscene"]?.musicCue == .silence)
         #expect(all.screens["level_select"]?.musicCue == .track("title_menu"))
         #expect(all.screens["level_select"]?.background == "level_screen_bg")
-        #expect(all.screens.count == 9)
+        #expect(all.screens.count == 10)
     }
 
     @Test func missingScreenNameThrows() {

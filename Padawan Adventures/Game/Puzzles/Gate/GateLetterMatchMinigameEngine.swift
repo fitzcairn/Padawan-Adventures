@@ -99,9 +99,8 @@ nonisolated struct GateLetterMatchMinigameEngine {
         isFrozen = true
     }
 
-    var hasLost: Bool { remainingTime <= 0 }
-
     /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
+    /// Timer countdown is HUD-only; the session never ends on expiry.
     mutating func tick(dt: Double) -> [GateLetterMatchEngineEvent] {
         guard isActive, !isFrozen, outcome == nil else { return [] }
 
@@ -115,12 +114,6 @@ nonisolated struct GateLetterMatchMinigameEngine {
                 events.append(.timerTick)
             }
             lastDisplayedSecond = displayedSecond
-        }
-
-        if hasLost {
-            isFrozen = true
-            outcome = .lost
-            events.append(.lost)
         }
 
         return events

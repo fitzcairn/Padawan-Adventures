@@ -45,6 +45,18 @@ struct FlowRouterTests {
         #expect(router.path.isEmpty)
     }
 
+    @Test func navigateToCutscene() {
+        let router = FlowRouter(root: .menu)
+        router.navigate(to: .cutscene)
+        #expect(router.path == [.cutscene])
+    }
+
+    @Test func showLevelSelectReplacesCutscene() {
+        let router = FlowRouter(root: .menu, path: [.cutscene])
+        router.showLevelSelect()
+        #expect(router.path == [.levelSelect])
+    }
+
     @Test func continueNavigatesToPreparingContinueSave() {
         let router = FlowRouter(root: .menu)
         router.navigate(to: .preparing(.continueSave))

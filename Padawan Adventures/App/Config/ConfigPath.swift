@@ -28,6 +28,7 @@ nonisolated struct ConfigPath: Equatable, Sendable {
 
     static let levelDefaults = ConfigPath(basename: "_defaults", subdirectory: levelRoot)
     static let loading = ConfigPath(basename: "loading", subdirectory: "\(configRoot)/UI")
+    static let cutscene = ConfigPath(basename: "cutscene", subdirectory: "\(configRoot)/UI")
 
     /// A top-level config file, for callers that resolve by name.
     static func config(_ name: String) -> ConfigPath {

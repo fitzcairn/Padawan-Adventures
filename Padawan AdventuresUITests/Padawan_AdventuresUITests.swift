@@ -56,6 +56,13 @@ final class Padawan_AdventuresUITests: XCTestCase {
 
         newGame.tap()
 
+        let skip = app.staticTexts["cutscene.skip"]
+        XCTAssertTrue(
+            skip.waitForExistence(timeout: 5),
+            "Expected cutscene after New Game"
+        )
+        skip.tap()
+
         let back = app.buttons["levelSelect.back"]
         XCTAssertTrue(
             back.waitForExistence(timeout: 5),

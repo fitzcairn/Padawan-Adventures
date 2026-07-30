@@ -11,6 +11,9 @@ screens:
   preparing:
     # Keep title_menu while the world is prepared.
     music: none
+  cutscene:
+    # The movie carries its own dialogue; keep the score out of the way.
+    music: silence
   settings:
     music: title_menu
   level_select:

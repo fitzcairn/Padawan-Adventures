@@ -53,6 +53,8 @@ final class AppSession {
     let gateSpriteSetLibrary: GateSpriteSetLibrary
     /// Session-scoped still background cache (screen BGs at game open).
     let backgroundLibrary: BackgroundLibrary
+    /// Session-scoped cutscene movie, preloaded so NEW GAME can start playback immediately.
+    let cutsceneVideo: CutsceneVideo
     /// Enemy sprite ids warmed at bootstrap for every playable level; kept across levels.
     private let retainedEnemySpriteIDs: Set<String>
     /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
@@ -86,6 +88,7 @@ final class AppSession {
         pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
         gateSpriteSetLibrary: GateSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
+        cutsceneVideo: CutsceneVideo? = nil,
         retainedEnemySpriteIDs: Set<String> = []
     ) {
         self.appConfig = appConfig
@@ -119,6 +122,7 @@ final class AppSession {
         self.pitSpriteSetLibrary = pitSpriteSetLibrary ?? PitSpriteSetLibrary()
         self.gateSpriteSetLibrary = gateSpriteSetLibrary ?? GateSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
+        self.cutsceneVideo = cutsceneVideo ?? CutsceneVideo()
         self.retainedEnemySpriteIDs = retainedEnemySpriteIDs
     }
 
@@ -479,9 +483,30 @@ final class AppSession {
         }
         await report(backgroundsEnd)
 
+        // 2b) Cutscene movie + characters, so NEW GAME opens on a running video.
+        let cutsceneVideo = CutsceneVideo()
+        let cutsceneEnd = 0.46
+        await cutsceneVideo.preload()
+        if let cutsceneSprites = try? CutsceneSpritesConfig.loadFromBundle() {
+            let total = cutsceneSprites.entries.count
+            for (index, entry) in cutsceneSprites.entries.enumerated() {
+                let start = LoadProgress.map(
+                    Double(index) / Double(total), from: backgroundsEnd, to: cutsceneEnd
+                )
+                let end = LoadProgress.map(
+                    Double(index + 1) / Double(total), from: backgroundsEnd, to: cutsceneEnd
+                )
+                await spriteLibrary.ensureLoaded(entry.config, id: entry.id) { local in
+                    onProgress?(LoadProgress.map(local, from: start, to: end))
+                }
+                _ = spriteLibrary.uiImages(id: entry.id)
+            }
+        }
+        await report(cutsceneEnd)
+
         // 3) (Treasure / coin / HUD icons seed after item sprites load in step 5.)
         let treasureIDs = levelDescriptors.compactMap(\.treasure)
-        let iconsEnd = backgroundsEnd
+        let iconsEnd = cutsceneEnd
         await report(iconsEnd)
 
         // 4) Player walk / combat sprites.
@@ -623,6 +648,7 @@ final class AppSession {
             pitSpriteSetLibrary: pitSpriteSetLibrary,
             gateSpriteSetLibrary: gateSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary,
+            cutsceneVideo: cutsceneVideo,
             retainedEnemySpriteIDs: enemySpriteIDs
         )
     }

@@ -63,7 +63,7 @@ struct MenuView: View {
                         AppLargeButton(title: "NEW GAME", accessibilityID: "menu.newGame") {
                             Task {
                                 await session.beginNewGame()
-                                router.navigate(to: .levelSelect)
+                                router.navigate(to: .cutscene)
                             }
                         }
 

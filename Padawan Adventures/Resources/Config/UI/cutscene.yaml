@@ -1,0 +1,17 @@
+# Cutscene characters. Both sheets ship with real alpha, so no chroma key:
+# keying black here would eat Yoda's outlines.
+kam:
+  sprite:
+    root: Sprites/UI/Cutscene
+    animations:
+      idle:
+        sheet: kam-listening-spritesheet
+        atlas: kam-listening-atlas
+
+yoda:
+  sprite:
+    root: Sprites/UI/Cutscene
+    animations:
+      idle:
+        sheet: yoda-talking-spritesheet
+        atlas: yoda-talking-atlas

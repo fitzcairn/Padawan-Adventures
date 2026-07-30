@@ -166,7 +166,7 @@ struct GateLetterMatchMinigameEngineTests {
         #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
     }
 
-    @Test func timerExpiryProducesLostAndUrgentTicks() {
+    @Test func timerExpiryDoesNotEndSessionAndEmitsUrgentTicks() {
         var engine = makeEngine(
             timer: 3,
             letterCountMin: 1,
@@ -180,22 +180,23 @@ struct GateLetterMatchMinigameEngineTests {
             ticks += events.filter { $0 == GateLetterMatchEngineEvent.timerTick }.count
         }
         #expect(ticks >= 1)
-        #expect(engine.outcome == .lost)
-        #expect(engine.isFrozen)
-        #expect(engine.tick(dt: 0.5).isEmpty)
+        #expect(engine.outcome == nil)
+        #expect(!engine.isFrozen)
+        #expect(engine.remainingTime == 0)
+        #expect(!engine.tick(dt: 0.5).contains(.lost))
     }
 
     @Test func tapIgnoredAfterFrozen() {
         var engine = makeEngine(
-            timer: 1,
+            timer: 30,
             letterCountMin: 1,
             letterCountMax: 1,
             pool: ["a"],
             seed: 1
         )
-        _ = engine.tick(dt: 1.1)
-        #expect(engine.outcome == .lost)
         guard let target = engine.letters.first else { return }
+        _ = engine.tapLetter(id: target.id)
+        #expect(engine.outcome == .won(starsAwarded: 1))
         #expect(engine.tapLetter(id: target.id).isEmpty)
     }
 
