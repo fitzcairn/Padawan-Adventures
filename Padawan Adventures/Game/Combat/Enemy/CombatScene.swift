@@ -13,13 +13,18 @@ protocol CombatSceneDelegate: AnyObject {
 /// SpriteKit combat arena: player/enemy sprites, curved shots, slash input, VFX.
 final class CombatScene: SKScene {
     private struct ShotVisual {
-        let start: CGPoint
-        let control: CGPoint
-        let end: CGPoint
-        let spawnElapsed: Double
-        let travelSeconds: Double
-        /// Only shots matching the sequence cue can impact the player.
-        let canHitPlayer: Bool
+        /// Current quadratic path (may be retargeted when the cue changes).
+        var pathStart: CGPoint
+        var pathControl: CGPoint
+        var pathEnd: CGPoint
+        var pathSpawnElapsed: Double
+        var pathTravelSeconds: Double
+        /// Original flight clock — used so scale keeps growing even after a retarget.
+        let scaleSpawnElapsed: Double
+        let scaleTravelSeconds: Double
+        /// Live: matching the current phonetic cue. Updated when the cue changes.
+        var canHitPlayer: Bool
+        let visualLetter: String
         let node: SKNode
     }
 
@@ -152,6 +157,7 @@ final class CombatScene: SKScene {
         for event in events {
             handle(event)
         }
+        syncShotAiming()
         syncShotMotion()
         publishTimer()
         checkImpacts()
@@ -262,6 +268,8 @@ final class CombatScene: SKScene {
         switch event {
         case let .sequenceCue(requiredLetter):
             playSequenceCue(requiredLetter: requiredLetter)
+            // In-flight letters retarget immediately when the spoken cue changes.
+            syncShotAiming()
         case let .spawnShot(id, travelSeconds, visualLetter):
             spawnShot(id: id, travelSeconds: travelSeconds, visualLetter: visualLetter)
         case .timerTick:
@@ -289,18 +297,12 @@ final class CombatScene: SKScene {
     }
 
     private func spawnShot(id: UUID, travelSeconds: Double, visualLetter: String) {
-        let requiredLetter = engine.shots[id]?.requiredLetter ?? visualLetter
-        let canHitPlayer = visualLetter == requiredLetter
-
+        // Aim from the live cue so a just-changed letter already dodges or homes correctly.
+        let canHitPlayer = visualLetter == engine.sequenceRequiredLetter
+        let travel = max(travelSeconds, 0.05)
         let start = bodyCenter(of: enemyNode, height: enemySpriteHeight)
-        let end = shotEndPoint(canHitPlayer: canHitPlayer)
-        // Matching and miss shots fan across most of the screen width.
-        let lateralSpread = canHitPlayer ? size.width * 0.42 : size.width * 0.48
-        let lateral = CGFloat.random(in: -lateralSpread...lateralSpread)
-        let control = CGPoint(
-            x: (start.x + end.x) * 0.5 + lateral,
-            y: (start.y + end.y) * 0.5
-        )
+        let end = shotEndPoint(from: start, canHitPlayer: canHitPlayer)
+        let control = shotControlPoint(from: start, to: end, canHitPlayer: canHitPlayer)
 
         let shot: SKNode
         if let glyph = LetterSpriteFactory.sprite(
@@ -331,38 +333,96 @@ final class CombatScene: SKScene {
         addChild(shot)
 
         shotVisuals[id] = ShotVisual(
-            start: start,
-            control: control,
-            end: end,
-            spawnElapsed: engine.elapsed,
-            travelSeconds: max(travelSeconds, 0.05),
+            pathStart: start,
+            pathControl: control,
+            pathEnd: end,
+            pathSpawnElapsed: engine.elapsed,
+            pathTravelSeconds: travel,
+            scaleSpawnElapsed: engine.elapsed,
+            scaleTravelSeconds: travel,
             canHitPlayer: canHitPlayer,
+            visualLetter: visualLetter,
             node: shot
         )
     }
 
-    /// Matching shots aim at the player body; mismatches fly past near a screen edge.
-    private func shotEndPoint(canHitPlayer: Bool) -> CGPoint {
+    /// Matching shots aim at the player body; mismatches fly clearly off-screen past them.
+    private func shotEndPoint(from start: CGPoint, canHitPlayer: Bool) -> CGPoint {
         let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
         guard !canHitPlayer else { return player }
 
-        let side: CGFloat = Bool.random() ? -1 : 1
-        let missX = min(
-            max(player.x + side * size.width * 0.48, size.width * 0.05),
-            size.width * 0.95
-        )
-        let missY = max(playerNode.position.y - size.height * 0.02, size.height * 0.01)
+        // Pick the side already away from the player so the dodge never crosses them.
+        let side: CGFloat = start.x >= player.x ? 1 : -1
+        let missX = side < 0 ? -size.width * 0.08 : size.width * 1.08
+        let missY = max(player.y - size.height * 0.12, -size.height * 0.05)
         return CGPoint(x: missX, y: missY)
+    }
+
+    private func shotControlPoint(from start: CGPoint, to end: CGPoint, canHitPlayer: Bool) -> CGPoint {
+        let mid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
+        if canHitPlayer {
+            let lateral = CGFloat.random(in: -size.width * 0.42...size.width * 0.42)
+            return CGPoint(x: mid.x + lateral, y: mid.y)
+        }
+        // Strong outward bend so non-targets obviously swerve around the player.
+        let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
+        let away: CGFloat = start.x >= player.x ? 1 : -1
+        let lateral = away * size.width * CGFloat.random(in: 0.40...0.62)
+        return CGPoint(x: mid.x + lateral, y: mid.y + size.height * 0.08)
+    }
+
+    /// Retarget in-flight letters when they become / stop being the live phonetic cue.
+    private func syncShotAiming() {
+        let cue = engine.sequenceRequiredLetter
+        guard !cue.isEmpty else { return }
+
+        for (id, visual) in shotVisuals {
+            let shouldHit = visual.visualLetter == cue
+            guard shouldHit != visual.canHitPlayer else { continue }
+
+            let pathT = pathProgress(for: visual)
+            let remaining = max(visual.pathTravelSeconds * Double(1 - pathT), 0.35)
+            let current = quadraticBezier(
+                t: pathT,
+                start: visual.pathStart,
+                control: visual.pathControl,
+                end: visual.pathEnd
+            )
+            let end = shotEndPoint(from: current, canHitPlayer: shouldHit)
+            let control = shotControlPoint(from: current, to: end, canHitPlayer: shouldHit)
+
+            var updated = visual
+            updated.pathStart = current
+            updated.pathControl = control
+            updated.pathEnd = end
+            updated.pathSpawnElapsed = engine.elapsed
+            updated.pathTravelSeconds = remaining
+            updated.canHitPlayer = shouldHit
+            updated.node.position = current
+            shotVisuals[id] = updated
+        }
+    }
+
+    private func pathProgress(for visual: ShotVisual) -> CGFloat {
+        CGFloat(
+            min(1, max(0, (engine.elapsed - visual.pathSpawnElapsed) / max(visual.pathTravelSeconds, 0.05)))
+        )
     }
 
     private func syncShotMotion() {
         for (id, visual) in shotVisuals {
-            let t = CGFloat(
-                min(1, max(0, (engine.elapsed - visual.spawnElapsed) / visual.travelSeconds))
+            let pathT = pathProgress(for: visual)
+            let scaleT = CGFloat(
+                min(1, max(0, (engine.elapsed - visual.scaleSpawnElapsed) / max(visual.scaleTravelSeconds, 0.05)))
             )
-            visual.node.position = quadraticBezier(t: t, start: visual.start, control: visual.control, end: visual.end)
-            visual.node.setScale(0.35 + 0.80 * t)
-            if t >= 1 {
+            visual.node.position = quadraticBezier(
+                t: pathT,
+                start: visual.pathStart,
+                control: visual.pathControl,
+                end: visual.pathEnd
+            )
+            visual.node.setScale(0.35 + 0.80 * scaleT)
+            if pathT >= 1 {
                 finishShotPath(shotID: id)
             }
         }
