@@ -258,13 +258,11 @@ nonisolated struct CombatMinigameEngine {
         // Match the live cue — shots already on screen become valid when the cue changes to their letter.
         if shot.visualLetter == sequenceRequiredLetter {
             combatStars += 1
-            if correctSlashesRemainingInSequence > 0 {
-                correctSlashesRemainingInSequence -= 1
-            }
             if hasWon {
                 isFrozen = true
                 outcome = .won(starsAwarded: config.starsToWin)
-            } else if correctSlashesRemainingInSequence <= 0 {
+            } else {
+                // Every correct slash switches the phonetic target to a different letter.
                 var cueEvents = pendingEvents
                 beginNewSequence(&cueEvents)
                 pendingEvents = cueEvents
@@ -316,10 +314,10 @@ nonisolated struct CombatMinigameEngine {
     }
 
     private mutating func beginNewSequence(_ events: inout [CombatEngineEvent]) {
-        // Cue letter stays uniform so sequences don't stick on one letter.
-        let required = randomUniformShotLetter()
+        let required = randomDifferentShotLetter(excluding: sequenceRequiredLetter)
         sequenceRequiredLetter = required
-        correctSlashesRemainingInSequence = scheduleCorrectSlashesRequired()
+        // One correct slash per cue — the next spawn loop must not immediately roll again.
+        correctSlashesRemainingInSequence = 1
         nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
         events.append(.sequenceCue(requiredLetter: required))
     }
@@ -329,6 +327,15 @@ nonisolated struct CombatMinigameEngine {
         guard !letters.isEmpty else { return "A" }
         let index = Int.random(in: 0..<letters.count, using: &rng)
         return letters[index]
+    }
+
+    /// Picks uniformly from the alphabet, excluding `current` when other letters exist.
+    private mutating func randomDifferentShotLetter(excluding current: String) -> String {
+        let letters = config.shotLetters
+        let others = letters.filter { $0 != current }
+        guard !others.isEmpty else { return randomUniformShotLetter() }
+        let index = Int.random(in: 0..<others.count, using: &rng)
+        return others[index]
     }
 
     /// Biases toward the live phonetic cue so matching letters appear more often.

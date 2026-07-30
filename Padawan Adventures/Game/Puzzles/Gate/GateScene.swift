@@ -102,10 +102,6 @@ final class GateScene: SKScene {
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         buildPuzzle()
         playWordSound()
-        activeLoopTrackID = SoundEffectsController.shared.startLoop(
-            event: "loop",
-            from: puzzleConfig.fx
-        )
         publishTimer()
     }
 
@@ -784,6 +780,19 @@ final class GateScene: SKScene {
         activeLoopTrackID = nil
     }
 
+    /// Arc loop plays only while electricity connectors are visible.
+    private func syncArcLoopWithConnectors() {
+        if connectorSegments.isEmpty {
+            stopGateLoop()
+            return
+        }
+        guard activeLoopTrackID == nil else { return }
+        activeLoopTrackID = SoundEffectsController.shared.startLoop(
+            event: "loop",
+            from: puzzleConfig.fx
+        )
+    }
+
     // MARK: - Touch / drag
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -921,6 +930,7 @@ final class GateScene: SKScene {
     /// Light-blue lines for the connected prefix: left end → letters → right end (when complete).
     private func updateCorrectOrderConnectors() {
         clearConnectorSegments()
+        defer { syncArcLoopWithConnectors() }
 
         guard !didEnd else { return }
         let staged = stagedLettersLeftToRight()

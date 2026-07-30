@@ -410,46 +410,43 @@ struct CombatMinigameEngineTests {
         #expect(mean > 2.0 && mean < 4.5)
     }
 
-    @Test func cueChangesAfterRequiredCorrectSlashes() {
-        var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, seed: 21)
+    @Test func correctSlashChangesCueToADifferentLetter() throws {
+        var engine = makeEngine(
+            starsToWin: 99,
+            shotLetters: ["A", "B", "C"],
+            meanInterval: 0.01,
+            seed: 21
+        )
         var firstCue: String?
         for _ in 0..<40 {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
+            for event in engine.tick(dt: 0.05) {
                 if case let .sequenceCue(letter) = event {
                     firstCue = letter
                 }
             }
             if firstCue != nil { break }
         }
-        #expect(firstCue != nil)
-        let needed = engine.correctSlashesRemainingInSequence
-        #expect(needed >= 1)
+        let previous = try #require(firstCue)
 
-        var correctDone = 0
-        var sawNextCue = false
-        for _ in 0..<200 where !sawNextCue {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
+        var changed = false
+        for _ in 0..<200 where !changed {
+            for event in engine.tick(dt: 0.05) {
                 guard case let .spawnShot(id, _, _) = event,
-                      engine.matchesCurrentCue(shotID: id),
-                      correctDone < needed else { continue }
-                let result = engine.registerSlashHit(shotID: id)
-                #expect(result == .correct)
-                correctDone += 1
+                      engine.matchesCurrentCue(shotID: id) else { continue }
+                #expect(engine.registerSlashHit(shotID: id) == .correct)
                 let pending = engine.drainPendingEvents()
-                if correctDone == needed {
-                    let hasCue = pending.contains { event in
-                        if case .sequenceCue = event { return true }
-                        return false
-                    }
-                    #expect(hasCue)
-                    sawNextCue = true
-                }
+                let nextCue = pending.compactMap { event -> String? in
+                    if case let .sequenceCue(letter) = event { return letter }
+                    return nil
+                }.first
+                let next = try #require(nextCue)
+                #expect(next != previous)
+                #expect(engine.sequenceRequiredLetter == next)
+                changed = true
+                break
             }
         }
-        #expect(sawNextCue)
-        #expect(correctDone == needed)
+        #expect(changed)
     }
 
     @Test func spawnIntervalStaysWithinJitterBounds() {
