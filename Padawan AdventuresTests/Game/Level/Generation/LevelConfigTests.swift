@@ -400,6 +400,35 @@ struct LevelConfigTests {
         #expect(tython.enemies?.types == ["dino", "treant"])
         #expect(tython.width == 20)
         #expect(tython.roomCount == 5)
+        #expect(tython.combatLetterSpawnRate == 0.7)
+        #expect(tython.combatLetterCase == .lower)
+    }
+
+    @Test func decodesCombatLetterSpawnRateAndCase() throws {
+        let level = try LevelConfig.decode(
+            from: """
+            inherits: base_level
+            name: Level 1
+            combat_letter_spawn_rate: 0.5
+            combat_letter_case: both
+            """,
+            parents: ["base_level": Self.baseLevelYAML]
+        )
+        #expect(level.combatLetterSpawnRate == 0.5)
+        #expect(level.combatLetterCase == .both)
+    }
+
+    @Test func rejectsInvalidCombatLetterSpawnRate() throws {
+        #expect(throws: WorldSeedError.invalidCombatLetterSpawnRate(0)) {
+            try LevelConfig.decode(
+                from: """
+                inherits: base_level
+                name: Level 1
+                combat_letter_spawn_rate: 0
+                """,
+                parents: ["base_level": Self.baseLevelYAML]
+            )
+        }
     }
 
     @Test func decodesEnemyTypesListAndLegacyType() throws {

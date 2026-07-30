@@ -11,12 +11,19 @@ final class BackgroundMusicController {
     private(set) var musicEnabled = true
     private(set) var musicVolume: Float = PlayerSettings.defaultMusicVolume
 
+    /// Ducks music so phonetic cues at `phoneticVolumeScale` stay ~20% clearer in the mix.
+    static let musicMixScale: Float = 1 / SoundEffectsController.phoneticVolumeScale
+
     private let player: any MusicAudioPlaying
     private var transitionTask: Task<Void, Never>?
     private var transitionGeneration = 0
+    private var phoneticDuckTask: Task<Void, Never>?
+    private var phoneticDuckGeneration = 0
+    private(set) var isPhoneticDucked = false
 
     var effectiveVolume: Float {
-        musicEnabled ? musicVolume : 0
+        let base = musicEnabled ? musicVolume * Self.musicMixScale : 0
+        return isPhoneticDucked ? base * SoundEffectsController.phoneticCueDuckScale : base
     }
 
     init(player: (any MusicAudioPlaying)? = nil) {
@@ -80,6 +87,26 @@ final class BackgroundMusicController {
         isPausedForBackground = false
         if currentTrackID != nil {
             player.play()
+        }
+    }
+
+    /// Temporarily ducks music under a phonetic cue, then restores. Overlapping cues
+    /// extend the duck window from the latest call.
+    func duckForPhoneticCue(duration: TimeInterval) {
+        let hold = max(duration, 0.05)
+        phoneticDuckGeneration += 1
+        let generation = phoneticDuckGeneration
+        phoneticDuckTask?.cancel()
+        isPhoneticDucked = true
+        applyEffectiveVolumeLive()
+
+        phoneticDuckTask = Task { @MainActor in
+            let nanos = UInt64(hold * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanos)
+            guard !Task.isCancelled, generation == self.phoneticDuckGeneration else { return }
+            self.isPhoneticDucked = false
+            self.phoneticDuckTask = nil
+            self.applyEffectiveVolumeLive()
         }
     }
 

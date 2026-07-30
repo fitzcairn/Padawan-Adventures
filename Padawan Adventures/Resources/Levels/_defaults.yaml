@@ -17,6 +17,11 @@ game_music:
 # How often to replay the current letter-name prompt (combat cues, wall puzzle, etc.).
 letter_sound_repeat_seconds: 3
 
+# Combat letter spawn frequency vs derived baseline (1.0 = default; 0.7 = 30% fewer).
+combat_letter_spawn_rate: 0.7
+# Combat projectile / cue letter casing: lower | upper | both.
+combat_letter_case: lower
+
 width: 20
 height: 20
 

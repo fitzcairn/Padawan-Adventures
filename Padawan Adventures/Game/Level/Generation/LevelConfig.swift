@@ -490,6 +490,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var gameMusic: GameMusicConfig
     /// Shared letter-name prompt replay interval (combat cues, wall puzzle, etc.).
     var letterSoundRepeatSeconds: Double
+    /// Multiplier on combat letter spawn frequency vs derived baseline (`1.0` = unchanged).
+    var combatLetterSpawnRate: Double
+    /// Casing for combat projectile / cue letters.
+    var combatLetterCase: CombatLetterCase
     var width: Int
     var height: Int
     var algorithm: String
@@ -559,6 +563,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case music
         case gameMusic = "game_music"
         case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
+        case combatLetterSpawnRate = "combat_letter_spawn_rate"
+        case combatLetterCase = "combat_letter_case"
         case width
         case height
         case algorithm
@@ -615,6 +621,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         music: "level",
         gameMusic: .fallback,
         letterSoundRepeatSeconds: 3,
+        combatLetterSpawnRate: 1.0,
+        combatLetterCase: .upper,
         width: 100,
         height: 100,
         algorithm: "rooms_doors",
@@ -658,6 +666,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         music: String? = nil,
         gameMusic: GameMusicConfig = .fallback,
         letterSoundRepeatSeconds: Double = 3,
+        combatLetterSpawnRate: Double = 1.0,
+        combatLetterCase: CombatLetterCase = .upper,
         width: Int,
         height: Int,
         algorithm: String,
@@ -680,6 +690,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.music = music
         self.gameMusic = gameMusic
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.combatLetterSpawnRate = combatLetterSpawnRate
+        self.combatLetterCase = combatLetterCase
         self.width = width
         self.height = height
         self.algorithm = algorithm
@@ -712,6 +724,19 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             Double.self,
             forKey: .letterSoundRepeatSeconds
         ) ?? Self.fallback.letterSoundRepeatSeconds
+        combatLetterSpawnRate = try container.decodeIfPresent(
+            Double.self,
+            forKey: .combatLetterSpawnRate
+        ) ?? Self.fallback.combatLetterSpawnRate
+        if let rawCase = try container.decodeIfPresent(String.self, forKey: .combatLetterCase) {
+            let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard let parsed = CombatLetterCase(rawValue: trimmed) else {
+                throw WorldSeedError.invalidCombatLetterCase(rawCase)
+            }
+            combatLetterCase = parsed
+        } else {
+            combatLetterCase = Self.fallback.combatLetterCase
+        }
         width = try container.decode(Int.self, forKey: .width)
         height = try container.decode(Int.self, forKey: .height)
         algorithm = try container.decode(String.self, forKey: .algorithm)
@@ -732,6 +757,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     func validate() throws {
         guard letterSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
+        }
+        guard combatLetterSpawnRate > 0 else {
+            throw WorldSeedError.invalidCombatLetterSpawnRate(combatLetterSpawnRate)
         }
         guard width > 4, height > 4 else {
             throw WorldSeedError.worldTooSmall

@@ -9,6 +9,8 @@ struct EnemyMinigameView: View {
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let letterSoundRepeatSeconds: Double
+    let letterSpawnRate: Double
+    let letterCase: CombatLetterCase
     let slashMaxSeconds: Double
     let slashMaxScreenWidthFraction: Double
     let spriteLibrary: SpriteLibrary
@@ -26,6 +28,8 @@ struct EnemyMinigameView: View {
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        letterCase: CombatLetterCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -40,6 +44,8 @@ struct EnemyMinigameView: View {
         self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.letterSpawnRate = letterSpawnRate
+        self.letterCase = letterCase
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary
@@ -54,6 +60,8 @@ struct EnemyMinigameView: View {
                 playerFx: playerFx,
                 startingHealth: healthCount,
                 letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                letterSpawnRate: letterSpawnRate,
+                letterCase: letterCase,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                 initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds)),
@@ -79,7 +87,8 @@ struct EnemyMinigameView: View {
                 CombatHUDRepresentable(
                     config: hudConfig,
                     healthCount: session.health,
-                    stars: session.stars,
+                    progress: session.stars,
+                    progressGoal: enemyType.starsToWin,
                     timerSeconds: session.timerSeconds,
                     timerUrgent: session.timerUrgent
                 )
@@ -122,6 +131,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let playerFx: SoundEffectTable
     private let startingHealth: Int
     private let letterSoundRepeatSeconds: Double
+    private let letterSpawnRate: Double
+    private let letterCase: CombatLetterCase
     private let slashMaxSeconds: Double
     private let slashMaxScreenWidthFraction: Double
     private let spriteLibrary: SpriteLibrary
@@ -137,6 +148,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         playerFx: SoundEffectTable,
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        letterCase: CombatLetterCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         initialTimerSeconds: Int,
@@ -150,6 +163,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         self.playerFx = playerFx
         self.startingHealth = startingHealth
         self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.letterSpawnRate = letterSpawnRate
+        self.letterCase = letterCase
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary
@@ -173,6 +188,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
             playerFx: playerFx,
             startingHealth: startingHealth,
             letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+            letterSpawnRate: letterSpawnRate,
+            letterCase: letterCase,
             slashMaxSeconds: slashMaxSeconds,
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
             spriteLibrary: spriteLibrary,
@@ -264,7 +281,8 @@ private struct CombatSpriteView: UIViewRepresentable {
 private struct CombatHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
     let healthCount: Int
-    let stars: Int
+    let progress: Int
+    let progressGoal: Int
     let timerSeconds: Int
     let timerUrgent: Bool
 
@@ -285,7 +303,8 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
         let hud = CombatHUDView(
             config: config,
             healthCount: healthCount,
-            starsCount: stars,
+            progress: progress,
+            progressGoal: progressGoal,
             timerSeconds: timerSeconds
         )
         hud.translatesAutoresizingMaskIntoConstraints = false
@@ -302,7 +321,7 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.hud?.setHealth(healthCount)
-        context.coordinator.hud?.setStars(stars)
+        context.coordinator.hud?.setProgress(current: progress, goal: progressGoal)
         context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
 }

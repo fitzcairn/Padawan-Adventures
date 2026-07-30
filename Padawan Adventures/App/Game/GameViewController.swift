@@ -196,9 +196,16 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = loadHudConfig()
         let playerFx = session.playerConfig.fx
         let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
+        let letterSpawnRate = session.selectedCombatLetterSpawnRate
+        let letterCase = session.selectedCombatLetterCase
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
         let outcomeBox = CombatOutcomeBox()
+
+        // Notice stingers can still be playing when contact starts combat — duck them out.
+        SoundEffectsController.shared.fadeOutAndStop(
+            trackID: enemyType.fx.trackID(for: "notice")
+        )
 
         BackgroundMusicController.shared.apply(session.selectedGameMusic.combatCue)
 
@@ -212,6 +219,8 @@ final class GameViewController: LandscapeHostingController {
                         playerFx: playerFx,
                         hudConfig: hudConfig,
                         letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                        letterSpawnRate: letterSpawnRate,
+                        letterCase: letterCase,
                         slashMaxSeconds: slashMaxSeconds,
                         slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                         spriteLibrary: self.session.spriteLibrary,

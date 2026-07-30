@@ -21,6 +21,12 @@ protocol SoundEffectPlaying: AnyObject {
     func stopLoop(trackID: String)
 
     func stopAllLoops()
+
+    /// Scales all active loop volumes (`1` = unducked base levels).
+    func setLoopDuckScale(_ scale: Float)
+
+    /// Fades playing one-shot instances of `trackID` to silence, then stops them.
+    func fadeOutAndStop(trackID: String, duration: TimeInterval)
 }
 
 /// Bundle-backed per-track `AVAudioPlayer` pool for overlapping one-shots.
@@ -32,6 +38,9 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     private var durationCache: [String: TimeInterval] = [:]
     /// Separate from the one-shot LRU pool so loops are never evicted mid-play.
     private var loopPlayers: [String: AVAudioPlayer] = [:]
+    private var loopBaseVolumes: [String: Float] = [:]
+    private var loopDuckScale: Float = 1
+    private var oneShotFadeTasks: [String: Task<Void, Never>] = [:]
     private var didConfigureSession = false
 
     /// Simultaneous instances of the *same* effect before the oldest is retriggered.
@@ -50,6 +59,9 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
+        // A new play supersedes any in-flight fade-out for this track.
+        oneShotFadeTasks[trackID]?.cancel()
+        oneShotFadeTasks[trackID] = nil
         guard let url = resolvedURL(for: trackID) else { return false }
         configureSessionIfNeeded()
         guard let player = pooledPlayer(for: trackID, url: url) else { return false }
@@ -82,8 +94,9 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     @discardableResult
     func startLoop(trackID: String, volume: Float) -> Bool {
         let clamped = min(1, max(0, volume))
+        loopBaseVolumes[trackID] = clamped
         if let existing = loopPlayers[trackID] {
-            existing.volume = clamped
+            existing.volume = clamped * loopDuckScale
             if !existing.isPlaying {
                 existing.currentTime = 0
                 return existing.play()
@@ -95,7 +108,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         do {
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = -1
-            player.volume = clamped
+            player.volume = clamped * loopDuckScale
             player.prepareToPlay()
             decodeCount += 1
             loopPlayers[trackID] = player
@@ -107,6 +120,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
 
     func stopLoop(trackID: String) {
         guard let player = loopPlayers.removeValue(forKey: trackID) else { return }
+        loopBaseVolumes.removeValue(forKey: trackID)
         player.stop()
     }
 
@@ -115,6 +129,56 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
             player.stop()
         }
         loopPlayers.removeAll()
+        loopBaseVolumes.removeAll()
+        loopDuckScale = 1
+    }
+
+    func setLoopDuckScale(_ scale: Float) {
+        loopDuckScale = min(1, max(0, scale))
+        for (trackID, player) in loopPlayers {
+            let base = loopBaseVolumes[trackID] ?? player.volume
+            player.volume = base * loopDuckScale
+        }
+    }
+
+    func fadeOutAndStop(trackID: String, duration: TimeInterval) {
+        oneShotFadeTasks[trackID]?.cancel()
+        oneShotFadeTasks[trackID] = nil
+
+        guard let pool = pools[trackID] else { return }
+        let playing = pool.filter(\.isPlaying)
+        guard !playing.isEmpty else { return }
+
+        if duration <= 0 {
+            for player in playing {
+                player.stop()
+                player.currentTime = 0
+            }
+            return
+        }
+
+        let startVolumes = playing.map(\.volume)
+        let steps = max(1, Int(duration / 0.02))
+        let stepDuration = duration / Double(steps)
+        let task = Task { @MainActor in
+            for step in 1...steps {
+                guard !Task.isCancelled else { return }
+                let t = Float(step) / Float(steps)
+                for (player, start) in zip(playing, startVolumes) {
+                    guard player.isPlaying else { continue }
+                    player.volume = start * (1 - t)
+                }
+                let nanos = UInt64(stepDuration * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanos)
+            }
+            guard !Task.isCancelled else { return }
+            for player in playing {
+                player.stop()
+                player.currentTime = 0
+            }
+            self.oneShotFadeTasks[trackID] = nil
+        }
+        oneShotFadeTasks[trackID] = task
     }
 
     private func resolvedURL(for trackID: String) -> URL? {

@@ -53,7 +53,7 @@ final class CombatScene: SKScene {
     private var lastUpdateTime: TimeInterval?
     private var activeLoopTrackID: String?
 
-    private let shotBaseSize: CGFloat = 72
+    private let shotBaseSize: CGFloat = 103.68
     private let playerFlashActionKey = "playerFlash"
     private let playerCombatLibraryID = "player_combat"
     private let playerSwingAnimationName = "swing"
@@ -65,6 +65,8 @@ final class CombatScene: SKScene {
         playerFx: SoundEffectTable,
         startingHealth: Int,
         letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        letterCase: CombatLetterCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -83,7 +85,12 @@ final class CombatScene: SKScene {
         self.enemySprite = enemySprite
         self.wallHeight = max(wallHeight, 1)
         self.engine = CombatMinigameEngine(
-            config: .init(from: enemyType, letterSoundRepeatSeconds: letterSoundRepeatSeconds),
+            config: .init(
+                from: enemyType,
+                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                letterSpawnRate: letterSpawnRate,
+                letterCase: letterCase
+            ),
             startingHealth: startingHealth
         )
         super.init(size: size)
@@ -105,6 +112,8 @@ final class CombatScene: SKScene {
         didSetup = true
         buildArena()
         engine.begin()
+        // Enable before combat FX so hum/slash sit under letter cues.
+        SoundEffectsController.shared.setCombatMixActive(true)
         SoundEffectsController.shared.play(event: "combat_start", from: playerFx)
         activeLoopTrackID = SoundEffectsController.shared.startLoop(
             event: "combat_loop",
@@ -116,6 +125,7 @@ final class CombatScene: SKScene {
 
     override func willMove(from view: SKView) {
         stopCombatLoop()
+        SoundEffectsController.shared.setCombatMixActive(false)
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -270,7 +280,8 @@ final class CombatScene: SKScene {
             SoundEffectsController.shared.play(trackID: shared)
             return
         }
-        if let typeFx = enemyType.shotTypes[requiredLetter]?.fx,
+        // shot_types keys are uppercase catalog ids; cues may be lower / mixed case.
+        if let typeFx = enemyType.shotTypes[requiredLetter.uppercased()]?.fx,
            let trackID = typeFx.trackID(for: "shoot") {
             SoundEffectsController.shared.play(trackID: trackID)
         }
@@ -756,6 +767,7 @@ final class CombatScene: SKScene {
             case .wrong:
                 removeShotNode(id: id)
                 playIncorrectSlash(at: pos)
+                combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
             }
         }
     }
@@ -798,5 +810,6 @@ final class CombatScene: SKScene {
     private func stopCombatLoop() {
         SoundEffectsController.shared.stopLoop(trackID: activeLoopTrackID)
         activeLoopTrackID = nil
+        SoundEffectsController.shared.setCombatMixActive(false)
     }
 }

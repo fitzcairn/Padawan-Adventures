@@ -8,9 +8,12 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var preparedTrackIDs: [String] = []
     private(set) var startedLoops: [(trackID: String, volume: Float)] = []
     private(set) var stoppedLoops: [String] = []
+    private(set) var fadeOutCalls: [(trackID: String, duration: TimeInterval)] = []
+    private(set) var loopDuckScales: [Float] = []
     var activeLoops: Set<String> = []
     var missingTrackIDs: Set<String> = []
     var durations: [String: TimeInterval] = [:]
+    var loopDuckScale: Float = 1
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
@@ -55,6 +58,15 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
         activeLoops.removeAll()
     }
 
+    func fadeOutAndStop(trackID: String, duration: TimeInterval) {
+        fadeOutCalls.append((trackID, duration))
+    }
+
+    func setLoopDuckScale(_ scale: Float) {
+        loopDuckScale = scale
+        loopDuckScales.append(scale)
+    }
+
     var playedTrackIDs: [String] {
         playCalls.map(\.trackID)
     }
@@ -93,23 +105,33 @@ struct SoundEffectsControllerTests {
         #expect(mock.playCalls.map(\.volume) == [0.4 * SoundEffectsController.backgroundSFXVolumeScale])
     }
 
-    @Test func phoneticTracksPlayAtFullVolume() {
+    @Test func phoneticTracksPlayAtBoostedVolume() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(0.8)
         controller.play(trackID: "sfx_letter_a_name")
         controller.play(trackID: "sfx_word_cat_ca")
-        #expect(mock.playCalls.map(\.volume) == [0.8, 0.8])
+        let expected = 0.8 * SoundEffectsController.phoneticVolumeScale
+        #expect(mock.playCalls.map(\.volume) == [expected, expected])
     }
 
-    @Test func backgroundTracksPlayAtHalfPhoneticVolume() {
+    @Test func phoneticVolumeIsClampedToOne() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(1)
+        controller.play(trackID: "sfx_letter_a_name")
+        #expect(mock.playCalls.map(\.volume) == [1])
+    }
+
+    @Test func backgroundTracksPlayQuieterThanBoostedPhonetics() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(1)
         controller.play(trackID: "combat-lightsaber-slash")
         controller.play(trackID: "pit-jump")
         controller.play(trackID: "gate-letter_match-switch-push")
-        #expect(mock.playCalls.map(\.volume) == [0.5, 0.5, 0.5])
+        let expected = SoundEffectsController.backgroundSFXVolumeScale
+        #expect(mock.playCalls.map(\.volume) == [expected, expected, expected])
     }
 
     @Test func playEventResolvesFromTable() {
@@ -246,6 +268,59 @@ struct SoundEffectsControllerTests {
         #expect(SoundEffectsController.isPhoneticTrack("sfx_word_gate_ga"))
         #expect(!SoundEffectsController.isPhoneticTrack("combat-loop-lightsaber-hum"))
         #expect(!SoundEffectsController.isPhoneticTrack("pit-jump"))
+    }
+
+    @Test func fadeOutAndStopForwardsTrackAndDefaultDuration() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.fadeOutAndStop(trackID: "enemy-spider")
+        #expect(mock.fadeOutCalls.map(\.trackID) == ["enemy-spider"])
+        #expect(
+            mock.fadeOutCalls.map(\.duration)
+                == [SoundEffectsController.defaultOneShotFadeOutSeconds]
+        )
+    }
+
+    @Test func fadeOutAndStopIgnoresBlankTrack() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.fadeOutAndStop(trackID: "   ")
+        controller.fadeOutAndStop(trackID: nil)
+        #expect(mock.fadeOutCalls.isEmpty)
+    }
+
+    @Test func phoneticPlayDucksAmbienceForCueDuration() {
+        let mock = MockSoundEffectPlayer()
+        mock.durations["sfx_letter_a_name"] = 0.8
+        let controller = SoundEffectsController(player: mock)
+        var duckedDurations: [TimeInterval] = []
+        controller.phoneticCueDuckHandler = { duckedDurations.append($0) }
+
+        controller.play(trackID: "sfx_letter_a_name")
+        #expect(duckedDurations == [0.8])
+        #expect(mock.loopDuckScales == [SoundEffectsController.phoneticCueDuckScale])
+
+        controller.play(trackID: "combat-lightsaber-slash")
+        #expect(duckedDurations == [0.8])
+        #expect(mock.loopDuckScales == [SoundEffectsController.phoneticCueDuckScale])
+    }
+
+    @Test func combatMixBoostsPhoneticsAndDucksOtherFX() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(0.5)
+        controller.setCombatMixActive(true)
+
+        controller.play(trackID: "sfx_letter_b_name")
+        controller.play(trackID: "combat-lightsaber-slash")
+
+        let phonetic = 0.5
+            * SoundEffectsController.phoneticVolumeScale
+            * SoundEffectsController.combatPhoneticRelativeBoost
+        let other = 0.5
+            * SoundEffectsController.backgroundSFXVolumeScale
+            / SoundEffectsController.combatPhoneticRelativeBoost
+        #expect(mock.playCalls.map(\.volume) == [phonetic, other])
     }
 }
 

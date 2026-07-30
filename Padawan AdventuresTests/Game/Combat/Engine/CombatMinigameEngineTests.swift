@@ -58,14 +58,37 @@ struct CombatMinigameEngineTests {
         #expect(!engine.isActive)
     }
 
-    @Test func timerExpiryProducesLost() {
+    @Test func timerExpiryDoesNotProduceLost() {
         var engine = makeEngine(timer: 2, meanInterval: 100)
         _ = engine.tick(dt: 1.0)
         #expect(engine.outcome == nil)
         let events = engine.tick(dt: 1.1)
-        #expect(events.contains(.lost))
-        #expect(engine.outcome == .lost)
-        #expect(engine.isFrozen)
+        #expect(!events.contains(.lost))
+        #expect(engine.outcome == nil)
+        #expect(!engine.isFrozen)
+        #expect(engine.remainingTime == 0)
+    }
+
+    @Test func spawnsContinueAfterConfiguredTimerWindow() {
+        // Old spawnWindowEnd was timer - travel (here 2). Spawns must continue past that.
+        var engine = makeEngine(timer: 4, travel: 2, starsToWin: 99, meanInterval: 0.2, seed: 3)
+        var spawnCountBeforeWindow = 0
+        var spawnCountAfterWindow = 0
+        for _ in 0..<80 {
+            let events = engine.tick(dt: 0.1)
+            let spawns = events.filter {
+                if case .spawnShot = $0 { return true }
+                return false
+            }.count
+            if engine.elapsed <= 2 {
+                spawnCountBeforeWindow += spawns
+            } else {
+                spawnCountAfterWindow += spawns
+            }
+        }
+        #expect(spawnCountBeforeWindow > 0)
+        #expect(spawnCountAfterWindow > 0)
+        #expect(engine.outcome == nil)
     }
 
     @Test func derivedIntervalSupportsWinWithFiftyPercentMisses() {
@@ -104,6 +127,40 @@ struct CombatMinigameEngineTests {
             shotLetterCount: 3
         )
         #expect(abs(config.meanShotIntervalSeconds - expected) < 1e-9)
+    }
+
+    @Test func configAppliesSpawnRateAndLetterCase() {
+        let type = EnemyTypeConfig(
+            letter: "E",
+            color: "#FF0000",
+            tilesPerSecond: 1,
+            forgetSeconds: 3,
+            combatTimerSeconds: 10,
+            shotTravelSeconds: 3.2,
+            starsToWin: 5
+        )
+        let config = CombatMinigameEngine.Config(
+            from: type,
+            letterSpawnRate: 0.7,
+            letterCase: .lower
+        )
+        #expect(config.shotLetters == ["a", "b", "c"])
+        let derived = CombatMinigameEngine.Config.derivedMeanShotInterval(
+            combatTimerSeconds: 10,
+            shotTravelSeconds: 3.2,
+            starsToWin: 5,
+            shotLetterCount: 3
+        )
+        #expect(abs(config.meanShotIntervalSeconds - derived / 0.7) < 1e-9)
+
+        let both = CombatMinigameEngine.Config(from: type, letterCase: .both)
+        #expect(both.shotLetters == ["a", "A", "b", "B", "c", "C"])
+    }
+
+    @Test func combatLetterCaseBuildsPools() {
+        #expect(CombatLetterCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
+        #expect(CombatLetterCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
+        #expect(CombatLetterCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
     }
 
     @Test func sequenceCueThenSpawnsShareRequiredLetter() {
@@ -147,7 +204,7 @@ struct CombatMinigameEngineTests {
         #expect(visuals.count > 1)
     }
 
-    @Test func correctSlashAwardsStarAndWrongDoesNot() {
+    @Test func correctSlashIncreasesNetProgressAndWrongDecreasesIt() {
         var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, seed: 5)
         var correctID: UUID?
         var wrongID: UUID?
@@ -172,8 +229,47 @@ struct CombatMinigameEngineTests {
         #expect(engine.combatStars == 1)
 
         #expect(engine.registerSlashHit(shotID: wrongID!) == .wrong)
-        #expect(engine.combatStars == 1)
+        #expect(engine.combatStars == 0)
         #expect(engine.shots[wrongID!] == nil)
+    }
+
+    @Test func winRequiresNetProgressNotGrossCorrects() {
+        var engine = makeEngine(starsToWin: 3, meanInterval: 0.01, seed: 9)
+
+        func slashMatching(count: Int) {
+            var done = 0
+            while done < count, engine.outcome == nil {
+                for event in engine.tick(dt: 0.05) {
+                    guard case let .spawnShot(id, _, _) = event,
+                          engine.matchesCurrentCue(shotID: id) else { continue }
+                    #expect(engine.registerSlashHit(shotID: id) == .correct)
+                    done += 1
+                    if done >= count { break }
+                }
+            }
+        }
+
+        slashMatching(count: 2)
+        #expect(engine.combatStars == 2)
+        #expect(engine.outcome == nil)
+
+        var wrongDone = false
+        for _ in 0..<80 where !wrongDone {
+            for event in engine.tick(dt: 0.05) {
+                guard case let .spawnShot(id, _, _) = event,
+                      let shot = engine.shots[id],
+                      shot.visualLetter != engine.sequenceRequiredLetter else { continue }
+                #expect(engine.registerSlashHit(shotID: id) == .wrong)
+                wrongDone = true
+                break
+            }
+        }
+        #expect(wrongDone)
+        #expect(engine.combatStars == 1)
+        #expect(engine.outcome == nil)
+
+        slashMatching(count: 2)
+        #expect(engine.outcome == CombatOutcome.won(starsAwarded: 3))
     }
 
     @Test func onScreenShotBecomesCorrectWhenCueChangesToItsLetter() throws {
@@ -221,8 +317,9 @@ struct CombatMinigameEngineTests {
         var becameCorrect = false
         for _ in 0..<500 {
             if engine.sequenceRequiredLetter == pendingVisual, engine.shots[pendingID] != nil {
+                let starsBefore = engine.combatStars
                 #expect(engine.registerSlashHit(shotID: pendingID) == .correct)
-                #expect(engine.combatStars >= 1)
+                #expect(engine.combatStars == starsBefore + 1)
                 becameCorrect = true
                 break
             }

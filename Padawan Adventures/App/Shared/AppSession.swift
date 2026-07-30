@@ -23,6 +23,10 @@ final class AppSession {
     private(set) var selectedGateConfig: GateConfig
     /// Shared letter-name prompt replay interval for combat / wall / related games.
     private(set) var selectedLetterSoundRepeatSeconds: Double
+    /// Combat letter spawn frequency multiplier for the selected level.
+    private(set) var selectedCombatLetterSpawnRate: Double
+    /// Combat letter casing for the selected level.
+    private(set) var selectedCombatLetterCase: CombatLetterCase
 
     /// App + level knobs for procedural generation / save-size checks.
     var generationConfig: WorldGenerationConfig {
@@ -65,6 +69,8 @@ final class AppSession {
         selectedPitConfig: PitPuzzleConfig? = nil,
         selectedGateConfig: GateConfig? = nil,
         selectedLetterSoundRepeatSeconds: Double? = nil,
+        selectedCombatLetterSpawnRate: Double? = nil,
+        selectedCombatLetterCase: CombatLetterCase? = nil,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
@@ -93,6 +99,10 @@ final class AppSession {
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
             ?? selectedLevel.letterSoundRepeatSeconds
+        self.selectedCombatLetterSpawnRate = selectedCombatLetterSpawnRate
+            ?? selectedLevel.combatLetterSpawnRate
+        self.selectedCombatLetterCase = selectedCombatLetterCase
+            ?? selectedLevel.combatLetterCase
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
@@ -637,6 +647,8 @@ final class AppSession {
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
         selectedLetterSoundRepeatSeconds = level.letterSoundRepeatSeconds
+        selectedCombatLetterSpawnRate = level.combatLetterSpawnRate
+        selectedCombatLetterCase = level.combatLetterCase
     }
 
     func bindPlayer(name: String) async throws {

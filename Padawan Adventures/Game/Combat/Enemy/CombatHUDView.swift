@@ -1,20 +1,28 @@
 import UIKit
 
-/// Combat-only HUD: health (top-leading), timer (top-trailing), coins (bottom-leading).
+/// Combat-only HUD: health (top-leading), timer (top-trailing), net-progress bar (bottom-leading).
 final class CombatHUDView: UIView {
     private let config: HudConfig
     private let heartsStack: UIStackView
     private let heartImage: UIImage?
-    private let scoreLabel = UILabel()
     private let timerLabel = UILabel()
+    private let progressTrack = UIView()
+    private let progressFill = UIView()
+    private var progressFillWidth: NSLayoutConstraint?
+    private var progressGoal = 1
+    private var displayedProgress: CGFloat = 0
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
-    init(config: HudConfig, healthCount: Int, starsCount: Int = 0, timerSeconds: Int) {
+    private static let progressBarHeight: CGFloat = 14
+    private static let progressBarWidthFraction: CGFloat = 0.05
+
+    init(config: HudConfig, healthCount: Int, progress: Int = 0, progressGoal: Int = 1, timerSeconds: Int) {
         self.config = config
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
         self.heartImage = HudVitalIcon.health.makeUIImage(pointSize: CGFloat(config.iconSize))
+        self.progressGoal = max(progressGoal, 1)
         super.init(frame: .zero)
-        setup(healthCount: healthCount, starsCount: starsCount, timerSeconds: timerSeconds)
+        setup(healthCount: healthCount, progress: progress, timerSeconds: timerSeconds)
     }
 
     @available(*, unavailable)
@@ -29,6 +37,7 @@ final class CombatHUDView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         edgeInsets.update()
+        applyProgressFill(animated: false)
     }
 
     override func safeAreaInsetsDidChange() {
@@ -36,8 +45,12 @@ final class CombatHUDView: UIView {
         edgeInsets.update()
     }
 
-    func setStars(_ count: Int) {
-        scoreLabel.text = "\(max(count, 0))"
+    func setProgress(current: Int, goal: Int) {
+        progressGoal = max(goal, 1)
+        let target = Self.clampedFraction(current: current, goal: progressGoal)
+        guard abs(target - displayedProgress) > 0.000_1 else { return }
+        displayedProgress = target
+        applyProgressFill(animated: true)
     }
 
     func setHealth(_ count: Int) {
@@ -57,7 +70,7 @@ final class CombatHUDView: UIView {
         timerLabel.textColor = urgent ? .systemRed : .white
     }
 
-    private func setup(healthCount: Int, starsCount: Int, timerSeconds: Int) {
+    private func setup(healthCount: Int, progress: Int, timerSeconds: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = false
         // Keep true when hosted by SwiftUI; parent containers may set false + pin edges.
@@ -67,7 +80,6 @@ final class CombatHUDView: UIView {
             addIcon(image: heartImage, to: heartsStack)
         }
 
-        let score = makeScoreRow(starsCount: starsCount)
         timerLabel.text = "\(max(timerSeconds, 0))"
         timerLabel.textColor = .white
         timerLabel.font = AppFont.uiKit(size: 28, weight: .bold)
@@ -80,23 +92,37 @@ final class CombatHUDView: UIView {
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         timerLabel.isHidden = !HudConfig.showsMinigameTimer
 
+        progressTrack.backgroundColor = UIColor.white.withAlphaComponent(0.22)
+        progressTrack.layer.cornerRadius = Self.progressBarHeight * 0.5
+        progressTrack.clipsToBounds = true
+        progressTrack.translatesAutoresizingMaskIntoConstraints = false
+        progressTrack.accessibilityIdentifier = "combat.progress"
+
+        progressFill.backgroundColor = UIColor.systemGreen
+        progressFill.translatesAutoresizingMaskIntoConstraints = false
+        progressTrack.addSubview(progressFill)
+
+        displayedProgress = Self.clampedFraction(current: progress, goal: progressGoal)
+        let fillWidth = progressFill.widthAnchor.constraint(equalToConstant: 0)
+        progressFillWidth = fillWidth
+
         addSubview(heartsStack)
         addSubview(timerLabel)
-        addSubview(score)
+        addSubview(progressTrack)
 
         let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
         let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
         let timerTop = timerLabel.topAnchor.constraint(equalTo: topAnchor)
         let timerTrailing = timerLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
-        let scoreBottom = score.bottomAnchor.constraint(equalTo: bottomAnchor)
-        let scoreLeading = score.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let progressBottom = progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let progressLeading = progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor)
 
         edgeInsets.addTop(heartsTop)
         edgeInsets.addLeading(heartsLeading)
         edgeInsets.addTop(timerTop)
         edgeInsets.addTrailing(timerTrailing)
-        edgeInsets.addBottom(scoreBottom)
-        edgeInsets.addLeading(scoreLeading)
+        edgeInsets.addBottom(progressBottom)
+        edgeInsets.addLeading(progressLeading)
 
         NSLayoutConstraint.activate([
             heartsTop,
@@ -106,10 +132,42 @@ final class CombatHUDView: UIView {
             timerTrailing,
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
 
-            scoreBottom,
-            scoreLeading,
+            progressBottom,
+            progressLeading,
+            progressTrack.widthAnchor.constraint(
+                equalTo: widthAnchor,
+                multiplier: Self.progressBarWidthFraction
+            ),
+            progressTrack.heightAnchor.constraint(equalToConstant: Self.progressBarHeight),
+
+            progressFill.leadingAnchor.constraint(equalTo: progressTrack.leadingAnchor),
+            progressFill.topAnchor.constraint(equalTo: progressTrack.topAnchor),
+            progressFill.bottomAnchor.constraint(equalTo: progressTrack.bottomAnchor),
+            fillWidth,
         ])
         edgeInsets.update()
+    }
+
+    private func applyProgressFill(animated: Bool) {
+        let trackWidth = progressTrack.bounds.width
+        guard trackWidth > 0 else { return }
+        let targetWidth = trackWidth * displayedProgress
+        progressFillWidth?.constant = targetWidth
+        guard animated else {
+            layoutIfNeeded()
+            return
+        }
+        UIView.animate(
+            withDuration: 0.22,
+            delay: 0,
+            options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            self.layoutIfNeeded()
+        }
+    }
+
+    private static func clampedFraction(current: Int, goal: Int) -> CGFloat {
+        CGFloat(min(1, max(0, Double(current) / Double(max(goal, 1)))))
     }
 
     private func addIcon(image: UIImage?, to stack: UIStackView) {
@@ -130,30 +188,6 @@ final class CombatHUDView: UIView {
         stack.spacing = CGFloat(spacing)
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
-        return stack
-    }
-
-    private func makeScoreRow(starsCount: Int) -> UIStackView {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = CGFloat(config.scoreTextGap)
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        let size = CGFloat(config.iconSize)
-        let coin = ScoreCoinIcon.makeImageView(side: size)
-
-        scoreLabel.text = "\(max(starsCount, 0))"
-        scoreLabel.textColor = .white
-        scoreLabel.font = AppFont.uiKit(size: 22, weight: .semibold)
-        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
-        scoreLabel.applyAppCopyShadow()
-        scoreLabel.accessibilityIdentifier = "combat.stars"
-        scoreLabel.setContentHuggingPriority(.required, for: .horizontal)
-        scoreLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-
-        stack.addArrangedSubview(coin)
-        stack.addArrangedSubview(scoreLabel)
         return stack
     }
 }

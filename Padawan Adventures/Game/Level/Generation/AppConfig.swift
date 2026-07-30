@@ -329,6 +329,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidPitWords
     case invalidGateLetterMatchTimer(Double)
     case invalidLetterSoundRepeat(Double)
+    case invalidCombatLetterSpawnRate(Double)
+    case invalidCombatLetterCase(String)
     case invalidGateLetterMatchIncorrectReplayDelay(Double)
     case invalidGateLetterMatchLetterCountRange(min: Int, max: Int)
     case invalidGateLetterMatchLetters

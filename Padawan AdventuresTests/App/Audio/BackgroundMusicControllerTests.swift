@@ -66,7 +66,7 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        let target = PlayerSettings.defaultMusicVolume
+        let target = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
         controller.apply(.track("title_menu"))
         await waitFor { mock.playCount == 1 && mock.volume == target }
         #expect(mock.loadCalls == ["title_menu"])
@@ -91,7 +91,7 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
-        let target = PlayerSettings.defaultMusicVolume
+        let target = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
         controller.apply(.track("title_menu"))
         await waitFor { controller.currentTrackID == "title_menu" && mock.volume == target }
 
@@ -139,17 +139,18 @@ struct BackgroundMusicControllerTests {
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 1)
         controller.setMusicVolume(0.5)
+        let target = 0.5 * BackgroundMusicController.musicMixScale
         controller.apply(.track("title_menu"))
-        await waitFor { mock.playCount == 1 && mock.volume == 0.5 }
-        #expect(mock.fadeCalls.map(\.0) == [0.5])
-        #expect(controller.effectiveVolume == 0.5)
+        await waitFor { mock.playCount == 1 && mock.volume == target }
+        #expect(mock.fadeCalls.map(\.0) == [target])
+        #expect(controller.effectiveVolume == target)
     }
 
     @Test func disablingMutesWhileKeepingTrack() async {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 0)
-        let target = PlayerSettings.defaultMusicVolume
+        let target = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
         controller.apply(.track("title_menu"))
         await waitFor { controller.currentTrackID == "title_menu" && mock.volume == target }
 
@@ -167,12 +168,31 @@ struct BackgroundMusicControllerTests {
         let mock = MockMusicAudioPlayer()
         let controller = BackgroundMusicController(player: mock)
         controller.configure(fadeSeconds: 0)
-        let target = PlayerSettings.defaultMusicVolume
+        let target = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
         controller.apply(.track("title_menu"))
         await waitFor { mock.volume == target }
 
         controller.setMusicVolume(0.3)
-        #expect(mock.volume == 0.3)
+        #expect(mock.volume == 0.3 * BackgroundMusicController.musicMixScale)
+    }
+
+    @Test func phoneticCueDuckLowersThenRestoresVolume() async {
+        let mock = MockMusicAudioPlayer()
+        let controller = BackgroundMusicController(player: mock)
+        controller.configure(fadeSeconds: 0)
+        let base = PlayerSettings.defaultMusicVolume * BackgroundMusicController.musicMixScale
+        controller.apply(.track("combat"))
+        await waitFor { mock.volume == base }
+
+        controller.duckForPhoneticCue(duration: 0.05)
+        #expect(controller.isPhoneticDucked)
+        #expect(mock.volume == base * SoundEffectsController.phoneticCueDuckScale)
+
+        await waitFor(timeoutNanoseconds: 500_000_000) {
+            !controller.isPhoneticDucked && mock.volume == base
+        }
+        #expect(!controller.isPhoneticDucked)
+        #expect(mock.volume == base)
     }
 
     private func waitFor(
