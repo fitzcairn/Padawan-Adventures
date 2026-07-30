@@ -6,19 +6,8 @@ inherits: _defaults
 name: Geonosis
 order: 8
 color: "#A1887F"
-sprite:
-  root: Levels/8-geonosis
-  chroma: black_soft
-  animations:
-    idle:
-      sheet: 8-geonosis-planet-spritesheet
-      atlas: 8-geonosis-planet-atlas
 artifact: circle.hexagongrid.fill
 treasure: pommel
-floor:
-  set: 8-geonosis
-letters:
-  set: 8-geonosis
 enemies:
   types: [centipede, snake]
   spawn_chance_per_room: 0.8

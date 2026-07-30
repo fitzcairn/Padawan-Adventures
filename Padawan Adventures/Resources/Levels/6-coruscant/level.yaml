@@ -6,19 +6,8 @@ inherits: _defaults
 name: Coruscant
 order: 6
 color: "#607D8B"
-sprite:
-  root: Levels/6-coruscant
-  chroma: black_soft
-  animations:
-    idle:
-      sheet: 6-coruscant-planet-spritesheet
-      atlas: 6-coruscant-planet-atlas
 artifact: building.2.fill
 treasure: power-cell
-floor:
-  set: 6-coruscant
-letters:
-  set: 6-coruscant
 enemies:
   types: [drone, robot]
   spawn_chance_per_room: 0.8

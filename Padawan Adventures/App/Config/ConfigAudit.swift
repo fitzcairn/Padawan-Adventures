@@ -157,6 +157,7 @@ nonisolated enum ConfigAudit {
         }
 
         problems.append(contentsOf: checkAudioLayout(bundle: bundle))
+        problems.append(contentsOf: checkLevelLayout(bundle: bundle))
 
         if !problems.isEmpty {
             throw ConfigAuditError.detail(problems.joined(separator: "; "))
@@ -503,6 +504,82 @@ nonisolated enum ConfigAudit {
             )
         }
 
+        return problems
+    }
+
+    /// Structural layout invariants for `Levels/`, where every directory is a playable level
+    /// and its assets are found by name. These catch a level added by hand or by copying a
+    /// sibling folder, which otherwise fails later as a missing-atlas error naming the
+    /// wrong level.
+    static func checkLevelLayout(bundle: Bundle = .main) -> [String] {
+        var problems: [String] = []
+        guard let root = bundle.resourceURL?.appendingPathComponent(
+            ConfigPath.levelRoot,
+            isDirectory: true
+        ) else {
+            return ["level layout: bundle has no resourceURL"]
+        }
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return ["level layout: '\(ConfigPath.levelRoot)' is missing"]
+        }
+
+        var sawLevel = false
+        for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            let name = entry.lastPathComponent
+            let isDirectory = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
+
+            guard isDirectory == true else {
+                // Only shared bases such as `_defaults.yaml` belong beside the level folders.
+                if !name.hasPrefix("_") {
+                    problems.append(
+                        "level layout: '\(name)' must live inside a level folder"
+                    )
+                }
+                continue
+            }
+            if name.hasPrefix("_") { continue }
+
+            sawLevel = true
+            problems.append(contentsOf: checkLevelFolder(at: entry, id: name))
+        }
+
+        if !sawLevel {
+            problems.append("level layout: '\(ConfigPath.levelRoot)' holds no level folders")
+        }
+        return problems
+    }
+
+    /// A level folder holds its `level.yaml` plus art named after the level, so copying a
+    /// sibling folder without renaming its files is caught here rather than at load.
+    private static func checkLevelFolder(at url: URL, id: String) -> [String] {
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return ["level layout: '\(id)' is unreadable"]
+        }
+
+        var problems: [String] = []
+        let levelFile = "level.\(ConfigPath.level(id).fileExtension)"
+        if !contents.contains(where: { $0.lastPathComponent == levelFile }) {
+            problems.append("level layout: '\(id)' has no \(levelFile)")
+        }
+
+        // Assets are prefixed with the level's ordinal so treasures (`1-emitter-atlas`)
+        // sit beside the sets derived from the full id (`1-tython-floor-atlas`).
+        let prefix = "\(id.prefix(while: { $0 != "-" }))-"
+        for asset in contents.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            let basename = asset.lastPathComponent
+            guard basename != levelFile, !basename.hasPrefix(prefix) else { continue }
+            problems.append(
+                "level layout: '\(id)/\(basename)' must start with '\(prefix)'"
+            )
+        }
         return problems
     }
 

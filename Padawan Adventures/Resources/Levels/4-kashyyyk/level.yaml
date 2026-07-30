@@ -6,19 +6,8 @@ inherits: _defaults
 name: Kashyyyk
 order: 4
 color: "#1B5E20"
-sprite:
-  root: Levels/4-kashyyyk
-  chroma: black_soft
-  animations:
-    idle:
-      sheet: 4-kashyyyk-planet-spritesheet
-      atlas: 4-kashyyyk-planet-atlas
 artifact: tree.fill
 treasure: activation-switch
-floor:
-  set: 4-kashyyyk
-letters:
-  set: 4-kashyyyk
 enemies:
   types: [spider, moth]
   spawn_chance_per_room: 0.8

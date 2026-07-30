@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Bake per-level floor tile sets from source spritesheets.
 
-For each sheet under Art/Levels/{set}/{set}-floor-spritesheet.png
-(or Floor/{set}/{set}-floor-spritesheet.png after first move):
+For each sheet under Art/Levels/{set}/{set}-floor-spritesheet.png:
 
   1. Detect grid, separate black background, measure per-tile diamond geometry.
   2. Cluster lighting-bias-normalized edge strips into material classes,
@@ -1301,7 +1300,7 @@ def verify_pits(
     """Re-derive pit truth and exit 1 if any baked atlas disagrees."""
     failed = 0
     for set_name, source in selected:
-        set_dir = FLOOR_DIR / set_name
+        set_dir = art_level_dir(set_name)
         sheet_path = set_dir / f"{set_name}-floor-spritesheet.png"
         atlas_path = baked_level_dir(set_name) / f"{set_name}-floor-atlas.json"
         if not atlas_path.is_file():
@@ -1348,7 +1347,7 @@ def main(argv: list[str] | None = None) -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     all_sets = discover_source_sheets()
     if not all_sets:
-        print("No floor spritesheets found under", FLOOR_DIR, file=sys.stderr)
+        print("No floor spritesheets found under", ART_LEVELS, file=sys.stderr)
         return 1
 
     grid = parse_grid(args.grid)

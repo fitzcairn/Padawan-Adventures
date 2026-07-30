@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """Offline sprite baker (T19).
 
-Convention for T20 (Option A — prefer this, do not change without updating runtime):
-  For each source sheet under Resources/Sprites/<...>/<name>.png (or .jpg),
-  write processed output to a sibling Baked/ folder:
+Source art and baked output live in separate trees, so a baked sheet keeps the
+basename of its source and the app bundles only the baked one:
 
-    Resources/Sprites/<path>/<name>.png
-    Resources/Sprites/<path>/<atlas>.json
-      → Resources/Sprites/<path>/Baked/<name>.png
-      → Resources/Sprites/<path>/Baked/<atlas>.json
+    Art/Shared/<path>/<name>.png    → Resources/Sprites/<path>/<name>.png
+    Art/Levels/<id>/<name>.png      → Resources/Levels/<id>/<name>.png
 
-  Runtime should prefer Baked/<basename> when present, else fall back to the
-  source basename. Manifest lives at:
+  See scripts/paths.py for the mapping. Manifest lives at:
 
     Resources/Sprites/bake-manifest.json
 
@@ -935,7 +931,11 @@ def collect_enemies(plan: BakePlan, only: set[str] | None = None) -> None:
 
 
 def collect_planets(plan: BakePlan) -> None:
-    """Level-select planet art, one job per level folder."""
+    """Level-select planet art, one job per level folder.
+
+    Mirrors `LevelConfig.defaultPlanetSprite`: a level's planet sprite is named
+    after its folder, and `level.yaml` only spells one out to deviate.
+    """
     for level_id in level_ids():
         path = LEVELS / level_id / "level.yaml"
         if not path.is_file():
@@ -945,7 +945,17 @@ def collect_planets(plan: BakePlan) -> None:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         sprite = data.get("sprite")
         if not isinstance(sprite, dict):
-            continue
+            sprite = {
+                "root": f"Levels/{level_id}",
+                "chroma_key": "#000000",
+                "chroma_key_tolerance": 2,
+                "animations": {
+                    "idle": {
+                        "sheet": f"{level_id}-planet-spritesheet",
+                        "atlas": f"{level_id}-planet-atlas",
+                    }
+                },
+            }
         collect_animation_jobs(
             plan,
             category=f"planet.{level_id}",
@@ -1291,7 +1301,16 @@ def write_manifest(
         prev_outputs = dict(prev.get("outputs") or {})
         prev_jobs = list(prev.get("jobs") or [])
         replaced = {j["source_sheet"] for j in jobs if "source_sheet" in j}
-        kept = [j for j in prev_jobs if j.get("source_sheet") not in replaced]
+        # Keep jobs this run did not touch, but only while both ends still exist, so
+        # the manifest cannot outlive the tree — whether a level was deleted or art
+        # moved and the same sheet is now baked from somewhere else.
+        kept = [
+            j
+            for j in prev_jobs
+            if j.get("source_sheet") not in replaced
+            and (ROOT / j.get("source_sheet", "")).is_file()
+            and (ROOT / j.get("baked_sheet", "")).is_file()
+        ]
         jobs = kept + jobs
         # Drop previous outputs for replaced sheets; keep the rest if files exist.
         for j in prev_jobs:
@@ -1321,8 +1340,8 @@ def write_manifest(
     doc = {
         "version": MANIFEST_VERSION,
         "convention": (
-            "Option A: write processed sheets/atlases under a sibling Baked/ folder; "
-            "runtime prefers Baked/<basename> when present."
+            "Sources live under Art/ and are not bundled; baked sheets/atlases keep "
+            "their basename under Resources/. See scripts/paths.py."
         ),
         "inputs": dict(sorted(inputs.items())),
         "outputs": dict(sorted(outputs.items())),

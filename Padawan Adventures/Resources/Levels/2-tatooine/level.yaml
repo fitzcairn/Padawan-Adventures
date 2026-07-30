@@ -5,19 +5,8 @@ inherits: _defaults
 name: Tatooine
 order: 2
 color: "#D4A017"
-sprite:
-  root: Levels/2-tatooine
-  chroma: black_soft
-  animations:
-    idle:
-      sheet: 2-tatooine-planet-spritesheet
-      atlas: 2-tatooine-planet-atlas
 artifact: sun.max.fill
 treasure: control-ring
-floor:
-  set: 2-tatooine
-letters:
-  set: 2-tatooine
 enemies:
   types: [centipede]
   spawn_chance_per_room: 0.8

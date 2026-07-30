@@ -1,6 +1,6 @@
 # Level generation knobs (merged into world.yaml at load).
 # Includes map size, generation, enemy spawn, pickups, and puzzle FX.
-# Per-level files in Config/Levels/ inherit from this base via `inherits: _defaults`.
+# Per-level files in Levels/<id>/level.yaml inherit from this base via `inherits: _defaults`.
 
 name: Level
 
@@ -20,14 +20,10 @@ letter_sound_repeat_seconds: 3
 width: 20
 height: 20
 
-# Per-level baked floor tile set under Resources/Sprites/Floor/{set}/.
+# Floor decor sprinkle rate. The tile set itself is derived from the level folder
+# (Levels/<id>/<id>-floor-*), so levels only set `floor.set` to borrow other art.
 floor:
-  set: 1-tython
   decor_prob: 0.06
-
-# Per-level baked letter glyph set under Resources/Sprites/Letters/{set}/.
-letters:
-  set: 1-tython
 
 algorithm: rooms_doors
 # How many rooms to place on the map.

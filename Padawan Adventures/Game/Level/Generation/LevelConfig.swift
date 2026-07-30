@@ -517,14 +517,17 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             case decorProb = "decor_prob"
         }
 
-        nonisolated init(set: String = "1-tython", decorProb: Double = 0.06) {
+        nonisolated init(set: String = LevelConfig.offlineFallbackSet, decorProb: Double = 0.06) {
             self.set = set
             self.decorProb = decorProb
         }
 
+        /// An absent `set:` decodes empty and is filled in from the level's folder
+        /// name by `LevelConfig.decode`. Defaulting to a real set here would silently
+        /// give a level another level's art.
         nonisolated init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            set = try c.decodeIfPresent(String.self, forKey: .set) ?? "1-tython"
+            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
             decorProb = try c.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
         }
     }
@@ -537,13 +540,14 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             case set
         }
 
-        nonisolated init(set: String = "1-tython") {
+        nonisolated init(set: String = LevelConfig.offlineFallbackSet) {
             self.set = set
         }
 
+        /// See `Floor.init(from:)` — absent means "derive from the level folder".
         nonisolated init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            set = try c.decodeIfPresent(String.self, forKey: .set) ?? "1-tython"
+            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
         }
     }
 
@@ -569,6 +573,36 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case gate
         case floor
         case letters
+    }
+
+    /// Art set for `LevelConfig.fallback`, used only when the bundled config cannot
+    /// be read at all. Real levels never consult it — they derive from their folder.
+    static let offlineFallbackSet = "1-tython"
+
+    /// Fills in whatever the level's YAML left out, from the level's folder name.
+    ///
+    /// A level's art is named after its folder, so `floor.set`, `letters.set` and the
+    /// level-select planet sprite are all derivable. Levels only spell them out to
+    /// deviate — e.g. to share another level's tiles.
+    mutating func applyDerivedAssets(levelID: String) {
+        if floor.set.isEmpty { floor.set = levelID }
+        if letters.set.isEmpty { letters.set = levelID }
+        if sprite == nil { sprite = Self.defaultPlanetSprite(levelID: levelID) }
+    }
+
+    /// The level-select planet sprite implied by a level's folder.
+    static func defaultPlanetSprite(levelID: String) -> SpriteConfig {
+        SpriteConfig(
+            root: LevelAssetPaths.root(set: levelID, .planet),
+            chromaKey: "#000000",
+            chromaKeyTolerance: 2,
+            animations: [
+                "idle": .sheet(
+                    sheet: LevelAssetPaths.basename(set: levelID, .planet, .spritesheet),
+                    atlas: LevelAssetPaths.basename(set: levelID, .planet, .atlas)
+                )
+            ]
+        )
     }
 
     static let fallbackFloor = Floor()
@@ -690,8 +724,11 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         pit = try container.decodeIfPresent(PitPuzzleConfig.self, forKey: .pit) ?? .fallback
         gate = try GateConfig(from: decoder, container: container)
-        floor = try container.decodeIfPresent(Floor.self, forKey: .floor) ?? Self.fallbackFloor
-        letters = try container.decodeIfPresent(Letters.self, forKey: .letters) ?? Self.fallbackLetters
+        // Absent blocks decode with an empty set, which applyDerivedAssets fills from
+        // the level folder. Using fallbackFloor/fallbackLetters here would hand the
+        // level another level's art without saying so.
+        floor = try container.decodeIfPresent(Floor.self, forKey: .floor) ?? Floor(set: "")
+        letters = try container.decodeIfPresent(Letters.self, forKey: .letters) ?? Letters(set: "")
     }
 
     func validate() throws {
@@ -969,9 +1006,19 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
                 try ConfigStore.data(at: ConfigPath.levelBase(parentName))
             },
             fileLabel: path.description,
+            levelID: levelID(forResourceNamed: name),
             wordCatalog: wordCatalog,
             letterCatalog: letterCatalog
         )
+    }
+
+    /// The level folder a config's art should be derived from.
+    ///
+    /// `_defaults` is a shared base rather than a level, so it borrows the first
+    /// level's art: it only ever renders before a level has been chosen.
+    private static func levelID(forResourceNamed name: String) -> String? {
+        guard name == ConfigPath.levelDefaults.basename else { return name }
+        return LevelCatalog.levelIDs().min()
     }
 
     /// Decodes YAML, resolving `inherits:` via `parentDataNamed` when provided (or required).
@@ -980,6 +1027,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         from data: Data,
         parentDataNamed: ((String) throws -> Data)? = nil,
         fileLabel: String = "level",
+        levelID: String? = nil,
         wordCatalog: WordCatalog? = nil,
         letterCatalog: LetterCatalog? = nil
     ) throws -> LevelConfig {
@@ -991,6 +1039,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             )
             let yaml = try Yams.dump(object: merged)
             var level = try YAMLDecoder().decode(LevelConfig.self, from: yaml)
+            if let levelID { level.applyDerivedAssets(levelID: levelID) }
             let words = try wordCatalog ?? Self.loadWordCatalog()
             let letters = try letterCatalog ?? Self.loadLetterCatalog()
             try level.pit.resolveWords(from: words)
@@ -1006,13 +1055,17 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
     }
 
+    /// Test/helper entry for inline YAML. `levelID` stands in for the level folder that
+    /// art would otherwise be derived from, so callers testing unrelated keys can omit it.
     static func decode(
         from yaml: String,
+        levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
         letterCatalog: LetterCatalog? = nil
     ) throws -> LevelConfig {
         try decode(
             from: Data(yaml.utf8),
+            levelID: levelID,
             wordCatalog: wordCatalog,
             letterCatalog: letterCatalog
         )
@@ -1022,6 +1075,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     static func decode(
         from yaml: String,
         parents: [String: String],
+        levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
         letterCatalog: LetterCatalog? = nil
     ) throws -> LevelConfig {
@@ -1034,6 +1088,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
                 return Data(parentYAML.utf8)
             },
             fileLabel: "level",
+            levelID: levelID,
             wordCatalog: wordCatalog,
             letterCatalog: letterCatalog
         )
@@ -1072,7 +1127,7 @@ nonisolated struct LevelDescriptor: Equatable, Sendable {
 }
 
 nonisolated enum LevelCatalog {
-    static let subdirectory = "Levels"
+    static let subdirectory = ConfigPath.levelRoot
 
     static func loadFromBundle(
         withExtension ext: String = "yaml"
@@ -1108,7 +1163,7 @@ nonisolated enum LevelCatalog {
 
     /// Every directory under `Levels/` is a playable level, so adding one needs no code
     /// change. Names beginning with `_` are shared config (`_defaults.yaml`), not levels.
-    private static func levelIDs() -> [String] {
+    static func levelIDs() -> [String] {
         guard let root = Bundle.main.resourceURL?
             .appendingPathComponent(subdirectory, isDirectory: true) else { return [] }
         let entries = (try? FileManager.default.contentsOfDirectory(

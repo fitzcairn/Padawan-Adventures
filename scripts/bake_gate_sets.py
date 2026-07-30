@@ -302,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     all_sets = discover_source_sheets()
     if not all_sets:
-        print("No gate spritesheets found under", GATE_DIR, file=sys.stderr)
+        print("No gate spritesheets found under", ART_LEVELS, file=sys.stderr)
         return 1
 
     selected = all_sets

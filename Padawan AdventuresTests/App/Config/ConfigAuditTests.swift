@@ -132,6 +132,79 @@ struct ConfigAuditTests {
         }
     }
 
+    // MARK: - Level layout
+
+    /// Wraps a throwaway `Levels/` tree in a bundle so layout mistakes can be provoked
+    /// without them having to exist in the app.
+    private func layoutFixture(
+        _ folders: [String: [String]],
+        loose: [String] = []
+    ) throws -> Bundle {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("layout-\(UUID().uuidString)", isDirectory: true)
+        let levelRoot = root.appendingPathComponent(ConfigPath.levelRoot, isDirectory: true)
+        try FileManager.default.createDirectory(at: levelRoot, withIntermediateDirectories: true)
+        for (folder, files) in folders {
+            let directory = levelRoot.appendingPathComponent(folder, isDirectory: true)
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true
+            )
+            for file in files {
+                try Data().write(to: directory.appendingPathComponent(file))
+            }
+        }
+        for file in loose {
+            try Data().write(to: levelRoot.appendingPathComponent(file))
+        }
+        return try #require(Bundle(url: root))
+    }
+
+    @Test func bundledLevelLayoutIsClean() {
+        #expect(ConfigAudit.checkLevelLayout().isEmpty)
+    }
+
+    @Test func wellFormedLevelFolderPassesLayout() throws {
+        let bundle = try layoutFixture(
+            ["1-tython": ["level.yaml", "1-tython-floor-atlas.json", "1-emitter-atlas.json"]],
+            loose: ["_defaults.yaml"]
+        )
+        #expect(ConfigAudit.checkLevelLayout(bundle: bundle).isEmpty)
+    }
+
+    /// Art dropped beside the level folders belongs to no level and would never load.
+    @Test func strayFileBesideLevelFoldersFailsLayout() throws {
+        let bundle = try layoutFixture(
+            ["1-tython": ["level.yaml"]],
+            loose: ["1-tython-floor-atlas.json"]
+        )
+        let problems = ConfigAudit.checkLevelLayout(bundle: bundle)
+        #expect(problems.count == 1)
+        #expect(problems.first?.contains("must live inside a level folder") == true)
+    }
+
+    @Test func levelFolderWithoutConfigFailsLayout() throws {
+        let bundle = try layoutFixture(["9-endor": ["9-endor-floor-atlas.json"]])
+        let problems = ConfigAudit.checkLevelLayout(bundle: bundle)
+        #expect(problems.count == 1)
+        #expect(problems.first?.contains("'9-endor' has no level.yaml") == true)
+    }
+
+    /// The copy-a-sibling-folder mistake: art still named after the level it came from.
+    @Test func misprefixedLevelAssetFailsLayout() throws {
+        let bundle = try layoutFixture([
+            "9-endor": ["level.yaml", "1-tython-floor-atlas.json"]
+        ])
+        let problems = ConfigAudit.checkLevelLayout(bundle: bundle)
+        #expect(problems.count == 1)
+        #expect(problems.first?.contains("1-tython-floor-atlas.json") == true)
+        #expect(problems.first?.contains("must start with '9-'") == true)
+    }
+
+    @Test func emptyLevelRootFailsLayout() throws {
+        let bundle = try layoutFixture([:])
+        #expect(!ConfigAudit.checkLevelLayout(bundle: bundle).isEmpty)
+    }
+
     @Test func misfiledMusicFailsAudit() throws {
         let app = try WorldLoader.loadConfigFromBundle()
         let words = try WordCatalog.loadFromBundle()

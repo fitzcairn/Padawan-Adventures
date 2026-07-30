@@ -2,12 +2,10 @@ import Foundation
 
 /// Shared sprite definition used by player, enemies, UI, and other visual elements.
 nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
-    /// Bundle-relative subdirectory for sheet/atlas basenames.
+    /// Bundle subdirectory holding the sheet/atlas basenames, resolved exactly.
     ///
-    /// With `Resources/Sprites` in the Xcode project's `explicitFolders`, paths
-    /// keep the on-disk tree (e.g. `Sprites/Player`, `Sprites/Enemies/Dino`).
-    /// Enemy YAML may still say `Enemies/<Type>`; the loader also tries
-    /// `Sprites/Enemies/<Type>`.
+    /// Mirrors the repo layout: shared art is `Sprites/<tree>` (e.g. `Sprites/Player`,
+    /// `Sprites/Enemies/Dino`) and per-level art is `Levels/<id>`.
     var root: String
     /// Hex RGB color removed from sheets when slicing frames (e.g. `#000000`).
     var chromaKey: String?
