@@ -135,7 +135,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     }
 }
 
-private struct LetterCatalogDTO: Decodable {
+private nonisolated struct LetterCatalogDTO: Decodable {
     var fxPrefix: String?
     var letters: [String: LetterSpec?]
 

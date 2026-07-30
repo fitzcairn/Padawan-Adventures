@@ -6,7 +6,7 @@ import Testing
 final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var playCalls: [(trackID: String, volume: Float)] = []
     private(set) var preparedTrackIDs: [String] = []
-    private(set) var startedLoops: [String] = []
+    private(set) var startedLoops: [(trackID: String, volume: Float)] = []
     private(set) var stoppedLoops: [String] = []
     var activeLoops: Set<String> = []
     var missingTrackIDs: Set<String> = []
@@ -34,10 +34,13 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
         if missingTrackIDs.contains(trackID) {
             return false
         }
-        startedLoops.append(trackID)
+        startedLoops.append((trackID, volume))
         activeLoops.insert(trackID)
-        _ = volume
         return true
+    }
+
+    var startedLoopTrackIDs: [String] {
+        startedLoops.map(\.trackID)
     }
 
     func stopLoop(trackID: String) {
@@ -64,7 +67,7 @@ struct SoundEffectsControllerTests {
         let controller = SoundEffectsController(player: mock)
         controller.play(trackID: "sfx_boom")
         #expect(mock.playedTrackIDs == ["sfx_boom"])
-        #expect(mock.playCalls.first?.volume == 1)
+        #expect(mock.playCalls.first?.volume == SoundEffectsController.backgroundSFXVolumeScale)
     }
 
     @Test func playTrackIDIgnoresBlank() {
@@ -82,12 +85,31 @@ struct SoundEffectsControllerTests {
         #expect(mock.playCalls.isEmpty)
     }
 
-    @Test func playUsesConfiguredVolume() {
+    @Test func playUsesConfiguredVolumeForBackgroundSFX() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(0.4)
-        controller.play(trackID: "sfx_boom")
-        #expect(mock.playCalls.map(\.volume) == [0.4])
+        controller.play(trackID: "combat-lightsaber-slash")
+        #expect(mock.playCalls.map(\.volume) == [0.4 * SoundEffectsController.backgroundSFXVolumeScale])
+    }
+
+    @Test func phoneticTracksPlayAtFullVolume() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(0.8)
+        controller.play(trackID: "sfx_letter_a_name")
+        controller.play(trackID: "sfx_word_cat_ca")
+        #expect(mock.playCalls.map(\.volume) == [0.8, 0.8])
+    }
+
+    @Test func backgroundTracksPlayAtHalfPhoneticVolume() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.setSoundEffectsVolume(1)
+        controller.play(trackID: "combat-lightsaber-slash")
+        controller.play(trackID: "pit-jump")
+        controller.play(trackID: "gate-letter_match-switch-push")
+        #expect(mock.playCalls.map(\.volume) == [0.5, 0.5, 0.5])
     }
 
     @Test func playEventResolvesFromTable() {
@@ -186,8 +208,9 @@ struct SoundEffectsControllerTests {
         let table = SoundEffectTable(events: ["combat_loop": "combat-loop-lightsaber-hum"])
         let trackID = controller.startLoop(event: "combat_loop", from: table)
         #expect(trackID == "combat-loop-lightsaber-hum")
-        #expect(mock.startedLoops == ["combat-loop-lightsaber-hum"])
+        #expect(mock.startedLoopTrackIDs == ["combat-loop-lightsaber-hum"])
         #expect(mock.activeLoops == ["combat-loop-lightsaber-hum"])
+        #expect(mock.startedLoops.first?.volume == SoundEffectsController.backgroundSFXVolumeScale)
     }
 
     @Test func stopLoopRemovesActiveLoop() {
@@ -216,6 +239,13 @@ struct SoundEffectsControllerTests {
         let trackID = controller.startLoop(event: "missing", from: .empty)
         #expect(trackID == nil)
         #expect(mock.startedLoops.isEmpty)
+    }
+
+    @Test func isPhoneticTrackRecognizesLetterAndWordCues() {
+        #expect(SoundEffectsController.isPhoneticTrack("sfx_letter_a_name"))
+        #expect(SoundEffectsController.isPhoneticTrack("sfx_word_gate_ga"))
+        #expect(!SoundEffectsController.isPhoneticTrack("combat-loop-lightsaber-hum"))
+        #expect(!SoundEffectsController.isPhoneticTrack("pit-jump"))
     }
 }
 

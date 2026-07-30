@@ -614,7 +614,7 @@ final class CombatScene: SKScene {
     private func updateSlashLine() {
         guard slashPoints.count >= 2 else { return }
         let path = makeLightsaberSlashPath(from: slashPoints)
-        if let existing = slashLine, !slashStrokes.isEmpty {
+        if slashLine != nil, !slashStrokes.isEmpty {
             for stroke in slashStrokes {
                 stroke.path = path
             }

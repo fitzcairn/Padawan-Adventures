@@ -761,90 +761,109 @@ struct ProceduralGeneratorTests {
     }
 
     @Test func pickupSpawnsSkipSpawnRoomAndAvoidOverlap() throws {
+        try EnergyMechanic.withEnabled {
+            var config = roomsDoorsConfig(seed: 55, roomCount: 12)
+            config.pickups = .init(
+                health: .init(spawnChancePerRoom: 1.0),
+                energy: .init(spawnChancePerRoom: 1.0)
+            )
+
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let pickups = result.world.entities.filter(\.isPickup)
+            #expect(pickups.count > 0)
+
+            let spawnRoom = result.rooms.first { $0.id == result.topRightRoomID }!
+            let nonPlayer = result.world.entities.filter { !$0.isPlayer }
+            #expect(Set(nonPlayer.map(\.position)).count == nonPlayer.count)
+
+            for pickup in pickups where pickup.pickupKind != .treasure {
+                #expect(!spawnRoom.cells.contains(pickup.position))
+                #expect(pickup.position != result.world.spawn)
+                #expect(pickup.pickupKind != nil)
+            }
+
+            #expect(pickups.contains { $0.pickupKind == .health })
+            #expect(pickups.contains { $0.pickupKind == .energy })
+            #expect(pickups.contains { $0.pickupKind == .treasure })
+        }
+    }
+
+    @Test func energyPickupsDoNotSpawnWhenMechanicDisabled() throws {
+        #expect(!EnergyMechanic.isEnabled)
         var config = roomsDoorsConfig(seed: 55, roomCount: 12)
         config.pickups = .init(
             health: .init(spawnChancePerRoom: 1.0),
             energy: .init(spawnChancePerRoom: 1.0)
         )
-
         let result = try ProceduralGenerator().generateDetailed(from: config)
         let pickups = result.world.entities.filter(\.isPickup)
-        #expect(pickups.count > 0)
-
-        let spawnRoom = result.rooms.first { $0.id == result.topRightRoomID }!
-        let nonPlayer = result.world.entities.filter { !$0.isPlayer }
-        #expect(Set(nonPlayer.map(\.position)).count == nonPlayer.count)
-
-        for pickup in pickups where pickup.pickupKind != .treasure {
-            #expect(!spawnRoom.cells.contains(pickup.position))
-            #expect(pickup.position != result.world.spawn)
-            #expect(pickup.pickupKind != nil)
-        }
-
         #expect(pickups.contains { $0.pickupKind == .health })
-        #expect(pickups.contains { $0.pickupKind == .energy })
-        #expect(pickups.contains { $0.pickupKind == .treasure })
+        #expect(!pickups.contains { $0.pickupKind == .energy })
     }
 
     @Test func pickupsNeverSpawnOnAdjacentFloorTiles() throws {
-        for seed: UInt64 in [11, 42, 55, 99, 123] {
-            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.pickups = .init(
-                health: .init(spawnChancePerRoom: 1.0),
-                energy: .init(spawnChancePerRoom: 1.0)
-            )
-            let result = try ProceduralGenerator().generateDetailed(from: config)
-            let pickups = result.world.entities.filter(\.isPickup)
-            #expect(pickups.count > 1, "expected multiple pickups (seed \(seed))")
+        try EnergyMechanic.withEnabled {
+            for seed: UInt64 in [11, 42, 55, 99, 123] {
+                var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+                config.pickups = .init(
+                    health: .init(spawnChancePerRoom: 1.0),
+                    energy: .init(spawnChancePerRoom: 1.0)
+                )
+                let result = try ProceduralGenerator().generateDetailed(from: config)
+                let pickups = result.world.entities.filter(\.isPickup)
+                #expect(pickups.count > 1, "expected multiple pickups (seed \(seed))")
 
-            for i in pickups.indices {
-                for j in pickups.indices where j > i {
-                    let a = pickups[i].position
-                    let b = pickups[j].position
-                    #expect(a != b, "overlapping pickups at \(a) (seed \(seed))")
-                    let dx = abs(a.x - b.x)
-                    let dy = abs(a.y - b.y)
-                    let orthogonallyAdjacent = a.story == b.story && dx + dy == 1
-                    #expect(
-                        !orthogonallyAdjacent,
-                        "pickups adjacent at \(a) and \(b) (seed \(seed))"
-                    )
+                for i in pickups.indices {
+                    for j in pickups.indices where j > i {
+                        let a = pickups[i].position
+                        let b = pickups[j].position
+                        #expect(a != b, "overlapping pickups at \(a) (seed \(seed))")
+                        let dx = abs(a.x - b.x)
+                        let dy = abs(a.y - b.y)
+                        let orthogonallyAdjacent = a.story == b.story && dx + dy == 1
+                        #expect(
+                            !orthogonallyAdjacent,
+                            "pickups adjacent at \(a) and \(b) (seed \(seed))"
+                        )
+                    }
                 }
             }
         }
     }
 
     @Test func pickupsAndEnemiesOnlySpawnOnRoomFloorTiles() throws {
-        for seed: UInt64 in [11, 42, 99, 123] {
-            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.pickups = .init(
-                health: .init(spawnChancePerRoom: 1.0),
-                energy: .init(spawnChancePerRoom: 1.0)
-            )
-            config.enemies = .init(type: "spider", spawnChancePerRoom: 1.0)
-            let result = try ProceduralGenerator().generateDetailed(
-                from: config,
-                enemyConfig: .fallback
-            )
-            let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
+        try EnergyMechanic.withEnabled {
+            for seed: UInt64 in [11, 42, 99, 123] {
+                var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+                config.pickups = .init(
+                    health: .init(spawnChancePerRoom: 1.0),
+                    energy: .init(spawnChancePerRoom: 1.0)
+                )
+                config.enemies = .init(type: "spider", spawnChancePerRoom: 1.0)
+                let result = try ProceduralGenerator().generateDetailed(
+                    from: config,
+                    enemyConfig: .fallback
+                )
+                let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
 
-            let entities = result.world.entities.filter { $0.isPickup || $0.isEnemy }
-            #expect(entities.contains { $0.isPickup }, "expected pickups (seed \(seed))")
-            #expect(entities.contains { $0.isEnemy }, "expected enemies (seed \(seed))")
-            for entity in entities {
-                let coord = entity.position
-                #expect(roomCells.contains(coord), "entity outside any room at \(coord) (seed \(seed))")
-                guard let tile = result.world.tile(at: coord) else {
-                    Issue.record("missing tile under entity at \(coord) (seed \(seed))")
-                    continue
-                }
-                #expect(!tile.isPit, "entity on pit at \(coord) (seed \(seed))")
-                #expect(!tile.isGate, "entity on gate at \(coord) (seed \(seed))")
-                #expect(!tile.isWall, "entity on wall at \(coord) (seed \(seed))")
-                if case .floor(let isPit) = tile.kind {
-                    #expect(!isPit)
-                } else {
-                    Issue.record("entity not on floor at \(coord) (seed \(seed))")
+                let entities = result.world.entities.filter { $0.isPickup || $0.isEnemy }
+                #expect(entities.contains { $0.isPickup }, "expected pickups (seed \(seed))")
+                #expect(entities.contains { $0.isEnemy }, "expected enemies (seed \(seed))")
+                for entity in entities {
+                    let coord = entity.position
+                    #expect(roomCells.contains(coord), "entity outside any room at \(coord) (seed \(seed))")
+                    guard let tile = result.world.tile(at: coord) else {
+                        Issue.record("missing tile under entity at \(coord) (seed \(seed))")
+                        continue
+                    }
+                    #expect(!tile.isPit, "entity on pit at \(coord) (seed \(seed))")
+                    #expect(!tile.isGate, "entity on gate at \(coord) (seed \(seed))")
+                    #expect(!tile.isWall, "entity on wall at \(coord) (seed \(seed))")
+                    if case .floor(let isPit) = tile.kind {
+                        #expect(!isPit)
+                    } else {
+                        Issue.record("entity not on floor at \(coord) (seed \(seed))")
+                    }
                 }
             }
         }
@@ -894,20 +913,22 @@ struct ProceduralGeneratorTests {
     }
 
     @Test func pickupsStayAtLeastOneTileFromWalls() throws {
-        for seed: UInt64 in [11, 42, 99, 123, 777] {
-            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.pickups = .init(
-                health: .init(spawnChancePerRoom: 1.0),
-                energy: .init(spawnChancePerRoom: 1.0)
-            )
-            let world = try ProceduralGenerator().generate(from: config)
-            let pickups = world.entities.filter(\.isPickup)
-            #expect(!pickups.isEmpty, "expected pickups (seed \(seed))")
-            for pickup in pickups {
-                #expect(
-                    IsometricTileGeometry.isPickupVisibleFloor(at: pickup.position, in: world),
-                    "pickup \(pickup.pickupKind!) too close to a wall at \(pickup.position) (seed \(seed))"
+        try EnergyMechanic.withEnabled {
+            for seed: UInt64 in [11, 42, 99, 123, 777] {
+                var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+                config.pickups = .init(
+                    health: .init(spawnChancePerRoom: 1.0),
+                    energy: .init(spawnChancePerRoom: 1.0)
                 )
+                let world = try ProceduralGenerator().generate(from: config)
+                let pickups = world.entities.filter(\.isPickup)
+                #expect(!pickups.isEmpty, "expected pickups (seed \(seed))")
+                for pickup in pickups {
+                    #expect(
+                        IsometricTileGeometry.isPickupVisibleFloor(at: pickup.position, in: world),
+                        "pickup \(pickup.pickupKind!) too close to a wall at \(pickup.position) (seed \(seed))"
+                    )
+                }
             }
         }
     }

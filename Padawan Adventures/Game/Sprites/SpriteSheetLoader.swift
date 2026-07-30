@@ -649,7 +649,7 @@ enum SpriteSheetLoader {
     /// no search to do. An exact lookup means a missing file fails here instead of
     /// silently resolving to a same-named file belonging to another level.
     /// An empty `root` looks at the bundle root.
-    static func resourceURL(
+    nonisolated static func resourceURL(
         named name: String,
         extensions: [String],
         root: String,

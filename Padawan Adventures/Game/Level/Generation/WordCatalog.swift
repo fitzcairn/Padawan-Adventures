@@ -135,7 +135,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     }
 }
 
-private struct WordCatalogDTO: Decodable {
+private nonisolated struct WordCatalogDTO: Decodable {
     var fxPrefix: String?
     var words: [String: WordSpec?]
 

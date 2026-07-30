@@ -2,8 +2,6 @@ import Foundation
 import os
 import Yams
 
-private let levelCatalogLogger = Logger(subsystem: "PadawanAdventures", category: "LevelCatalog")
-
 /// A shared / gate vocabulary entry: spelling track + progressive prefix tracks.
 nonisolated struct GateWord: Equatable, Sendable {
     var word: String
@@ -1128,6 +1126,7 @@ nonisolated struct LevelDescriptor: Equatable, Sendable {
 
 nonisolated enum LevelCatalog {
     static let subdirectory = ConfigPath.levelRoot
+    private static let logger = Logger(subsystem: "PadawanAdventures", category: "LevelCatalog")
 
     static func loadFromBundle(
         withExtension ext: String = "yaml"
@@ -1149,7 +1148,7 @@ nonisolated enum LevelCatalog {
                     artifact: level.artifact
                 )
             } catch {
-                levelCatalogLogger.error(
+                logger.error(
                     "Failed to load level '\(resourceName, privacy: .public)': \(String(describing: error), privacy: .public)"
                 )
                 return nil
@@ -1183,7 +1182,7 @@ nonisolated enum LevelCatalog {
 
 extension GateConfig {
     /// Decodes the `gate:` keyed block or falls back to `.fallback`.
-    init(
+    nonisolated init(
         from decoder: Decoder,
         container: KeyedDecodingContainer<LevelConfig.CodingKeys>
     ) throws {
@@ -1232,12 +1231,12 @@ extension GateConfig {
     }
 }
 
-private struct GateConfigDTO: Decodable {
+private nonisolated struct GateConfigDTO: Decodable {
     var fx: SoundEffectTable?
     var minigames: [GateMinigameDTO]?
 }
 
-private struct GateMinigameDTO: Decodable {
+private nonisolated struct GateMinigameDTO: Decodable {
     var type: String
     var timerSeconds: Double?
     var fx: SoundEffectTable?

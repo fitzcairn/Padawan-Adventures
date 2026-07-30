@@ -25,6 +25,7 @@ nonisolated struct ContinuePointStore: Sendable {
     /// False when restoring here would leave the player with no way to progress
     /// (e.g. zero energy while an enemy can already see/contact them).
     static func isProgressable(_ world: GameWorld) -> Bool {
+        guard EnergyMechanic.isEnabled else { return true }
         guard let playerPosition = world.playerPosition else { return true }
         guard DefeatRules.isDefeatedByEnemy(energy: world.energyCount) else { return true }
 

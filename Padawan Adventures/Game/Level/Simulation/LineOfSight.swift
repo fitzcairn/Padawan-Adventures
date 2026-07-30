@@ -1,6 +1,6 @@
 import Foundation
 
-enum LineOfSight {
+nonisolated enum LineOfSight {
     /// True when `from` and `to` share a story and a grid ray between them hits no opaque wall.
     static func canSee(
         from: GridCoord,

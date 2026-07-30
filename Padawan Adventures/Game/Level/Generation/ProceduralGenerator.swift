@@ -656,10 +656,12 @@ nonisolated struct ProceduralGenerator: Sendable {
         rng: inout SeededGenerator
     ) -> [GameEntity] {
         var pickups: [GameEntity] = []
-        let kinds: [(PickupKind, Double?)] = [
+        var kinds: [(PickupKind, Double?)] = [
             (.health, config.health?.spawnChancePerRoom),
-            (.energy, config.energy?.spawnChancePerRoom),
         ]
+        if EnergyMechanic.isEnabled {
+            kinds.append((.energy, config.energy?.spawnChancePerRoom))
+        }
 
         for (kind, chance) in kinds {
             guard let chance else { continue }

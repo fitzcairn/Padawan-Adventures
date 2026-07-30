@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// Visible sides of an isometric wall block relative to the tile diamond.
-struct WallFaceSet: OptionSet, Sendable, Equatable {
+nonisolated struct WallFaceSet: OptionSet, Sendable, Equatable {
     let rawValue: Int
 
     static let left = WallFaceSet(rawValue: 1 << 0)   // W–S edge (faces southwest)
@@ -13,7 +13,7 @@ struct WallFaceSet: OptionSet, Sendable, Equatable {
     static let all: WallFaceSet = [.left, .right, .top]
 }
 
-enum IsometricTileGeometry {
+nonisolated enum IsometricTileGeometry {
     /// Local diamond corners for a tile whose origin is the back (north) corner.
     struct Corners: Equatable, Sendable {
         var north: CGPoint

@@ -140,7 +140,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     func ensureScene(size: CGSize) {
         let safeSize = Self.sanitizedSize(size)
-        if let scene {
+        if scene != nil {
             updateSceneSizeIfNeeded(safeSize)
             return
         }

@@ -5,6 +5,10 @@ import Foundation
 final class SoundEffectsController {
     static let shared = SoundEffectsController()
 
+    /// Non-phonetic ambience/action SFX (hum, slash, arc, jump, …) play at this
+    /// fraction of `soundEffectsVolume` so `Audio/FX/Phonetics/` cues stay clear.
+    static let backgroundSFXVolumeScale: Float = 0.5
+
     private(set) var soundEffectsEnabled = true
     private(set) var soundEffectsVolume: Float = 1
     /// Shared FX from `sound.yaml` (`win`, `lose`, `error`, `correct`, …).
@@ -41,7 +45,7 @@ final class SoundEffectsController {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        _ = player.play(trackID: trimmed, volume: soundEffectsVolume)
+        _ = player.play(trackID: trimmed, volume: playbackVolume(for: trimmed))
     }
 
     /// Looks up `event` in `table` and plays it. Unmapped events and missing assets are ignored.
@@ -66,7 +70,7 @@ final class SoundEffectsController {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        player.startLoop(trackID: trimmed, volume: soundEffectsVolume)
+        player.startLoop(trackID: trimmed, volume: playbackVolume(for: trimmed))
     }
 
     /// Looks up `event` in `table` and starts it as a loop. Returns the track id so
@@ -99,5 +103,18 @@ final class SoundEffectsController {
     /// 0.7s fallback and 0.35s floor.
     func cueDuration(of trackID: String?) -> TimeInterval {
         max(duration(of: trackID) ?? 0.7, 0.35)
+    }
+
+    /// Phonetics (`Audio/FX/Phonetics/`) stay at full SFX volume; everything else is ducked.
+    private func playbackVolume(for trackID: String) -> Float {
+        if Self.isPhoneticTrack(trackID) {
+            return soundEffectsVolume
+        }
+        return soundEffectsVolume * Self.backgroundSFXVolumeScale
+    }
+
+    /// Phonetic clips use `sfx_letter_*` / `sfx_word_*` basenames under `Audio/FX/Phonetics/`.
+    static func isPhoneticTrack(_ trackID: String) -> Bool {
+        trackID.hasPrefix("sfx_letter_") || trackID.hasPrefix("sfx_word_")
     }
 }

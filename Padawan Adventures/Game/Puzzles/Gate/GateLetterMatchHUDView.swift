@@ -49,6 +49,7 @@ final class GateLetterMatchHUDView: UIView {
         timerLabel.accessibilityIdentifier = "gate.letter_match.timer"
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        timerLabel.isHidden = !HudConfig.showsMinigameTimer
 
         addSubview(timerLabel)
 

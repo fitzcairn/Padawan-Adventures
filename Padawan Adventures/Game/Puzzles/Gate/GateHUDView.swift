@@ -81,6 +81,7 @@ final class GateHUDView: UIView {
         timerLabel.accessibilityIdentifier = "gate.timer"
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        timerLabel.isHidden = !HudConfig.showsMinigameTimer
 
         addSubview(wordLabel)
         addSubview(timerLabel)

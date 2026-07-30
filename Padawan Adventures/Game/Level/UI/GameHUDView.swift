@@ -77,6 +77,7 @@ final class GameHUDView: UIView {
     }
 
     func addBolt() {
+        guard EnergyMechanic.isEnabled else { return }
         addIcon(image: boltImage, to: boltsStack, animated: true)
     }
 
@@ -85,6 +86,7 @@ final class GameHUDView: UIView {
     }
 
     func removeBolt() {
+        guard EnergyMechanic.isEnabled else { return }
         removeIcon(from: boltsStack, animated: true)
     }
 
@@ -94,6 +96,7 @@ final class GameHUDView: UIView {
         for _ in 0..<max(health, 0) {
             addIcon(image: heartImage, to: heartsStack, animated: false)
         }
+        guard EnergyMechanic.isEnabled else { return }
         for _ in 0..<max(energy, 0) {
             addIcon(image: boltImage, to: boltsStack, animated: false)
         }
@@ -149,8 +152,10 @@ final class GameHUDView: UIView {
         for _ in 0..<max(healthCount, 0) {
             addIcon(image: heartImage, to: heartsStack, animated: false)
         }
-        for _ in 0..<max(energyCount, 0) {
-            addIcon(image: boltImage, to: boltsStack, animated: false)
+        if EnergyMechanic.isEnabled {
+            for _ in 0..<max(energyCount, 0) {
+                addIcon(image: boltImage, to: boltsStack, animated: false)
+            }
         }
 
         let score = makeScoreRow(starsCount: starsCount)

@@ -104,66 +104,72 @@ struct ContinuePointStoreTests {
     }
 
     @Test func captureSkipsZeroEnergyWithVisibleEnemy() {
-        var world = worldWithEnemy(
-            playerAt: GridCoord(x: 0, y: 0, story: 0),
-            enemyAt: GridCoord(x: 1, y: 0, story: 0)
-        )
-        world.energyCount = 2
-        var store = ContinuePointStore(world: world)
-        let original = store.snapshot
+        EnergyMechanic.withEnabled {
+            var world = worldWithEnemy(
+                playerAt: GridCoord(x: 0, y: 0, story: 0),
+                enemyAt: GridCoord(x: 1, y: 0, story: 0)
+            )
+            world.energyCount = 2
+            var store = ContinuePointStore(world: world)
+            let original = store.snapshot
 
-        world.energyCount = 0
-        store.capture(world)
+            world.energyCount = 0
+            store.capture(world)
 
-        #expect(store.snapshot.energyCount == original.energyCount)
-        #expect(ContinuePointStore.isProgressable(world) == false)
+            #expect(store.snapshot.energyCount == original.energyCount)
+            #expect(ContinuePointStore.isProgressable(world) == false)
+        }
     }
 
     @Test func captureIfSafeSkipsZeroEnergyWithVisibleEnemy() {
-        var world = worldWithEnemy(
-            playerAt: GridCoord(x: 0, y: 1, story: 0),
-            enemyAt: GridCoord(x: 2, y: 1, story: 0)
-        )
-        world.energyCount = 1
-        var store = ContinuePointStore(world: world)
-        let original = store.snapshot
+        EnergyMechanic.withEnabled {
+            var world = worldWithEnemy(
+                playerAt: GridCoord(x: 0, y: 1, story: 0),
+                enemyAt: GridCoord(x: 2, y: 1, story: 0)
+            )
+            world.energyCount = 1
+            var store = ContinuePointStore(world: world)
+            let original = store.snapshot
 
-        world.energyCount = 0
-        world.setPlayerPosition(GridCoord(x: 1, y: 1, story: 0))
-        var tick = SimulationTickResult()
-        tick.shouldPersist = true
-        store.captureIfSafe(world, tick: tick)
+            world.energyCount = 0
+            world.setPlayerPosition(GridCoord(x: 1, y: 1, story: 0))
+            var tick = SimulationTickResult()
+            tick.shouldPersist = true
+            store.captureIfSafe(world, tick: tick)
 
-        #expect(store.snapshot.energyCount == original.energyCount)
-        #expect(store.snapshot.playerPosition == original.playerPosition)
+            #expect(store.snapshot.energyCount == original.energyCount)
+            #expect(store.snapshot.playerPosition == original.playerPosition)
+        }
     }
 
     @Test func captureAllowsZeroEnergyWhenEnemyHasNoLineOfSight() {
-        var world = worldWithEnemy(
-            playerAt: GridCoord(x: 0, y: 1, story: 0),
-            enemyAt: GridCoord(x: 2, y: 1, story: 0)
-        )
-        world.setTile(
-            Tile(kind: .wall),
-            at: GridCoord(x: 1, y: 0, story: 0)
-        )
-        world.setTile(
-            Tile(kind: .wall),
-            at: GridCoord(x: 1, y: 1, story: 0)
-        )
-        world.setTile(
-            Tile(kind: .wall),
-            at: GridCoord(x: 1, y: 2, story: 0)
-        )
-        world.energyCount = 0
-        var store = ContinuePointStore(world: world)
+        EnergyMechanic.withEnabled {
+            var world = worldWithEnemy(
+                playerAt: GridCoord(x: 0, y: 1, story: 0),
+                enemyAt: GridCoord(x: 2, y: 1, story: 0)
+            )
+            world.setTile(
+                Tile(kind: .wall),
+                at: GridCoord(x: 1, y: 0, story: 0)
+            )
+            world.setTile(
+                Tile(kind: .wall),
+                at: GridCoord(x: 1, y: 1, story: 0)
+            )
+            world.setTile(
+                Tile(kind: .wall),
+                at: GridCoord(x: 1, y: 2, story: 0)
+            )
+            world.energyCount = 0
+            var store = ContinuePointStore(world: world)
 
-        world.setPlayerPosition(GridCoord(x: 0, y: 0, story: 0))
-        store.capture(world)
+            world.setPlayerPosition(GridCoord(x: 0, y: 0, story: 0))
+            store.capture(world)
 
-        #expect(store.snapshot.energyCount == 0)
-        #expect(store.snapshot.playerPosition == GridCoord(x: 0, y: 0, story: 0))
-        #expect(ContinuePointStore.isProgressable(world))
+            #expect(store.snapshot.energyCount == 0)
+            #expect(store.snapshot.playerPosition == GridCoord(x: 0, y: 0, story: 0))
+            #expect(ContinuePointStore.isProgressable(world))
+        }
     }
 
     @Test func captureAllowsZeroEnergyWithNoEnemies() {

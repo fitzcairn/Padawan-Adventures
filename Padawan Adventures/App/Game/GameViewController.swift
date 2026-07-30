@@ -148,6 +148,7 @@ final class GameViewController: LandscapeHostingController {
             playPlayerFx("pickup_health")
             hud?.addHeart()
         case .energy:
+            guard EnergyMechanic.isEnabled else { return }
             playPlayerFx("pickup_energy")
             hud?.addBolt()
         case .treasure:
@@ -168,12 +169,14 @@ final class GameViewController: LandscapeHostingController {
     @MainActor
     private func presentEnemyFight(enemyID: UUID) {
         guard let scene = gameScene else { return }
-        if DefeatRules.isDefeatedByEnemy(energy: scene.currentWorld.energyCount) {
-            presentDefeat()
-            return
+        if EnergyMechanic.isEnabled {
+            if DefeatRules.isDefeatedByEnemy(energy: scene.currentWorld.energyCount) {
+                presentDefeat()
+                return
+            }
+            scene.deductEnergy()
+            hud?.removeBolt()
         }
-        scene.deductEnergy()
-        hud?.removeBolt()
         // World HUD is a UIKit overlay (not faded with SpriteKit). Hide it for the whole
         // combat session so it cannot flash between combat dismiss and defeat / world-in.
         setWorldHUDHidden(true)

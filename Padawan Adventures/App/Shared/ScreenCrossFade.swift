@@ -2,7 +2,8 @@ import UIKit
 
 /// Shared visual cross-fade used for all app and game screen changes.
 enum ScreenCrossFade {
-    static let duration: TimeInterval = 0.3
+    /// Nonisolated so it can be used as a default argument (those are always nonisolated).
+    nonisolated static let duration: TimeInterval = 0.3
 }
 
 extension AppWindow {

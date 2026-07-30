@@ -280,7 +280,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
             return config
         } catch let error as EnemyConfigError {
             throw error
-        } catch let error as ConfigError {
+        } catch is ConfigError {
             throw EnemyConfigError.decodeFailed
         } catch {
             throw EnemyConfigError.decodeFailed

@@ -344,7 +344,12 @@ final class GateLetterMatchScene: SKScene {
         case let .correctMatch(id):
             applyMatchedAppearance(id: id)
         case let .incorrectMatch(id, pronunciationTrackID):
-            runIncorrectFeedback(id: id, pronunciationTrackID: pronunciationTrackID)
+            let nameTrackID = engine.letters.first { $0.id == id }?.nameTrackID
+            runIncorrectFeedback(
+                id: id,
+                nameTrackID: nameTrackID,
+                pronunciationTrackID: pronunciationTrackID
+            )
         case .won:
             finishWon()
         case .lost:
@@ -352,7 +357,10 @@ final class GateLetterMatchScene: SKScene {
         }
     }
 
-    /// Processes letter-tap events; sequences name → correct (and follow-ups) so they don't overlap.
+    /// Gap after correct/error finishes before the letter name, so feedback never masks the cue.
+    private static let letterSoundDelayAfterFeedback: TimeInterval = 0.5
+
+    /// Processes letter-tap events; sequences correct/error → letter name so they don't overlap.
     private func handleTapEvents(_ events: [GateLetterMatchEngineEvent]) {
         let nameTrack = events.compactMap { event -> String? in
             if case let .playName(trackID) = event { return trackID }
@@ -361,7 +369,29 @@ final class GateLetterMatchScene: SKScene {
         let isCorrect = events.contains(.playYay)
 
         if isCorrect {
-            runCorrectFeedback(events: events, nameTrackID: nameTrack)
+            runCorrectFeedback(events: events)
+            return
+        }
+
+        if let incorrect = events.compactMap({ event -> (UUID, String)? in
+            if case let .incorrectMatch(id, pronunciationTrackID) = event {
+                return (id, pronunciationTrackID)
+            }
+            return nil
+        }).first {
+            for event in events {
+                switch event {
+                case .playName, .incorrectMatch:
+                    break
+                default:
+                    handle(event)
+                }
+            }
+            runIncorrectFeedback(
+                id: incorrect.0,
+                nameTrackID: nameTrack,
+                pronunciationTrackID: incorrect.1
+            )
             return
         }
 
@@ -370,20 +400,15 @@ final class GateLetterMatchScene: SKScene {
         }
     }
 
-    private func runCorrectFeedback(
-        events: [GateLetterMatchEngineEvent],
-        nameTrackID: String?
-    ) {
+    private func runCorrectFeedback(events: [GateLetterMatchEngineEvent]) {
         inputLocked = true
 
         for event in events {
             switch event {
-            case let .playName(trackID):
-                SoundEffectsController.shared.play(trackID: trackID)
+            case .playName, .playYay, .playTargetPronunciation, .won:
+                break
             case let .correctMatch(id):
                 applyMatchedAppearance(id: id)
-            case .playYay, .playTargetPronunciation, .won:
-                break
             default:
                 handle(event)
             }
@@ -391,18 +416,14 @@ final class GateLetterMatchScene: SKScene {
 
         let playNextPrompt = events.contains(.playTargetPronunciation)
         let didWin = events.contains(.won)
-        let nameDuration = SoundEffectsController.shared.cueDuration(of: nameTrackID)
         let correctDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
-        /// Beat between “correct” feedback and the next target pronunciation.
-        let nextLetterPause: TimeInterval = 0.45
 
         var steps: [SKAction] = [
-            SKAction.wait(forDuration: nameDuration),
             SKAction.run { [weak self] in self?.playCorrectSound() },
             SKAction.wait(forDuration: correctDuration),
         ]
         if playNextPrompt {
-            steps.append(SKAction.wait(forDuration: nextLetterPause))
+            steps.append(SKAction.wait(forDuration: Self.letterSoundDelayAfterFeedback))
             steps.append(SKAction.run { [weak self] in self?.playTargetPronunciation() })
         }
         steps.append(SKAction.run { [weak self] in
@@ -419,9 +440,20 @@ final class GateLetterMatchScene: SKScene {
         SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx).trackID(for: "correct")
     }
 
+    private var errorSoundTrackID: String? {
+        SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx).trackID(for: "error")
+    }
+
     private func playCorrectSound() {
         SoundEffectsController.shared.play(
             event: "correct",
+            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
+        )
+    }
+
+    private func playErrorSound() {
+        SoundEffectsController.shared.play(
+            event: "error",
             from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
         )
     }
@@ -430,6 +462,15 @@ final class GateLetterMatchScene: SKScene {
         let trackID = engine.targetPronunciationTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+    }
+
+    private func appendLetterNameSteps(to steps: inout [SKAction], nameTrackID: String?) {
+        guard let nameTrackID, !nameTrackID.isEmpty else { return }
+        let nameDuration = SoundEffectsController.shared.cueDuration(of: nameTrackID)
+        steps.append(SKAction.run {
+            SoundEffectsController.shared.play(trackID: nameTrackID)
+        })
+        steps.append(SKAction.wait(forDuration: nameDuration))
     }
 
     private func applyMatchedAppearance(id: UUID) {
@@ -444,14 +485,15 @@ final class GateLetterMatchScene: SKScene {
         letterNodes[id]?.alpha = 1
     }
 
-    private func runIncorrectFeedback(id: UUID, pronunciationTrackID: String) {
+    private func runIncorrectFeedback(
+        id: UUID,
+        nameTrackID: String?,
+        pronunciationTrackID: String
+    ) {
         inputLocked = true
         let switchNode = switchNodes[id]
         let fallback = letterNodes[id]?.childNode(withName: "switchFallback") as? SKShapeNode
-        let nameDuration = SoundEffectsController.shared.cueDuration(
-            of: engine.letters.first { $0.id == id }?.nameTrackID
-        )
-        let waitName = SKAction.wait(forDuration: nameDuration)
+        let errorDuration = SoundEffectsController.shared.cueDuration(of: errorSoundTrackID)
         let flashTwice = SKAction.doubleFlash(
             apply: { [weak self] in
                 if let switchNode {
@@ -469,13 +511,26 @@ final class GateLetterMatchScene: SKScene {
                 }
             }
         )
-        let playWrongPronunciation = SKAction.run {
+
+        var audioSteps: [SKAction] = [
+            SKAction.run { [weak self] in self?.playErrorSound() },
+            SKAction.wait(forDuration: errorDuration),
+            SKAction.wait(forDuration: Self.letterSoundDelayAfterFeedback),
+        ]
+        appendLetterNameSteps(to: &audioSteps, nameTrackID: nameTrackID)
+        audioSteps.append(SKAction.run {
             SoundEffectsController.shared.play(trackID: pronunciationTrackID)
-        }
-        let unlock = SKAction.run { [weak self] in
-            self?.inputLocked = false
-        }
-        run(SKAction.sequence([waitName, flashTwice, playWrongPronunciation, unlock]))
+        })
+
+        run(SKAction.sequence([
+            SKAction.group([
+                flashTwice,
+                SKAction.sequence(audioSteps),
+            ]),
+            SKAction.run { [weak self] in
+                self?.inputLocked = false
+            },
+        ]))
     }
 
     private func publishTimer() {

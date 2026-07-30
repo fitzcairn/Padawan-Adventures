@@ -826,7 +826,8 @@ enum PlaceholderFactory {
     }
 
     /// Duration for gate dissolve + connecting-floor fade-in after a successful puzzle.
-    static let gateOpenDuration: TimeInterval = 2.0
+    /// Nonisolated so it can be used as a default argument (those are always nonisolated).
+    nonisolated static let gateOpenDuration: TimeInterval = 2.0
 
     /// Gate sprite fades out with sparkles while `revealNodes` — the connecting floor tiles
     /// and whatever art the opened gate uncovers — fade in over the same window.

@@ -329,7 +329,7 @@ final class PitScene: SKScene {
     }
 
     private func resumePlayerIdle() {
-        guard let playerSprite else { return }
+        guard playerSprite != nil else { return }
         let preferred = playerFacingLeft ? "idle_left" : "idle_right"
         let name: String
         if spriteLibrary.animation(id: Self.playerLibraryID, named: preferred) != nil {

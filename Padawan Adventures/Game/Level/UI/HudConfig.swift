@@ -18,6 +18,9 @@ struct HudConfig: Codable, Equatable, Sendable {
         scoreTextGap: 10
     )
 
+    /// Minigame countdown labels stay wired; set `true` to show them again.
+    static let showsMinigameTimer = false
+
     func validate() throws {
         guard iconSize > 0 else { throw HudConfigError.invalid("icon_size must be > 0") }
         guard iconSpacing > 0 else { throw HudConfigError.invalid("icon_spacing must be > 0") }

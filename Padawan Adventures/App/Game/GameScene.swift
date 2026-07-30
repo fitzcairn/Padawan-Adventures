@@ -377,7 +377,9 @@ final class GameScene: SKScene {
         case .health:
             world.healthCount += 1
         case .energy:
-            world.energyCount += 1
+            if EnergyMechanic.isEnabled {
+                world.energyCount += 1
+            }
         case .treasure:
             break
         }

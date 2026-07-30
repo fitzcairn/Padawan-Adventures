@@ -78,6 +78,7 @@ final class CombatHUDView: UIView {
         // Avoid collapsing to zero width before first layout pass.
         timerLabel.setContentHuggingPriority(.required, for: .horizontal)
         timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        timerLabel.isHidden = !HudConfig.showsMinigameTimer
 
         addSubview(heartsStack)
         addSubview(timerLabel)

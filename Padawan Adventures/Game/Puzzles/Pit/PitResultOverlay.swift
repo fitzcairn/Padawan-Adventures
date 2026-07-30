@@ -29,16 +29,12 @@ struct PitResultOverlay: View {
     private var titleView: some View {
         switch kind {
         case let .escaped(word, _):
-            (
-                Text("you escaped the pit by spelling ")
-                    .foregroundStyle(.white)
-                + Text(word.lowercased())
-                    .foregroundStyle(.red)
-                + Text("!")
-                    .foregroundStyle(.white)
+            Text(
+                "you escaped the pit by spelling \(Text(word.lowercased()).foregroundStyle(.red))!"
             )
             .font(AppFont.swiftUI(size: 36, weight: .bold))
             .multilineTextAlignment(.center)
+            .foregroundStyle(.white)
             .appCopyShadow()
         case .falling:
             Text("you're fallllling!")
