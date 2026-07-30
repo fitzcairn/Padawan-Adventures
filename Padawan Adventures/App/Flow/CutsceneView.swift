@@ -1,17 +1,17 @@
 import AVFoundation
 import SwiftUI
 
-/// Story beat between NEW GAME and the planet map: the cutscene movie with Kam
-/// listening at the left and Yoda talking back at him from the right.
+/// Story beat between NEW GAME and the planet map: the cutscene movie with the
+/// player idle on the left and Yoda talking back at him from the right.
 struct CutsceneView: View {
     let session: AppSession
     let router: FlowRouter
 
-    @State private var kamFrames: [(image: UIImage, duration: TimeInterval)] = []
+    @State private var playerFrames: [(image: UIImage, duration: TimeInterval)] = []
     @State private var yodaFrames: [(image: UIImage, duration: TimeInterval)] = []
     @State private var didFinish = false
 
-    private static let kamHeight: CGFloat = 200
+    private static let playerHeight: CGFloat = 200
     private static let yodaHeight: CGFloat = 170
 
     var body: some View {
@@ -27,17 +27,17 @@ struct CutsceneView: View {
                             object: player.currentItem
                         )
                     ) { _ in
-                        finish()
+                        finish(fadeAudio: false)
                     }
             }
 
             HStack(alignment: .bottom) {
-                AnimatedUIImageView(frames: kamFrames)
-                    .frame(height: Self.kamHeight)
+                AnimatedUIImageView(frames: playerFrames)
+                    .frame(height: Self.playerHeight)
                 Spacer(minLength: 0)
                 AnimatedUIImageView(frames: yodaFrames)
                     .frame(height: Self.yodaHeight)
-                    // Sheet faces southeast; mirror it so he faces Kam.
+                    // Sheet faces southeast; mirror it so he faces the player.
                     .scaleEffect(x: -1, y: 1)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -49,23 +49,33 @@ struct CutsceneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .onTapGesture { finish() }
+        .onTapGesture { finish(fadeAudio: true) }
         .playScreenMusic("cutscene")
         .task {
             session.cutsceneVideo.restart()
             await loadCharacters()
         }
         .onDisappear {
-            session.cutsceneVideo.stop()
+            // Skip owns teardown via fadeOutAndStop; don't hard-cut mid-fade.
+            if !session.cutsceneVideo.isFadingOut {
+                session.cutsceneVideo.stop()
+            }
         }
     }
 
-    private func finish() {
+    private func finish(fadeAudio: Bool) {
         // The skip tap and the end-of-movie cue can race; only the first wins.
         guard !didFinish else { return }
         didFinish = true
-        session.cutsceneVideo.stop()
+        // Navigate immediately so the view crossfade starts with the audio fade.
         router.showLevelSelect()
+        if fadeAudio {
+            Task {
+                await session.cutsceneVideo.fadeOutAndStop()
+            }
+        } else {
+            session.cutsceneVideo.stop()
+        }
     }
 
     private func loadCharacters() async {
@@ -74,8 +84,8 @@ struct CutsceneView: View {
             await session.spriteLibrary.ensureLoaded(entry.config, id: entry.id)
             let frames = session.spriteLibrary.uiImages(id: entry.id) ?? []
             switch entry.id {
-            case CutsceneSpritesConfig.kamID:
-                kamFrames = frames
+            case CutsceneSpritesConfig.playerID:
+                playerFrames = frames
             case CutsceneSpritesConfig.yodaID:
                 yodaFrames = frames
             default:

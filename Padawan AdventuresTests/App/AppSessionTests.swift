@@ -198,7 +198,7 @@ struct AppSessionTests {
         #expect(session.spriteLibrary.uiImage(id: "logo") != nil)
         #expect(session.spriteLibrary.uiImages(id: "kam") != nil)
         #expect(session.spriteLibrary.uiImages(id: "yoda") != nil)
-        #expect(session.spriteLibrary.uiImages(id: "cutscene_kam") != nil)
+        #expect(session.spriteLibrary.uiImages(id: "cutscene_player") != nil)
         #expect(session.spriteLibrary.uiImages(id: "cutscene_yoda") != nil)
         #expect(session.cutsceneVideo.player != nil)
         #expect(session.backgroundLibrary.uiImage(named: "menu_screen_bg") != nil)

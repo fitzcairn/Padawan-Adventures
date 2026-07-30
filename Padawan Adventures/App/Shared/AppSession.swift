@@ -488,7 +488,7 @@ final class AppSession {
         let cutsceneEnd = 0.46
         await cutsceneVideo.preload()
         if let cutsceneSprites = try? CutsceneSpritesConfig.loadFromBundle() {
-            let total = cutsceneSprites.entries.count
+            let total = max(cutsceneSprites.entries.count, 1)
             for (index, entry) in cutsceneSprites.entries.enumerated() {
                 let start = LoadProgress.map(
                     Double(index) / Double(total), from: backgroundsEnd, to: cutsceneEnd

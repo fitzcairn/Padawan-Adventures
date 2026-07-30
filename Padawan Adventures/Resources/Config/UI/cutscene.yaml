@@ -1,12 +1,12 @@
 # Cutscene characters. Both sheets ship with real alpha, so no chroma key:
-# keying black here would eat Yoda's outlines.
-kam:
+# keying black here would eat outlines on dark robe edges.
+player:
   sprite:
     root: Sprites/UI/Cutscene
     animations:
       idle:
-        sheet: kam-listening-spritesheet
-        atlas: kam-listening-atlas
+        sheet: kam-idle_right-spritesheet
+        atlas: kam-idle_right-atlas
 
 yoda:
   sprite:
