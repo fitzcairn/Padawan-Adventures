@@ -65,3 +65,7 @@ fastlane/test_output
 
 # Floor bake contact sheets (not bundled)
 scripts/out/
+
+# Raw cutscene media (too large for git)
+Art/Cutscene/
+*.mov
