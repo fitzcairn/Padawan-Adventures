@@ -4,7 +4,7 @@ import Testing
 
 struct CombatMinigameEngineTests {
     private func makeEngine(
-        timer: Double = 10,
+        pacing: Double = 10,
         travel: Double = 1.5,
         starsToWin: Int = 10,
         shotLetters: [String] = ["A", "B", "C"],
@@ -15,7 +15,7 @@ struct CombatMinigameEngineTests {
     ) -> CombatMinigameEngine {
         var engine = CombatMinigameEngine(
             config: .init(
-                combatTimerSeconds: timer,
+                shotPacingSeconds: pacing,
                 shotTravelSeconds: travel,
                 starsToWin: starsToWin,
                 shotLetters: shotLetters,
@@ -43,7 +43,7 @@ struct CombatMinigameEngineTests {
     @Test func constructsInactive() {
         let engine = CombatMinigameEngine(
             config: .init(
-                combatTimerSeconds: 10,
+                shotPacingSeconds: 10,
                 shotTravelSeconds: 1,
                 starsToWin: 10
             )
@@ -58,20 +58,9 @@ struct CombatMinigameEngineTests {
         #expect(!engine.isActive)
     }
 
-    @Test func timerExpiryDoesNotProduceLost() {
-        var engine = makeEngine(timer: 2, meanInterval: 100)
-        _ = engine.tick(dt: 1.0)
-        #expect(engine.outcome == nil)
-        let events = engine.tick(dt: 1.1)
-        #expect(!events.contains(.lost))
-        #expect(engine.outcome == nil)
-        #expect(!engine.isFrozen)
-        #expect(engine.remainingTime == 0)
-    }
-
-    @Test func spawnsContinueAfterConfiguredTimerWindow() {
-        // Old spawnWindowEnd was timer - travel (here 2). Spawns must continue past that.
-        var engine = makeEngine(timer: 4, travel: 2, starsToWin: 99, meanInterval: 0.2, seed: 3)
+    @Test func spawnsContinueAfterConfiguredPacingWindow() {
+        // The pacing window is pacing - travel (here 2). Spawns must continue past that.
+        var engine = makeEngine(pacing: 4, travel: 2, starsToWin: 99, meanInterval: 0.2, seed: 3)
         var spawnCountBeforeWindow = 0
         var spawnCountAfterWindow = 0
         for _ in 0..<80 {
@@ -92,17 +81,17 @@ struct CombatMinigameEngineTests {
     }
 
     @Test func derivedIntervalSupportsWinWithFiftyPercentMisses() {
-        let timer = 10.0
+        let pacing = 10.0
         let travel = 3.2
         let stars = 5
         let letters = ["A", "B", "C"]
         let interval = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            combatTimerSeconds: timer,
+            shotPacingSeconds: pacing,
             shotTravelSeconds: travel,
             starsToWin: stars,
             shotLetterCount: letters.count
         )
-        let spawnWindow = max(timer - travel, timer * 0.4)
+        let spawnWindow = max(pacing - travel, pacing * 0.4)
         let expectedShots = spawnWindow / interval
         let expectedMatching = expectedShots / Double(letters.count)
         let expectedStarsAtHalfHitRate = expectedMatching * 0.5
@@ -115,13 +104,13 @@ struct CombatMinigameEngineTests {
             color: "#FF0000",
             tilesPerSecond: 1,
             forgetSeconds: 3,
-            combatTimerSeconds: 10,
+            shotPacingSeconds: 10,
             shotTravelSeconds: 3.2,
             starsToWin: 5
         )
         let config = CombatMinigameEngine.Config(from: type)
         let expected = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            combatTimerSeconds: 10,
+            shotPacingSeconds: 10,
             shotTravelSeconds: 3.2,
             starsToWin: 5,
             shotLetterCount: 3
@@ -135,7 +124,7 @@ struct CombatMinigameEngineTests {
             color: "#FF0000",
             tilesPerSecond: 1,
             forgetSeconds: 3,
-            combatTimerSeconds: 10,
+            shotPacingSeconds: 10,
             shotTravelSeconds: 3.2,
             starsToWin: 5
         )
@@ -146,7 +135,7 @@ struct CombatMinigameEngineTests {
         )
         #expect(config.shotLetters == ["a", "b", "c"])
         let derived = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            combatTimerSeconds: 10,
+            shotPacingSeconds: 10,
             shotTravelSeconds: 3.2,
             starsToWin: 5,
             shotLetterCount: 3
@@ -394,7 +383,7 @@ struct CombatMinigameEngineTests {
         for seed in UInt64(1)...UInt64(40) {
             var e = CombatMinigameEngine(
                 config: .init(
-                    combatTimerSeconds: 30,
+                    shotPacingSeconds: 30,
                     shotTravelSeconds: 1,
                     starsToWin: 99
                 ),
@@ -455,7 +444,7 @@ struct CombatMinigameEngineTests {
         for seed in UInt64(1)...UInt64(20) {
             var e = CombatMinigameEngine(
                 config: .init(
-                    combatTimerSeconds: 30,
+                    shotPacingSeconds: 30,
                     shotTravelSeconds: 1,
                     starsToWin: 99,
                     meanShotIntervalSeconds: base
@@ -471,20 +460,9 @@ struct CombatMinigameEngineTests {
         #expect(Set(delays.map { Int($0 * 1000) }).count > 1)
     }
 
-    @Test func timerTickEventsInLastFiveSeconds() {
-        var engine = makeEngine(timer: 6, meanInterval: 100)
-        var tickCount = 0
-        for _ in 0..<30 {
-            let events = engine.tick(dt: 0.25)
-            tickCount += events.filter { $0 == .timerTick }.count
-            if engine.outcome != nil { break }
-        }
-        #expect(tickCount >= 5)
-    }
-
     @Test func sequenceCueReplaysOnLetterSoundInterval() {
         var engine = makeEngine(
-            timer: 20,
+            pacing: 20,
             starsToWin: 99,
             meanInterval: 0.01,
             letterSoundRepeatSeconds: 3,
@@ -519,7 +497,7 @@ struct CombatMinigameEngineTests {
 
     @Test func impactRemovesShotWithoutStarAndDeductsHealth() throws {
         var engine = makeEngine(
-            timer: 10,
+            pacing: 10,
             travel: 1.5,
             starsToWin: 10,
             meanInterval: 0.01,

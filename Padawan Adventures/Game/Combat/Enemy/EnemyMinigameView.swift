@@ -64,7 +64,6 @@ struct EnemyMinigameView: View {
                 letterCase: letterCase,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
-                initialTimerSeconds: Int(ceil(enemyType.combatTimerSeconds)),
                 spriteLibrary: spriteLibrary,
                 letterSpriteSetLibrary: letterSpriteSetLibrary,
                 combatSprite: combatSprite,
@@ -88,9 +87,7 @@ struct EnemyMinigameView: View {
                     config: hudConfig,
                     healthCount: session.health,
                     progress: session.stars,
-                    progressGoal: enemyType.starsToWin,
-                    timerSeconds: session.timerSeconds,
-                    timerUrgent: session.timerUrgent
+                    progressGoal: enemyType.starsToWin
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -120,8 +117,6 @@ struct EnemyMinigameView: View {
 final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     @Published var stars = 0
     @Published var health: Int
-    @Published var timerSeconds: Int
-    @Published var timerUrgent = false
     @Published var showVictory = false
     @Published private(set) var scene: CombatScene?
 
@@ -152,7 +147,6 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         letterCase: CombatLetterCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
-        initialTimerSeconds: Int,
         spriteLibrary: SpriteLibrary,
         letterSpriteSetLibrary: LetterSpriteSetLibrary,
         combatSprite: SpriteConfig?,
@@ -173,7 +167,6 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         self.enemySprite = enemySprite
         self.wallHeight = wallHeight
         self.health = startingHealth
-        self.timerSeconds = initialTimerSeconds
     }
 
     func ensureScene(size: CGSize) {
@@ -236,14 +229,6 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         }
     }
 
-    func combatSceneDidUpdateTimer(seconds: Int, urgent: Bool) {
-        guard seconds != timerSeconds || urgent != timerUrgent else { return }
-        Task { @MainActor in
-            self.timerSeconds = seconds
-            self.timerUrgent = urgent
-        }
-    }
-
     func combatSceneDidWin(starsAwarded: Int) {
         self.starsAwarded = starsAwarded
         Task { @MainActor in
@@ -283,8 +268,6 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
     let healthCount: Int
     let progress: Int
     let progressGoal: Int
-    let timerSeconds: Int
-    let timerUrgent: Bool
 
     final class Coordinator {
         var hud: CombatHUDView?
@@ -304,8 +287,7 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
             config: config,
             healthCount: healthCount,
             progress: progress,
-            progressGoal: progressGoal,
-            timerSeconds: timerSeconds
+            progressGoal: progressGoal
         )
         hud.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(hud)
@@ -322,6 +304,5 @@ private struct CombatHUDRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.hud?.setHealth(healthCount)
         context.coordinator.hud?.setProgress(current: progress, goal: progressGoal)
-        context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
 }

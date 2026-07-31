@@ -12,7 +12,7 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            combat_timer_seconds: 10
+            shot_pacing_seconds: 10
             shot_travel_seconds: 1.5
             stars_to_win: 10
             shot_letters: [a, b, c]
@@ -34,7 +34,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.color == "#FF0000")
         #expect(config.type(named: "spider")?.tilesPerSecond == 1.0)
         #expect(config.type(named: "spider")?.forgetSeconds == 3.0)
-        #expect(config.type(named: "spider")?.combatTimerSeconds == 10)
+        #expect(config.type(named: "spider")?.shotPacingSeconds == 10)
         #expect(config.type(named: "spider")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "spider")?.starsToWin == 10)
         #expect(config.type(named: "spider")?.fx.trackID(for: "notice") == "enemy-spider")
@@ -42,7 +42,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
         #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
         #expect(config.type(named: "scout")?.letter == "S")
-        #expect(config.type(named: "scout")?.combatTimerSeconds == 10)
+        #expect(config.type(named: "scout")?.shotPacingSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
         #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
@@ -58,7 +58,7 @@ struct EnemyConfigTests {
         #expect(spider?.color == "#FF0000")
         #expect(spider?.tilesPerSecond == 1.0)
         #expect(spider?.forgetSeconds == 3.0)
-        #expect(spider?.combatTimerSeconds == 10)
+        #expect(spider?.shotPacingSeconds == 10)
         #expect(spider?.shotTravelSeconds == 3.2)
         #expect(spider?.starsToWin == 10)
         #expect(spider?.shotLetters == ["A", "B", "C"])
@@ -102,7 +102,7 @@ struct EnemyConfigTests {
           color: "#FF0000"
           tiles_per_second: 0.5
           forget_seconds: 3.0
-          combat_timer_seconds: 30
+          shot_pacing_seconds: 30
           shot_travel_seconds: 8
           stars_to_win: 5
           shot_letters: [a, b, c]
@@ -115,7 +115,7 @@ struct EnemyConfigTests {
             tiles_per_second: 2.0
         """
         let config = try EnemyConfig.decode(from: yaml)
-        #expect(config.type(named: "spider")?.combatTimerSeconds == 30)
+        #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
         #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.tilesPerSecond == 2.0)
@@ -155,7 +155,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider") != nil)
         #expect(config.enemies.count == 10)
         #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
-        #expect(config.type(named: "spider")?.combatTimerSeconds == 30)
+        #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
     }
 
     @Test func decodesSpritesMapAndResolvesTypeSprite() throws {
@@ -207,7 +207,7 @@ struct EnemyConfigTests {
           color: "#FF0000"
           tiles_per_second: 0.5
           forget_seconds: 3.0
-          combat_timer_seconds: 30
+          shot_pacing_seconds: 30
           stars_to_win: 5
           shot_letters: [a, b, c]
         enemies:
@@ -219,7 +219,7 @@ struct EnemyConfigTests {
         let dino = try #require(config.type(named: "dino"))
         #expect(dino.tilesPerSecond == 0.35)
         #expect(dino.forgetSeconds == 3.0)
-        #expect(dino.combatTimerSeconds == 30)
+        #expect(dino.shotPacingSeconds == 30)
         #expect(dino.starsToWin == 5)
         #expect(dino.sprite == "dino")
     }
@@ -285,10 +285,10 @@ struct EnemyConfigTests {
         }
     }
 
-    @Test func validateRejectsNonPositiveCombatTimer() {
+    @Test func validateRejectsNonPositiveShotPacing() {
         var config = EnemyConfig.fallback
-        config.enemies["spider"]?.combatTimerSeconds = 0
-        #expect(throws: EnemyConfigError.invalid("spider.combat_timer_seconds must be > 0")) {
+        config.enemies["spider"]?.shotPacingSeconds = 0
+        #expect(throws: EnemyConfigError.invalid("spider.shot_pacing_seconds must be > 0")) {
             try config.validate()
         }
     }

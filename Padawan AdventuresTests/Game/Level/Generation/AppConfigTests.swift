@@ -156,7 +156,6 @@ struct AppConfigTests {
           fx: { opened: sfx_gate_opened_alt }
           minigames:
             - type: spelling
-              timer_seconds: 30
               num_padding_letters: 2
         """)
         let generation = WorldGenerationConfig.compose(app: app, level: level)

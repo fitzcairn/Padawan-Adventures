@@ -50,7 +50,6 @@ room:
 # Stars awarded on win = number of letters in the solved word.
 # `fx.lose` overrides shared `audio.yaml` when present; `jump` fires on every hop.
 pit:
-  timer_seconds: 30
   num_padding_letters: 6
   words: [cat, dog, star]
   # `lose` overrides the shared audio.yaml table; `jump` fires on every hop.
@@ -58,18 +57,18 @@ pit:
 
 # Gate minigames (triggered on gate tile contact — spelling or letter-match picked at random).
 # Host `fx.opened` plays in the world when the gate strip opens.
+# `minigame_chance` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
 gate:
   fx: { opened: gate-open }
+  minigame_chance: 0.6
   minigames:
     - type: spelling
-      timer_seconds: 30
       num_padding_letters: 6
       words: [cat, dog, star, gate, open]
       music: gate
       # Ambient arc, looped while electricity connectors are visible.
       fx: { loop: gate-spelling-loop-arc }
     - type: letter_match
-      timer_seconds: 30
       letter_count_min: 4
       letter_count_max: 8
       letters: [a, b, c, d, e, f, g, h]

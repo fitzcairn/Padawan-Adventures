@@ -2,14 +2,12 @@ import SpriteKit
 import UIKit
 
 protocol PitSceneDelegate: AnyObject {
-    func pitSceneDidUpdateTimer(seconds: Int, urgent: Bool)
     func pitSceneDidSelectWord(_ word: String)
     func pitSceneDidUpdateSolvedCount(_ count: Int)
     func pitSceneDidWin(word: String, starsAwarded: Int)
-    func pitSceneDidLose()
 }
 
-/// SpriteKit pit puzzle: side pads, hoppable letter platforms, timer-driven engine.
+/// SpriteKit pit puzzle: side pads, hoppable letter platforms.
 final class PitScene: SKScene {
     weak var pitDelegate: PitSceneDelegate?
 
@@ -34,7 +32,6 @@ final class PitScene: SKScene {
     private var didEnd = false
     private var didSetup = false
     private var isJumping = false
-    private var lastUpdateTime: TimeInterval?
     private var placementRNG = SystemRandomNumberGenerator()
 
     private let padFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
@@ -98,7 +95,6 @@ final class PitScene: SKScene {
         pitDelegate?.pitSceneDidUpdateSolvedCount(0)
         buildPuzzle()
         playWordSound()
-        publishTimer()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -106,19 +102,6 @@ final class PitScene: SKScene {
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         rebuildLayoutPreservingLetters()
-    }
-
-    override func update(_ currentTime: TimeInterval) {
-        guard !didEnd else { return }
-
-        let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
-        lastUpdateTime = currentTime
-
-        let events = engine.tick(dt: dt)
-        for event in events {
-            handle(event)
-        }
-        publishTimer()
     }
 
     // MARK: - Layout
@@ -710,17 +693,6 @@ final class PitScene: SKScene {
 
     // MARK: - Events / audio
 
-    private func handle(_ event: PitEngineEvent) {
-        switch event {
-        case .timerTick:
-            SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
-        case .won:
-            break
-        case .lost:
-            finishLost()
-        }
-    }
-
     private func playWordSound() {
         removeAction(forKey: Self.connectedSoundActionKey)
         let trackID = engine.targetSoundTrackID
@@ -754,11 +726,6 @@ final class PitScene: SKScene {
         run(SKAction.sequence(actions), withKey: Self.connectedSoundActionKey)
     }
 
-    private func publishTimer() {
-        let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
-        pitDelegate?.pitSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
-    }
-
     private func finishWon() {
         guard !didEnd else { return }
         didEnd = true
@@ -785,17 +752,6 @@ final class PitScene: SKScene {
             self?.pitDelegate?.pitSceneDidWin(word: word, starsAwarded: stars)
         })
         run(SKAction.sequence(actions), withKey: Self.winSoundActionKey)
-    }
-
-    private func finishLost() {
-        guard !didEnd else { return }
-        didEnd = true
-        isUserInteractionEnabled = false
-        SoundEffectsController.shared.play(
-            event: "lose",
-            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
-        )
-        pitDelegate?.pitSceneDidLose()
     }
 
     // MARK: - Touch / jump

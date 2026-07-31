@@ -5,7 +5,6 @@ import UIKit
 protocol CombatSceneDelegate: AnyObject {
     func combatSceneDidUpdateStars(_ stars: Int)
     func combatSceneDidUpdateHealth(_ health: Int)
-    func combatSceneDidUpdateTimer(seconds: Int, urgent: Bool)
     func combatSceneDidWin(starsAwarded: Int)
     func combatSceneDidLose()
 }
@@ -125,7 +124,6 @@ final class CombatScene: SKScene {
             event: "combat_loop",
             from: playerFx
         )
-        publishTimer()
         combatDelegate?.combatSceneDidUpdateStars(0)
     }
 
@@ -159,7 +157,6 @@ final class CombatScene: SKScene {
         }
         syncShotAiming()
         syncShotMotion()
-        publishTimer()
         checkImpacts()
     }
 
@@ -272,8 +269,6 @@ final class CombatScene: SKScene {
             syncShotAiming()
         case let .spawnShot(id, travelSeconds, visualLetter):
             spawnShot(id: id, travelSeconds: travelSeconds, visualLetter: visualLetter)
-        case .timerTick:
-            SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
         case let .healthChanged(health):
             combatDelegate?.combatSceneDidUpdateHealth(health)
         case .won:
@@ -851,11 +846,6 @@ final class CombatScene: SKScene {
     }
 
     // MARK: - End states
-
-    private func publishTimer() {
-        let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
-        combatDelegate?.combatSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
-    }
 
     private func finishWin() {
         guard !didEnd else { return }

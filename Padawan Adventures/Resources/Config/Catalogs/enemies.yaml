@@ -243,7 +243,7 @@ defaults:
   color: "#FF0000"
   tiles_per_second: 0.7
   forget_seconds: 3.0
-  combat_timer_seconds: 30
+  shot_pacing_seconds: 30
   shot_travel_seconds: 8
   stars_to_win: 5
   shot_letters: [a, b, c]

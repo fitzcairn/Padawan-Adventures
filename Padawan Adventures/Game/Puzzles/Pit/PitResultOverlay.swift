@@ -3,7 +3,6 @@ import SwiftUI
 struct PitResultOverlay: View {
     enum Kind {
         case escaped(word: String, starsAwarded: Int)
-        case falling
     }
 
     let kind: Kind
@@ -36,26 +35,18 @@ struct PitResultOverlay: View {
             .multilineTextAlignment(.center)
             .foregroundStyle(.white)
             .appCopyShadow()
-        case .falling:
-            Text("you're fallllling!")
-                .font(AppFont.swiftUI(size: 36, weight: .bold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.white)
-                .appCopyShadow()
         }
     }
 
     private var titleAccessibilityID: String {
         switch kind {
         case .escaped: return "pit.result.escaped.title"
-        case .falling: return "pit.result.falling.title"
         }
     }
 
     private var rootAccessibilityID: String {
         switch kind {
         case .escaped: return "pit.result.escaped.root"
-        case .falling: return "pit.result.falling.root"
         }
     }
 }

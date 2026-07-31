@@ -2,12 +2,10 @@ import SpriteKit
 import UIKit
 
 protocol GateLetterMatchSceneDelegate: AnyObject {
-    func gateLetterMatchSceneDidUpdateTimer(seconds: Int, urgent: Bool)
     func gateLetterMatchSceneDidWin(starsAwarded: Int)
-    func gateLetterMatchSceneDidLose()
 }
 
-/// SpriteKit gate letter-match puzzle: switch letter buttons, timer-driven engine.
+/// SpriteKit gate letter-match puzzle: switch letter buttons.
 final class GateLetterMatchScene: SKScene {
     weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
 
@@ -15,7 +13,6 @@ final class GateLetterMatchScene: SKScene {
     private let playerFx: SoundEffectTable
 
     private var engine: GateLetterMatchMinigameEngine
-    private var replayBoxNode: SKNode!
     private var letterNodes: [UUID: SKNode] = [:]
     private var switchNodes: [UUID: SKSpriteNode] = [:]
     private var switchTextures: GateLetterMatchSwitchSprites.Textures?
@@ -24,9 +21,7 @@ final class GateLetterMatchScene: SKScene {
     private var didEnd = false
     private var didSetup = false
     private var inputLocked = false
-    private var lastUpdateTime: TimeInterval?
 
-    private let replayFill = UIColor(white: 0.28, alpha: 1)
     private let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
     private let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
     private let squareWrongFill = UIColor.systemRed
@@ -57,7 +52,6 @@ final class GateLetterMatchScene: SKScene {
         engine.begin()
         buildPuzzle()
         playTargetPronunciation()
-        publishTimer()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -65,19 +59,6 @@ final class GateLetterMatchScene: SKScene {
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         rebuildLayout()
-    }
-
-    override func update(_ currentTime: TimeInterval) {
-        guard !didEnd else { return }
-
-        let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
-        lastUpdateTime = currentTime
-
-        let events = engine.tick(dt: dt)
-        for event in events {
-            handle(event)
-        }
-        publishTimer()
     }
 
     // MARK: - Layout
@@ -163,24 +144,6 @@ final class GateLetterMatchScene: SKScene {
         )
     }
 
-    private var replayBoxSize: CGSize {
-        let width = min(size.width * 0.28, 160)
-        let height = min(size.height * 0.10, 56)
-        return CGSize(width: max(width, 96), height: max(height, 44))
-    }
-
-    private var replayBoxRect: CGRect {
-        let box = replayBoxSize
-        // Sit below the timer HUD (upper-trailing) and centered horizontally near the top.
-        let topInset = max(size.height * 0.06, 28)
-        return CGRect(
-            x: (size.width - box.width) * 0.5,
-            y: size.height - topInset - box.height,
-            width: box.width,
-            height: box.height
-        )
-    }
-
     private func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
@@ -192,36 +155,7 @@ final class GateLetterMatchScene: SKScene {
             addChild(background)
         }
 
-        layoutReplayBox()
         layoutLetterRow()
-    }
-
-    private func layoutReplayBox() {
-        let rect = replayBoxRect
-        let root = SKNode()
-        root.name = "replayBox"
-        root.position = CGPoint(x: rect.midX, y: rect.midY)
-        root.zPosition = 20
-
-        let box = SKShapeNode(rectOf: rect.size, cornerRadius: 12)
-        box.fillColor = replayFill
-        box.strokeColor = UIColor(white: 0.65, alpha: 1)
-        box.lineWidth = 2
-        box.zPosition = 0
-        root.addChild(box)
-
-        let label = SKLabelNode(text: "♪")
-        label.fontName = "Helvetica-Bold"
-        label.fontSize = min(rect.height * 0.62, 34)
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.zPosition = 1
-        label.isUserInteractionEnabled = false
-        root.addChild(label)
-
-        replayBoxNode = root
-        addChild(root)
     }
 
     private func rebuildLayout() {
@@ -333,8 +267,6 @@ final class GateLetterMatchScene: SKScene {
 
     private func handle(_ event: GateLetterMatchEngineEvent) {
         switch event {
-        case .timerTick:
-            SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
         case .playTargetPronunciation:
             playTargetPronunciation()
         case let .playName(trackID):
@@ -353,8 +285,6 @@ final class GateLetterMatchScene: SKScene {
             )
         case .won:
             finishWon()
-        case .lost:
-            finishLost()
         }
     }
 
@@ -535,11 +465,6 @@ final class GateLetterMatchScene: SKScene {
         )
     }
 
-    private func publishTimer() {
-        let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
-        letterMatchDelegate?.gateLetterMatchSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
-    }
-
     private func finishWon() {
         guard !didEnd else { return }
         didEnd = true
@@ -552,25 +477,11 @@ final class GateLetterMatchScene: SKScene {
         }
     }
 
-    private func finishLost() {
-        guard !didEnd else { return }
-        didEnd = true
-        isUserInteractionEnabled = false
-        SoundEffectsController.shared.playCommon(event: "lose")
-        letterMatchDelegate?.gateLetterMatchSceneDidLose()
-    }
-
     // MARK: - Touch
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, !inputLocked, let touch = touches.first else { return }
         let location = touch.location(in: self)
-
-        if replayBoxRect.contains(location) {
-            playTargetPronunciation()
-            flashReplayBox()
-            return
-        }
 
         guard let id = letterID(at: location),
               !engine.matchedIDs.contains(id) else { return }
@@ -588,19 +499,6 @@ final class GateLetterMatchScene: SKScene {
             SKAction.run { [weak self] in
                 self?.handleTapEvents(events)
             },
-        ]))
-    }
-
-    private func flashReplayBox() {
-        guard let box = replayBoxNode?.children.first as? SKShapeNode else { return }
-        let highlight = SKAction.run { box.fillColor = UIColor(white: 0.42, alpha: 1) }
-        let restore = SKAction.run { [weak self] in
-            box.fillColor = self?.replayFill ?? UIColor(white: 0.28, alpha: 1)
-        }
-        box.run(SKAction.sequence([
-            highlight,
-            SKAction.wait(forDuration: 0.12),
-            restore,
         ]))
     }
 

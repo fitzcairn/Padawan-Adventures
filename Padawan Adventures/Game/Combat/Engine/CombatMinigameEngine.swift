@@ -14,17 +14,17 @@ nonisolated enum CombatSlashResult: Equatable, Sendable {
 nonisolated enum CombatEngineEvent: Equatable, Sendable {
     case sequenceCue(requiredLetter: String)
     case spawnShot(id: UUID, travelSeconds: Double, visualLetter: String)
-    case timerTick
     case healthChanged(Int)
     case won
     case lost
 }
 
-/// Pure combat session rules (timer, spawn schedule, typed shots, win/lose).
+/// Pure combat session rules (spawn schedule, typed shots, win/lose).
 nonisolated struct CombatMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        var combatTimerSeconds: Double
-        /// Derived mean delay between spawns (from timer, stars, letter count).
+        /// Reference fight length used only to pace spawns; the fight is not time limited.
+        var shotPacingSeconds: Double
+        /// Derived mean delay between spawns (from pacing window, stars, letter count).
         var meanShotIntervalSeconds: Double
         var shotTravelSeconds: Double
         var starsToWin: Int
@@ -45,13 +45,13 @@ nonisolated struct CombatMinigameEngine {
             letterCase: CombatLetterCase = .upper
         ) {
             let letters = letterCase.shotLetterPool(from: type.shotLetters)
-            combatTimerSeconds = type.combatTimerSeconds
+            shotPacingSeconds = type.shotPacingSeconds
             shotTravelSeconds = type.shotTravelSeconds
             starsToWin = type.starsToWin
             shotLetters = letters
             self.letterSoundRepeatSeconds = max(letterSoundRepeatSeconds, 0.05)
             let derived = Self.derivedMeanShotInterval(
-                combatTimerSeconds: type.combatTimerSeconds,
+                shotPacingSeconds: type.shotPacingSeconds,
                 shotTravelSeconds: type.shotTravelSeconds,
                 starsToWin: type.starsToWin,
                 shotLetterCount: letters.count
@@ -61,7 +61,7 @@ nonisolated struct CombatMinigameEngine {
         }
 
         init(
-            combatTimerSeconds: Double,
+            shotPacingSeconds: Double,
             shotTravelSeconds: Double,
             starsToWin: Int,
             shotLetters: [String] = ["A", "B", "C"],
@@ -69,7 +69,7 @@ nonisolated struct CombatMinigameEngine {
             letterSoundRepeatSeconds: Double = defaultLetterSoundRepeatSeconds,
             letterSpawnRate: Double = defaultLetterSpawnRate
         ) {
-            self.combatTimerSeconds = combatTimerSeconds
+            self.shotPacingSeconds = shotPacingSeconds
             self.shotTravelSeconds = shotTravelSeconds
             self.starsToWin = starsToWin
             self.shotLetters = shotLetters
@@ -78,7 +78,7 @@ nonisolated struct CombatMinigameEngine {
                 self.meanShotIntervalSeconds = meanShotIntervalSeconds
             } else {
                 let derived = Self.derivedMeanShotInterval(
-                    combatTimerSeconds: combatTimerSeconds,
+                    shotPacingSeconds: shotPacingSeconds,
                     shotTravelSeconds: shotTravelSeconds,
                     starsToWin: starsToWin,
                     shotLetterCount: shotLetters.count
@@ -91,7 +91,7 @@ nonisolated struct CombatMinigameEngine {
         /// Spawn cadence that yields enough matching shots for `starsToWin` at the assumed hit rate.
         /// Matching visuals occur with probability `1 / shotLetterCount`.
         static func derivedMeanShotInterval(
-            combatTimerSeconds: Double,
+            shotPacingSeconds: Double,
             shotTravelSeconds: Double,
             starsToWin: Int,
             shotLetterCount: Int,
@@ -101,10 +101,9 @@ nonisolated struct CombatMinigameEngine {
             let hitRate = min(max(assumedPlayerHitRate, 0.05), 1)
             let matchingShotsNeeded = Int(ceil(Double(max(starsToWin, 1)) / hitRate))
             let totalShotsNeeded = max(matchingShotsNeeded * letters, 1)
-            // Pace spawns using the configured fight length as a reference window.
             let spawnWindow = max(
-                combatTimerSeconds - shotTravelSeconds,
-                combatTimerSeconds * 0.4
+                shotPacingSeconds - shotTravelSeconds,
+                shotPacingSeconds * 0.4
             )
             return max(spawnWindow / Double(totalShotsNeeded), 0.05)
         }
@@ -124,7 +123,6 @@ nonisolated struct CombatMinigameEngine {
     private let startingHealth: Int
     private(set) var isActive = false
     private(set) var elapsed: Double = 0
-    private(set) var remainingTime: Double
     private(set) var combatStars: Int = 0
     private(set) var shots: [UUID: Shot] = [:]
     private(set) var nextSpawnAt: Double = 0
@@ -134,7 +132,6 @@ nonisolated struct CombatMinigameEngine {
     /// Correct slashes still needed before the cue sound / required letter changes.
     private(set) var correctSlashesRemainingInSequence: Int = 0
 
-    private var lastDisplayedSecond: Int
     private var nextCueReplayAt: Double = .infinity
     private var pendingEvents: [CombatEngineEvent] = []
     private var rng: any RandomNumberGenerator
@@ -154,8 +151,6 @@ nonisolated struct CombatMinigameEngine {
         self.config = config
         self.startingHealth = max(startingHealth, 0)
         self.healthCount = self.startingHealth
-        self.remainingTime = config.combatTimerSeconds
-        self.lastDisplayedSecond = Int(ceil(config.combatTimerSeconds))
         self.rng = rng
     }
 
@@ -163,7 +158,6 @@ nonisolated struct CombatMinigameEngine {
         isActive = true
         isFrozen = false
         elapsed = 0
-        remainingTime = config.combatTimerSeconds
         healthCount = startingHealth
         combatStars = 0
         shots = [:]
@@ -172,7 +166,6 @@ nonisolated struct CombatMinigameEngine {
         correctSlashesRemainingInSequence = 0
         nextCueReplayAt = .infinity
         pendingEvents = []
-        lastDisplayedSecond = Int(ceil(config.combatTimerSeconds))
         nextSpawnAt = scheduleNextSpawnDelay()
     }
 
@@ -182,7 +175,6 @@ nonisolated struct CombatMinigameEngine {
     }
 
     var hasWon: Bool { combatStars >= config.starsToWin }
-    /// Hearts only — timer expiry does not end the fight.
     var hasLost: Bool { healthCount <= 0 }
 
     /// Events queued outside `tick` (e.g. cue changes after a correct slash).
@@ -198,22 +190,13 @@ nonisolated struct CombatMinigameEngine {
 
         var events = drainPendingEvents()
         elapsed += dt
-        remainingTime = max(0, config.combatTimerSeconds - elapsed)
-
-        let displayedSecond = max(0, Int(ceil(remainingTime - 1e-9)))
-        if displayedSecond < lastDisplayedSecond {
-            if displayedSecond <= 5, lastDisplayedSecond > 0 {
-                events.append(.timerTick)
-            }
-            lastDisplayedSecond = displayedSecond
-        }
 
         if !sequenceRequiredLetter.isEmpty, elapsed >= nextCueReplayAt {
             nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
             events.append(.sequenceCue(requiredLetter: sequenceRequiredLetter))
         }
 
-        // Spawn for the whole fight — only win / lose / freeze stops new letters.
+        // Only win / lose / freeze stops new letters.
         while nextSpawnAt <= elapsed,
               outcome == nil,
               !isFrozen {

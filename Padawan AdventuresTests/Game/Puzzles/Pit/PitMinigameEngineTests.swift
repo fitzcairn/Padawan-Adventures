@@ -8,14 +8,12 @@ struct PitMinigameEngineTests {
     }
 
     private func makeEngine(
-        timer: Double = 30,
         numPaddingLetters: Int = 6,
         words: [String] = ["cat", "dog"],
         seed: UInt64 = 42
     ) -> PitMinigameEngine {
         var engine = PitMinigameEngine(
             config: .init(
-                timerSeconds: timer,
                 numPaddingLetters: numPaddingLetters,
                 words: self.words(words)
             ),
@@ -27,7 +25,7 @@ struct PitMinigameEngineTests {
 
     @Test func constructsInactive() {
         let engine = PitMinigameEngine(
-            config: .init(timerSeconds: 30, words: words(["cat"]))
+            config: .init(words: words(["cat"]))
         )
         #expect(!engine.isActive)
         #expect(engine.letters.isEmpty)
@@ -106,29 +104,17 @@ struct PitMinigameEngineTests {
         #expect(engine.acceptLetter(id: b.id) == nil)
     }
 
-    @Test func timerTickEmitsInLastFiveSeconds() {
-        var engine = makeEngine(timer: 6, words: ["cat"], seed: 2)
-        var sawTick = false
-        // Advance past whole-second boundaries into the urgent window.
-        for _ in 0..<70 {
-            let events = engine.tick(dt: 0.1)
-            if events.contains(.timerTick) {
-                sawTick = true
-            }
-            if events.contains(.lost) { break }
+    @Test func acceptLetterIgnoredAfterWin() {
+        var engine = makeEngine(words: ["cat"], seed: 1)
+        for id in engine.wordLetterIDs {
+            _ = engine.acceptLetter(id: id)
         }
-        #expect(sawTick)
-        #expect(engine.outcome == .lost)
+        #expect(engine.outcome == .won(starsAwarded: 3))
         #expect(engine.isFrozen)
-    }
 
-    @Test func tickDoesNotProgressWhenFrozen() {
-        var engine = makeEngine(timer: 5, words: ["cat"], seed: 1)
-        _ = engine.tick(dt: 10)
-        #expect(engine.outcome == .lost)
-        let remaining = engine.remainingTime
-        _ = engine.tick(dt: 1)
-        #expect(engine.remainingTime == remaining)
+        let decoy = engine.letters.first { !engine.wordLetterIDs.contains($0.id) }
+        guard let decoy else { return }
+        #expect(engine.acceptLetter(id: decoy.id) == nil)
     }
 }
 

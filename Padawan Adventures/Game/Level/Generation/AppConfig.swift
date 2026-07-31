@@ -322,12 +322,10 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidRoomPitChance(Double)
     case invalidRoomPitSize(mean: Double, max: Int)
     case invalidRoomPartitionGateChance(Double)
-    case invalidGateTimer(Double)
+    case invalidGateMinigameChance(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
-    case invalidPitTimer(Double)
     case invalidPitWords
-    case invalidGateLetterMatchTimer(Double)
     case invalidLetterSoundRepeat(Double)
     case invalidCombatLetterSpawnRate(Double)
     case invalidCombatLetterCase(String)

@@ -12,7 +12,6 @@ fx:
   pickup_treasure: pickup-treasure
   pit: pit-start
   damage: combat-damage
-  timer_tick: timer-tick
   combat_start: combat-start-lightsaber-ignite
   combat_loop: combat-loop-lightsaber-hum
   slash: combat-lightsaber-slash

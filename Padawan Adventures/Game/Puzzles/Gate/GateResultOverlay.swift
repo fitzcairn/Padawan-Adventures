@@ -3,7 +3,6 @@ import SwiftUI
 struct GateResultOverlay: View {
     enum Kind {
         case unlocked(starsAwarded: Int)
-        case timesUp
     }
 
     let kind: Kind
@@ -32,21 +31,18 @@ struct GateResultOverlay: View {
     private var title: String {
         switch kind {
         case .unlocked: return "The gate is unlocked!"
-        case .timesUp: return "times up!"
         }
     }
 
     private var titleAccessibilityID: String {
         switch kind {
         case .unlocked: return "gate.result.unlocked.title"
-        case .timesUp: return "gate.result.timesUp.title"
         }
     }
 
     private var rootAccessibilityID: String {
         switch kind {
         case .unlocked: return "gate.result.unlocked.root"
-        case .timesUp: return "gate.result.timesUp.root"
         }
     }
 }

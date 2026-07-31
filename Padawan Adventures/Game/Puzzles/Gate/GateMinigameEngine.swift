@@ -5,31 +5,21 @@ nonisolated enum GateOutcome: Equatable, Sendable {
     case lost
 }
 
-nonisolated enum GateEngineEvent: Equatable, Sendable {
-    case timerTick
-    case won
-    case lost
-}
-
-/// Pure gate puzzle session rules (word pick, letter bag, timer, staging win check).
+/// Pure gate puzzle session rules (word pick, letter bag, staging win check).
 nonisolated struct GateMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        var timerSeconds: Double
         var numPaddingLetters: Int
         var words: [GateWord]
 
         init(from puzzle: GateSpellingConfig) {
-            timerSeconds = puzzle.timerSeconds
             numPaddingLetters = puzzle.numPaddingLetters
             words = puzzle.words
         }
 
         init(
-            timerSeconds: Double,
             numPaddingLetters: Int = 6,
             words: [GateWord]
         ) {
-            self.timerSeconds = timerSeconds
             self.numPaddingLetters = max(0, numPaddingLetters)
             self.words = words.map {
                 GateWord(
@@ -49,15 +39,12 @@ nonisolated struct GateMinigameEngine {
 
     let config: Config
     private(set) var isActive = false
-    private(set) var elapsed: Double = 0
-    private(set) var remainingTime: Double
     private(set) var targetWord: String = ""
     private(set) var targetEntry: GateWord = .fallbackEntry(word: "gate")
     private(set) var letters: [LetterToken] = []
     private(set) var outcome: GateOutcome?
     private(set) var isFrozen = false
 
-    private var lastDisplayedSecond: Int
     private var rng: any RandomNumberGenerator
 
     private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
@@ -67,18 +54,13 @@ nonisolated struct GateMinigameEngine {
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
-        self.remainingTime = config.timerSeconds
-        self.lastDisplayedSecond = Int(ceil(config.timerSeconds))
         self.rng = rng
     }
 
     mutating func begin() {
         isActive = true
         isFrozen = false
-        elapsed = 0
-        remainingTime = config.timerSeconds
         outcome = nil
-        lastDisplayedSecond = Int(ceil(config.timerSeconds))
         let picked = pickTargetEntry()
         targetEntry = picked
         targetWord = picked.word
@@ -88,26 +70,6 @@ nonisolated struct GateMinigameEngine {
     mutating func end() {
         isActive = false
         isFrozen = true
-    }
-
-    /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
-    /// Timer countdown is HUD-only; the session never ends on expiry.
-    mutating func tick(dt: Double) -> [GateEngineEvent] {
-        guard isActive, !isFrozen, outcome == nil else { return [] }
-
-        var events: [GateEngineEvent] = []
-        elapsed += dt
-        remainingTime = max(0, config.timerSeconds - elapsed)
-
-        let displayedSecond = max(0, Int(ceil(remainingTime - 1e-9)))
-        if displayedSecond < lastDisplayedSecond {
-            if displayedSecond <= 5, lastDisplayedSecond > 0 {
-                events.append(.timerTick)
-            }
-            lastDisplayedSecond = displayedSecond
-        }
-
-        return events
     }
 
     /// Letters currently inside the staging area, already sorted left→right by center X.

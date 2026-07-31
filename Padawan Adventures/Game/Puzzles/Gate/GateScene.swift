@@ -2,14 +2,12 @@ import SpriteKit
 import UIKit
 
 protocol GateSceneDelegate: AnyObject {
-    func gateSceneDidUpdateTimer(seconds: Int, urgent: Bool)
     func gateSceneDidSelectWord(_ word: String)
     func gateSceneDidUpdateConnectedPrefix(_ prefix: String)
     func gateSceneDidWin(starsAwarded: Int)
-    func gateSceneDidLose()
 }
 
-/// SpriteKit gate puzzle: staging area, draggable letter tokens, timer-driven engine.
+/// SpriteKit gate puzzle: staging area, draggable letter tokens.
 final class GateScene: SKScene {
     private static let connectedSoundActionKey = "gateConnectedSound"
     private static let wrongMoveActionKey = "gateWrongMove"
@@ -102,7 +100,6 @@ final class GateScene: SKScene {
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         buildPuzzle()
         playWordSound()
-        publishTimer()
     }
 
     override func willMove(from view: SKView) {
@@ -121,14 +118,6 @@ final class GateScene: SKScene {
         lastUpdateTime = currentTime
 
         refreshElectricityConnectors(dt: dt)
-
-        guard !didEnd else { return }
-
-        let events = engine.tick(dt: dt)
-        for event in events {
-            handle(event)
-        }
-        publishTimer()
     }
 
     // MARK: - Layout
@@ -695,17 +684,6 @@ final class GateScene: SKScene {
 
     // MARK: - Events
 
-    private func handle(_ event: GateEngineEvent) {
-        switch event {
-        case .timerTick:
-            SoundEffectsController.shared.play(event: "timer_tick", from: playerFx)
-        case .won:
-            break
-        case .lost:
-            finishLost()
-        }
-    }
-
     private func playWordSound() {
         removeAction(forKey: Self.connectedSoundActionKey)
         let trackID = engine.targetSoundTrackID
@@ -722,11 +700,6 @@ final class GateScene: SKScene {
             return
         }
         SoundEffectsController.shared.play(trackID: progressiveID)
-    }
-
-    private func publishTimer() {
-        let seconds = max(0, Int(ceil(engine.remainingTime - 1e-9)))
-        gateDelegate?.gateSceneDidUpdateTimer(seconds: seconds, urgent: seconds <= 5)
     }
 
     private func beginWinSequence() {
@@ -760,19 +733,6 @@ final class GateScene: SKScene {
         } else {
             gateDelegate?.gateSceneDidWin(starsAwarded: engine.targetWord.count)
         }
-    }
-
-    private func finishLost() {
-        guard !didEnd, !isCompletingWin else { return }
-        didEnd = true
-        isUserInteractionEnabled = false
-        removeAction(forKey: Self.winSequenceActionKey)
-        stopGateLoop()
-        SoundEffectsController.shared.play(
-            event: "lose",
-            from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
-        )
-        gateDelegate?.gateSceneDidLose()
     }
 
     private func stopGateLoop() {

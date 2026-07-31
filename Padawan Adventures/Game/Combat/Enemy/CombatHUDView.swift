@@ -1,11 +1,10 @@
 import UIKit
 
-/// Combat-only HUD: health (top-leading), timer (top-trailing), net-progress bar (bottom-leading).
+/// Combat-only HUD: health (top-leading), net-progress bar (bottom-leading).
 final class CombatHUDView: UIView {
     private let config: HudConfig
     private let heartsStack: UIStackView
     private let heartImage: UIImage?
-    private let timerLabel = UILabel()
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var progressFillWidth: NSLayoutConstraint?
@@ -16,13 +15,13 @@ final class CombatHUDView: UIView {
     private static let progressBarHeight: CGFloat = 17.5
     private static let progressBarWidthFraction: CGFloat = 0.0625
 
-    init(config: HudConfig, healthCount: Int, progress: Int = 0, progressGoal: Int = 1, timerSeconds: Int) {
+    init(config: HudConfig, healthCount: Int, progress: Int = 0, progressGoal: Int = 1) {
         self.config = config
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
         self.heartImage = HudVitalIcon.health.makeUIImage(pointSize: CGFloat(config.iconSize))
         self.progressGoal = max(progressGoal, 1)
         super.init(frame: .zero)
-        setup(healthCount: healthCount, progress: progress, timerSeconds: timerSeconds)
+        setup(healthCount: healthCount, progress: progress)
     }
 
     @available(*, unavailable)
@@ -65,12 +64,7 @@ final class CombatHUDView: UIView {
         }
     }
 
-    func setTimer(seconds: Int, urgent: Bool) {
-        timerLabel.text = "\(max(seconds, 0))"
-        timerLabel.textColor = urgent ? .systemRed : .white
-    }
-
-    private func setup(healthCount: Int, progress: Int, timerSeconds: Int) {
+    private func setup(healthCount: Int, progress: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = false
         // Keep true when hosted by SwiftUI; parent containers may set false + pin edges.
@@ -79,18 +73,6 @@ final class CombatHUDView: UIView {
         for _ in 0..<max(healthCount, 0) {
             addIcon(image: heartImage, to: heartsStack)
         }
-
-        timerLabel.text = "\(max(timerSeconds, 0))"
-        timerLabel.textColor = .white
-        timerLabel.font = AppFont.uiKit(size: 28, weight: .bold)
-        timerLabel.textAlignment = .right
-        timerLabel.translatesAutoresizingMaskIntoConstraints = false
-        timerLabel.applyAppCopyShadow()
-        timerLabel.accessibilityIdentifier = "combat.timer"
-        // Avoid collapsing to zero width before first layout pass.
-        timerLabel.setContentHuggingPriority(.required, for: .horizontal)
-        timerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        timerLabel.isHidden = !HudConfig.showsMinigameTimer
 
         progressTrack.backgroundColor = UIColor.white.withAlphaComponent(0.22)
         progressTrack.layer.cornerRadius = Self.progressBarHeight * 0.5
@@ -107,30 +89,21 @@ final class CombatHUDView: UIView {
         progressFillWidth = fillWidth
 
         addSubview(heartsStack)
-        addSubview(timerLabel)
         addSubview(progressTrack)
 
         let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
         let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
-        let timerTop = timerLabel.topAnchor.constraint(equalTo: topAnchor)
-        let timerTrailing = timerLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
         let progressBottom = progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor)
         let progressLeading = progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor)
 
         edgeInsets.addTop(heartsTop)
         edgeInsets.addLeading(heartsLeading)
-        edgeInsets.addTop(timerTop)
-        edgeInsets.addTrailing(timerTrailing)
         edgeInsets.addBottom(progressBottom)
         edgeInsets.addLeading(progressLeading)
 
         NSLayoutConstraint.activate([
             heartsTop,
             heartsLeading,
-
-            timerTop,
-            timerTrailing,
-            timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
 
             progressBottom,
             progressLeading,

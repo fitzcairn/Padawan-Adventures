@@ -5,12 +5,6 @@ nonisolated enum PitOutcome: Equatable, Sendable {
     case lost
 }
 
-nonisolated enum PitEngineEvent: Equatable, Sendable {
-    case timerTick
-    case won
-    case lost
-}
-
 nonisolated enum PitLetterTapResult: Equatable, Sendable {
     /// Letter matched the next required character; `prefix` is the solved prefix so far.
     case correct(prefix: String, won: Bool)
@@ -18,25 +12,21 @@ nonisolated enum PitLetterTapResult: Equatable, Sendable {
     case incorrect
 }
 
-/// Pure pit puzzle session rules (word pick, letter bag, timer, hop progression).
+/// Pure pit puzzle session rules (word pick, letter bag, hop progression).
 nonisolated struct PitMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        var timerSeconds: Double
         var numPaddingLetters: Int
         var words: [GateWord]
 
         init(from puzzle: PitPuzzleConfig) {
-            timerSeconds = puzzle.timerSeconds
             numPaddingLetters = puzzle.numPaddingLetters
             words = puzzle.words
         }
 
         init(
-            timerSeconds: Double,
             numPaddingLetters: Int = 6,
             words: [GateWord]
         ) {
-            self.timerSeconds = timerSeconds
             self.numPaddingLetters = max(0, numPaddingLetters)
             self.words = words.map {
                 GateWord(
@@ -56,8 +46,6 @@ nonisolated struct PitMinigameEngine {
 
     let config: Config
     private(set) var isActive = false
-    private(set) var elapsed: Double = 0
-    private(set) var remainingTime: Double
     private(set) var targetWord: String = ""
     private(set) var targetEntry: GateWord = .fallbackEntry(word: "star")
     private(set) var letters: [LetterToken] = []
@@ -68,7 +56,6 @@ nonisolated struct PitMinigameEngine {
     private(set) var outcome: PitOutcome?
     private(set) var isFrozen = false
 
-    private var lastDisplayedSecond: Int
     private var rng: any RandomNumberGenerator
 
     private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
@@ -84,21 +71,16 @@ nonisolated struct PitMinigameEngine {
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
-        self.remainingTime = config.timerSeconds
-        self.lastDisplayedSecond = Int(ceil(config.timerSeconds))
         self.rng = rng
     }
 
     mutating func begin() {
         isActive = true
         isFrozen = false
-        elapsed = 0
-        remainingTime = config.timerSeconds
         outcome = nil
         nextLetterIndex = 0
         spentLetterIDs = []
         wordLetterIDs = []
-        lastDisplayedSecond = Int(ceil(config.timerSeconds))
         let picked = pickTargetEntry()
         targetEntry = picked
         targetWord = picked.word
@@ -110,39 +92,12 @@ nonisolated struct PitMinigameEngine {
         isFrozen = true
     }
 
-    var hasLost: Bool { remainingTime <= 0 }
-
     func isSpent(_ id: UUID) -> Bool {
         spentLetterIDs.contains(id)
     }
 
     func letter(id: UUID) -> LetterToken? {
         letters.first { $0.id == id }
-    }
-
-    /// Advance simulation by `dt`. Returns events for the scene/HUD to react to.
-    mutating func tick(dt: Double) -> [PitEngineEvent] {
-        guard isActive, !isFrozen, outcome == nil else { return [] }
-
-        var events: [PitEngineEvent] = []
-        elapsed += dt
-        remainingTime = max(0, config.timerSeconds - elapsed)
-
-        let displayedSecond = max(0, Int(ceil(remainingTime - 1e-9)))
-        if displayedSecond < lastDisplayedSecond {
-            if displayedSecond <= 5, lastDisplayedSecond > 0 {
-                events.append(.timerTick)
-            }
-            lastDisplayedSecond = displayedSecond
-        }
-
-        if hasLost {
-            isFrozen = true
-            outcome = .lost
-            events.append(.lost)
-        }
-
-        return events
     }
 
     /// Evaluate a letter tap after the scene has confirmed neighbor range.

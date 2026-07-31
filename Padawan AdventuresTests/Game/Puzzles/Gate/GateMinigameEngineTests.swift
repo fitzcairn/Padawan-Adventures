@@ -8,14 +8,12 @@ struct GateMinigameEngineTests {
     }
 
     private func makeEngine(
-        timer: Double = 30,
         numPaddingLetters: Int = 6,
         words: [String] = ["cat", "dog"],
         seed: UInt64 = 42
     ) -> GateMinigameEngine {
         var engine = GateMinigameEngine(
             config: .init(
-                timerSeconds: timer,
                 numPaddingLetters: numPaddingLetters,
                 words: self.words(words)
             ),
@@ -27,7 +25,7 @@ struct GateMinigameEngineTests {
 
     @Test func constructsInactive() {
         let engine = GateMinigameEngine(
-            config: .init(timerSeconds: 30, words: words(["cat"]))
+            config: .init(words: words(["cat"]))
         )
         #expect(!engine.isActive)
         #expect(engine.letters.isEmpty)
@@ -120,40 +118,13 @@ struct GateMinigameEngineTests {
         )
     }
 
-    @Test func timerExpiryDoesNotEndSessionAndEmitsUrgentTicks() {
-        var engine = makeEngine(timer: 3, words: ["cat"], seed: 1)
-        var ticks = 0
-        for _ in 0..<3 {
-            let events = engine.tick(dt: 1.0)
-            ticks += events.filter { $0 == .timerTick }.count
-        }
-        #expect(ticks >= 1)
-        #expect(engine.outcome == nil)
-        #expect(!engine.isFrozen)
-        #expect(engine.remainingTime == 0)
-        #expect(!engine.tick(dt: 0.5).contains(.lost))
-    }
-
     @Test func evaluateIgnoredAfterFrozen() {
-        var engine = makeEngine(timer: 30, words: ["cat"], seed: 1)
+        var engine = makeEngine(words: ["cat"], seed: 1)
         let won = engine.evaluateStaging(orderedLetters: ["c", "a", "t"])
         #expect(won)
         #expect(engine.outcome == .won(starsAwarded: 3))
         let wonAgain = engine.evaluateStaging(orderedLetters: ["c", "a", "t"])
         #expect(!wonAgain)
-    }
-
-    @Test func tickOnlyEmitsTimerEvents() {
-        var engine = makeEngine(timer: 30, words: ["cat"], seed: 1)
-        let events = engine.tick(dt: 15.0)
-        #expect(events.allSatisfy { event in
-            switch event {
-            case .timerTick:
-                true
-            case .lost, .won:
-                false
-            }
-        })
     }
 }
 

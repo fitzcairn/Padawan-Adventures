@@ -46,8 +46,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var color: String
     var tilesPerSecond: Double
     var forgetSeconds: Double
-    /// Combat countdown duration in seconds.
-    var combatTimerSeconds: Double
+    /// Reference fight length in seconds used to pace shot spawns.
+    var shotPacingSeconds: Double
     /// Time for a shot to travel from enemy to player.
     var shotTravelSeconds: Double
     /// Combat stars required to win the encounter.
@@ -64,7 +64,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         case color
         case tilesPerSecond = "tiles_per_second"
         case forgetSeconds = "forget_seconds"
-        case combatTimerSeconds = "combat_timer_seconds"
+        case shotPacingSeconds = "shot_pacing_seconds"
         case shotTravelSeconds = "shot_travel_seconds"
         case starsToWin = "stars_to_win"
         case shotTypes = "shot_types"
@@ -77,7 +77,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         color: String,
         tilesPerSecond: Double,
         forgetSeconds: Double,
-        combatTimerSeconds: Double = 10,
+        shotPacingSeconds: Double = 10,
         shotTravelSeconds: Double = 3.2,
         starsToWin: Int = 10,
         shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.fallbackShotTypes,
@@ -88,7 +88,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         self.color = color
         self.tilesPerSecond = tilesPerSecond
         self.forgetSeconds = forgetSeconds
-        self.combatTimerSeconds = combatTimerSeconds
+        self.shotPacingSeconds = shotPacingSeconds
         self.shotTravelSeconds = shotTravelSeconds
         self.starsToWin = starsToWin
         self.shotTypes = shotTypes
@@ -102,7 +102,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         color = try container.decode(String.self, forKey: .color)
         tilesPerSecond = try container.decode(Double.self, forKey: .tilesPerSecond)
         forgetSeconds = try container.decode(Double.self, forKey: .forgetSeconds)
-        combatTimerSeconds = try container.decodeIfPresent(Double.self, forKey: .combatTimerSeconds) ?? 10
+        shotPacingSeconds = try container.decodeIfPresent(Double.self, forKey: .shotPacingSeconds) ?? 10
         shotTravelSeconds = try container.decodeIfPresent(Double.self, forKey: .shotTravelSeconds) ?? 3.2
         starsToWin = try container.decodeIfPresent(Int.self, forKey: .starsToWin) ?? 10
         shotTypes = try container.decodeIfPresent([String: EnemyShotTypeConfig].self, forKey: .shotTypes)
@@ -136,8 +136,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         guard forgetSeconds >= 0 else {
             throw EnemyConfigError.invalid("\(typeID).forget_seconds must be >= 0")
         }
-        guard combatTimerSeconds > 0 else {
-            throw EnemyConfigError.invalid("\(typeID).combat_timer_seconds must be > 0")
+        guard shotPacingSeconds > 0 else {
+            throw EnemyConfigError.invalid("\(typeID).shot_pacing_seconds must be > 0")
         }
         guard shotTravelSeconds > 0 else {
             throw EnemyConfigError.invalid("\(typeID).shot_travel_seconds must be > 0")
@@ -190,7 +190,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 color: "#FF0000",
                 tilesPerSecond: 1.0,
                 forgetSeconds: 3.0,
-                combatTimerSeconds: 10,
+                shotPacingSeconds: 10,
                 shotTravelSeconds: 3.2,
                 starsToWin: 10,
                 shotTypes: EnemyTypeConfig.fallbackShotTypes,
@@ -369,7 +369,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
     var color: String
     var tilesPerSecond: Double
     var forgetSeconds: Double
-    var combatTimerSeconds: Double?
+    var shotPacingSeconds: Double?
     var shotTravelSeconds: Double?
     var starsToWin: Int?
     var shotTypes: [String: EnemyShotTypeConfig]?
@@ -381,7 +381,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
         case color
         case tilesPerSecond = "tiles_per_second"
         case forgetSeconds = "forget_seconds"
-        case combatTimerSeconds = "combat_timer_seconds"
+        case shotPacingSeconds = "shot_pacing_seconds"
         case shotTravelSeconds = "shot_travel_seconds"
         case starsToWin = "stars_to_win"
         case shotTypes = "shot_types"
@@ -395,7 +395,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
             color: color,
             tilesPerSecond: tilesPerSecond,
             forgetSeconds: forgetSeconds,
-            combatTimerSeconds: combatTimerSeconds ?? 10,
+            shotPacingSeconds: shotPacingSeconds ?? 10,
             shotTravelSeconds: shotTravelSeconds ?? 3.2,
             starsToWin: starsToWin ?? 10,
             shotTypes: shotTypes ?? EnemyTypeConfig.fallbackShotTypes,

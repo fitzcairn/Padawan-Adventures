@@ -25,8 +25,7 @@ struct GateMinigameView: View {
             wrappedValue: GateSessionController(
                 puzzleConfig: puzzleConfig,
                 playerFx: playerFx,
-                hudConfig: hudConfig,
-                initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
+                hudConfig: hudConfig
             )
         )
     }
@@ -44,9 +43,7 @@ struct GateMinigameView: View {
                 GateHUDRepresentable(
                     config: hudConfig,
                     word: session.targetWord,
-                    connectedCount: session.connectedCount,
-                    timerSeconds: session.timerSeconds,
-                    timerUrgent: session.timerUrgent
+                    connectedCount: session.connectedCount
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -55,12 +52,6 @@ struct GateMinigameView: View {
                 if session.showUnlocked {
                     GateResultOverlay(kind: .unlocked(starsAwarded: session.starsAwarded)) {
                         session.confirmUnlocked(onFinished: onFinished)
-                    }
-                }
-
-                if session.showTimesUp {
-                    GateResultOverlay(kind: .timesUp) {
-                        session.confirmTimesUp(onFinished: onFinished)
                     }
                 }
             }
@@ -77,10 +68,7 @@ struct GateMinigameView: View {
 
 @MainActor
 final class GateSessionController: ObservableObject, GateSceneDelegate {
-    @Published var timerSeconds: Int
-    @Published var timerUrgent = false
     @Published var showUnlocked = false
-    @Published var showTimesUp = false
     @Published private(set) var starsAwarded = 0
     @Published private(set) var targetWord = ""
     @Published private(set) var connectedCount = 0
@@ -94,13 +82,11 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     init(
         puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
-        hudConfig: HudConfig,
-        initialTimerSeconds: Int
+        hudConfig: HudConfig
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
         self.hudConfig = hudConfig
-        self.timerSeconds = initialTimerSeconds
     }
 
     func ensureScene(size: CGSize) {
@@ -137,20 +123,6 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         onFinished(.won(starsAwarded: starsAwarded))
     }
 
-    func confirmTimesUp(onFinished: (GateOutcome) -> Void) {
-        guard !didFinish else { return }
-        didFinish = true
-        onFinished(.lost)
-    }
-
-    func gateSceneDidUpdateTimer(seconds: Int, urgent: Bool) {
-        guard seconds != timerSeconds || urgent != timerUrgent else { return }
-        Task { @MainActor in
-            self.timerSeconds = seconds
-            self.timerUrgent = urgent
-        }
-    }
-
     func gateSceneDidSelectWord(_ word: String) {
         Task { @MainActor in
             self.targetWord = word
@@ -168,12 +140,6 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         Task { @MainActor in
             self.starsAwarded = starsAwarded
             self.showUnlocked = true
-        }
-    }
-
-    func gateSceneDidLose() {
-        Task { @MainActor in
-            self.showTimesUp = true
         }
     }
 }
@@ -200,8 +166,6 @@ private struct GateHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
     let word: String
     let connectedCount: Int
-    let timerSeconds: Int
-    let timerUrgent: Bool
 
     final class Coordinator {
         var hud: GateHUDView?
@@ -218,7 +182,6 @@ private struct GateHUDRepresentable: UIViewRepresentable {
 
         let hud = GateHUDView(
             config: config,
-            timerSeconds: timerSeconds,
             word: word,
             connectedCount: connectedCount
         )
@@ -236,6 +199,5 @@ private struct GateHUDRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.hud?.setWord(word, connectedCount: connectedCount)
-        context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
 }

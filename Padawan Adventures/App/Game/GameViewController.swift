@@ -381,8 +381,19 @@ final class GameViewController: LandscapeHostingController {
 
     @MainActor
     private func presentGate(at coord: GridCoord, approach: GridCoord) {
-        let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .spelling
         let gateConfig = session.selectedGateConfig
+
+        // Probabilistic free-open: skip the puzzle and open the gate with SFX.
+        guard Double.random(in: 0..<1) < gateConfig.minigameChance else {
+            guard let scene = gameScene else { return }
+            Task {
+                await self.session.recordStat { $0.gatesOpened += 1 }
+            }
+            scene.resolveGateEncounter(at: coord)
+            return
+        }
+
+        let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .spelling
         let chosen = gateConfig.minigame(for: kind) ?? gateConfig.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()

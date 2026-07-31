@@ -38,7 +38,6 @@ nonisolated struct GateWord: Equatable, Sendable {
 /// Per-entry gate spelling-puzzle config (was `GatePuzzleConfig`).
 /// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
 nonisolated struct GateSpellingConfig: Equatable, Sendable {
-    var timerSeconds: Double
     /// In-puzzle FX (optional `win` override for shared `sound.yaml`).
     var fx: SoundEffectTable
     /// Extra random letters beyond the chosen word (total sprites = word length + this).
@@ -51,21 +50,18 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
     var music: String?
 
     nonisolated static let fallback = GateSpellingConfig(
-        timerSeconds: 30,
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words,
         music: "gate"
     )
 
     nonisolated init(
-        timerSeconds: Double,
         fx: SoundEffectTable = SoundEffectTable(),
         numPaddingLetters: Int = 6,
         wordIDs: [String]? = nil,
         words: [GateWord],
         music: String? = nil
     ) {
-        self.timerSeconds = timerSeconds
         self.fx = fx
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
@@ -78,9 +74,6 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard timerSeconds > 0 else {
-            throw WorldSeedError.invalidGateTimer(timerSeconds)
-        }
         guard numPaddingLetters >= 0 else {
             throw WorldSeedError.invalidGatePaddingLetters(numPaddingLetters)
         }
@@ -125,7 +118,6 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
 /// Per-level pit spelling-hop settings from `pit:` in level YAML.
 /// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `pit.words: [id, …]`.
 nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
-    var timerSeconds: Double
     /// Puzzle FX (`win` / `lose` override shared `sound.yaml` when present).
     var fx: SoundEffectTable
     /// Extra random letters beyond the chosen word (total sprites = word length + this).
@@ -136,14 +128,12 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     var words: [GateWord]
 
     enum CodingKeys: String, CodingKey {
-        case timerSeconds = "timer_seconds"
         case fx
         case numPaddingLetters = "num_padding_letters"
         case words
     }
 
     nonisolated static let fallback = PitPuzzleConfig(
-        timerSeconds: 30,
         fx: SoundEffectTable(events: [
             "lose": "pit-falling",
             "jump": "pit-jump",
@@ -153,7 +143,6 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     )
 
     nonisolated init(
-        timerSeconds: Double,
         fx: SoundEffectTable = SoundEffectTable(events: [
             "lose": "pit-falling",
             "jump": "pit-jump",
@@ -162,7 +151,6 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
         wordIDs: [String]? = nil,
         words: [GateWord]
     ) {
-        self.timerSeconds = timerSeconds
         self.fx = fx
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
@@ -171,8 +159,6 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        timerSeconds = try container.decodeIfPresent(Double.self, forKey: .timerSeconds)
-            ?? Self.fallback.timerSeconds
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? Self.fallback.fx
         numPaddingLetters = try container.decodeIfPresent(Int.self, forKey: .numPaddingLetters)
             ?? Self.fallback.numPaddingLetters
@@ -197,9 +183,6 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     }
 
     func validate() throws {
-        guard timerSeconds > 0 else {
-            throw WorldSeedError.invalidPitTimer(timerSeconds)
-        }
         guard numPaddingLetters >= 0 else {
             throw WorldSeedError.invalidPitWords
         }
@@ -235,7 +218,6 @@ nonisolated struct GateLetter: Equatable, Sendable {
 /// Per-entry gate letter-matching config.
 /// Letter FX lives in shared `Resources/Config/Catalogs/letters.yaml`; levels may optionally subset via `letters: [id, …]`.
 nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
-    var timerSeconds: Double
     /// Seconds after an incorrect tap before replaying the target pronunciation.
     var incorrectReplayDelaySeconds: Double
     /// Inclusive lower bound for letters chosen per round (clamped to the letter pool).
@@ -252,7 +234,6 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     var music: String?
 
     nonisolated static let fallback = GateLetterMatchConfig(
-        timerSeconds: 30,
         incorrectReplayDelaySeconds: 1,
         letterCountMin: 4,
         letterCountMax: 8,
@@ -261,7 +242,6 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     )
 
     nonisolated init(
-        timerSeconds: Double,
         incorrectReplayDelaySeconds: Double = 1,
         letterCountMin: Int = 4,
         letterCountMax: Int = 8,
@@ -270,7 +250,6 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
         letters: [GateLetter],
         music: String? = nil
     ) {
-        self.timerSeconds = timerSeconds
         self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
         self.letterCountMin = letterCountMin
         self.letterCountMax = letterCountMax
@@ -285,9 +264,6 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard timerSeconds > 0 else {
-            throw WorldSeedError.invalidGateLetterMatchTimer(timerSeconds)
-        }
         guard incorrectReplayDelaySeconds > 0 else {
             throw WorldSeedError.invalidGateLetterMatchIncorrectReplayDelay(incorrectReplayDelaySeconds)
         }
@@ -356,6 +332,8 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
 nonisolated struct GateConfig: Equatable, Sendable {
     /// Must include `"opened"` — the world-level gate-open SFX.
     var fx: SoundEffectTable
+    /// Probability of presenting a minigame on gate contact (`0...1`). Miss → free-open.
+    var minigameChance: Double
     var minigames: [GateMinigameConfig]
 
     nonisolated static let fallback = GateConfig(
@@ -363,17 +341,26 @@ nonisolated struct GateConfig: Equatable, Sendable {
         minigames: [
             .spelling(.fallback),
             .letterMatch(.fallback),
-        ]
+        ],
+        minigameChance: 0.6
     )
 
-    nonisolated init(fx: SoundEffectTable, minigames: [GateMinigameConfig]) {
+    nonisolated init(
+        fx: SoundEffectTable,
+        minigames: [GateMinigameConfig],
+        minigameChance: Double = 0.6
+    ) {
         self.fx = fx
+        self.minigameChance = minigameChance
         self.minigames = minigames
     }
 
     func validate() throws {
         guard fx.trackID(for: "opened") != nil else {
             throw WorldSeedError.invalidGateWords
+        }
+        guard minigameChance >= 0, minigameChance <= 1 else {
+            throw WorldSeedError.invalidGateMinigameChance(minigameChance)
         }
         guard !minigames.isEmpty else {
             throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
@@ -1220,6 +1207,7 @@ extension GateConfig {
         }
         let dto = try container.decode(GateConfigDTO.self, forKey: .gate)
         fx = dto.fx ?? SoundEffectTable(events: ["opened": "gate-open"])
+        minigameChance = dto.minigameChance ?? 0.6
         guard let entries = dto.minigames, !entries.isEmpty else {
             throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
         }
@@ -1227,7 +1215,6 @@ extension GateConfig {
             switch entry.type {
             case "spelling":
                 return .spelling(GateSpellingConfig(
-                    timerSeconds: entry.timerSeconds ?? GateSpellingConfig.fallback.timerSeconds,
                     fx: entry.fx ?? SoundEffectTable(),
                     numPaddingLetters: entry.numPaddingLetters
                         ?? GateSpellingConfig.fallback.numPaddingLetters,
@@ -1237,8 +1224,6 @@ extension GateConfig {
                 ))
             case "letter_match":
                 return .letterMatch(GateLetterMatchConfig(
-                    timerSeconds: entry.timerSeconds
-                        ?? GateLetterMatchConfig.fallback.timerSeconds,
                     incorrectReplayDelaySeconds: entry.incorrectReplayDelaySeconds
                         ?? GateLetterMatchConfig.fallback.incorrectReplayDelaySeconds,
                     letterCountMin: entry.letterCountMin
@@ -1261,12 +1246,18 @@ extension GateConfig {
 
 private nonisolated struct GateConfigDTO: Decodable {
     var fx: SoundEffectTable?
+    var minigameChance: Double?
     var minigames: [GateMinigameDTO]?
+
+    enum CodingKeys: String, CodingKey {
+        case fx
+        case minigameChance = "minigame_chance"
+        case minigames
+    }
 }
 
 private nonisolated struct GateMinigameDTO: Decodable {
     var type: String
-    var timerSeconds: Double?
     var fx: SoundEffectTable?
     var music: String?
     var numPaddingLetters: Int?
@@ -1278,7 +1269,6 @@ private nonisolated struct GateMinigameDTO: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case type
-        case timerSeconds = "timer_seconds"
         case fx
         case music
         case numPaddingLetters = "num_padding_letters"

@@ -44,8 +44,7 @@ struct PitMinigameView: View {
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig,
-                initialTimerSeconds: Int(ceil(puzzleConfig.timerSeconds))
+                playerSpriteConfig: playerSpriteConfig
             )
         )
     }
@@ -63,9 +62,7 @@ struct PitMinigameView: View {
                 PitHUDRepresentable(
                     config: hudConfig,
                     word: session.targetWord,
-                    solvedCount: session.solvedCount,
-                    timerSeconds: session.timerSeconds,
-                    timerUrgent: session.timerUrgent
+                    solvedCount: session.solvedCount
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -76,12 +73,6 @@ struct PitMinigameView: View {
                         kind: .escaped(word: session.targetWord, starsAwarded: session.starsAwarded)
                     ) {
                         session.confirmEscaped(onFinished: onFinished)
-                    }
-                }
-
-                if session.showFalling {
-                    PitResultOverlay(kind: .falling) {
-                        session.confirmFalling(onFinished: onFinished)
                     }
                 }
             }
@@ -98,10 +89,7 @@ struct PitMinigameView: View {
 
 @MainActor
 final class PitSessionController: ObservableObject, PitSceneDelegate {
-    @Published var timerSeconds: Int
-    @Published var timerUrgent = false
     @Published var showEscaped = false
-    @Published var showFalling = false
     @Published private(set) var starsAwarded = 0
     @Published private(set) var targetWord = ""
     @Published private(set) var solvedCount = 0
@@ -125,8 +113,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
-        playerSpriteConfig: SpriteConfig?,
-        initialTimerSeconds: Int
+        playerSpriteConfig: SpriteConfig?
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
@@ -135,7 +122,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
-        self.timerSeconds = initialTimerSeconds
     }
 
     func ensureScene(size: CGSize) {
@@ -200,20 +186,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         onFinished(.won(starsAwarded: starsAwarded))
     }
 
-    func confirmFalling(onFinished: (PitOutcome) -> Void) {
-        guard !didFinish else { return }
-        didFinish = true
-        onFinished(.lost)
-    }
-
-    func pitSceneDidUpdateTimer(seconds: Int, urgent: Bool) {
-        guard seconds != timerSeconds || urgent != timerUrgent else { return }
-        Task { @MainActor in
-            self.timerSeconds = seconds
-            self.timerUrgent = urgent
-        }
-    }
-
     func pitSceneDidSelectWord(_ word: String) {
         Task { @MainActor in
             self.targetWord = word
@@ -232,12 +204,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
             self.targetWord = word
             self.starsAwarded = starsAwarded
             self.showEscaped = true
-        }
-    }
-
-    func pitSceneDidLose() {
-        Task { @MainActor in
-            self.showFalling = true
         }
     }
 }
@@ -264,8 +230,6 @@ private struct PitHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
     let word: String
     let solvedCount: Int
-    let timerSeconds: Int
-    let timerUrgent: Bool
 
     final class Coordinator {
         var hud: PitHUDView?
@@ -282,7 +246,6 @@ private struct PitHUDRepresentable: UIViewRepresentable {
 
         let hud = PitHUDView(
             config: config,
-            timerSeconds: timerSeconds,
             word: word,
             solvedCount: solvedCount
         )
@@ -300,6 +263,5 @@ private struct PitHUDRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.hud?.setWord(word, solvedCount: solvedCount)
-        context.coordinator.hud?.setTimer(seconds: timerSeconds, urgent: timerUrgent)
     }
 }

@@ -215,8 +215,8 @@ struct ConfigAuditTests {
             wordCatalog: words,
             letterCatalog: letters
         )
-        // timer-tick exists under Audio/FX only — must not satisfy a music cue.
-        level.music = "timer-tick"
+        // pit-jump exists under Audio/FX only — must not satisfy a music cue.
+        level.music = "pit-jump"
         #expect(throws: ConfigAuditError.self) {
             try ConfigAudit.run(
                 app: app,

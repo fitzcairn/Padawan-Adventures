@@ -14,7 +14,6 @@ struct GateLetterMatchMinigameEngineTests {
     }
 
     private func makeEngine(
-        timer: Double = 30,
         letterCountMin: Int = 2,
         letterCountMax: Int = 4,
         pool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h"],
@@ -22,7 +21,6 @@ struct GateLetterMatchMinigameEngineTests {
     ) -> GateLetterMatchMinigameEngine {
         var engine = GateLetterMatchMinigameEngine(
             config: .init(
-                timerSeconds: timer,
                 letterCountMin: letterCountMin,
                 letterCountMax: letterCountMax,
                 letters: letters(pool)
@@ -35,7 +33,7 @@ struct GateLetterMatchMinigameEngineTests {
 
     @Test func constructsInactive() {
         let engine = GateLetterMatchMinigameEngine(
-            config: .init(timerSeconds: 30, letters: letters(["a"]))
+            config: .init(letters: letters(["a"]))
         )
         #expect(!engine.isActive)
         #expect(engine.letters.isEmpty)
@@ -150,45 +148,10 @@ struct GateLetterMatchMinigameEngineTests {
         #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.isEmpty)
         #expect(engine.currentTargetID == target.id)
-
-        let later = engine.tick(dt: 5.0)
-        #expect(!later.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
-    }
-
-    @Test func tickNeverAutoReplaysTargetPronunciation() {
-        var engine = makeEngine(
-            letterCountMin: 1,
-            letterCountMax: 1,
-            pool: ["a"],
-            seed: 1
-        )
-        let events = engine.tick(dt: 30)
-        #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
-    }
-
-    @Test func timerExpiryDoesNotEndSessionAndEmitsUrgentTicks() {
-        var engine = makeEngine(
-            timer: 3,
-            letterCountMin: 1,
-            letterCountMax: 1,
-            pool: ["a"],
-            seed: 1
-        )
-        var ticks = 0
-        for _ in 0..<3 {
-            let events = engine.tick(dt: 1.0)
-            ticks += events.filter { $0 == GateLetterMatchEngineEvent.timerTick }.count
-        }
-        #expect(ticks >= 1)
-        #expect(engine.outcome == nil)
-        #expect(!engine.isFrozen)
-        #expect(engine.remainingTime == 0)
-        #expect(!engine.tick(dt: 0.5).contains(.lost))
     }
 
     @Test func tapIgnoredAfterFrozen() {
         var engine = makeEngine(
-            timer: 30,
             letterCountMin: 1,
             letterCountMax: 1,
             pool: ["a"],
