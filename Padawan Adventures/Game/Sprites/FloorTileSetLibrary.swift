@@ -74,7 +74,7 @@ final class FloorTileSetLibrary {
             textures = nextTextures
             onProgress?(1)
         } catch {
-            print("FloorTileSetLibrary: failed to load set '\(name)' — \(error)")
+            GameLogger.error(.sprites, "FloorTileSetLibrary: failed to load set '\(name)' — \(error)")
             tileSet = nil
             setName = nil
             textures = [:]

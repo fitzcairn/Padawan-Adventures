@@ -491,6 +491,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var pickups: PickupsSpawnConfig?
     var pit: PitPuzzleConfig
     var gate: GateConfig
+    /// Combat minigame variants + weights for this level.
+    var combat: CombatConfig
     /// Per-level baked floor tile set (`Levels/{set}/{set}-floor-*`).
     var floor: Floor
     /// Per-level baked letter glyph set (`Levels/{set}/{set}-letters-*`).
@@ -562,6 +564,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case pickups
         case pit
         case gate
+        case combat
         case floor
         case letters
     }
@@ -630,6 +633,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         ),
         pit: .fallback,
         gate: .fallback,
+        combat: .fallback,
         floor: fallbackFloor,
         letters: fallbackLetters
     )
@@ -665,6 +669,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pickups: PickupsSpawnConfig? = nil,
         pit: PitPuzzleConfig = .fallback,
         gate: GateConfig = .fallback,
+        combat: CombatConfig = .fallback,
         floor: Floor = LevelConfig.fallbackFloor,
         letters: Letters = LevelConfig.fallbackLetters
     ) {
@@ -689,6 +694,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.pickups = pickups
         self.pit = pit
         self.gate = gate
+        self.combat = combat
         self.floor = floor
         self.letters = letters
     }
@@ -734,6 +740,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         pit = try container.decodeIfPresent(PitPuzzleConfig.self, forKey: .pit) ?? .fallback
         gate = try GateConfig(from: decoder, container: container)
+        combat = try CombatConfig(from: decoder, container: container)
         // Absent blocks decode with an empty set, which applyDerivedAssets fills from
         // the level folder. Using fallbackFloor/fallbackLetters here would hand the
         // level another level's art without saying so.
@@ -795,6 +802,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
         try pit.validate()
         try gate.validate()
+        try combat.validate()
     }
 
     private static func validatePickupChance(_ chance: Double?, kind: PickupKind) throws {
@@ -1057,6 +1065,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             let letters = try letterCatalog ?? Self.loadLetterCatalog()
             try level.pit.resolveWords(from: words)
             try level.gate.resolveMinigames(wordCatalog: words, letterCatalog: letters)
+            try level.combat.resolveLetters(from: letters)
             try level.validate()
             return level
         } catch let error as ConfigError {
@@ -1276,6 +1285,65 @@ private nonisolated struct GateMinigameDTO: Decodable {
         case incorrectReplayDelaySeconds = "incorrect_replay_delay_seconds"
         case letterCountMin = "letter_count_min"
         case letterCountMax = "letter_count_max"
+        case letters
+    }
+}
+
+// MARK: - CombatConfig Decodable (private DTO)
+
+extension CombatConfig {
+    /// Decodes the `combat:` keyed block or falls back to slash-only.
+    nonisolated init(
+        from decoder: Decoder,
+        container: KeyedDecodingContainer<LevelConfig.CodingKeys>
+    ) throws {
+        guard container.contains(.combat) else {
+            self = .fallback
+            return
+        }
+        let dto = try container.decode(CombatConfigDTO.self, forKey: .combat)
+        guard let entries = dto.minigames, !entries.isEmpty else {
+            throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
+        }
+        minigames = try entries.map { entry in
+            switch entry.type {
+            case CombatMinigameKind.slash.rawValue:
+                return .slash(CombatSlashConfig(weight: entry.weight ?? 1))
+            case CombatMinigameKind.deflect.rawValue:
+                return .deflect(CombatDeflectConfig(
+                    weight: entry.weight ?? 1,
+                    monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
+                    orbTravelSeconds: entry.orbTravelSeconds
+                        ?? CombatDeflectConfig.defaultOrbTravelSeconds,
+                    letterIDs: entry.letters?.map { $0.lowercased() },
+                    // Filled by `resolveLetters(from:)` after decode.
+                    letters: []
+                ))
+            default:
+                throw WorldSeedError.decodeFailed(
+                    "Unknown combat minigame type: '\(entry.type)'"
+                )
+            }
+        }
+    }
+}
+
+private nonisolated struct CombatConfigDTO: Decodable {
+    var minigames: [CombatMinigameDTO]?
+}
+
+private nonisolated struct CombatMinigameDTO: Decodable {
+    var type: String
+    var weight: Double?
+    var monsterHP: Int?
+    var orbTravelSeconds: Double?
+    var letters: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case weight
+        case monsterHP = "monster_hp"
+        case orbTravelSeconds = "orb_travel_seconds"
         case letters
     }
 }

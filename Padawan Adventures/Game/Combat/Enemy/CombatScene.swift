@@ -176,12 +176,6 @@ final class CombatScene: SKScene {
         CGPoint(x: size.width * 0.5, y: 0)
     }
 
-
-    /// Body aim point (feet + half height). AnimatedSpriteNode extends upward from feet.
-    private func bodyCenter(of node: AnimatedSpriteNode, height: CGFloat) -> CGPoint {
-        CGPoint(x: node.position.x, y: node.position.y + height * 0.5)
-    }
-
     private func buildArena() {
         playerNode?.removeFromParent()
         enemyNode?.removeFromParent()
@@ -225,28 +219,9 @@ final class CombatScene: SKScene {
         placeEnemyAtTopOfView()
     }
 
-    /// Pins the sprite's top-most middle opaque pixel to the view's top-middle.
     private func placeEnemyAtTopOfView() {
         guard let enemyNode else { return }
-        enemyNode.fitHeight(enemySpriteHeight)
-        // Measure from a known position, then shift so content top == scene top.
-        enemyNode.position = CGPoint(x: size.width * 0.5, y: 0)
-        let frame = enemyNode.calculateAccumulatedFrame()
-        let topPadding = topOpaqueInsetPoints(for: enemyNode)
-        // Quad top → scene top, then nudge up by transparent padding above content.
-        let dy = size.height - frame.maxY + topPadding
-        enemyNode.position = CGPoint(x: size.width * 0.5, y: dy)
-    }
-
-    /// Transparent padding above the opaque content, in scene points.
-    private func topOpaqueInsetPoints(for node: AnimatedSpriteNode) -> CGFloat {
-        guard let texture = node.texture else { return 0 }
-        let image = texture.cgImage()
-        let imageHeight = CGFloat(image.height)
-        guard imageHeight > 0 else { return 0 }
-        guard let bounds = SpriteSheetLoader.opaqueContentBounds(of: image) else { return 0 }
-        let visualHeight = node.size.height * abs(node.yScale)
-        return CGFloat(bounds.minY) / imageHeight * visualHeight
+        pinToTopOfView(enemyNode, height: enemySpriteHeight)
     }
 
     private func repositionArenaNodes() {
@@ -423,13 +398,6 @@ final class CombatScene: SKScene {
         }
     }
 
-    private func quadraticBezier(t: CGFloat, start: CGPoint, control: CGPoint, end: CGPoint) -> CGPoint {
-        let u = 1 - t
-        let x = u * u * start.x + 2 * u * t * control.x + t * t * end.x
-        let y = u * u * start.y + 2 * u * t * control.y + t * t * end.y
-        return CGPoint(x: x, y: y)
-    }
-
     private func checkImpacts() {
         guard playerNode != nil else { return }
         let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
@@ -497,23 +465,13 @@ final class CombatScene: SKScene {
 
     /// Temporary colorize pulse on the player sprite.
     private func flashPlayer(color: UIColor, hold: TimeInterval = 0.08, gap: TimeInterval = 0.05) {
-        guard let playerNode else { return }
-        playerNode.removeAction(forKey: playerFlashActionKey)
-
-        let paint = SKAction.run { [weak playerNode] in
-            playerNode?.color = color
-            playerNode?.colorBlendFactor = 0.7
-        }
-        let clear = SKAction.run { [weak playerNode] in
-            playerNode?.colorBlendFactor = 0
-        }
-        let pulse = SKAction.sequence([
-            paint,
-            SKAction.wait(forDuration: hold),
-            clear,
-            SKAction.wait(forDuration: gap),
-        ])
-        playerNode.run(SKAction.sequence([pulse, pulse]), withKey: playerFlashActionKey)
+        flashNode(
+            playerNode,
+            color: color,
+            hold: hold,
+            gap: gap,
+            actionKey: playerFlashActionKey
+        )
     }
 
     private func playExplosion(at position: CGPoint) {

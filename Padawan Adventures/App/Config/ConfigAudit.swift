@@ -328,6 +328,15 @@ nonisolated enum ConfigAudit {
                 }
             }
         }
+        for (idx, minigame) in level.combat.minigames.enumerated() {
+            if case .deflect(let c) = minigame, let ids = c.letterIDs {
+                for id in ids where letters.letter(named: id) == nil {
+                    problems.append(
+                        "\(label).combat.minigames[\(idx)].letters: unknown letter id '\(id)'"
+                    )
+                }
+            }
+        }
         return problems
     }
 

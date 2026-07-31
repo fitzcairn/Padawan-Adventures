@@ -1085,6 +1085,259 @@ struct LevelConfigTests {
         #expect(tython.artifact == "leaf.fill")
     }
 
+    // MARK: - combat:
+
+    /// Minimal level body the combat tests append a `combat:` block to.
+    private static let combatLevelPrefix = """
+    name: Level 1
+    width: 20
+    height: 20
+    algorithm: rooms_doors
+    room_count: 4
+    corridor_width: 2
+    room:
+      min_room_size: 4
+      max_room_size: 8
+      pit_chance: 0
+      partition_gate_chance: 0
+
+    """
+
+    @Test func defaultsToSlashOnlyWhenCombatBlockOmitted() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix)
+        #expect(level.combat == CombatConfig.fallback)
+        #expect(level.combat.minigames.map(\.kind) == [.slash])
+    }
+
+    @Test func decodesCombatMinigamesFromYAML() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: slash
+              weight: 0.0
+            - type: deflect
+              weight: 1.0
+              monster_hp: 4
+              orb_travel_seconds: 2.5
+              letters: [C, a, b]
+        """)
+
+        #expect(level.combat.minigames.map(\.kind) == [.slash, .deflect])
+        guard case .slash(let slash) = level.combat.minigames[0] else {
+            Issue.record("expected a slash entry first")
+            return
+        }
+        #expect(slash.weight == 0)
+
+        guard case .deflect(let deflect) = level.combat.minigames[1] else {
+            Issue.record("expected a deflect entry second")
+            return
+        }
+        #expect(deflect.weight == 1)
+        #expect(deflect.monsterHP == 4)
+        #expect(deflect.orbTravelSeconds == 2.5)
+        #expect(deflect.letterIDs == ["c", "a", "b"])
+        // Ring order is positional (left to right), so YAML order must survive decode.
+        #expect(deflect.letters.map(\.letter) == ["c", "a", "b"])
+        #expect(deflect.letters.map(\.name) == [
+            "sfx_letter_c_name",
+            "sfx_letter_a_name",
+            "sfx_letter_b_name",
+        ])
+    }
+
+    @Test func deflectFallsBackToDefaultHPTravelAndLetters() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: deflect
+        """)
+        guard case .deflect(let deflect) = level.combat.minigames.first else {
+            Issue.record("expected a deflect entry")
+            return
+        }
+        #expect(deflect.weight == 1)
+        #expect(deflect.monsterHP == CombatDeflectConfig.defaultMonsterHP)
+        #expect(deflect.orbTravelSeconds == CombatDeflectConfig.defaultOrbTravelSeconds)
+        #expect(deflect.letters.count == CombatDeflectConfig.ringCount)
+    }
+
+    @Test func inheritsCombatBlockFromBase() throws {
+        let base = Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: deflect
+              weight: 1.0
+              monster_hp: 7
+              letters: [a, b, c]
+        """
+        let level = try LevelConfig.decode(
+            from: "inherits: base_level\nname: Level 2",
+            parents: ["base_level": base]
+        )
+        guard case .deflect(let deflect) = level.combat.minigames.first else {
+            Issue.record("expected an inherited deflect entry")
+            return
+        }
+        #expect(deflect.monsterHP == 7)
+        #expect(deflect.letters.map(\.letter) == ["a", "b", "c"])
+    }
+
+    @Test func pickMinigameNeverChoosesAZeroWeightEntry() {
+        let config = CombatConfig(minigames: [
+            .slash(CombatSlashConfig(weight: 0)),
+            .deflect(CombatDeflectConfig(weight: 1)),
+        ])
+        var rng = CombatSeededGenerator(seed: 5)
+        for _ in 0..<200 {
+            #expect(config.pickMinigame(using: &rng).kind == .deflect)
+        }
+    }
+
+    @Test func pickMinigameEventuallyChoosesBothWhenBothAreWeighted() {
+        let config = CombatConfig(minigames: [
+            .slash(CombatSlashConfig(weight: 1)),
+            .deflect(CombatDeflectConfig(weight: 1)),
+        ])
+        var rng = CombatSeededGenerator(seed: 11)
+        var seen = Set<CombatMinigameKind>()
+        for _ in 0..<200 {
+            seen.insert(config.pickMinigame(using: &rng).kind)
+        }
+        #expect(seen == Set(CombatMinigameKind.allCases))
+    }
+
+    @Test func pickMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() {
+        let config = CombatConfig(minigames: [
+            .slash(CombatSlashConfig(weight: 0)),
+            .deflect(CombatDeflectConfig(weight: 0)),
+        ])
+        var rng = CombatSeededGenerator(seed: 3)
+        #expect(config.pickMinigame(using: &rng).kind == .slash)
+    }
+
+    @Test func rejectsUnknownCombatMinigameType() {
+        #expect {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: parry
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed = error else { return false }
+            return true
+        }
+    }
+
+    @Test func rejectsEmptyCombatMinigames() {
+        #expect {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames: []
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed = error else { return false }
+            return true
+        }
+    }
+
+    @Test func rejectsNegativeCombatMinigameWeight() {
+        #expect(throws: WorldSeedError.invalidCombatMinigameWeight(-1)) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  weight: -1.0
+            """)
+        }
+    }
+
+    @Test func rejectsDuplicateCombatMinigameTypes() {
+        #expect {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                - type: deflect
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed = error else { return false }
+            return true
+        }
+    }
+
+    @Test func rejectsNonPositiveCombatMonsterHP() {
+        #expect(throws: WorldSeedError.invalidCombatMonsterHP(0)) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  monster_hp: 0
+            """)
+        }
+    }
+
+    @Test func rejectsNonPositiveCombatOrbTravelSeconds() {
+        #expect(throws: WorldSeedError.invalidCombatOrbTravelSeconds(0)) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  orb_travel_seconds: 0
+            """)
+        }
+    }
+
+    @Test func rejectsUnknownCombatDeflectLetterID() {
+        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  letters: [a, b, not_a_letter]
+            """)
+        }
+    }
+
+    @Test func rejectsCombatDeflectLetterCountOtherThanThree() {
+        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  letters: [a, b]
+            """)
+        }
+    }
+
+    @Test func rejectsDuplicateCombatDeflectLetters() {
+        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  letters: [a, a, b]
+            """)
+        }
+    }
+
+    @Test func bundleDefaultsProvideDeflectCombatConfig() throws {
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        guard case .deflect(let deflect) = tython.combat.minigame(for: .deflect) else {
+            Issue.record("expected the bundled defaults to define a deflect minigame")
+            return
+        }
+        #expect(deflect.monsterHP >= 1)
+        #expect(deflect.orbTravelSeconds > 0)
+        #expect(deflect.letters.count == CombatDeflectConfig.ringCount)
+    }
+
     @Test func decodesTopLevelLetterSoundRepeatSeconds() throws {
         let yaml = """
         name: Level 1

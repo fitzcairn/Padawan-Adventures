@@ -21,6 +21,8 @@ final class AppSession {
     private(set) var selectedPitConfig: PitPuzzleConfig
     /// Gate config (host FX + minigames list) for the selected level.
     private(set) var selectedGateConfig: GateConfig
+    /// Combat minigame variants + weights for the selected level.
+    private(set) var selectedCombatConfig: CombatConfig
     /// Shared letter-name prompt replay interval for combat / wall / related games.
     private(set) var selectedLetterSoundRepeatSeconds: Double
     /// Combat letter spawn frequency multiplier for the selected level.
@@ -70,6 +72,7 @@ final class AppSession {
         selectedGameMusic: GameMusicConfig? = nil,
         selectedPitConfig: PitPuzzleConfig? = nil,
         selectedGateConfig: GateConfig? = nil,
+        selectedCombatConfig: CombatConfig? = nil,
         selectedLetterSoundRepeatSeconds: Double? = nil,
         selectedCombatLetterSpawnRate: Double? = nil,
         selectedCombatLetterCase: CombatLetterCase? = nil,
@@ -100,6 +103,7 @@ final class AppSession {
         self.selectedGameMusic = selectedGameMusic ?? selectedLevel.gameMusic
         self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
+        self.selectedCombatConfig = selectedCombatConfig ?? selectedLevel.combat
         self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
             ?? selectedLevel.letterSoundRepeatSeconds
         self.selectedCombatLetterSpawnRate = selectedCombatLetterSpawnRate
@@ -269,8 +273,9 @@ final class AppSession {
             }
             if !spriteLibrary.isLoaded(id: entry.key) {
                 let missing = spriteLibrary.missingAnimations(id: entry.key, config: entry.value)
-                print(
-                    "AppSession: enemy sprite '\(entry.key)' incomplete after retry — missing \(missing.joined(separator: ", "))"
+                GameLogger.error(
+                    .sprites,
+                    "enemy sprite '\(entry.key)' incomplete after retry — missing \(missing.joined(separator: ", "))"
                 )
                 allReady = false
             }
@@ -354,6 +359,7 @@ final class AppSession {
             await Task.yield()
         }
 
+        GameLogger.mark(.session, "loadResources begin")
         let spriteLibrary = spriteLibrary ?? SpriteLibrary()
 
         // Ensure title art is present when callers (tests) skip the LoadingView phase.
@@ -393,6 +399,10 @@ final class AppSession {
         }
         let appConfig = appAndLevel.0
         let selectedLevel = appAndLevel.1
+        GameLogger.mark(
+            .config,
+            "bootstrap level '\(selectedLevel.name)' loaded (combat: \(selectedLevel.combat.minigames.map(\.kind.rawValue).joined(separator: "/")))"
+        )
         await report(0.06)
 
         let playerConfig = ConfigStore.loadOrFallback("player", fallback: PlayerConfig.fallback) {
@@ -567,6 +577,7 @@ final class AppSession {
             }
         } catch {
             levelsForAudit = [selectedLevel]
+            GameLogger.fault(.config, "failed to load levels during bootstrap: \(error)")
             assertionFailure("Failed to load levels during bootstrap: \(error)")
         }
 
@@ -630,8 +641,10 @@ final class AppSession {
                 player: playerConfig
             )
         } catch {
+            GameLogger.fault(.config, "ConfigAudit failed: \(error)")
             assertionFailure("ConfigAudit failed: \(error)")
         }
+        GameLogger.mark(.session, "loadResources complete")
 
         return AppSession(
             appConfig: appConfig,
@@ -654,16 +667,26 @@ final class AppSession {
     }
 
     func selectLevel(resourceName: String) throws {
-        let loaded = try WorldLoader.loadConfigAndLevelFromBundle(
-            levelNamed: resourceName,
-            levelSubdirectory: LevelCatalog.subdirectory
-        )
-        try loaded.config.validate()
-        appConfig = loaded.config
-        applySelectedLevel(loaded.level, resourceName: resourceName)
+        try GameLogger.step(.session, "selectLevel(\(resourceName))") {
+            let loaded = try WorldLoader.loadConfigAndLevelFromBundle(
+                levelNamed: resourceName,
+                levelSubdirectory: LevelCatalog.subdirectory
+            )
+            try loaded.config.validate()
+            appConfig = loaded.config
+            applySelectedLevel(loaded.level, resourceName: resourceName)
+        }
     }
 
     private func applySelectedLevel(_ level: LevelConfig, resourceName: String?) {
+        GameLogger.mark(
+            .session,
+            """
+            applySelectedLevel '\(level.name)' \
+            (combat: \(level.combat.minigames.map(\.kind.rawValue).joined(separator: "/")), \
+            gate: \(level.gate.minigames.count) minigames)
+            """
+        )
         selectedLevel = level
         selectedLevelName = level.name
         selectedLevelResourceName = resourceName
@@ -672,26 +695,38 @@ final class AppSession {
         selectedGameMusic = level.gameMusic
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
+        selectedCombatConfig = level.combat
         selectedLetterSoundRepeatSeconds = level.letterSoundRepeatSeconds
         selectedCombatLetterSpawnRate = level.combatLetterSpawnRate
         selectedCombatLetterCase = level.combatLetterCase
     }
 
     func bindPlayer(name: String) async throws {
-        let trimmed = PlayerStateStore.normalizedName(name)
-        let state = try await playerStore.loadState(for: trimmed)
-        let playerSaveService = try await playerStore.makeSaveService(for: trimmed)
+        // Player names are user data and deliberately kept out of the log.
+        try await GameLogger.step(.session, "bindPlayer") {
+            let trimmed = PlayerStateStore.normalizedName(name)
+            let state = try await playerStore.loadState(for: trimmed)
+            let playerSaveService = try await playerStore.makeSaveService(for: trimmed)
 
-        currentPlayerName = trimmed
-        playerState = state
-        saveService = playerSaveService
-        audioPreferences.apply(state.settings)
+            currentPlayerName = trimmed
+            playerState = state
+            saveService = playerSaveService
+            audioPreferences.apply(state.settings)
 
-        if let lastLevel = state.lastLevelStarted {
-            try? selectLevel(resourceName: lastLevel)
+            if let lastLevel = state.lastLevelStarted {
+                GameLogger.mark(.session, "restoring last level '\(lastLevel)'")
+                do {
+                    try selectLevel(resourceName: lastLevel)
+                } catch {
+                    GameLogger.error(
+                        .session,
+                        "could not restore '\(lastLevel)': \(error); keeping bootstrap level"
+                    )
+                }
+            }
+
+            await refreshContinueEligibility()
         }
-
-        await refreshContinueEligibility()
     }
 
     /// Copies the live Settings values into the bound player's persisted state.
@@ -744,16 +779,25 @@ final class AppSession {
 
     /// Starts a fresh game: empty inventory, zero stars, default vitals, no mid-run save.
     func beginNewGame() async {
-        guard var state = playerState else { return }
-        state.resetForNewGame(
-            health: playerConfig.startingHealth,
-            energy: playerConfig.startingEnergy
-        )
-        playerState = state
-        pendingLevelSelectCelebration = nil
-        await persistPlayerState()
-        try? await saveService.delete()
-        await refreshContinueEligibility()
+        await GameLogger.step(.session, "beginNewGame") {
+            guard var state = playerState else {
+                GameLogger.error(.session, "beginNewGame with no bound player; ignoring")
+                return
+            }
+            state.resetForNewGame(
+                health: playerConfig.startingHealth,
+                energy: playerConfig.startingEnergy
+            )
+            playerState = state
+            pendingLevelSelectCelebration = nil
+            await persistPlayerState()
+            do {
+                try await saveService.delete()
+            } catch {
+                GameLogger.error(.session, "could not delete mid-run save: \(error)")
+            }
+            await refreshContinueEligibility()
+        }
     }
 
     func markLevelStarted(resourceName: String) async {

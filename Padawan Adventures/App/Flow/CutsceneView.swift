@@ -52,10 +52,17 @@ struct CutsceneView: View {
         .onTapGesture { finish(fadeAudio: true) }
         .playScreenMusic("cutscene")
         .task {
+            GameLogger.mark(
+                .flow,
+                "cutscene appeared (video=\(session.cutsceneVideo.player != nil))"
+            )
             session.cutsceneVideo.restart()
-            await loadCharacters()
+            await GameLogger.step(.flow, "cutscene.loadCharacters") {
+                await loadCharacters()
+            }
         }
         .onDisappear {
+            GameLogger.mark(.flow, "cutscene disappeared")
             // Skip owns teardown via fadeOutAndStop; don't hard-cut mid-fade.
             if !session.cutsceneVideo.isFadingOut {
                 session.cutsceneVideo.stop()
@@ -67,6 +74,7 @@ struct CutsceneView: View {
         // The skip tap and the end-of-movie cue can race; only the first wins.
         guard !didFinish else { return }
         didFinish = true
+        GameLogger.mark(.flow, "cutscene finish (fadeAudio: \(fadeAudio))")
         // Navigate immediately so the view crossfade starts with the audio fade.
         router.showLevelSelect()
         if fadeAudio {
@@ -118,6 +126,19 @@ private struct CutsceneVideoLayerView: UIViewRepresentable {
 
     final class PlayerLayerView: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
-        var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+
+        /// `layerClass` guarantees the type; log before trapping so a broken
+        /// invariant is identifiable from the console rather than a bare cast.
+        var playerLayer: AVPlayerLayer {
+            guard let playerLayer = layer as? AVPlayerLayer else {
+                GameLogger.fault(
+                    .flow,
+                    "cutscene layer is \(type(of: layer)), expected AVPlayerLayer"
+                )
+                GameLogger.dumpBreadcrumbs()
+                preconditionFailure("Cutscene layer is not an AVPlayerLayer")
+            }
+            return playerLayer
+        }
     }
 }

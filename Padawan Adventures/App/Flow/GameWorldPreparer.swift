@@ -17,8 +17,17 @@ enum GameWorldPreparer {
             onProgress?(min(1, max(0, value)))
         }
 
+        GameLogger.mark(
+            .world,
+            "prepareLaunch mode=\(mode) level='\(session.selectedLevelName)'"
+        )
+
         if mode == .continueSave, let lastLevel = session.playerState?.lastLevelStarted {
-            try? session.selectLevel(resourceName: lastLevel)
+            do {
+                try session.selectLevel(resourceName: lastLevel)
+            } catch {
+                GameLogger.error(.world, "continue: could not select '\(lastLevel)': \(error)")
+            }
         }
 
         if let resourceName = session.selectedLevelResourceName {
@@ -44,7 +53,7 @@ enum GameWorldPreparer {
             report(LoadProgress.map(local, from: 0.26, to: 0.40))
         }
         guard enemiesReady else {
-            print("GameWorldPreparer: aborting launch — enemy sprites incomplete")
+            GameLogger.fault(.world, "aborting launch — enemy sprites incomplete")
             session.releaseLevelScopedSprites()
             session.startObservingMemoryPressure()
             return nil
@@ -64,6 +73,7 @@ enum GameWorldPreparer {
             report(LoadProgress.map(local, from: 0.48, to: assetsEnd))
         }
 
+        GameLogger.mark(.world, "level assets warmed; uploading textures")
         let textures =
             session.spriteLibrary.allTextures()
             + session.floorTileSetLibrary.allTextures()
@@ -77,8 +87,10 @@ enum GameWorldPreparer {
         }
         report(assetsEnd)
 
-        return await loadWorld(session: session, mode: mode) { local in
-            report(LoadProgress.map(local, from: assetsEnd, to: 1))
+        return await GameLogger.step(.world, "loadWorld(\(mode))") {
+            await loadWorld(session: session, mode: mode) { local in
+                report(LoadProgress.map(local, from: assetsEnd, to: 1))
+            }
         }
     }
 

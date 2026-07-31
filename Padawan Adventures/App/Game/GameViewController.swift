@@ -202,6 +202,35 @@ final class GameViewController: LandscapeHostingController {
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
         let outcomeBox = CombatOutcomeBox()
 
+        let context = CombatPresentationContext(
+            enemyType: enemyType,
+            healthCount: healthCount,
+            playerFx: playerFx,
+            hudConfig: hudConfig,
+            letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+            letterSpawnRate: letterSpawnRate,
+            letterCase: letterCase,
+            slashMaxSeconds: slashMaxSeconds,
+            slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
+            spriteLibrary: session.spriteLibrary,
+            letterSpriteSetLibrary: session.letterSpriteSetLibrary,
+            combatSprite: combatSprite,
+            enemySprite: enemySprite,
+            wallHeight: isoConfig.wallHeight,
+            isoSquash: isoConfig.tileHeight / max(isoConfig.tileWidth, 1)
+        )
+        // Each encounter rolls its own arena from the level's weighted list.
+        var minigameRNG = SystemRandomNumberGenerator()
+        let chosenMinigame = session.selectedCombatConfig.pickMinigame(using: &minigameRNG)
+        GameLogger.mark(
+            .combat,
+            """
+            presenting \(chosenMinigame.kind.rawValue) vs '\(enemyType.sprite)' \
+            (hearts: \(healthCount), \
+            weights: \(session.selectedCombatConfig.minigames.map { "\($0.kind.rawValue)=\($0.weight)" }.joined(separator: " ")))
+            """
+        )
+
         // Notice stingers can still be playing when contact starts combat — duck them out.
         SoundEffectsController.shared.fadeOutAndStop(
             trackID: enemyType.fx.trackID(for: "notice")
@@ -213,21 +242,9 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: {
                 self.makeOverlayHost { finish in
-                    EnemyMinigameView(
-                        enemyType: enemyType,
-                        healthCount: healthCount,
-                        playerFx: playerFx,
-                        hudConfig: hudConfig,
-                        letterSoundRepeatSeconds: letterSoundRepeatSeconds,
-                        letterSpawnRate: letterSpawnRate,
-                        letterCase: letterCase,
-                        slashMaxSeconds: slashMaxSeconds,
-                        slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
-                        spriteLibrary: self.session.spriteLibrary,
-                        letterSpriteSetLibrary: self.session.letterSpriteSetLibrary,
-                        combatSprite: combatSprite,
-                        enemySprite: enemySprite,
-                        wallHeight: self.isoConfig.wallHeight,
+                    CombatMinigameFactory.makeView(
+                        config: chosenMinigame,
+                        context: context,
                         onFinished: { outcome in
                             outcomeBox.outcome = outcome
                             finish()

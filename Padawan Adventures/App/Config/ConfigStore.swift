@@ -19,6 +19,9 @@ nonisolated enum ConfigStore {
         do {
             return try load()
         } catch {
+            // Logged as well as trapped: release builds silently take the
+            // fallback, and that substitution is invisible without this.
+            GameLogger.fault(.config, "config '\(label)' failed to load: \(error)")
             assertionFailure("config \(label) failed to load: \(error)")
             return fallback
         }

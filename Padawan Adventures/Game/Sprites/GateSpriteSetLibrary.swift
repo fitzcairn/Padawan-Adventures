@@ -73,7 +73,7 @@ final class GateSpriteSetLibrary {
             textures = nextTextures
             onProgress?(1)
         } catch {
-            print("GateSpriteSetLibrary: failed to load set '\(name)' — \(error)")
+            GameLogger.error(.sprites, "GateSpriteSetLibrary: failed to load set '\(name)' — \(error)")
             gateSet = nil
             setName = nil
             textures = [:]

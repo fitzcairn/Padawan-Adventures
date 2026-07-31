@@ -26,32 +26,42 @@ final class FlowRouter {
     }
 
     func showPlayerSelect() {
-        root = .playerSelect
-        path = []
+        setRoot(.playerSelect)
     }
 
     func showPlayerSelfie() {
-        root = .playerSelfie
-        path = []
+        setRoot(.playerSelfie)
     }
 
     func showMenu() {
-        root = .menu
-        path = []
+        setRoot(.menu)
     }
 
     func navigate(to route: FlowRoute) {
+        GameLogger.mark(.flow, "navigate to \(route) (from \(describeStack()))")
         path.append(route)
     }
 
     /// Replaces the cutscene with the planet map so Back cannot return to it.
     func showLevelSelect() {
+        GameLogger.mark(.flow, "showLevelSelect (from \(describeStack()))")
         path = [.levelSelect]
     }
 
     func pop() {
         guard !path.isEmpty else { return }
+        GameLogger.mark(.flow, "pop \(path[path.count - 1]) (from \(describeStack()))")
         path.removeLast()
+    }
+
+    private func setRoot(_ newRoot: FlowRoot) {
+        GameLogger.mark(.flow, "root \(root) -> \(newRoot) (clearing \(describeStack()))")
+        root = newRoot
+        path = []
+    }
+
+    private func describeStack() -> String {
+        "\(root)+[\(path.map(String.init(describing:)).joined(separator: ", "))]"
     }
 
     /// Post-game stack: menu root with level select pushed.

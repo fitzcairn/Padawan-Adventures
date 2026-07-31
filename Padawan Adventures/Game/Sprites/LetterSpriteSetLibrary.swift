@@ -74,7 +74,7 @@ final class LetterSpriteSetLibrary {
             textures = nextTextures
             onProgress?(1)
         } catch {
-            print("LetterSpriteSetLibrary: failed to load set '\(name)' — \(error)")
+            GameLogger.error(.sprites, "LetterSpriteSetLibrary: failed to load set '\(name)' — \(error)")
             letterSet = nil
             setName = nil
             textures = [:]

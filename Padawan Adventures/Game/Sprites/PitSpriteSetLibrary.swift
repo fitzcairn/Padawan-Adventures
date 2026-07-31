@@ -77,7 +77,7 @@ final class PitSpriteSetLibrary {
             textures = nextTextures
             onProgress?(1)
         } catch {
-            print("PitSpriteSetLibrary: failed to load set '\(name)' — \(error)")
+            GameLogger.error(.sprites, "PitSpriteSetLibrary: failed to load set '\(name)' — \(error)")
             pitSet = nil
             setName = nil
             textures = [:]

@@ -83,21 +83,26 @@ struct LoadingView: View {
             await Task.yield()
 
             // Phase 1 — fade each title asset in as soon as it decodes.
-            await loadLoadingSprites()
+            await GameLogger.step(.lifecycle, "bootstrap.titleArt") {
+                await loadLoadingSprites()
+            }
             progress = Self.artProgressEnd
             await Task.yield()
 
             // Phase 2 — configs + every other screen / gameplay asset.
             let artEnd = Self.artProgressEnd
-            let loaded = await AppSession.loadResources(
-                spriteLibrary: spriteLibrary,
-                onProgress: { value in
-                    progress = artEnd + (1 - artEnd) * value
-                }
-            )
+            let loaded = await GameLogger.step(.lifecycle, "bootstrap.loadResources") {
+                await AppSession.loadResources(
+                    spriteLibrary: spriteLibrary,
+                    onProgress: { value in
+                        progress = artEnd + (1 - artEnd) * value
+                    }
+                )
+            }
             progress = 1
             session = loaded
             isReady = true
+            GameLogger.mark(.lifecycle, "bootstrap complete; loading screen ready")
         }
     }
 

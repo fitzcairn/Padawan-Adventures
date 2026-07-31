@@ -86,7 +86,7 @@ final class SpriteLibrary {
                 )
             } catch {
                 // Missing assets are skipped; incomplete ids stay unloaded for retry.
-                print("SpriteLibrary: failed to load \(entry.name) for \(id) — \(error)")
+                GameLogger.error(.sprites, "failed to load \(entry.name) for \(id) — \(error)")
             }
             onProgress?(Double(index + 1) / Double(total))
             await Task.yield()
@@ -97,8 +97,9 @@ final class SpriteLibrary {
         let expected = Set(config.animations.keys)
         let missing = expected.subtracting(loaded.keys)
         guard missing.isEmpty else {
-            print(
-                "SpriteLibrary: incomplete load for \(id) — missing \(missing.sorted().joined(separator: ", "))"
+            GameLogger.error(
+                .sprites,
+                "incomplete load for \(id) — missing \(missing.sorted().joined(separator: ", "))"
             )
             onProgress?(1)
             return

@@ -22,6 +22,20 @@ combat_letter_spawn_rate: 0.7
 # Combat projectile / cue letter casing: lower | upper | both.
 combat_letter_case: lower
 
+# Combat minigames (one is picked per encounter, weighted). weight 0 = never.
+# `slash` is the swipe arena (knobs live in enemies.yaml + combat_letter_* above).
+# `deflect`: tap the ring whose letter matches the incoming orb. Letters map
+# left -> right onto the red / yellow / blue rings and must resolve in letters.yaml.
+combat:
+  minigames:
+    - type: slash
+      weight: 0.0
+    - type: deflect
+      weight: 1.0
+      monster_hp: 5
+      orb_travel_seconds: 3.0
+      letters: [a, b, c]
+
 width: 20
 height: 20
 

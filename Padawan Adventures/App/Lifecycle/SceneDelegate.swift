@@ -16,7 +16,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
-        guard let windowScene = scene as? UIWindowScene else { return }
+        guard let windowScene = scene as? UIWindowScene else {
+            GameLogger.fault(.lifecycle, "scene is not a UIWindowScene; no window created")
+            return
+        }
+        GameLogger.mark(.lifecycle, "scene willConnect")
 
         let window = UIWindow(windowScene: windowScene)
         // Match app chrome so the system launch surface never flashes white.

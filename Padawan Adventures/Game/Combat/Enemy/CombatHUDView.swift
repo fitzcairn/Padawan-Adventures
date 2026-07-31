@@ -1,10 +1,12 @@
 import UIKit
 
 /// Combat-only HUD: health (top-leading), net-progress bar (bottom-leading).
+/// The deflect arena opts out of the progress bar — it draws monster HP in-scene instead.
 final class CombatHUDView: UIView {
     private let config: HudConfig
     private let heartsStack: UIStackView
     private let heartImage: UIImage?
+    private let showsProgressBar: Bool
     private let progressTrack = UIView()
     private let progressFill = UIView()
     private var progressFillWidth: NSLayoutConstraint?
@@ -15,11 +17,18 @@ final class CombatHUDView: UIView {
     private static let progressBarHeight: CGFloat = 17.5
     private static let progressBarWidthFraction: CGFloat = 0.0625
 
-    init(config: HudConfig, healthCount: Int, progress: Int = 0, progressGoal: Int = 1) {
+    init(
+        config: HudConfig,
+        healthCount: Int,
+        progress: Int = 0,
+        progressGoal: Int = 1,
+        showsProgressBar: Bool = true
+    ) {
         self.config = config
         self.heartsStack = Self.makeIconStack(spacing: config.iconSpacing)
         self.heartImage = HudVitalIcon.health.makeUIImage(pointSize: CGFloat(config.iconSize))
         self.progressGoal = max(progressGoal, 1)
+        self.showsProgressBar = showsProgressBar
         super.init(frame: .zero)
         setup(healthCount: healthCount, progress: progress)
     }
@@ -45,6 +54,7 @@ final class CombatHUDView: UIView {
     }
 
     func setProgress(current: Int, goal: Int) {
+        guard showsProgressBar else { return }
         progressGoal = max(goal, 1)
         let target = Self.clampedFraction(current: current, goal: progressGoal)
         guard abs(target - displayedProgress) > 0.000_1 else { return }
@@ -74,6 +84,18 @@ final class CombatHUDView: UIView {
             addIcon(image: heartImage, to: heartsStack)
         }
 
+        addSubview(heartsStack)
+        let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
+        let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
+        edgeInsets.addTop(heartsTop)
+        edgeInsets.addLeading(heartsLeading)
+        NSLayoutConstraint.activate([heartsTop, heartsLeading])
+
+        guard showsProgressBar else {
+            edgeInsets.update()
+            return
+        }
+
         progressTrack.backgroundColor = UIColor.white.withAlphaComponent(0.22)
         progressTrack.layer.cornerRadius = Self.progressBarHeight * 0.5
         progressTrack.clipsToBounds = true
@@ -88,23 +110,15 @@ final class CombatHUDView: UIView {
         let fillWidth = progressFill.widthAnchor.constraint(equalToConstant: 0)
         progressFillWidth = fillWidth
 
-        addSubview(heartsStack)
         addSubview(progressTrack)
 
-        let heartsTop = heartsStack.topAnchor.constraint(equalTo: topAnchor)
-        let heartsLeading = heartsStack.leadingAnchor.constraint(equalTo: leadingAnchor)
         let progressBottom = progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor)
         let progressLeading = progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor)
 
-        edgeInsets.addTop(heartsTop)
-        edgeInsets.addLeading(heartsLeading)
         edgeInsets.addBottom(progressBottom)
         edgeInsets.addLeading(progressLeading)
 
         NSLayoutConstraint.activate([
-            heartsTop,
-            heartsLeading,
-
             progressBottom,
             progressLeading,
             progressTrack.widthAnchor.constraint(
@@ -122,6 +136,7 @@ final class CombatHUDView: UIView {
     }
 
     private func applyProgressFill(animated: Bool) {
+        guard showsProgressBar else { return }
         let trackWidth = progressTrack.bounds.width
         guard trackWidth > 0 else { return }
         let targetWidth = trackWidth * displayedProgress
@@ -147,7 +162,8 @@ final class CombatHUDView: UIView {
     }
 
     /// Red → orange → yellow → green as the bar fills.
-    private static func color(forProgress progress: CGFloat) -> UIColor {
+    /// Shared with the deflect arena's in-scene monster HP bar.
+    static func color(forProgress progress: CGFloat) -> UIColor {
         let stops: [(CGFloat, UIColor)] = [
             (0, UIColor(red: 0.90, green: 0.18, blue: 0.16, alpha: 1)),
             (1 / 3, UIColor(red: 1.00, green: 0.55, blue: 0.10, alpha: 1)),

@@ -11,7 +11,10 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        true
+        // Earliest possible point, so every later breadcrumb is covered.
+        GameLogger.installCrashHandlers()
+        GameLogger.mark(.lifecycle, "didFinishLaunching")
+        return true
     }
 
     func application(
