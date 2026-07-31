@@ -241,12 +241,15 @@ enum GameLogger {
 
     private static let handlersInstalled = OSAllocatedUnfairLock<Bool>(initialState: false)
 
-    /// Installs best-effort handlers that surface the breadcrumb trail when the
-    /// process is about to die. Call once, as early as possible.
+    /// Installs an uncaught-exception handler that dumps the breadcrumb trail.
+    /// Call once, as early as possible.
     ///
-    /// Swift runtime traps raise `SIGTRAP`/`SIGILL` and, under a debugger, LLDB
-    /// takes them first — so these handlers mostly matter for untethered runs.
-    /// The console trail (above) is what pinpoints a trap while debugging.
+    /// Deliberately does *not* install POSIX signal handlers. Trapping `SIGTRAP`
+    /// fights the debugger, which uses it for breakpoints and for Swift runtime
+    /// traps, and trapping `SIGSEGV`/`SIGBUS` displaces the system crash
+    /// reporter. Re-raising after `SIG_DFL` also turns recoverable debugger
+    /// stops into process termination. The console trail is what pinpoints a
+    /// trap anyway, so the handlers bought nothing and cost stability.
     static func installCrashHandlers() {
         let alreadyInstalled = handlersInstalled.withLock { installed -> Bool in
             defer { installed = true }
@@ -266,21 +269,7 @@ enum GameLogger {
             GameLogger.dumpBreadcrumbs()
         }
 
-        for signalNumber in [SIGABRT, SIGILL, SIGTRAP, SIGSEGV, SIGBUS, SIGFPE] {
-            signal(signalNumber, { received in
-                // Signal context: only async-signal-safe calls are legal here,
-                // so this writes a fixed marker and hands back to the default
-                // handler. The trail itself is already in the console.
-                let marker = "\n*** GameLogger: fatal signal — see breadcrumbs above ***\n"
-                _ = marker.withCString { pointer in
-                    write(STDERR_FILENO, pointer, strlen(pointer))
-                }
-                signal(received, SIG_DFL)
-                raise(received)
-            })
-        }
-
-        mark(.lifecycle, "crash handlers installed")
+        mark(.lifecycle, "exception handler installed")
     }
 
     // MARK: - Internals

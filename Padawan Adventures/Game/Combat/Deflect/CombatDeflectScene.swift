@@ -149,6 +149,9 @@ final class CombatDeflectScene: SKScene {
         guard didSetup, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
+        // SpriteKit can resize the scene while `buildArena` is still running,
+        // before the nodes exist; the build finishes with the current size.
+        guard let playerNode else { return }
         // Keep the fight running; only re-layout. A live orb keeps its baked path.
         playerNode.fitHeight(playerSpriteHeight)
         playerNode.position = playerPosition
