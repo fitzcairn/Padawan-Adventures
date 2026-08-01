@@ -202,9 +202,28 @@ final class PitScene: SKScene {
         while layoutScale > 0.15, !tryBuildPuzzleLayout() {
             layoutScale *= 0.85
         }
-        if letterNodes.isEmpty {
-            _ = tryBuildPuzzleLayout()
+        if !letterNodes.isEmpty {
+            return
         }
+        if tryBuildPuzzleLayout() {
+            return
+        }
+        GameLogger.fault(
+            .world,
+            "pit.buildPuzzle exhausted layout attempts (word=\(engine.targetWord), size=\(Int(size.width))×\(Int(size.height)))"
+        )
+        installDegeneratePitLayout()
+    }
+
+    /// Minimal pads + player when letter placement cannot succeed at this scene size.
+    private func installDegeneratePitLayout() {
+        removeAllChildren()
+        letterNodes = [:]
+        platformNodes = [:]
+        computeLayoutFrames()
+        addPad(rect: leftPadRect, name: "leftPad")
+        addPad(rect: rightPadRect, name: "rightPad")
+        addPlayer(at: CGPoint(x: leftPadRect.midX, y: leftPadRect.midY))
     }
 
     /// Clears the scene and places pads + letter platforms. Returns false if any
@@ -760,7 +779,7 @@ final class PitScene: SKScene {
     // MARK: - Touch / jump
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !isJumping, let touch = touches.first else { return }
+        guard !didEnd, !isJumping, let touch = touches.first, let playerNode else { return }
         let location = touch.location(in: self)
         guard let node = letterNode(at: location),
               let idString = node.userData?["id"] as? String,
@@ -869,5 +888,24 @@ final class PitScene: SKScene {
             clear: { self.clearPlatformTint(platform) }
         )
         platform.run(flash, completion: completion)
+    }
+
+    // MARK: - Test seams
+
+    func touchesBeganForTesting(at location: CGPoint) {
+        touchesBegan(Set([SceneTestTouch(location: location)]), with: nil)
+    }
+}
+
+private final class SceneTestTouch: UITouch {
+    private let location: CGPoint
+
+    init(location: CGPoint) {
+        self.location = location
+        super.init()
+    }
+
+    override func location(in view: UIView?) -> CGPoint {
+        location
     }
 }
