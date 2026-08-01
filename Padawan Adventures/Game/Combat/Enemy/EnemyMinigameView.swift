@@ -145,6 +145,31 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let wallHeight: CGFloat
     private var starsAwarded = 0
     private var didFinish = false
+    private lazy var sceneHost = MinigameSceneHost<CombatScene>(
+        make: { [enemyType, playerFx, startingHealth, letterSoundRepeatSeconds, letterSpawnRate, letterCase, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in
+            CombatScene(
+                size: size,
+                enemyType: enemyType,
+                playerFx: playerFx,
+                startingHealth: startingHealth,
+                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                letterSpawnRate: letterSpawnRate,
+                letterCase: letterCase,
+                slashMaxSeconds: slashMaxSeconds,
+                slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
+                spriteLibrary: spriteLibrary,
+                letterSpriteSetLibrary: letterSpriteSetLibrary,
+                combatSprite: combatSprite,
+                enemySprite: enemySprite,
+                wallHeight: wallHeight
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.combatDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         enemyType: EnemyTypeConfig,
@@ -178,42 +203,11 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     }
 
     func ensureScene(size: CGSize) {
-        guard scene == nil else {
-            updateSceneSizeIfNeeded(size)
-            return
-        }
-        let safeSize = Self.sanitizedSize(size)
-        let created = CombatScene(
-            size: safeSize,
-            enemyType: enemyType,
-            playerFx: playerFx,
-            startingHealth: startingHealth,
-            letterSoundRepeatSeconds: letterSoundRepeatSeconds,
-            letterSpawnRate: letterSpawnRate,
-            letterCase: letterCase,
-            slashMaxSeconds: slashMaxSeconds,
-            slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
-            spriteLibrary: spriteLibrary,
-            letterSpriteSetLibrary: letterSpriteSetLibrary,
-            combatSprite: combatSprite,
-            enemySprite: enemySprite,
-            wallHeight: wallHeight
-        )
-        created.combatDelegate = self
-        scene = created
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        guard let scene else { return }
-        let safeSize = Self.sanitizedSize(size)
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmVictory(onFinished: (MinigameOutcome) -> Void) {
