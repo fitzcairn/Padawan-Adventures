@@ -128,57 +128,10 @@ extension GateLetterMatchScene {
             root.addChild(square)
         }
 
-        let letter = makeOutlinedLetter(text: token.letter, fontSize: side * 0.378)
+        let letter = OutlinedLetterFactory.make(text: token.letter, fontSize: side * 0.378)
         letter.zPosition = 1
         letter.isUserInteractionEnabled = false
         root.addChild(letter)
-
-        return root
-    }
-
-    /// White letter with black outline and a thin inner shadow for readability on the switch.
-    func makeOutlinedLetter(text: String, fontSize: CGFloat) -> SKNode {
-        let root = SKNode()
-        let outlineOffset = max(1.0, fontSize * 0.06)
-        let shadowOffset = max(0.75, fontSize * 0.035)
-
-        for dx in -1...1 {
-            for dy in -1...1 {
-                guard dx != 0 || dy != 0 else { continue }
-                let outline = SKLabelNode(text: text)
-                outline.fontName = AppFont.name
-                outline.fontSize = fontSize
-                outline.fontColor = .black
-                outline.verticalAlignmentMode = .center
-                outline.horizontalAlignmentMode = .center
-                outline.position = CGPoint(
-                    x: CGFloat(dx) * outlineOffset,
-                    y: CGFloat(dy) * outlineOffset
-                )
-                outline.zPosition = 0
-                root.addChild(outline)
-            }
-        }
-
-        let innerShadow = SKLabelNode(text: text)
-        innerShadow.fontName = AppFont.name
-        innerShadow.fontSize = fontSize
-        innerShadow.fontColor = UIColor.black.withAlphaComponent(0.45)
-        innerShadow.verticalAlignmentMode = .center
-        innerShadow.horizontalAlignmentMode = .center
-        // Slightly up-left so the fill covers most of it → thin inset shadow.
-        innerShadow.position = CGPoint(x: -shadowOffset, y: shadowOffset)
-        innerShadow.zPosition = 1
-        root.addChild(innerShadow)
-
-        let label = SKLabelNode(text: text)
-        label.fontName = AppFont.name
-        label.fontSize = fontSize
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.zPosition = 2
-        root.addChild(label)
 
         return root
     }
