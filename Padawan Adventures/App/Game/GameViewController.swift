@@ -116,8 +116,10 @@ final class GameViewController: LandscapeHostingController {
         gameScene = scene
 
         skView.ignoresSiblingOrder = true
+        #if DEBUG
         skView.showsFPS = true
         skView.showsNodeCount = true
+        #endif
 
         installHUD()
     }
