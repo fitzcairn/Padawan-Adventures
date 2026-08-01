@@ -54,18 +54,12 @@ struct LoadingView: View {
 
                 VStack(spacing: 28) {
                     Spacer(minLength: 0)
-                    AppTitleText(
-                        text: isReady ? "Tap to start" : "Loading...",
-                        size: 32,
-                        weight: .semibold
+                    LoadingScreenScaffold(
+                        statusText: isReady ? "Tap to start" : "Loading...",
+                        statusAccessibilityID: "loading.status",
+                        progress: isReady ? nil : progress,
+                        progressAccessibilityID: isReady ? nil : "loading.progress"
                     )
-                    .accessibilityIdentifier("loading.status")
-
-                    if !isReady {
-                        AppProgressBar(progress: progress, accessibilityID: "loading.progress")
-                            .frame(maxWidth: 280)
-                            .appReadableWidth()
-                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .padding(.bottom, 16)
