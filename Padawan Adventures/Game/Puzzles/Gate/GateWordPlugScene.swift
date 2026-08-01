@@ -75,6 +75,12 @@ final class GateWordPlugScene: SKScene {
         buildPuzzle()
     }
 
+    override func willMove(from view: SKView) {
+        // The speaker is a shared singleton; without this a phrase (and its music
+        // duck) keeps running after the gate overlay is dismissed.
+        SpokenPhrasePlayer.shared.cancel()
+    }
+
     override func didChangeSize(_ oldSize: CGSize) {
         guard didSetup, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
@@ -168,47 +174,57 @@ final class GateWordPlugScene: SKScene {
     }
 
     private func layoutTrayTokens(diameter: CGFloat) {
-        let trayArea = CGRect(
+        let trayBand = CGRect(
             x: 0,
             y: 0,
             width: size.width,
             height: size.height * trayHeightRatio
-        ).insetBy(dx: diameter * 0.6, dy: diameter * 0.6)
+        )
+        // Keep the placement band large enough that circle centers stay on-screen.
+        // Diameter is sized from the play area and can exceed half the tray height,
+        // so a fixed `diameter * 0.6` inset can invert the rect and crash `random(in:)`.
+        let marginX = min(diameter * 0.6, max(0, trayBand.width * 0.5 - 1))
+        let marginY = min(diameter * 0.6, max(0, trayBand.height * 0.5 - 1))
+        let trayArea = trayBand.insetBy(dx: marginX, dy: marginY)
 
         let tokens = engine.tray
-        var positions: [CGPoint] = []
-        var rng = SystemRandomNumberGenerator()
-        let minDistance = diameter * 1.08
+        let n = max(tokens.count, 1)
+        let canSample = trayArea.width > 1 && trayArea.height > 1
 
-        for _ in tokens {
-            var placed: CGPoint?
-            for _ in 0..<200 {
-                let candidate = CGPoint(
-                    x: CGFloat.random(in: trayArea.minX...trayArea.maxX, using: &rng),
-                    y: CGFloat.random(in: trayArea.minY...trayArea.maxY, using: &rng)
-                )
-                let overlaps = positions.contains { existing in
-                    hypot(existing.x - candidate.x, existing.y - candidate.y) < minDistance
+        var positions: [CGPoint] = []
+        if canSample {
+            var rng = SystemRandomNumberGenerator()
+            let minDistance = max(diameter * 1.08, 1)
+            for _ in tokens {
+                var placed: CGPoint?
+                for _ in 0..<200 {
+                    let candidate = CGPoint(
+                        x: CGFloat.random(in: trayArea.minX...trayArea.maxX, using: &rng),
+                        y: CGFloat.random(in: trayArea.minY...trayArea.maxY, using: &rng)
+                    )
+                    let overlaps = positions.contains { existing in
+                        hypot(existing.x - candidate.x, existing.y - candidate.y) < minDistance
+                    }
+                    if !overlaps {
+                        placed = candidate
+                        break
+                    }
                 }
-                if !overlaps {
-                    placed = candidate
+                if let placed {
+                    positions.append(placed)
+                } else {
+                    positions = []
                     break
                 }
             }
-            if let placed {
-                positions.append(placed)
-            } else {
-                positions = []
-                let n = max(tokens.count, 1)
-                for i in 0..<tokens.count {
-                    positions.append(
-                        CGPoint(
-                            x: trayArea.minX + trayArea.width * (CGFloat(i) + 0.5) / CGFloat(n),
-                            y: trayArea.midY
-                        )
-                    )
-                }
-                break
+        }
+
+        if positions.count != tokens.count {
+            positions = (0..<tokens.count).map { i in
+                CGPoint(
+                    x: trayArea.minX + trayArea.width * (CGFloat(i) + 0.5) / CGFloat(n),
+                    y: trayArea.midY
+                )
             }
         }
 

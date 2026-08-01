@@ -120,7 +120,9 @@ final class SoundEffectsController {
     }
 
     /// Default fade when silencing a one-shot that should yield to combat audio.
-    static let defaultOneShotFadeOutSeconds: TimeInterval = 0.35
+    /// `nonisolated` so it can be used as a default argument below, which is
+    /// evaluated outside the main actor.
+    nonisolated static let defaultOneShotFadeOutSeconds: TimeInterval = 0.35
 
     /// Fades a playing one-shot to silence and stops it (no-op if not playing).
     func fadeOutAndStop(

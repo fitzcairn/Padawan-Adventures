@@ -225,7 +225,7 @@ final class GameViewController: LandscapeHostingController {
         GameLogger.mark(
             .combat,
             """
-            presenting \(chosenMinigame.kind.rawValue) vs '\(enemyType.sprite)' \
+            presenting \(chosenMinigame.kind.rawValue) vs '\(enemyType.sprite ?? "none")' \
             (hearts: \(healthCount), \
             weights: \(session.selectedCombatConfig.minigames.map { "\($0.kind.rawValue)=\($0.weight)" }.joined(separator: " ")))
             """

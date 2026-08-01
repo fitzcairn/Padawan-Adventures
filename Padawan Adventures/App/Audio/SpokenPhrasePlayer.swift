@@ -14,6 +14,10 @@ final class SpokenPhrasePlayer: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
     private var completion: (() -> Void)?
     private var duckTask: Task<Void, Never>?
+    /// Identifies the utterance the stored `completion` belongs to. Delegate
+    /// callbacks arrive asynchronously, so a cancelled utterance can report back
+    /// after the next `speak` has already installed its completion.
+    private var activeUtteranceID: ObjectIdentifier?
 
     override init() {
         super.init()
@@ -36,7 +40,19 @@ final class SpokenPhrasePlayer: NSObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: trimmed)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         utterance.volume = volume
+        activeUtteranceID = ObjectIdentifier(utterance)
         synthesizer.speak(utterance)
+    }
+
+    /// Stops any in-flight speech and its music duck without running the pending
+    /// completion. Call when the caller's scene goes away.
+    func cancel() {
+        // Cleared first so the asynchronous `didCancel` below is ignored.
+        activeUtteranceID = nil
+        completion = nil
+        duckTask?.cancel()
+        duckTask = nil
+        synthesizer.stopSpeaking(at: .immediate)
     }
 
     private func startDucking() {
@@ -54,22 +70,32 @@ final class SpokenPhrasePlayer: NSObject, AVSpeechSynthesizerDelegate {
     private func finish() {
         duckTask?.cancel()
         duckTask = nil
+        activeUtteranceID = nil
         let done = completion
         completion = nil
         done?()
+    }
+
+    /// Ignores callbacks for an utterance that `speak` has already superseded,
+    /// which would otherwise fire the *next* request's completion early.
+    private func finish(if utteranceID: ObjectIdentifier) {
+        guard activeUtteranceID == utteranceID else { return }
+        finish()
     }
 
     nonisolated func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance
     ) {
-        Task { @MainActor in self.finish() }
+        let id = ObjectIdentifier(utterance)
+        Task { @MainActor in self.finish(if: id) }
     }
 
     nonisolated func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didCancel utterance: AVSpeechUtterance
     ) {
-        Task { @MainActor in self.finish() }
+        let id = ObjectIdentifier(utterance)
+        Task { @MainActor in self.finish(if: id) }
     }
 }
