@@ -4,7 +4,7 @@ nonisolated struct GeneratedRoom: Equatable, Sendable {
     let id: Int
     let cells: Set<GridCoord>
     let center: GridCoord
-    /// Lattice coordinates used for packed-room adjacency.
+    /// Reserved for packed-room adjacency; always 0 in the current rooms_doors algorithm.
     let latticeX: Int
     let latticeY: Int
 }

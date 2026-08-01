@@ -237,16 +237,6 @@ extension ProceduralGenerator {
         return nil
     }
 
-    /// Room whose center is farthest from `spawn` by Manhattan distance (ties → higher room id).
-    func farthestRoom(from spawn: GridCoord, in rooms: [GeneratedRoom]) -> GeneratedRoom? {
-        rooms.max { lhs, rhs in
-            let lhsDist = manhattan(spawn, lhs.center)
-            let rhsDist = manhattan(spawn, rhs.center)
-            if lhsDist != rhsDist { return lhsDist < rhsDist }
-            return lhs.id < rhs.id
-        }
-    }
-
     /// Picks a cell for enemies: room floor only (never pit, gate, wall, or hallway).
     func pickRoomFloorCell(
         in room: GeneratedRoom,
