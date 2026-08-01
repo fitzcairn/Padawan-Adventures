@@ -24,9 +24,9 @@ final class GateScene: SKScene {
     private let playerFx: SoundEffectTable
 
     private var engine: GateMinigameEngine
-    private var stagingNode: SKShapeNode!
-    private var leftEndpointNode: SKNode!
-    private var rightEndpointNode: SKNode!
+    private var stagingNode: SKShapeNode?
+    private var leftEndpointNode: SKNode?
+    private var rightEndpointNode: SKNode?
     private var letterNodes: [UUID: SKNode] = [:]
     private var connectorSegments: [ElectricConnector] = []
     private var electricityRefreshAccumulator: TimeInterval = 0
@@ -202,22 +202,25 @@ final class GateScene: SKScene {
         }
 
         let rect = stagingRect
-        stagingNode = SKShapeNode(rectOf: rect.size, cornerRadius: 10)
-        stagingNode.fillColor = .clear
-        stagingNode.strokeColor = .clear
-        stagingNode.lineWidth = 0
-        stagingNode.position = CGPoint(x: rect.midX, y: rect.midY)
-        stagingNode.zPosition = 1
-        stagingNode.name = "staging"
-        addChild(stagingNode)
+        let staging = SKShapeNode(rectOf: rect.size, cornerRadius: 10)
+        staging.fillColor = .clear
+        staging.strokeColor = .clear
+        staging.lineWidth = 0
+        staging.position = CGPoint(x: rect.midX, y: rect.midY)
+        staging.zPosition = 1
+        staging.name = "staging"
+        addChild(staging)
+        stagingNode = staging
 
-        leftEndpointNode = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:left")
-        leftEndpointNode.position = leftEndpointPosition
-        addChild(leftEndpointNode)
+        let left = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:left")
+        left.position = leftEndpointPosition
+        addChild(left)
+        leftEndpointNode = left
 
-        rightEndpointNode = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:right")
-        rightEndpointNode.position = rightEndpointPosition
-        addChild(rightEndpointNode)
+        let right = makeEndpointNode(radius: endpointCapacitorRadius, name: "endpoint:right")
+        right.position = rightEndpointPosition
+        addChild(right)
+        rightEndpointNode = right
 
         let radius = letterCapacitorRadius
         var placedCenters: [CGPoint] = [leftEndpointPosition, rightEndpointPosition]
@@ -894,6 +897,7 @@ final class GateScene: SKScene {
         defer { syncArcLoopWithConnectors() }
 
         guard !didEnd else { return }
+        guard let leftEndpointNode, let rightEndpointNode else { return }
         let staged = stagedLettersLeftToRight()
         let ordered = staged.map(\.letter)
         let prefix = GateMinigameEngine.connectedPrefix(
@@ -950,6 +954,7 @@ final class GateScene: SKScene {
         connectedCount: Int,
         isFullyConnected: Bool
     ) {
+        guard let leftEndpointNode, let rightEndpointNode else { return }
         if isFullyConnected {
             applyCapacitorTint(to: leftEndpointNode, color: capacitorSolvedTint, blend: capacitorTintBlend)
             applyCapacitorTint(to: rightEndpointNode, color: capacitorSolvedTint, blend: capacitorTintBlend)
