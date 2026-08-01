@@ -24,7 +24,7 @@ final class PitScene: SKScene {
     private var engine: PitMinigameEngine
     private var letterNodes: [UUID: SKNode] = [:]
     private var platformNodes: [UUID: SKSpriteNode] = [:]
-    private var playerNode: SKNode!
+    private var playerNode: SKNode?
     private var playerSprite: AnimatedSpriteNode?
     private var playerFacingLeft = false
     private var leftPadRect: CGRect = .zero
@@ -352,7 +352,7 @@ final class PitScene: SKScene {
     }
 
     private func playJumpAnimation(toward target: CGPoint) {
-        guard let playerSprite else { return }
+        guard let playerSprite, let playerNode else { return }
         playerFacingLeft = target.x < playerNode.position.x - 0.5
         let name = playerFacingLeft ? "jump_left" : "jump_right"
         playerSprite.playOnce(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
@@ -376,7 +376,7 @@ final class PitScene: SKScene {
                 placedCenters.append(node.position)
             }
         }
-        if let previousPlayer {
+        if let previousPlayer, let playerNode {
             playerNode.position = previousPlayer
         }
     }
@@ -847,6 +847,10 @@ final class PitScene: SKScene {
         landAnimation: String? = nil,
         completion: @escaping () -> Void
     ) {
+        guard let playerNode else {
+            completion()
+            return
+        }
         SoundEffectsController.shared.play(event: "jump", from: pitFx)
         let start = playerNode.position
         playJumpAnimation(toward: target)
@@ -857,17 +861,21 @@ final class PitScene: SKScene {
         )
         let duration = Self.jumpDuration
         let action = SKAction.customAction(withDuration: duration) { [weak self] _, elapsedTime in
-            guard let self else { return }
+            guard let self, let playerNode = self.playerNode else { return }
             let linearT = min(max(elapsedTime / CGFloat(duration), 0), 1)
             // Smoothstep ease-in / ease-out.
             let t = linearT * linearT * (3 - 2 * linearT)
             let oneMinus = 1 - t
             let x = oneMinus * oneMinus * start.x + 2 * oneMinus * t * control.x + t * t * target.x
             let y = oneMinus * oneMinus * start.y + 2 * oneMinus * t * control.y + t * t * target.y
-            self.playerNode.position = CGPoint(x: x, y: y)
+            playerNode.position = CGPoint(x: x, y: y)
         }
-        playerNode.run(action) {
-            self.playerNode.position = target
+        playerNode.run(action) { [weak self] in
+            guard let self, let playerNode = self.playerNode else {
+                completion()
+                return
+            }
+            playerNode.position = target
             if let landAnimation,
                self.spriteLibrary.animation(id: Self.playerLibraryID, named: landAnimation) != nil {
                 self.playPlayerLoop(landAnimation)
