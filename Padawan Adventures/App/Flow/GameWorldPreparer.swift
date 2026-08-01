@@ -46,7 +46,7 @@ enum GameWorldPreparer {
         await session.ensurePlayerSpritesLoaded { local in
             report(LoadProgress.map(local, from: 0.02, to: 0.18))
         }
-        await session.ensureItemSpritesLoaded { local in
+        await session.ensureItemSpritesLoaded(includeAllTreasures: false) { local in
             report(LoadProgress.map(local, from: 0.18, to: 0.26))
         }
         let enemiesReady = await session.ensureEnemySpritesLoaded { local in

@@ -207,7 +207,6 @@ final class AppSession {
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))
-        ids.formUnion(levels.compactMap(\.treasure))
         ids.formUnion(retainedEnemySpriteIDs)
         return ids
     }
@@ -523,7 +522,6 @@ final class AppSession {
         await report(cutsceneEnd)
 
         // 3) (Treasure / coin / HUD icons seed after item sprites load in step 5.)
-        let treasureIDs = levelDescriptors.compactMap(\.treasure)
         let iconsEnd = cutsceneEnd
         await report(iconsEnd)
 
@@ -541,14 +539,16 @@ final class AppSession {
         }
         await report(playerEnd)
 
-        // 5) Shared pickups + coin + every level treasure part animation.
+        // 5) Shared pickups + coin + the bootstrap level's treasure part only.
         var itemIDs: Set<String> = [
             PickupKind.health.rawValue,
             PickupKind.energy.rawValue,
             PickupKind.treasure.rawValue,
             "coin",
         ]
-        itemIDs.formUnion(treasureIDs)
+        if let treasureID = selectedLevel.treasure {
+            itemIDs.insert(treasureID)
+        }
         let itemEntries = itemsConfig.items
             .filter { itemIDs.contains($0.key) }
             .sorted { $0.key < $1.key }
