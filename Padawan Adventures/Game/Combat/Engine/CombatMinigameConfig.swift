@@ -138,14 +138,10 @@ nonisolated struct CombatConfig: Equatable, Sendable {
         guard !minigames.isEmpty else {
             throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
         }
-        let total = minigames.reduce(0.0) { $0 + max($1.weight, 0) }
-        guard total > 0 else { return minigames[0] }
-        var roll = Double.random(in: 0..<total, using: &rng)
-        for entry in minigames {
-            roll -= max(entry.weight, 0)
-            if roll < 0 { return entry }
+        guard let picked = WeightedPicker.pick(from: minigames, weight: \.weight, using: &rng) else {
+            throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
         }
-        return minigames[minigames.count - 1]
+        return picked
     }
 
     mutating func resolveLetters(from catalog: LetterCatalog) throws {
