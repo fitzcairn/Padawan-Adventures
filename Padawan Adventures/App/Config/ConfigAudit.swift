@@ -89,6 +89,18 @@ nonisolated enum ConfigAudit {
                             bundle: bundle
                         ))
                     }
+                case .wordPlug(let c):
+                    problems.append(contentsOf: checkFXTable(
+                        c.fx, kind: "gate.minigames[\(idx)].fx", label: label, bundle: bundle
+                    ))
+                    if let music = c.music {
+                        problems.append(contentsOf: checkMusicCue(
+                            MusicCue.parse(music),
+                            kind: "gate.minigames[\(idx)].music",
+                            label: label,
+                            bundle: bundle
+                        ))
+                    }
                 }
             }
         }
@@ -296,16 +308,22 @@ nonisolated enum ConfigAudit {
         label: String
     ) -> [String] {
         var problems: [String] = []
-        if let ids = level.pit.wordIDs {
-            for id in ids where words.word(named: id) == nil {
-                problems.append("\(label).pit.words: unknown word id '\(id)'")
+        for (idx, minigame) in level.pit.minigames.enumerated() {
+            if case .spelling(let c) = minigame, let ids = c.wordIDs {
+                for id in ids where words.word(named: id) == nil {
+                    problems.append("\(label).pit.minigames[\(idx)].words: unknown word id '\(id)'")
+                }
             }
         }
         for (idx, minigame) in level.gate.minigames.enumerated() {
-            if case .spelling(let c) = minigame, let ids = c.wordIDs {
-                for id in ids where words.word(named: id) == nil {
-                    problems.append("\(label).gate.minigames[\(idx)].words: unknown word id '\(id)'")
-                }
+            let ids: [String]?
+            switch minigame {
+            case .spelling(let c): ids = c.wordIDs
+            case .wordPlug(let c): ids = c.wordIDs
+            case .letterMatch: ids = nil
+            }
+            for id in ids ?? [] where words.word(named: id) == nil {
+                problems.append("\(label).gate.minigames[\(idx)].words: unknown word id '\(id)'")
             }
         }
         return problems

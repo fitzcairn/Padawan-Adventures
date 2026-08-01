@@ -174,6 +174,12 @@ final class SoundEffectsController {
         trackID.localizedCaseInsensitiveContains("lightsaber")
     }
 
+    /// Ducks music + ambience loops for `duration` on behalf of audio that has no
+    /// track id (TTS phrases). Overlapping calls extend the window.
+    func duckAmbience(for duration: TimeInterval) {
+        duckAmbienceForPhoneticCue(duration: duration)
+    }
+
     private func duckAmbienceForPhoneticCue(duration: TimeInterval) {
         let hold = max(duration, 0.05)
         if let phoneticCueDuckHandler {

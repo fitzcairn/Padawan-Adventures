@@ -5,6 +5,7 @@ import UIKit
 
 struct PitMinigameView: View {
     let puzzleConfig: PitPuzzleConfig
+    let pitFx: SoundEffectTable
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let pitSpriteSetLibrary: PitSpriteSetLibrary
@@ -18,6 +19,7 @@ struct PitMinigameView: View {
 
     init(
         puzzleConfig: PitPuzzleConfig,
+        pitFx: SoundEffectTable,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
@@ -28,6 +30,7 @@ struct PitMinigameView: View {
         onFinished: @escaping (PitOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
+        self.pitFx = pitFx
         self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
@@ -39,6 +42,7 @@ struct PitMinigameView: View {
         _session = StateObject(
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
+                pitFx: pitFx,
                 playerFx: playerFx,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
                 floorTileSetLibrary: floorTileSetLibrary,
@@ -96,6 +100,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     @Published private(set) var scene: PitScene?
 
     private let puzzleConfig: PitPuzzleConfig
+    private let pitFx: SoundEffectTable
     private let playerFx: SoundEffectTable
     private let pitSpriteSetLibrary: PitSpriteSetLibrary
     private let floorTileSetLibrary: FloorTileSetLibrary
@@ -108,6 +113,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     init(
         puzzleConfig: PitPuzzleConfig,
+        pitFx: SoundEffectTable,
         playerFx: SoundEffectTable,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
@@ -116,6 +122,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
         playerSpriteConfig: SpriteConfig?
     ) {
         self.puzzleConfig = puzzleConfig
+        self.pitFx = pitFx
         self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
@@ -150,6 +157,7 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
             let created = PitScene(
                 size: finalSize,
                 puzzleConfig: puzzleConfig,
+                pitFx: pitFx,
                 playerFx: playerFx,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
                 floorTileSetLibrary: floorTileSetLibrary,
@@ -226,7 +234,7 @@ private struct PitSpriteView: UIViewRepresentable {
     }
 }
 
-private struct PitHUDRepresentable: UIViewRepresentable {
+struct PitHUDRepresentable: UIViewRepresentable {
     let config: HudConfig
     let word: String
     let solvedCount: Int

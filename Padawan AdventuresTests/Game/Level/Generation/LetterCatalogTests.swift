@@ -61,7 +61,7 @@ struct LetterCatalogTests {
 
     @Test func bundleLettersProvidesWallVocabulary() throws {
         let catalog = try LetterCatalog.loadFromBundle()
-        #expect(catalog.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+        #expect(catalog.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"])
         #expect(catalog.letter(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
     }
 }

@@ -745,20 +745,31 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.gate.fx.trackID(for: "opened") == "gate-open")
+        #expect(tython.gate.minigameChance == 1.0)
         #expect(!tython.gate.minigames.isEmpty)
-        let spellingConfigs = tython.gate.minigames.compactMap { minigame -> GateSpellingConfig? in
-            if case .spelling(let c) = minigame { return c }
+        let wordPlugConfigs = tython.gate.minigames.compactMap { minigame -> GateWordPlugConfig? in
+            if case .wordPlug(let c) = minigame { return c }
             return nil
         }
-        #expect(!spellingConfigs.isEmpty)
-        let spelling = spellingConfigs[0]
-        #expect(spelling.numPaddingLetters == 6)
-        #expect(spelling.words.map(\.word).contains("gate"))
-        #expect(spelling.words.contains {
+        #expect(!wordPlugConfigs.isEmpty)
+        let wordPlug = wordPlugConfigs[0]
+        #expect(wordPlug.wordCountMin == 2)
+        #expect(wordPlug.wordCountMax == 6)
+        #expect(wordPlug.words.map(\.word).contains("gate"))
+        #expect(wordPlug.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
                 && $0.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca"
         })
+    }
+
+    /// First `type: spelling` entry in a level's pit config.
+    private func pitSpelling(_ level: LevelConfig) throws -> PitPuzzleConfig {
+        for minigame in level.pit.minigames {
+            if case .spelling(let config) = minigame { return config }
+        }
+        Issue.record("expected a pit spelling entry")
+        throw WorldSeedError.decodeFailed("missing pit spelling entry")
     }
 
     @Test func bundleBaseLevelProvidesPitDefaults() throws {
@@ -769,9 +780,10 @@ struct LevelConfigTests {
         #expect(tython.pit.fx.trackID(for: "win") == nil)
         #expect(tython.pit.fx.trackID(for: "lose") == "pit-falling")
         #expect(tython.pit.fx.trackID(for: "jump") == "pit-jump")
-        #expect(tython.pit.numPaddingLetters == 6)
-        #expect(tython.pit.words.map(\.word) == ["cat", "dog", "star"])
-        #expect(tython.pit.words.contains {
+        let spelling = try pitSpelling(tython)
+        #expect(spelling.numPaddingLetters == 6)
+        #expect(spelling.words.map(\.word) == ["cat", "dog", "star"])
+        #expect(spelling.words.contains {
             $0.word == "star"
                 && $0.spelling == "sfx_word_star"
                 && $0.progressiveTrack(forPrefix: "sta") == "sfx_word_star_sta"
@@ -793,7 +805,9 @@ struct LevelConfigTests {
           partition_gate_chance: 0
         pit:
           fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
-          words: [cat]
+          minigames:
+            - type: spelling
+              words: [cat]
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -829,10 +843,13 @@ struct LevelConfigTests {
           max_room_size: 8
           pit_chance: 0
         pit:
-          words: [star, open]
+          minigames:
+            - type: spelling
+              words: [star, open]
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.pit.words.map(\.word) == ["open", "star"])
+        let spelling = try pitSpelling(level)
+        #expect(spelling.words.map(\.word) == ["open", "star"])
     }
 
     @Test func rejectsEmptyPitWords() {
@@ -848,7 +865,9 @@ struct LevelConfigTests {
           max_room_size: 8
           pit_chance: 0
         pit:
-          words: []
+          minigames:
+            - type: spelling
+              words: []
         """
         #expect(throws: WorldSeedError.invalidPitWords) {
             try LevelConfig.decode(from: yaml)
@@ -868,7 +887,9 @@ struct LevelConfigTests {
           max_room_size: 8
           pit_chance: 0
         pit:
-          words: [not_a_real_word]
+          minigames:
+            - type: spelling
+              words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidPitWords) {
             try LevelConfig.decode(from: yaml)
@@ -1067,22 +1088,129 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func bundleBaseLevelProvidesGateLetterMatchDefaults() throws {
+    @Test func bundleBaseLevelProvidesGateWordPlugDefaults() throws {
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        let letterMatchConfigs = tython.gate.minigames.compactMap { minigame -> GateLetterMatchConfig? in
-            if case .letterMatch(let c) = minigame { return c }
+        let wordPlugConfigs = tython.gate.minigames.compactMap { minigame -> GateWordPlugConfig? in
+            if case .wordPlug(let c) = minigame { return c }
             return nil
         }
-        #expect(!letterMatchConfigs.isEmpty)
-        let lm = letterMatchConfigs[0]
-        #expect(lm.incorrectReplayDelaySeconds == 1)
-        #expect(lm.letterCountMin == 4)
-        #expect(lm.letterCountMax == 8)
-        #expect(lm.letters.map(\.letter) == ["a", "b", "c", "d", "e", "f", "g", "h"])
+        #expect(!wordPlugConfigs.isEmpty)
+        let wp = wordPlugConfigs[0]
+        #expect(wp.wordCountMin == 2)
+        #expect(wp.wordCountMax == 6)
+        #expect(wp.words.map(\.word) == ["cat", "dog", "gate", "open", "star"])
         #expect(tython.artifact == "leaf.fill")
+    }
+
+    @Test func decodesGateWordPlugMinigame() throws {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: word_plug
+              word_count_min: 2
+              word_count_max: 4
+              words: [cat, dog]
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        guard case .wordPlug(let wp) = level.gate.minigames.first else {
+            Issue.record("expected word_plug minigame")
+            return
+        }
+        #expect(wp.wordCountMin == 2)
+        #expect(wp.wordCountMax == 4)
+        #expect(wp.words.map(\.word) == ["cat", "dog"])
+        #expect(!wp.letters.isEmpty)
+    }
+
+    @Test func rejectsOddGateWordPlugWordCount() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: word_plug
+              word_count_min: 3
+              word_count_max: 6
+              words: [cat, dog]
+        """
+        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 3, max: 6)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsTooManyGateWordPlugWords() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: word_plug
+              word_count_min: 2
+              word_count_max: 8
+              words: [cat, dog]
+        """
+        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 2, max: 8)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsUnknownGateWordPlugWordID() {
+        let yaml = """
+        name: Level 1
+        width: 20
+        height: 20
+        algorithm: rooms_doors
+        room_count: 4
+        corridor_width: 2
+        room:
+          min_room_size: 4
+          max_room_size: 8
+          pit_chance: 0
+          partition_gate_chance: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: word_plug
+              words: [not_a_real_word]
+        """
+        #expect(throws: WorldSeedError.invalidGateWords) {
+            try LevelConfig.decode(from: yaml)
+        }
     }
 
     // MARK: - combat:
@@ -1536,4 +1664,298 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: yaml)
         }
     }
+
+    // MARK: - pit.minigames:
+
+    /// Minimal level body the pit minigame tests append a `pit:` block to.
+    private static let pitLevelPrefix = """
+    name: Level 1
+    width: 20
+    height: 20
+    algorithm: rooms_doors
+    room_count: 4
+    corridor_width: 2
+    room:
+      min_room_size: 4
+      max_room_size: 8
+      pit_chance: 0
+      partition_gate_chance: 0
+
+    """
+
+    @Test func defaultsToSpellingOnlyWhenPitBlockOmitted() throws {
+        let level = try LevelConfig.decode(from: Self.pitLevelPrefix)
+        #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
+        #expect(level.pit.fx.trackID(for: "lose") == "pit-falling")
+        #expect(level.pit.minigames.map(\.kind) == [.spelling])
+        let spelling = try pitSpelling(level)
+        #expect(spelling.weight == 1)
+        #expect(!spelling.words.isEmpty)
+    }
+
+    @Test func decodesPitMinigamesFromYAML() throws {
+        let level = try LevelConfig.decode(from: Self.pitLevelPrefix + """
+        pit:
+          fx: { lose: pit-falling, jump: pit-jump }
+          minigames:
+            - type: spelling
+              weight: 0.0
+              num_padding_letters: 6
+              words: [cat, dog, star]
+            - type: bridge
+              weight: 1.0
+              min_words: 2
+              max_words: 4
+              words: [open, start, dog, man, bat, kam]
+        """)
+        #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
+        #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
+        if case .spelling(let spelling) = level.pit.minigames[0] {
+            #expect(spelling.weight == 0)
+            #expect(spelling.numPaddingLetters == 6)
+            #expect(spelling.words.map(\.word) == ["cat", "dog", "star"])
+        } else {
+            Issue.record("expected spelling entry")
+        }
+        if case .bridge(let bridge) = level.pit.minigames[1] {
+            #expect(bridge.weight == 1)
+            #expect(bridge.minWords == 2)
+            #expect(bridge.maxWords == 4)
+            #expect(bridge.words == ["open", "start", "dog", "man", "bat", "kam"])
+        } else {
+            Issue.record("expected bridge entry")
+        }
+    }
+
+    @Test func bridgeFallsBackToDefaultMinMaxAndWords() throws {
+        let level = try LevelConfig.decode(from: Self.pitLevelPrefix + """
+        pit:
+          minigames:
+            - type: bridge
+              weight: 1
+        """)
+        guard case .bridge(let bridge) = level.pit.minigames.first else {
+            Issue.record("expected bridge entry")
+            return
+        }
+        #expect(bridge.minWords == PitBridgeConfig.defaultMinWords)
+        #expect(bridge.maxWords == PitBridgeConfig.defaultMaxWords)
+        #expect(bridge.words == PitBridgeConfig.defaultWords)
+    }
+
+    @Test func inheritsPitBlockFromBase() throws {
+        let base = Self.baseLevelYAMLWithoutPuzzles + """
+
+        pit:
+          fx: { lose: pit-falling, jump: pit-jump }
+          minigames:
+            - type: bridge
+              weight: 1
+              min_words: 2
+              max_words: 3
+              words: [open, start, dog, man]
+        """
+        let child = """
+        inherits: base_level
+        name: Child
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        guard case .bridge(let bridge) = level.pit.minigames.first else {
+            Issue.record("expected an inherited bridge entry")
+            return
+        }
+        #expect(bridge.maxWords == 3)
+        #expect(bridge.words == ["open", "start", "dog", "man"])
+    }
+
+    @Test func childCanOverrideInheritedPitMinigames() throws {
+        let base = Self.baseLevelYAMLWithoutPuzzles + """
+
+        pit:
+          minigames:
+            - type: spelling
+              words: [cat]
+        """
+        let child = """
+        inherits: base_level
+        name: Child
+        pit:
+          minigames:
+            - type: bridge
+              words: [open, start, dog, man, bat, kam]
+        """
+        let level = try LevelConfig.decode(
+            from: child,
+            parents: ["base_level": base]
+        )
+        #expect(level.pit.minigames.map(\.kind) == [.bridge])
+    }
+
+    @Test func pickPitMinigameNeverChoosesAZeroWeightEntry() {
+        let config = PitConfig(
+            fx: .empty,
+            minigames: [
+                .spelling(PitPuzzleConfig(weight: 0, words: PitPuzzleConfig.fallback.words)),
+                .bridge(PitBridgeConfig(weight: 1)),
+            ]
+        )
+        var rng = PitSeededGenerator(seed: 5)
+        for _ in 0..<200 {
+            #expect(config.pickMinigame(using: &rng).kind == .bridge)
+        }
+    }
+
+    @Test func pickPitMinigameEventuallyChoosesBothWhenBothAreWeighted() {
+        let config = PitConfig(
+            fx: .empty,
+            minigames: [
+                .spelling(PitPuzzleConfig(weight: 1, words: PitPuzzleConfig.fallback.words)),
+                .bridge(PitBridgeConfig(weight: 1)),
+            ]
+        )
+        var rng = PitSeededGenerator(seed: 11)
+        var seen = Set<PitMinigameKind>()
+        for _ in 0..<200 {
+            seen.insert(config.pickMinigame(using: &rng).kind)
+        }
+        #expect(seen == Set(PitMinigameKind.allCases))
+    }
+
+    @Test func pickPitMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() {
+        let config = PitConfig(
+            fx: .empty,
+            minigames: [
+                .spelling(PitPuzzleConfig(weight: 0, words: PitPuzzleConfig.fallback.words)),
+                .bridge(PitBridgeConfig(weight: 0)),
+            ]
+        )
+        var rng = PitSeededGenerator(seed: 3)
+        #expect(config.pickMinigame(using: &rng).kind == .spelling)
+    }
+
+    @Test func rejectsUnknownPitMinigameType() {
+        #expect {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: hopscotch
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed(let message) = error else {
+                return false
+            }
+            return message.contains("Unknown pit minigame type")
+        }
+    }
+
+    @Test func rejectsDuplicatePitMinigameTypes() {
+        #expect {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                - type: bridge
+                  weight: 2
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed(let message) = error else {
+                return false
+            }
+            return message.contains("duplicate type")
+        }
+    }
+
+    @Test func rejectsNegativePitMinigameWeight() {
+        #expect(throws: WorldSeedError.invalidPitMinigameWeight(-1)) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  weight: -1
+            """)
+        }
+    }
+
+    @Test func rejectsInvalidPitBridgeWordRange() {
+        #expect(throws: WorldSeedError.invalidPitBridgeWordRange(min: 0, max: 4)) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 0
+                  max_words: 4
+            """)
+        }
+        #expect(throws: WorldSeedError.invalidPitBridgeWordRange(min: 5, max: 2)) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 5
+                  max_words: 2
+                  words: [open, start, dog, man, bat, kam]
+            """)
+        }
+    }
+
+    @Test func rejectsPitBridgePoolSmallerThanMaxWords() {
+        #expect(throws: WorldSeedError.invalidPitBridgeWords) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 2
+                  max_words: 4
+                  words: [open, start]
+            """)
+        }
+    }
+
+    @Test func rejectsPitBridgeDuplicateOrShortWords() {
+        #expect(throws: WorldSeedError.invalidPitBridgeWords) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 2
+                  max_words: 2
+                  words: [open, open]
+            """)
+        }
+        #expect(throws: WorldSeedError.invalidPitBridgeWords) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 1
+                  max_words: 1
+                  words: [a]
+            """)
+        }
+    }
+
+    @Test func bundleDefaultsProvideBridgePitConfig() throws {
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        #expect(tython.pit.minigames.map(\.kind) == [.spelling, .bridge])
+        if case .spelling(let spelling) = tython.pit.minigames[0] {
+            #expect(spelling.weight == 0)
+        } else {
+            Issue.record("expected spelling entry")
+        }
+        if case .bridge(let bridge) = tython.pit.minigames[1] {
+            #expect(bridge.weight == 1)
+            #expect(bridge.words == ["open", "start", "dog", "man", "bat", "kam"])
+        } else {
+            Issue.record("expected bridge entry")
+        }
+    }
 }
+

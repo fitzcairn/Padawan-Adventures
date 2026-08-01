@@ -115,11 +115,11 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
     }
 }
 
-/// Per-level pit spelling-hop settings from `pit:` in level YAML.
-/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `pit.words: [id, …]`.
-nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
-    /// Puzzle FX (`win` / `lose` override shared `sound.yaml` when present).
-    var fx: SoundEffectTable
+/// Per-entry pit spelling-hop settings under `pit.minigames` with `type: spelling`.
+/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
+nonisolated struct PitPuzzleConfig: Equatable, Sendable {
+    /// Relative pick weight within `pit.minigames`.
+    var weight: Double
     /// Extra random letters beyond the chosen word (total sprites = word length + this).
     var numPaddingLetters: Int
     /// Optional subset of shared catalog ids (`nil` = use the full catalog).
@@ -127,50 +127,21 @@ nonisolated struct PitPuzzleConfig: Decodable, Equatable, Sendable {
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
     var words: [GateWord]
 
-    enum CodingKeys: String, CodingKey {
-        case fx
-        case numPaddingLetters = "num_padding_letters"
-        case words
-    }
-
     nonisolated static let fallback = PitPuzzleConfig(
-        fx: SoundEffectTable(events: [
-            "lose": "pit-falling",
-            "jump": "pit-jump",
-        ]),
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words.filter { ["cat", "dog", "star"].contains($0.word) }
     )
 
     nonisolated init(
-        fx: SoundEffectTable = SoundEffectTable(events: [
-            "lose": "pit-falling",
-            "jump": "pit-jump",
-        ]),
+        weight: Double = 1,
         numPaddingLetters: Int = 6,
         wordIDs: [String]? = nil,
         words: [GateWord]
     ) {
-        self.fx = fx
+        self.weight = weight
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
         self.words = GateSpellingConfig.normalizedWords(words)
-    }
-
-    nonisolated init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? Self.fallback.fx
-        numPaddingLetters = try container.decodeIfPresent(Int.self, forKey: .numPaddingLetters)
-            ?? Self.fallback.numPaddingLetters
-
-        if container.contains(.words) {
-            wordIDs = try container.decode([String].self, forKey: .words)
-                .map { $0.lowercased() }
-        } else {
-            wordIDs = nil
-        }
-        // Filled by `resolveWords(from:)` after decode.
-        words = []
     }
 
     mutating func resolveWords(from catalog: WordCatalog) throws {
@@ -302,21 +273,101 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     }
 }
 
+/// Per-entry gate word-plug config: match each word's missing first letter.
+/// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/letters.yaml`.
+nonisolated struct GateWordPlugConfig: Equatable, Sendable {
+    /// Inclusive lower bound for words per round. Must be even and >= 2.
+    var wordCountMin: Int
+    /// Inclusive upper bound for words per round. Must be even and <= `maxWordsPerRound`.
+    var wordCountMax: Int
+    var fx: SoundEffectTable
+    /// Optional subset of shared word-catalog ids (`nil` = full catalog).
+    var wordIDs: [String]?
+    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    var words: [GateWord]
+    /// Resolved full letter catalog. Populated via `resolveLetters(from:)`.
+    var letters: [GateLetter]
+    /// Per-entry music override; `nil` → use `game_music.gate`.
+    var music: String?
+
+    /// 2 columns x 3 rows of word plates.
+    nonisolated static let maxWordsPerRound = 6
+
+    nonisolated static let fallback = GateWordPlugConfig(
+        wordCountMin: 2,
+        wordCountMax: 6,
+        words: WordCatalog.fallback.words,
+        letters: LetterCatalog.fallback.letters,
+        music: "gate"
+    )
+
+    nonisolated init(
+        wordCountMin: Int = 2,
+        wordCountMax: Int = 6,
+        fx: SoundEffectTable = SoundEffectTable(),
+        wordIDs: [String]? = nil,
+        words: [GateWord],
+        letters: [GateLetter],
+        music: String? = nil
+    ) {
+        self.wordCountMin = wordCountMin
+        self.wordCountMax = wordCountMax
+        self.fx = fx
+        self.wordIDs = wordIDs?.map { $0.lowercased() }
+        self.words = GateSpellingConfig.normalizedWords(words)
+        self.letters = GateLetterMatchConfig.normalizedLetters(letters)
+        self.music = music
+    }
+
+    mutating func resolveWords(from catalog: WordCatalog) throws {
+        words = try catalog.resolve(ids: wordIDs)
+    }
+
+    mutating func resolveLetters(from catalog: LetterCatalog) throws {
+        letters = try catalog.resolve(ids: nil)
+    }
+
+    func validate() throws {
+        guard wordCountMin >= 2, wordCountMin.isMultiple(of: 2),
+              wordCountMax >= wordCountMin,
+              wordCountMax.isMultiple(of: 2),
+              wordCountMax <= Self.maxWordsPerRound else {
+            throw WorldSeedError.invalidGateWordPlugWordCountRange(
+                min: wordCountMin,
+                max: wordCountMax
+            )
+        }
+        guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
+        guard !letters.isEmpty else { throw WorldSeedError.invalidGateWordPlugLetters }
+        // Every word's first letter must have name + pronunciation audio.
+        let known = Set(letters.map(\.letter))
+        for entry in words {
+            guard let first = entry.word.first,
+                  known.contains(String(first).lowercased()) else {
+                throw WorldSeedError.invalidGateWordPlugLetters
+            }
+        }
+    }
+}
+
 /// Discriminator for which gate puzzle a tile/strip runs. YAML raw values match minigame `type:`.
 nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
     case spelling
     case letterMatch = "letter_match"
+    case wordPlug = "word_plug"
 }
 
 /// Discriminated union over the gate minigame entries in level YAML.
 nonisolated enum GateMinigameConfig: Equatable, Sendable {
     case spelling(GateSpellingConfig)
     case letterMatch(GateLetterMatchConfig)
+    case wordPlug(GateWordPlugConfig)
 
     var kind: GateMinigameKind {
         switch self {
         case .spelling: .spelling
         case .letterMatch: .letterMatch
+        case .wordPlug: .wordPlug
         }
     }
 
@@ -324,6 +375,7 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
         switch self {
         case .spelling(let c): c.music
         case .letterMatch(let c): c.music
+        case .wordPlug(let c): c.music
         }
     }
 }
@@ -369,6 +421,7 @@ nonisolated struct GateConfig: Equatable, Sendable {
             switch minigame {
             case .spelling(let c): try c.validate()
             case .letterMatch(let c): try c.validate()
+            case .wordPlug(let c): try c.validate()
             }
         }
     }
@@ -408,6 +461,10 @@ nonisolated struct GateConfig: Equatable, Sendable {
             case .letterMatch(var config):
                 try config.resolveLetters(from: letterCatalog)
                 minigames[i] = .letterMatch(config)
+            case .wordPlug(var config):
+                try config.resolveWords(from: wordCatalog)
+                try config.resolveLetters(from: letterCatalog)
+                minigames[i] = .wordPlug(config)
             }
         }
     }
@@ -489,7 +546,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var room: RoomParams
     var enemies: EnemiesSpawnConfig?
     var pickups: PickupsSpawnConfig?
-    var pit: PitPuzzleConfig
+    /// Pit minigame variants + weights for this level.
+    var pit: PitConfig
     var gate: GateConfig
     /// Combat minigame variants + weights for this level.
     var combat: CombatConfig
@@ -667,7 +725,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         room: RoomParams,
         enemies: EnemiesSpawnConfig? = nil,
         pickups: PickupsSpawnConfig? = nil,
-        pit: PitPuzzleConfig = .fallback,
+        pit: PitConfig = .fallback,
         gate: GateConfig = .fallback,
         combat: CombatConfig = .fallback,
         floor: Floor = LevelConfig.fallbackFloor,
@@ -738,7 +796,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         room = try container.decode(RoomParams.self, forKey: .room)
         enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
-        pit = try container.decodeIfPresent(PitPuzzleConfig.self, forKey: .pit) ?? .fallback
+        pit = try PitConfig(from: decoder, container: container)
         gate = try GateConfig(from: decoder, container: container)
         combat = try CombatConfig(from: decoder, container: container)
         // Absent blocks decode with an empty set, which applyDerivedAssets fills from
@@ -1244,6 +1302,16 @@ extension GateConfig {
                     letters: [],
                     music: entry.music
                 ))
+            case "word_plug":
+                return .wordPlug(GateWordPlugConfig(
+                    wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,
+                    wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
+                    fx: entry.fx ?? SoundEffectTable(),
+                    wordIDs: entry.words?.map { $0.lowercased() },
+                    words: [],
+                    letters: [],
+                    music: entry.music
+                ))
             default:
                 throw WorldSeedError.decodeFailed(
                     "Unknown gate minigame type: '\(entry.type)'"
@@ -1275,6 +1343,8 @@ private nonisolated struct GateMinigameDTO: Decodable {
     var letterCountMin: Int?
     var letterCountMax: Int?
     var letters: [String]?
+    var wordCountMin: Int?
+    var wordCountMax: Int?
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -1286,6 +1356,8 @@ private nonisolated struct GateMinigameDTO: Decodable {
         case letterCountMin = "letter_count_min"
         case letterCountMax = "letter_count_max"
         case letters
+        case wordCountMin = "word_count_min"
+        case wordCountMax = "word_count_max"
     }
 }
 
@@ -1345,5 +1417,72 @@ private nonisolated struct CombatMinigameDTO: Decodable {
         case monsterHP = "monster_hp"
         case orbTravelSeconds = "orb_travel_seconds"
         case letters
+    }
+}
+
+// MARK: - PitConfig Decodable (private DTO)
+
+extension PitConfig {
+    /// Decodes the `pit:` keyed block or falls back to spelling-only.
+    nonisolated init(
+        from decoder: Decoder,
+        container: KeyedDecodingContainer<LevelConfig.CodingKeys>
+    ) throws {
+        guard container.contains(.pit) else {
+            self = .fallback
+            return
+        }
+        let dto = try container.decode(PitConfigDTO.self, forKey: .pit)
+        fx = dto.fx ?? Self.fallback.fx
+        guard let entries = dto.minigames, !entries.isEmpty else {
+            throw WorldSeedError.decodeFailed("pit.minigames must not be empty")
+        }
+        minigames = try entries.map { entry in
+            switch entry.type {
+            case PitMinigameKind.spelling.rawValue:
+                return .spelling(PitPuzzleConfig(
+                    weight: entry.weight ?? 1,
+                    numPaddingLetters: entry.numPaddingLetters
+                        ?? PitPuzzleConfig.fallback.numPaddingLetters,
+                    // `nil` → full shared catalog; YAML subsets via `words: [id, …]`.
+                    wordIDs: entry.words?.map { $0.lowercased() },
+                    // Filled by `resolveWords(from:)` after decode.
+                    words: []
+                ))
+            case PitMinigameKind.bridge.rawValue:
+                return .bridge(PitBridgeConfig(
+                    weight: entry.weight ?? 1,
+                    minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
+                    maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
+                    words: entry.words ?? PitBridgeConfig.defaultWords
+                ))
+            default:
+                throw WorldSeedError.decodeFailed("Unknown pit minigame type: '\(entry.type)'")
+            }
+        }
+    }
+}
+
+private nonisolated struct PitConfigDTO: Decodable {
+    var fx: SoundEffectTable?
+    var minigames: [PitMinigameDTO]?
+}
+
+private nonisolated struct PitMinigameDTO: Decodable {
+    var type: String
+    var weight: Double?
+    var numPaddingLetters: Int?
+    /// Catalog ids for `spelling`, plain words for `bridge`.
+    var words: [String]?
+    var minWords: Int?
+    var maxWords: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case weight
+        case numPaddingLetters = "num_padding_letters"
+        case words
+        case minWords = "min_words"
+        case maxWords = "max_words"
     }
 }

@@ -6,23 +6,9 @@ import Testing
 @MainActor
 struct GateElectricityVariantsTests {
     @Test func connectorsBakeMultiplePathVariants() throws {
-        let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
-        let level = try LevelConfig.loadFromBundle(
-            named: "1-tython",
-            subdirectory: LevelCatalog.subdirectory,
-            wordCatalog: words,
-            letterCatalog: letters
-        )
-        let spelling = try #require(
-            level.gate.minigames.compactMap { minigame -> GateSpellingConfig? in
-                if case .spelling(let config) = minigame { return config }
-                return nil
-            }.first
-        )
         let scene = GateScene(
             size: CGSize(width: 800, height: 600),
-            puzzleConfig: spelling,
+            puzzleConfig: .fallback,
             playerFx: .empty
         )
         scene.addConnectorLineForTesting(

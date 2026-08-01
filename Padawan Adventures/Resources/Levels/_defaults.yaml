@@ -60,34 +60,51 @@ room:
   # Optional sealed shared-wall shortcut gates (not the mandatory join gates).
   partition_gate_chance: 0.8
 
-# Pit spelling-hop minigame (triggered on pit tile contact).
-# Stars awarded on win = number of letters in the solved word.
-# `fx.lose` overrides shared `audio.yaml` when present; `jump` fires on every hop.
+# Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
+# Host `fx` is shared: `jump` fires on every hop, `lose` / `win` override audio.yaml.
+# `spelling`: hop the letter platforms to spell the word. Stars = letters in the word.
+#   Its `words:` are ids that must resolve in words.yaml.
+# `bridge`: drag the tile whose letter is the word's end sound into the dashed slot.
+#   Its `words:` are plain words (prompts are synthesized, no sfx_word_* needed) and the
+#   pool must hold at least `max_words` entries. Stars = words placed.
 pit:
-  num_padding_letters: 6
-  words: [cat, dog, star]
-  # `lose` overrides the shared audio.yaml table; `jump` fires on every hop.
   fx: { lose: pit-falling, jump: pit-jump }
-
-# Gate minigames (triggered on gate tile contact — spelling or letter-match picked at random).
-# Host `fx.opened` plays in the world when the gate strip opens.
-# `minigame_chance` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
-gate:
-  fx: { opened: gate-open }
-  minigame_chance: 0.6
   minigames:
     - type: spelling
+      weight: 0.0
       num_padding_letters: 6
+      words: [cat, dog, star]
+    - type: bridge
+      weight: 1.0
+      min_words: 2
+      max_words: 4
+      words: [open, start, dog, man, bat, kam]
+
+# Gate minigames (triggered on gate tile contact).
+# Host `fx.opened` plays in the world when the gate strip opens.
+# `minigame_chance` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
+# TEMP: word_plug only, chance 1.0, so every gate exercises the new puzzle.
+gate:
+  fx: { opened: gate-open }
+  minigame_chance: 1.0
+  minigames:
+    - type: word_plug
+      # Words per round: even, 2...6 (2 columns x 3 rows), clamped to the pool.
+      word_count_min: 2
+      word_count_max: 6
       words: [cat, dog, star, gate, open]
       music: gate
-      # Ambient arc, looped while electricity connectors are visible.
-      fx: { loop: gate-spelling-loop-arc }
-    - type: letter_match
-      letter_count_min: 4
-      letter_count_max: 8
-      letters: [a, b, c, d, e, f, g, h]
-      music: gate
-      fx: { switch_push: gate-letter_match-switch-push }
+  # - type: spelling
+  #   num_padding_letters: 6
+  #   words: [cat, dog, star, gate, open]
+  #   music: gate
+  #   fx: { loop: gate-spelling-loop-arc }
+  # - type: letter_match
+  #   letter_count_min: 4
+  #   letter_count_max: 8
+  #   letters: [a, b, c, d, e, f, g, h]
+  #   music: gate
+  #   fx: { switch_push: gate-letter_match-switch-push }
 
 enemies:
   types: [spider]

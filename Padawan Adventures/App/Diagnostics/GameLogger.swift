@@ -18,7 +18,12 @@ import os
 /// Values are logged `.public` on purpose: this is a children's game with no
 /// sensitive data, and redacted `<private>` output defeats the point. Player
 /// names are the one exception and are never logged.
-enum GameLogger {
+///
+/// `nonisolated` because callers are everywhere — SpriteKit callbacks, the
+/// uncaught-exception handler, `Task` bodies. The project defaults to
+/// `@MainActor`, which would be wrong here: the only mutable state is the
+/// breadcrumb buffer, and that is already lock-protected.
+nonisolated enum GameLogger {
     static let subsystem = "PadawanAdventures"
 
     /// One category per subsystem area, so Console.app can filter to a slice.

@@ -1,0 +1,238 @@
+import Foundation
+import Testing
+@testable import Padawan_Adventures
+
+struct GateWordPlugMinigameEngineTests {
+    private func letters(_ values: [String]) -> [GateLetter] {
+        values.map {
+            GateLetter(
+                letter: $0,
+                pronunciation: "sfx_letter_\($0)_pronunciation",
+                name: "sfx_letter_\($0)_name"
+            )
+        }
+    }
+
+    private func words(_ values: [String]) -> [GateWord] {
+        values.map { GateWord.fallbackEntry(word: $0) }
+    }
+
+    private func makeEngine(
+        wordCountMin: Int = 2,
+        wordCountMax: Int = 6,
+        pool: [String] = ["cat", "dog", "star", "gate", "open"],
+        letterPool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"],
+        seed: UInt64 = 42
+    ) -> GateWordPlugMinigameEngine {
+        var engine = GateWordPlugMinigameEngine(
+            config: .init(
+                wordCountMin: wordCountMin,
+                wordCountMax: wordCountMax,
+                words: words(pool),
+                letters: letters(letterPool)
+            ),
+            rng: SeededGenerator(seed: seed)
+        )
+        engine.begin()
+        return engine
+    }
+
+    @Test func constructsInactive() {
+        let engine = GateWordPlugMinigameEngine(
+            config: .init(words: words(["cat"]), letters: letters(["c"]))
+        )
+        #expect(!engine.isActive)
+        #expect(engine.slots.isEmpty)
+        #expect(engine.tray.isEmpty)
+    }
+
+    @Test func beginPicksEvenCountWithinRangeAndPool() {
+        for seed in UInt64(1)...40 {
+            let engine = makeEngine(
+                wordCountMin: 2,
+                wordCountMax: 6,
+                pool: ["cat", "dog", "star", "gate", "open"],
+                seed: seed
+            )
+            #expect(engine.slots.count == 2 || engine.slots.count == 4)
+            #expect(engine.slots.count.isMultiple(of: 2))
+        }
+    }
+
+    @Test func beginIsDeterministicForSeed() {
+        let a = makeEngine(seed: 99)
+        let b = makeEngine(seed: 99)
+        #expect(a.slots.map(\.word) == b.slots.map(\.word))
+        #expect(a.tray.map(\.letter) == b.tray.map(\.letter))
+    }
+
+    @Test func maskedTextReplacesFirstLetter() {
+        let engine = makeEngine(seed: 7)
+        for slot in engine.slots {
+            #expect(slot.maskedText == "_\(slot.word.dropFirst())")
+            #expect(slot.maskedText.first == "_")
+        }
+    }
+
+    @Test func trayHasOneTokenPerSlotWithMatchingLetters() {
+        let engine = makeEngine(seed: 11)
+        #expect(engine.tray.count == engine.slots.count)
+        #expect(
+            engine.tray.map(\.letter).sorted() == engine.slots.map(\.letter).sorted()
+        )
+    }
+
+    @Test func tapLetterPlaysNameThenSound() {
+        var engine = makeEngine(seed: 3)
+        guard let token = engine.tray.first else {
+            Issue.record("expected tray token")
+            return
+        }
+        let events = engine.tapLetter(id: token.id)
+        #expect(events == [
+            .playLetterName(trackID: token.nameTrackID),
+            .playLetterSound(trackID: token.pronunciationTrackID),
+        ])
+    }
+
+    @Test func tapWordPlaysWordTrack() {
+        var engine = makeEngine(seed: 3)
+        guard let slot = engine.slots.first else {
+            Issue.record("expected slot")
+            return
+        }
+        let events = engine.tapWord(slotID: slot.id)
+        #expect(events == [.playWordSound(trackID: "sfx_word_\(slot.word)")])
+    }
+
+    @Test func correctPlugEmitsFlashCorrectAndPhrase() {
+        var engine = makeEngine(
+            wordCountMin: 2,
+            wordCountMax: 2,
+            pool: ["cat", "dog"],
+            seed: 1
+        )
+        guard let slot = engine.slots.first(where: { $0.word == "cat" }),
+              let token = engine.tray.first(where: { $0.letter == "c" }) else {
+            Issue.record("expected cat slot and c token")
+            return
+        }
+        let events = engine.plug(letterID: token.id, intoSlotID: slot.id)
+        #expect(events.contains(.correctPlug(slotID: slot.id, letterID: token.id)))
+        #expect(events.contains(.playCorrect))
+        #expect(events.contains(.speakPhrase("Cat starts with C")))
+        #expect(engine.isSlotFilled(slot.id))
+    }
+
+    @Test func incorrectPlugEmitsOnlyIncorrect() {
+        var engine = makeEngine(
+            wordCountMin: 2,
+            wordCountMax: 2,
+            pool: ["cat", "dog"],
+            seed: 1
+        )
+        guard let slot = engine.slots.first(where: { $0.word == "cat" }),
+              let token = engine.tray.first(where: { $0.letter == "d" }) else {
+            Issue.record("expected cat slot and d token")
+            return
+        }
+        let events = engine.plug(letterID: token.id, intoSlotID: slot.id)
+        #expect(events == [.incorrectPlug(letterID: token.id)])
+        #expect(!engine.isSlotFilled(slot.id))
+    }
+
+    @Test func pluggingEverySlotWinsAndAwardsStars() {
+        for (minCount, maxCount, pool) in [
+            (2, 2, ["cat", "dog"]),
+            (4, 4, ["cat", "dog", "star", "gate"]),
+        ] as [(Int, Int, [String])] {
+            var engine = makeEngine(
+                wordCountMin: minCount,
+                wordCountMax: maxCount,
+                pool: pool,
+                seed: 5
+            )
+            #expect(engine.slots.count == maxCount)
+            for slot in engine.slots {
+                guard let token = engine.tray.first(where: {
+                    $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
+                }) else {
+                    Issue.record("missing token for \(slot.letter)")
+                    return
+                }
+                _ = engine.plug(letterID: token.id, intoSlotID: slot.id)
+            }
+            #expect(engine.outcome == .won(starsAwarded: maxCount))
+            #expect(engine.isFrozen)
+        }
+    }
+
+    @Test func plugIsIgnoredAfterWin() {
+        var engine = makeEngine(
+            wordCountMin: 2,
+            wordCountMax: 2,
+            pool: ["cat", "dog"],
+            seed: 5
+        )
+        for slot in engine.slots {
+            guard let token = engine.tray.first(where: {
+                $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
+            }) else { continue }
+            _ = engine.plug(letterID: token.id, intoSlotID: slot.id)
+        }
+        #expect(engine.outcome != nil)
+        let events = engine.plug(
+            letterID: engine.tray[0].id,
+            intoSlotID: engine.slots[0].id
+        )
+        #expect(events.isEmpty)
+    }
+
+    @Test func plugIsIgnoredForFilledSocket() {
+        var engine = makeEngine(
+            wordCountMin: 2,
+            wordCountMax: 2,
+            pool: ["cat", "dog"],
+            seed: 1
+        )
+        guard let slot = engine.slots.first(where: { $0.word == "cat" }),
+              let token = engine.tray.first(where: { $0.letter == "c" }),
+              let other = engine.tray.first(where: { $0.letter == "d" }) else {
+            Issue.record("expected tokens")
+            return
+        }
+        _ = engine.plug(letterID: token.id, intoSlotID: slot.id)
+        let events = engine.plug(letterID: other.id, intoSlotID: slot.id)
+        #expect(events.isEmpty)
+    }
+
+    @Test func sampleWordCountClampsToPoolAndSix() {
+        var rng = SeededGenerator(seed: 1)
+        #expect(
+            GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 6,
+                poolSize: 3,
+                rng: &rng
+            ) == 2
+        )
+        #expect(
+            GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 6,
+                poolSize: 1,
+                rng: &rng
+            ) == 1
+        )
+        for _ in 0..<20 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 10,
+                poolSize: 20,
+                rng: &rng
+            )
+            #expect(count <= 6)
+            #expect(count.isMultiple(of: 2))
+        }
+    }
+}

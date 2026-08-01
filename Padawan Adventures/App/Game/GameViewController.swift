@@ -313,7 +313,10 @@ final class GameViewController: LandscapeHostingController {
             return
         }
 
-        let puzzleConfig = session.selectedPitConfig
+        let pitConfig = session.selectedPitConfig
+        // Each pit rolls its own game from the level's weighted list.
+        var minigameRNG = SystemRandomNumberGenerator()
+        let chosenMinigame = pitConfig.pickMinigame(using: &minigameRNG)
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
         let outcomeBox = PitOutcomeBox()
@@ -324,8 +327,9 @@ final class GameViewController: LandscapeHostingController {
             fadeWorldOut: true,
             makeViewController: {
                 self.makeOverlayHost { finish in
-                    PitMinigameView(
-                        puzzleConfig: puzzleConfig,
+                    PitMinigameFactory.makeView(
+                        config: chosenMinigame,
+                        pitFx: pitConfig.fx,
                         playerFx: playerFx,
                         hudConfig: hudConfig,
                         pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,

@@ -326,6 +326,9 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
     case invalidPitWords
+    case invalidPitMinigameWeight(Double)
+    case invalidPitBridgeWordRange(min: Int, max: Int)
+    case invalidPitBridgeWords
     case invalidLetterSoundRepeat(Double)
     case invalidCombatLetterSpawnRate(Double)
     case invalidCombatLetterCase(String)
@@ -336,6 +339,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidGateLetterMatchIncorrectReplayDelay(Double)
     case invalidGateLetterMatchLetterCountRange(min: Int, max: Int)
     case invalidGateLetterMatchLetters
+    case invalidGateWordPlugWordCountRange(min: Int, max: Int)
+    case invalidGateWordPlugLetters
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)

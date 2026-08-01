@@ -23,6 +23,13 @@ enum GateMinigameFactory {
                 hudConfig: hudConfig,
                 onFinished: onFinished
             )
+        case .wordPlug(let wordPlug):
+            GateWordPlugMinigameView(
+                puzzleConfig: wordPlug,
+                playerFx: playerFx,
+                hudConfig: hudConfig,
+                onFinished: onFinished
+            )
         }
     }
 }

@@ -17,8 +17,8 @@ final class AppSession {
     private(set) var selectedLevelMusic: String?
     /// Per-minigame music for the selected level.
     private(set) var selectedGameMusic: GameMusicConfig
-    /// Pit puzzle knobs for the selected level.
-    private(set) var selectedPitConfig: PitPuzzleConfig
+    /// Pit minigame variants + weights for the selected level.
+    private(set) var selectedPitConfig: PitConfig
     /// Gate config (host FX + minigames list) for the selected level.
     private(set) var selectedGateConfig: GateConfig
     /// Combat minigame variants + weights for the selected level.
@@ -70,7 +70,7 @@ final class AppSession {
         selectedLevelArtifact: String? = nil,
         selectedLevelMusic: String? = nil,
         selectedGameMusic: GameMusicConfig? = nil,
-        selectedPitConfig: PitPuzzleConfig? = nil,
+        selectedPitConfig: PitConfig? = nil,
         selectedGateConfig: GateConfig? = nil,
         selectedCombatConfig: CombatConfig? = nil,
         selectedLetterSoundRepeatSeconds: Double? = nil,

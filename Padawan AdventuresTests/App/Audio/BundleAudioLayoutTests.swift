@@ -89,6 +89,13 @@ struct BundleAudioLayoutTests {
                     if let music = config.music {
                         assertMusicCue(MusicCue.parse(music))
                     }
+                case .wordPlug(let config):
+                    for (_, trackID) in config.fx.events {
+                        assertFX(trackID)
+                    }
+                    if let music = config.music {
+                        assertMusicCue(MusicCue.parse(music))
+                    }
                 }
             }
         }
@@ -151,6 +158,8 @@ struct BundleAudioLayoutTests {
                 case .spelling(let config):
                     basenames.append(contentsOf: config.fx.events.values)
                 case .letterMatch(let config):
+                    basenames.append(contentsOf: config.fx.events.values)
+                case .wordPlug(let config):
                     basenames.append(contentsOf: config.fx.events.values)
                 }
             }

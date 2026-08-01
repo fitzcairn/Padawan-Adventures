@@ -12,6 +12,7 @@ final class PitScene: SKScene {
     weak var pitDelegate: PitSceneDelegate?
 
     private let puzzleConfig: PitPuzzleConfig
+    private let pitFx: SoundEffectTable
     private let playerFx: SoundEffectTable
     private let pitSpriteSetLibrary: PitSpriteSetLibrary
     private let floorTileSetLibrary: FloorTileSetLibrary
@@ -60,6 +61,7 @@ final class PitScene: SKScene {
     init(
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
+        pitFx: SoundEffectTable,
         playerFx: SoundEffectTable,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
@@ -68,6 +70,7 @@ final class PitScene: SKScene {
         playerSpriteConfig: SpriteConfig?
     ) {
         self.puzzleConfig = puzzleConfig
+        self.pitFx = pitFx
         self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
@@ -743,7 +746,7 @@ final class PitScene: SKScene {
             guard let self else { return }
             SoundEffectsController.shared.play(
                 event: "win",
-                from: SoundEffectsController.shared.commonFx.merging(self.puzzleConfig.fx)
+                from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
             )
         })
         let word = engine.targetWord
@@ -825,7 +828,7 @@ final class PitScene: SKScene {
         landAnimation: String? = nil,
         completion: @escaping () -> Void
     ) {
-        SoundEffectsController.shared.play(event: "jump", from: puzzleConfig.fx)
+        SoundEffectsController.shared.play(event: "jump", from: pitFx)
         let start = playerNode.position
         playJumpAnimation(toward: target)
         let arcHeight = max(letterRadius * 2.2, hypot(target.x - start.x, target.y - start.y) * 0.35)
