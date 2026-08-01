@@ -11,7 +11,7 @@ protocol CombatDeflectSceneDelegate: AnyObject {
 
 /// SpriteKit deflect arena: the monster lobs one lettered orb at a time and the player
 /// taps the matching isometric ring to send it back.
-final class CombatDeflectScene: SKScene {
+final class CombatDeflectScene: MinigameScene {
     /// A live orb and the quadratic path it is currently following.
     private struct OrbVisual {
         let id: UUID
@@ -41,9 +41,6 @@ final class CombatDeflectScene: SKScene {
     private var hpTrack: SKSpriteNode?
     private var hpFill: SKSpriteNode?
     private var activeOrb: OrbVisual?
-    private var didEnd = false
-    private var didSetup = false
-    private var isBuilding = false
     private var activeLoopTrackID: String?
     private var cachedPlayerWidth: CGFloat?
 
@@ -100,12 +97,6 @@ final class CombatDeflectScene: SKScene {
             startingHealth: startingHealth
         )
         super.init(size: size)
-        // Aspect-fit avoids distorting paths when the SKView aspect differs from scene size.
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        // Bottom-left origin — the rings are laid out around the player's feet.
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -113,13 +104,7 @@ final class CombatDeflectScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         GameLogger.mark(
             .combat,
             """
@@ -151,10 +136,7 @@ final class CombatDeflectScene: SKScene {
         clearCombatMix()
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
+    override func rebuildLayout() {
         // SpriteKit can resize the scene while `buildArena` is still running,
         // before the nodes exist; the build finishes with the current size.
         guard let playerNode else { return }
