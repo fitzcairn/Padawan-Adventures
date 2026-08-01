@@ -462,11 +462,6 @@ final class GameViewController: LandscapeHostingController {
     }
 
     @MainActor
-    private func awardLevelStar() async {
-        await awardLevelStars(count: 1)
-    }
-
-    @MainActor
     private func awardLevelStars(count: Int) async {
         guard count > 0, let resourceName = session.selectedLevelResourceName else { return }
         let previous = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
