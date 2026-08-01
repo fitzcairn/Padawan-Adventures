@@ -56,10 +56,6 @@ struct SimulationLoop: Sendable {
         self.enemyAI = EnemyAISystem(enemyConfig: enemyConfig, pathfinder: pathfinder)
     }
 
-    mutating func setEncounterActive(_ active: Bool) {
-        encounterActive = active
-    }
-
     mutating func removeEnemy(id: UUID, from world: inout GameWorld) {
         world.removeEntity(id: id)
         enemyStates[id] = nil
