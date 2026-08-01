@@ -1,21 +1,5 @@
 import Foundation
 
-nonisolated struct GeneratedRoom: Equatable, Sendable {
-    let id: Int
-    let cells: Set<GridCoord>
-    let center: GridCoord
-    /// Lattice coordinates used for packed-room adjacency.
-    let latticeX: Int
-    let latticeY: Int
-}
-
-nonisolated struct GenerationResult: Sendable {
-    let world: GameWorld
-    let rooms: [GeneratedRoom]
-    let topRightRoomID: Int
-    let joinPairs: [(Int, Int)]
-}
-
 nonisolated struct ProceduralGenerator: Sendable {
     /// How many seed offsets to try when a layout cannot host every required interactable.
     private static let maxValidityAttempts = 48
@@ -1727,15 +1711,6 @@ nonisolated struct ProceduralGenerator: Sendable {
             let b = rhs[0]
             if a.x != b.x { return a.x < b.x }
             return a.y < b.y
-        }
-    }
-
-    private struct RoomPair: Hashable {
-        let low: Int
-        let high: Int
-        init(_ a: Int, _ b: Int) {
-            low = min(a, b)
-            high = max(a, b)
         }
     }
 
