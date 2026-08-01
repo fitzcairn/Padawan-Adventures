@@ -63,7 +63,7 @@ nonisolated struct GateWordPlugMinigameEngine {
     private(set) var tray: [LetterToken] = []
     /// slotID → letterID for solved pairs.
     private(set) var plugged: [UUID: UUID] = [:]
-    private(set) var outcome: GateOutcome?
+    private(set) var outcome: MinigameOutcome?
 
     private var rng: any RandomNumberGenerator
 

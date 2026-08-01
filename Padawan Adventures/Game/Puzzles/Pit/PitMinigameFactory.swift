@@ -12,7 +12,7 @@ enum PitMinigameFactory {
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
-        onFinished: @escaping (PitOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         switch config {
         case .spelling(let spelling):

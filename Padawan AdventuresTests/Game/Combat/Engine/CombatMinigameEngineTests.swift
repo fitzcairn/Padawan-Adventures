@@ -294,7 +294,7 @@ struct CombatMinigameEngineTests {
         #expect(engine.outcome == nil)
 
         slashMatching(count: 2)
-        #expect(engine.outcome == CombatOutcome.won(starsAwarded: 3))
+        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 3))
     }
 
     @Test func onScreenShotBecomesCorrectWhenCueChangesToItsLetter() throws {
@@ -374,7 +374,7 @@ struct CombatMinigameEngineTests {
                 }
             }
         }
-        #expect(engine.outcome == CombatOutcome.won(starsAwarded: 3))
+        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 3))
         #expect(engine.isFrozen)
     }
 

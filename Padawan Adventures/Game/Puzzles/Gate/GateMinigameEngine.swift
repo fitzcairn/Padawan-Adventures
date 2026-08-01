@@ -37,7 +37,7 @@ nonisolated struct GateMinigameEngine {
     private(set) var targetWord: String = ""
     private(set) var targetEntry: GateWord = .fallbackEntry(word: "gate")
     private(set) var letters: [LetterToken] = []
-    private(set) var outcome: GateOutcome?
+    private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
 
     private var rng: any RandomNumberGenerator

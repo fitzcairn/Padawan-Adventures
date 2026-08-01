@@ -6,7 +6,7 @@ enum GateMinigameFactory {
         config: GateMinigameConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        onFinished: @escaping (GateOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         switch config {
         case .spelling(let spelling):

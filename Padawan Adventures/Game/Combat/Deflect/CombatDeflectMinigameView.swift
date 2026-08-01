@@ -14,7 +14,7 @@ struct CombatDeflectMinigameView: View {
     let enemySprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
     let isoSquash: CGFloat
-    let onFinished: (CombatOutcome) -> Void
+    let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: CombatDeflectSessionController
 
@@ -29,7 +29,7 @@ struct CombatDeflectMinigameView: View {
         enemySprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
         isoSquash: CGFloat,
-        onFinished: @escaping (CombatOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.deflectConfig = deflectConfig
         self.enemyType = enemyType
@@ -185,7 +185,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
         CGSize(width: max(size.width, 320), height: max(size.height, 240))
     }
 
-    func confirmVictory(onFinished: (CombatOutcome) -> Void) {
+    func confirmVictory(onFinished: (MinigameOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))

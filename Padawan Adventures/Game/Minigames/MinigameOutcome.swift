@@ -4,7 +4,3 @@ nonisolated enum MinigameOutcome: Equatable, Sendable {
     case won(starsAwarded: Int)
     case lost
 }
-
-typealias GateOutcome = MinigameOutcome
-typealias PitOutcome = MinigameOutcome
-typealias CombatOutcome = MinigameOutcome

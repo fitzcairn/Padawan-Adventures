@@ -549,15 +549,15 @@ final class GameViewController: LandscapeHostingController {
 
 /// Captures combat result across the overlay finish callback.
 private final class CombatOutcomeBox {
-    var outcome: CombatOutcome?
+    var outcome: MinigameOutcome?
 }
 
 /// Captures pit puzzle result across the overlay finish callback.
 private final class PitOutcomeBox {
-    var outcome: PitOutcome?
+    var outcome: MinigameOutcome?
 }
 
 /// Captures gate puzzle result across the overlay finish callback.
 private final class GateOutcomeBox {
-    var outcome: GateOutcome?
+    var outcome: MinigameOutcome?
 }

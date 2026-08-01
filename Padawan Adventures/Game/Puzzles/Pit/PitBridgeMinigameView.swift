@@ -12,7 +12,7 @@ struct PitBridgeMinigameView: View {
     let isoConfig: IsometricConfig
     let spriteLibrary: SpriteLibrary
     let playerSpriteConfig: SpriteConfig?
-    let onFinished: (PitOutcome) -> Void
+    let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: PitBridgeSessionController
 
@@ -25,7 +25,7 @@ struct PitBridgeMinigameView: View {
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
-        onFinished: @escaping (PitOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.bridgeConfig = bridgeConfig
         self.pitFx = pitFx
@@ -185,7 +185,7 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
         CGSize(width: max(size.width, 320), height: max(size.height, 240))
     }
 
-    func confirmWon(onFinished: (PitOutcome) -> Void) {
+    func confirmWon(onFinished: (MinigameOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))

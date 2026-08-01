@@ -50,7 +50,7 @@ nonisolated struct PitBridgeMinigameEngine {
     /// Word being answered; also the count of tiles already placed.
     private(set) var roundIndex = 0
     private(set) var choices: [Choice] = []
-    private(set) var outcome: PitOutcome?
+    private(set) var outcome: MinigameOutcome?
 
     private var rng: any RandomNumberGenerator
 

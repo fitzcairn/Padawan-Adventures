@@ -65,7 +65,7 @@ nonisolated struct CombatDeflectMinigameEngine {
     private(set) var monsterHP: Int
     private(set) var healthCount: Int
     private(set) var activeOrb: Orb?
-    private(set) var outcome: CombatOutcome?
+    private(set) var outcome: MinigameOutcome?
     private(set) var isActive = false
 
     private let startingHealth: Int

@@ -7,7 +7,7 @@ struct GateMinigameView: View {
     let puzzleConfig: GateSpellingConfig
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
-    let onFinished: (GateOutcome) -> Void
+    let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateSessionController
 
@@ -15,7 +15,7 @@ struct GateMinigameView: View {
         puzzleConfig: GateSpellingConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
-        onFinished: @escaping (GateOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
@@ -125,7 +125,7 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         CGSize(width: max(size.width, 320), height: max(size.height, 240))
     }
 
-    func confirmUnlocked(onFinished: (GateOutcome) -> Void) {
+    func confirmUnlocked(onFinished: (MinigameOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))

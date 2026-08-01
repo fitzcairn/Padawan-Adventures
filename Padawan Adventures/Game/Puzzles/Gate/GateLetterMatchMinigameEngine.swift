@@ -52,7 +52,7 @@ nonisolated struct GateLetterMatchMinigameEngine {
     private(set) var letters: [LetterToken] = []
     private(set) var matchedIDs: Set<UUID> = []
     private(set) var currentTargetID: UUID?
-    private(set) var outcome: GateOutcome?
+    private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
 
     private var rng: any RandomNumberGenerator

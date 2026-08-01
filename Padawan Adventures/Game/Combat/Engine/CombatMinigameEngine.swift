@@ -121,7 +121,7 @@ nonisolated struct CombatMinigameEngine {
     private(set) var combatStars: Int = 0
     private(set) var shots: [UUID: Shot] = [:]
     private(set) var nextSpawnAt: Double = 0
-    private(set) var outcome: CombatOutcome?
+    private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
     private(set) var sequenceRequiredLetter: String = ""
     /// Correct slashes still needed before the cue sound / required letter changes.

@@ -18,7 +18,7 @@ struct EnemyMinigameView: View {
     let combatSprite: SpriteConfig?
     let enemySprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
-    let onFinished: (CombatOutcome) -> Void
+    let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: CombatSessionController
 
@@ -37,7 +37,7 @@ struct EnemyMinigameView: View {
         combatSprite: SpriteConfig?,
         enemySprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
-        onFinished: @escaping (CombatOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.enemyType = enemyType
         self.healthCount = healthCount
@@ -216,7 +216,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         CGSize(width: max(size.width, 320), height: max(size.height, 240))
     }
 
-    func confirmVictory(onFinished: (CombatOutcome) -> Void) {
+    func confirmVictory(onFinished: (MinigameOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))

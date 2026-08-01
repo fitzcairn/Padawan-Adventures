@@ -48,7 +48,7 @@ nonisolated struct PitMinigameEngine {
     private(set) var wordLetterIDs: [UUID] = []
     private(set) var nextLetterIndex = 0
     private(set) var spentLetterIDs: Set<UUID> = []
-    private(set) var outcome: PitOutcome?
+    private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
 
     private var rng: any RandomNumberGenerator

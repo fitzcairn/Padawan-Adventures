@@ -28,7 +28,7 @@ enum CombatMinigameFactory {
     static func makeView(
         config: CombatMinigameConfig,
         context: CombatPresentationContext,
-        onFinished: @escaping (CombatOutcome) -> Void
+        onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         switch config {
         case .slash:
