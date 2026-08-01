@@ -13,7 +13,7 @@ final class GameViewController: LandscapeHostingController {
     private let session: AppSession
     private weak var gameScene: GameScene?
     private weak var hud: GameHUDView?
-    private var isExitingToLevelSelect = false
+    private let runExitHandler = GameRunExitHandler()
     private var didApplyLevelMusic = false
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
@@ -141,7 +141,13 @@ final class GameViewController: LandscapeHostingController {
             starsCount: starsCount
         )
         hud.onFleeTapped = { [weak self] in
-            self?.exitToLevelSelect(completedLevel: false)
+            guard let self else { return }
+            self.runExitHandler.exitToLevelSelect(
+                completedLevel: false,
+                gameScene: self.gameScene,
+                session: self.session,
+                hostWindow: self.view.window
+            )
         }
         view.addSubview(hud)
         NSLayoutConstraint.activate([
@@ -491,42 +497,19 @@ final class GameViewController: LandscapeHostingController {
                     }
                 },
                 onResolved: { [weak self] done in
-                    self?.exitToLevelSelect(completedLevel: true)
+                    guard let self else {
+                        done()
+                        return
+                    }
+                    self.runExitHandler.exitToLevelSelect(
+                        completedLevel: true,
+                        gameScene: self.gameScene,
+                        session: self.session,
+                        hostWindow: self.view.window
+                    )
                     done()
                 }
             )
-        }
-    }
-
-    @MainActor
-    private func exitToLevelSelect(completedLevel: Bool) {
-        guard !isExitingToLevelSelect else { return }
-        isExitingToLevelSelect = true
-
-        Task {
-            if let snapshot = gameScene?.currentWorld {
-                await session.syncVitals(from: snapshot)
-                if completedLevel {
-                    if let resourceName = session.selectedLevelResourceName {
-                        await session.markLevelCompleted(resourceName: resourceName)
-                    }
-                    try? await session.saveService.delete()
-                } else {
-                    try? await session.saveService.save(snapshot)
-                }
-            }
-            await session.refreshContinueEligibility()
-            session.releaseLevelScopedAssets()
-            session.startObservingMemoryPressure()
-
-            let flow = LandscapeSwiftUIHost(
-                rootView: FlowRootView(
-                    session: session,
-                    router: .postGameRouter()
-                )
-            )
-
-            AppWindow.setRoot(flow, in: view.window ?? AppWindow.key)
         }
     }
 }
