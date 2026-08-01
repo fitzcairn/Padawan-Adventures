@@ -33,6 +33,7 @@ final class PitBridgeScene: SKScene {
     private var dragStartPosition: CGPoint = .zero
 
     private var didSetup = false
+    private var isBuilding = false
     private var didEnd = false
     private var isJumping = false
     private var didRevealTrayForRound = false
@@ -96,7 +97,11 @@ final class PitBridgeScene: SKScene {
 
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
-        didSetup = true
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
         engine.begin()
         GameLogger.step(.world, "pitBridge.buildArena") { buildArena() }
         beginRound()
@@ -109,7 +114,7 @@ final class PitBridgeScene: SKScene {
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !didEnd else { return }
+        guard didSetup, !isBuilding, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         repositionForNewSize()

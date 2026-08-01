@@ -37,6 +37,7 @@ final class GateScene: SKScene {
     private var didEnd = false
     private var isCompletingWin = false
     private var didSetup = false
+    private var isBuilding = false
     private var lastUpdateTime: TimeInterval?
     private var activeLoopTrackID: String?
     private var lastConnectedPrefix = ""
@@ -95,7 +96,11 @@ final class GateScene: SKScene {
 
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
-        didSetup = true
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
         engine.begin()
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         GameLogger.step(.world, "gate.buildPuzzle") { buildPuzzle() }
@@ -108,7 +113,7 @@ final class GateScene: SKScene {
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !didEnd else { return }
+        guard didSetup, !isBuilding, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         rebuildLayoutPreservingLetters()

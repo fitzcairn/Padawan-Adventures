@@ -20,6 +20,7 @@ final class GateLetterMatchScene: SKScene {
     private var laidOutTileSide: CGFloat = 0
     private var didEnd = false
     private var didSetup = false
+    private var isBuilding = false
     private var inputLocked = false
 
     private let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
@@ -48,14 +49,18 @@ final class GateLetterMatchScene: SKScene {
 
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
-        didSetup = true
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
         engine.begin()
         GameLogger.step(.world, "gateLetterMatch.buildPuzzle") { buildPuzzle() }
         playTargetPronunciation()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !didEnd else { return }
+        guard didSetup, !isBuilding, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         rebuildLayout()
