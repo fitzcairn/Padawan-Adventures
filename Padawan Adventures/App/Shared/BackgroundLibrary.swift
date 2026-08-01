@@ -17,6 +17,23 @@ final class BackgroundLibrary {
     /// Number of cached backgrounds (tests / diagnostics).
     var count: Int { images.count }
 
+    /// Approximate resident decoded bytes (RGBA8) for cached backgrounds.
+    var residentBytes: Int {
+        images.values.reduce(0) { partial, image in
+            let pixelWidth = image.cgImage?.width ?? Int(image.size.width * image.scale)
+            let pixelHeight = image.cgImage?.height ?? Int(image.size.height * image.scale)
+            return partial + max(pixelWidth, 0) * max(pixelHeight, 0) * 4
+        }
+    }
+
+    /// Drops every cached background outside `keep`.
+    ///
+    /// Declarative like `SpriteLibrary.retain(ids:)`: callers state what the
+    /// current screen needs rather than remembering to release the previous one.
+    func retain(names keep: Set<String>) {
+        images = images.filter { keep.contains($0.key) }
+    }
+
     func uiImage(named name: String) -> UIImage? {
         images[name]
     }

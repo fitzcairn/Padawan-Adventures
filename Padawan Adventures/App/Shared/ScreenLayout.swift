@@ -63,6 +63,11 @@ struct AppScreen<Content: View>: View {
                 AppChrome.backgroundColor.ignoresSafeArea()
             }
         }
+        .task(id: backgroundNamed) {
+            guard let backgroundNamed, let backgroundLibrary else { return }
+            await backgroundLibrary.ensureLoaded(named: backgroundNamed)
+            backgroundLibrary.retain(names: [backgroundNamed])
+        }
     }
 }
 
