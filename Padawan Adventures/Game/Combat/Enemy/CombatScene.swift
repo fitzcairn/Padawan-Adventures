@@ -40,8 +40,8 @@ final class CombatScene: SKScene {
     private let wallHeight: CGFloat
 
     private var engine: CombatMinigameEngine
-    private var playerNode: AnimatedSpriteNode!
-    private var enemyNode: AnimatedSpriteNode!
+    private var playerNode: AnimatedSpriteNode?
+    private var enemyNode: AnimatedSpriteNode?
     private var shotVisuals: [UUID: ShotVisual] = [:]
     private var slashPoints: [CGPoint] = []
     private var slashPathLength: CGFloat = 0
@@ -54,6 +54,7 @@ final class CombatScene: SKScene {
     private var isSlashActive = false
     private var didEnd = false
     private var didSetup = false
+    private var isBuilding = false
     private var lastUpdateTime: TimeInterval?
     private var activeLoopTrackID: String?
 
@@ -113,7 +114,11 @@ final class CombatScene: SKScene {
 
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
-        didSetup = true
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
         GameLogger.step(.combat, "combat.buildArena") { buildArena() }
         engine.begin()
         // Enable before combat FX so hum/slash sit under letter cues; music −20%.
@@ -134,7 +139,7 @@ final class CombatScene: SKScene {
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !didEnd else { return }
+        guard didSetup, !isBuilding, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         // Keep the fight running; only re-layout sprites. Live shots keep their paths.
@@ -226,13 +231,13 @@ final class CombatScene: SKScene {
     }
 
     private func repositionArenaNodes() {
-        guard playerNode != nil, enemyNode != nil else {
+        guard let playerNode, let enemyNode else {
             buildArena()
             return
         }
         playerNode.fitHeight(playerSpriteHeight)
         playerNode.position = playerPosition
-        placeEnemyAtTopOfView()
+        pinToTopOfView(enemyNode, height: enemySpriteHeight)
     }
 
     // MARK: - Engine events
@@ -268,6 +273,7 @@ final class CombatScene: SKScene {
     }
 
     private func spawnShot(id: UUID, travelSeconds: Double, visualLetter: String) {
+        guard let enemyNode else { return }
         // Aim from the live cue so a just-changed letter already dodges or homes correctly.
         let canHitPlayer = visualLetter == engine.sequenceRequiredLetter
         let travel = max(travelSeconds, 0.05)
@@ -319,6 +325,7 @@ final class CombatScene: SKScene {
 
     /// Matching shots aim at the player body; mismatches fly clearly off-screen past them.
     private func shotEndPoint(from start: CGPoint, canHitPlayer: Bool) -> CGPoint {
+        guard let playerNode else { return start }
         let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
         guard !canHitPlayer else { return player }
 
@@ -336,6 +343,7 @@ final class CombatScene: SKScene {
             return CGPoint(x: mid.x + lateral, y: mid.y)
         }
         // Strong outward bend so non-targets obviously swerve around the player.
+        guard let playerNode else { return mid }
         let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
         let away: CGFloat = start.x >= player.x ? 1 : -1
         let lateral = away * size.width * CGFloat.random(in: 0.40...0.62)
@@ -400,7 +408,7 @@ final class CombatScene: SKScene {
     }
 
     private func checkImpacts() {
-        guard playerNode != nil else { return }
+        guard let playerNode else { return }
         let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
         for (id, visual) in shotVisuals where visual.canHitPlayer {
             let hitRadius = max(shotBaseSize * visual.node.xScale * 0.5, 12)
@@ -573,7 +581,7 @@ final class CombatScene: SKScene {
         slashPoints = [point]
         slashPathLength = 0
         updateSlashLine()
-        if combatSprite != nil {
+        if combatSprite != nil, let playerNode {
             playerNode.playOnce(
                 name: playerSwingAnimationName,
                 library: spriteLibrary,
