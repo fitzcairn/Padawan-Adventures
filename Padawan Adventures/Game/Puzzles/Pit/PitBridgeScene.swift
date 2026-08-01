@@ -7,7 +7,7 @@ protocol PitBridgeSceneDelegate: AnyObject {
 }
 
 /// SpriteKit pit-bridge puzzle: side pads, dashed slots, draggable lettered floor tiles.
-final class PitBridgeScene: SKScene {
+final class PitBridgeScene: MinigameScene {
     weak var bridgeDelegate: PitBridgeSceneDelegate?
 
     private let bridgeConfig: PitBridgeConfig
@@ -32,9 +32,6 @@ final class PitBridgeScene: SKScene {
     private var dragOffset: CGPoint = .zero
     private var dragStartPosition: CGPoint = .zero
 
-    private var didSetup = false
-    private var isBuilding = false
-    private var didEnd = false
     private var isJumping = false
     private var didRevealTrayForRound = false
     private var promptContinuationArmed = false
@@ -76,10 +73,6 @@ final class PitBridgeScene: SKScene {
         self.playerSpriteConfig = playerSpriteConfig
         self.engine = PitBridgeMinigameEngine(config: .init(from: bridgeConfig))
         super.init(size: size)
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -95,13 +88,7 @@ final class PitBridgeScene: SKScene {
         )
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         engine.begin()
         GameLogger.step(.world, "pitBridge.buildArena") { buildArena() }
         beginRound()
@@ -113,10 +100,7 @@ final class PitBridgeScene: SKScene {
         removeAction(forKey: Self.promptWatchdogKey)
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
+    override func rebuildLayout() {
         repositionForNewSize()
     }
 
