@@ -10,7 +10,6 @@ final class GateLetterMatchScene: MinigameScene {
     weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
 
     let puzzleConfig: GateLetterMatchConfig
-    let playerFx: SoundEffectTable
 
     var engine: GateLetterMatchMinigameEngine
     var letterNodes: [UUID: SKNode] = [:]
@@ -26,11 +25,9 @@ final class GateLetterMatchScene: MinigameScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GateLetterMatchConfig,
-        playerFx: SoundEffectTable
+        puzzleConfig: GateLetterMatchConfig
     ) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
         self.engine = GateLetterMatchMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
     }

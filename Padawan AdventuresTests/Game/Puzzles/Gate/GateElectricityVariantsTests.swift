@@ -8,8 +8,7 @@ struct GateElectricityVariantsTests {
     @Test func connectorsBakeMultiplePathVariants() throws {
         let scene = GateScene(
             size: CGSize(width: 800, height: 600),
-            puzzleConfig: .fallback,
-            playerFx: .empty
+            puzzleConfig: .fallback
         )
         scene.addConnectorLineForTesting(
             from: CGPoint(x: 100, y: 200),

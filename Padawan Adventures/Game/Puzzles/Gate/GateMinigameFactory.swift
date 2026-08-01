@@ -12,22 +12,18 @@ enum GateMinigameFactory {
         case .spelling(let spelling):
             GateMinigameView(
                 puzzleConfig: spelling,
-                playerFx: playerFx,
                 hudConfig: hudConfig,
                 onFinished: onFinished
             )
         case .letterMatch(let letterMatch):
             GateLetterMatchMinigameView(
                 puzzleConfig: letterMatch,
-                playerFx: playerFx,
-                hudConfig: hudConfig,
                 onFinished: onFinished
             )
         case .wordPlug(let wordPlug):
             GateWordPlugMinigameView(
                 puzzleConfig: wordPlug,
                 playerFx: playerFx,
-                hudConfig: hudConfig,
                 onFinished: onFinished
             )
         }

@@ -13,7 +13,6 @@ final class PitScene: MinigameScene {
 
     let puzzleConfig: PitPuzzleConfig
     let pitFx: SoundEffectTable
-    let playerFx: SoundEffectTable
     let pitSpriteSetLibrary: PitSpriteSetLibrary
     let floorTileSetLibrary: FloorTileSetLibrary
     /// Same isometric footprint as the world engine (`app.yaml` display tiles).
@@ -60,7 +59,6 @@ final class PitScene: MinigameScene {
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
         pitFx: SoundEffectTable,
-        playerFx: SoundEffectTable,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
@@ -69,7 +67,6 @@ final class PitScene: MinigameScene {
     ) {
         self.puzzleConfig = puzzleConfig
         self.pitFx = pitFx
-        self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
         self.isoConfig = isoConfig

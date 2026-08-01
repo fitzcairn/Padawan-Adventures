@@ -6,7 +6,6 @@ import UIKit
 struct PitMinigameView: View {
     let puzzleConfig: PitPuzzleConfig
     let pitFx: SoundEffectTable
-    let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let pitSpriteSetLibrary: PitSpriteSetLibrary
     let floorTileSetLibrary: FloorTileSetLibrary
@@ -20,7 +19,6 @@ struct PitMinigameView: View {
     init(
         puzzleConfig: PitPuzzleConfig,
         pitFx: SoundEffectTable,
-        playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
@@ -31,7 +29,6 @@ struct PitMinigameView: View {
     ) {
         self.puzzleConfig = puzzleConfig
         self.pitFx = pitFx
-        self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
@@ -43,7 +40,6 @@ struct PitMinigameView: View {
             wrappedValue: PitSessionController(
                 puzzleConfig: puzzleConfig,
                 pitFx: pitFx,
-                playerFx: playerFx,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
@@ -97,7 +93,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
 
     private let puzzleConfig: PitPuzzleConfig
     private let pitFx: SoundEffectTable
-    private let playerFx: SoundEffectTable
     private let pitSpriteSetLibrary: PitSpriteSetLibrary
     private let floorTileSetLibrary: FloorTileSetLibrary
     private let isoConfig: IsometricConfig
@@ -117,12 +112,11 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
                 await spriteLibrary.ensureLoaded(config, id: "player")
             }
         },
-        make: { [puzzleConfig, pitFx, playerFx, pitSpriteSetLibrary, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
+        make: { [puzzleConfig, pitFx, pitSpriteSetLibrary, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
             PitScene(
                 size: size,
                 puzzleConfig: puzzleConfig,
                 pitFx: pitFx,
-                playerFx: playerFx,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
@@ -140,7 +134,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     init(
         puzzleConfig: PitPuzzleConfig,
         pitFx: SoundEffectTable,
-        playerFx: SoundEffectTable,
         pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
@@ -149,7 +142,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     ) {
         self.puzzleConfig = puzzleConfig
         self.pitFx = pitFx
-        self.playerFx = playerFx
         self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
         self.isoConfig = isoConfig

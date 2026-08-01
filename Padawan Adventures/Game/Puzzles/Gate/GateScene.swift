@@ -21,7 +21,6 @@ final class GateScene: MinigameScene {
     weak var gateDelegate: GateSceneDelegate?
 
     let puzzleConfig: GateSpellingConfig
-    let playerFx: SoundEffectTable
 
     var engine: GateMinigameEngine
     var stagingNode: SKShapeNode?
@@ -53,11 +52,9 @@ final class GateScene: MinigameScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GateSpellingConfig,
-        playerFx: SoundEffectTable
+        puzzleConfig: GateSpellingConfig
     ) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
         self.engine = GateMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
     }

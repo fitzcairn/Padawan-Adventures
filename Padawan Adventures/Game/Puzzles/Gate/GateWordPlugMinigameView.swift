@@ -6,7 +6,6 @@ import UIKit
 struct GateWordPlugMinigameView: View {
     let puzzleConfig: GateWordPlugConfig
     let playerFx: SoundEffectTable
-    let hudConfig: HudConfig
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateWordPlugSessionController
@@ -14,12 +13,10 @@ struct GateWordPlugMinigameView: View {
     init(
         puzzleConfig: GateWordPlugConfig,
         playerFx: SoundEffectTable,
-        hudConfig: HudConfig,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.hudConfig = hudConfig
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateWordPlugSessionController(

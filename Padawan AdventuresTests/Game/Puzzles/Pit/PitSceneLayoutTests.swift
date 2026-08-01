@@ -21,7 +21,6 @@ struct PitSceneLayoutTests {
                 words: self.words(words)
             ),
             pitFx: .empty,
-            playerFx: .empty,
             pitSpriteSetLibrary: PitSpriteSetLibrary(),
             floorTileSetLibrary: FloorTileSetLibrary(),
             isoConfig: IsometricConfig(),

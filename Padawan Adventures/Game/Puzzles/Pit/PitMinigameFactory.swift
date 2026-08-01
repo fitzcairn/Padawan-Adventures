@@ -19,7 +19,6 @@ enum PitMinigameFactory {
             PitMinigameView(
                 puzzleConfig: spelling,
                 pitFx: pitFx,
-                playerFx: playerFx,
                 hudConfig: hudConfig,
                 pitSpriteSetLibrary: pitSpriteSetLibrary,
                 floorTileSetLibrary: floorTileSetLibrary,

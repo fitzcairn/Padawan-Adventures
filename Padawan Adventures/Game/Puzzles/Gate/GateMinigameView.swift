@@ -5,7 +5,6 @@ import UIKit
 
 struct GateMinigameView: View {
     let puzzleConfig: GateSpellingConfig
-    let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let onFinished: (MinigameOutcome) -> Void
 
@@ -13,18 +12,15 @@ struct GateMinigameView: View {
 
     init(
         puzzleConfig: GateSpellingConfig,
-        playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateSessionController(
                 puzzleConfig: puzzleConfig,
-                playerFx: playerFx,
                 hudConfig: hudConfig
             )
         )
@@ -71,15 +67,13 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     @Published private(set) var scene: GateScene?
 
     private let puzzleConfig: GateSpellingConfig
-    private let playerFx: SoundEffectTable
     private let hudConfig: HudConfig
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<GateScene>(
-        make: { [puzzleConfig, playerFx] size in
+        make: { [puzzleConfig] size in
             GateScene(
                 size: size,
-                puzzleConfig: puzzleConfig,
-                playerFx: playerFx
+                puzzleConfig: puzzleConfig
             )
         },
         onReady: { [weak self] created in
@@ -91,11 +85,9 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
 
     init(
         puzzleConfig: GateSpellingConfig,
-        playerFx: SoundEffectTable,
         hudConfig: HudConfig
     ) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
         self.hudConfig = hudConfig
     }
 

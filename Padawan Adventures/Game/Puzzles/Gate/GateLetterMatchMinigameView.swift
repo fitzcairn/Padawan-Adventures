@@ -5,26 +5,19 @@ import UIKit
 
 struct GateLetterMatchMinigameView: View {
     let puzzleConfig: GateLetterMatchConfig
-    let playerFx: SoundEffectTable
-    let hudConfig: HudConfig
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateLetterMatchSessionController
 
     init(
         puzzleConfig: GateLetterMatchConfig,
-        playerFx: SoundEffectTable,
-        hudConfig: HudConfig,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
-        self.hudConfig = hudConfig
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateLetterMatchSessionController(
-                puzzleConfig: puzzleConfig,
-                playerFx: playerFx
+                puzzleConfig: puzzleConfig
             )
         )
     }
@@ -57,14 +50,12 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
     @Published private(set) var scene: GateLetterMatchScene?
 
     private let puzzleConfig: GateLetterMatchConfig
-    private let playerFx: SoundEffectTable
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<GateLetterMatchScene>(
-        make: { [puzzleConfig, playerFx] size in
+        make: { [puzzleConfig] size in
             GateLetterMatchScene(
                 size: size,
-                puzzleConfig: puzzleConfig,
-                playerFx: playerFx
+                puzzleConfig: puzzleConfig
             )
         },
         onReady: { [weak self] created in
@@ -74,12 +65,8 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
         }
     )
 
-    init(
-        puzzleConfig: GateLetterMatchConfig,
-        playerFx: SoundEffectTable
-    ) {
+    init(puzzleConfig: GateLetterMatchConfig) {
         self.puzzleConfig = puzzleConfig
-        self.playerFx = playerFx
     }
 
     func ensureScene(size: CGSize) {
