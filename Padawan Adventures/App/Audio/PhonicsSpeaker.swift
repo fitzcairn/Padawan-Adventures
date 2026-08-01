@@ -11,7 +11,7 @@ final class PhonicsSpeaker: NSObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var pendingCount = 0
     private var completion: (() -> Void)?
-    private var duckTask: Task<Void, Never>?
+    private let speechDuck = SpeechCueCoordinator()
 
     override init() {
         super.init()
@@ -53,18 +53,15 @@ final class PhonicsSpeaker: NSObject {
     }
 
     private func startDuckRefresh() {
-        duckTask?.cancel()
-        duckTask = Task { @MainActor in
-            while !Task.isCancelled {
-                BackgroundMusicController.shared.duckForPhoneticCue(duration: 0.8)
-                try? await Task.sleep(nanoseconds: 400_000_000)
-            }
-        }
+        speechDuck.startRefreshing(with: SpeechCueCoordinator.DuckPolicy(
+            holdDuration: 0.8,
+            rearmInterval: 0.4,
+            applyHold: { BackgroundMusicController.shared.duckForPhoneticCue(duration: $0) }
+        ))
     }
 
     private func stopDuckRefresh() {
-        duckTask?.cancel()
-        duckTask = nil
+        speechDuck.stop()
     }
 
     private func finishRun(callCompletion: Bool) {

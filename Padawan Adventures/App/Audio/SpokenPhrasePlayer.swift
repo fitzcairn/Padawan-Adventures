@@ -13,7 +13,7 @@ final class SpokenPhrasePlayer: NSObject, AVSpeechSynthesizerDelegate {
 
     private let synthesizer = AVSpeechSynthesizer()
     private var completion: (() -> Void)?
-    private var duckTask: Task<Void, Never>?
+    private let speechDuck = SpeechCueCoordinator()
     /// Identifies the utterance the stored `completion` belongs to. Delegate
     /// callbacks arrive asynchronously, so a cancelled utterance can report back
     /// after the next `speak` has already installed its completion.
@@ -50,26 +50,20 @@ final class SpokenPhrasePlayer: NSObject, AVSpeechSynthesizerDelegate {
         // Cleared first so the asynchronous `didCancel` below is ignored.
         activeUtteranceID = nil
         completion = nil
-        duckTask?.cancel()
-        duckTask = nil
+        speechDuck.stop()
         synthesizer.stopSpeaking(at: .immediate)
     }
 
     private func startDucking() {
-        duckTask?.cancel()
-        duckTask = Task { @MainActor in
-            while !Task.isCancelled {
-                SoundEffectsController.shared.duckAmbience(for: Self.duckHoldSeconds)
-                try? await Task.sleep(
-                    nanoseconds: UInt64(Self.duckRearmSeconds * 1_000_000_000)
-                )
-            }
-        }
+        speechDuck.startRefreshing(with: SpeechCueCoordinator.DuckPolicy(
+            holdDuration: Self.duckHoldSeconds,
+            rearmInterval: Self.duckRearmSeconds,
+            applyHold: { SoundEffectsController.shared.duckAmbience(for: $0) }
+        ))
     }
 
     private func finish() {
-        duckTask?.cancel()
-        duckTask = nil
+        speechDuck.stop()
         activeUtteranceID = nil
         let done = completion
         completion = nil
