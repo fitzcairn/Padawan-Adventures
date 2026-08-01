@@ -86,6 +86,20 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     private let playerFx: SoundEffectTable
     private let hudConfig: HudConfig
     private var didFinish = false
+    private lazy var sceneHost = MinigameSceneHost<GateScene>(
+        make: { [puzzleConfig, playerFx] size in
+            GateScene(
+                size: size,
+                puzzleConfig: puzzleConfig,
+                playerFx: playerFx
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.gateDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         puzzleConfig: GateSpellingConfig,
@@ -98,31 +112,11 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     }
 
     func ensureScene(size: CGSize) {
-        guard scene == nil else {
-            updateSceneSizeIfNeeded(size)
-            return
-        }
-        let safeSize = Self.sanitizedSize(size)
-        let created = GateScene(
-            size: safeSize,
-            puzzleConfig: puzzleConfig,
-            playerFx: playerFx
-        )
-        created.gateDelegate = self
-        scene = created
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        guard let scene else { return }
-        let safeSize = Self.sanitizedSize(size)
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmUnlocked(onFinished: (MinigameOutcome) -> Void) {
@@ -132,22 +126,16 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
     }
 
     func gateSceneDidSelectWord(_ word: String) {
-        Task { @MainActor in
-            self.targetWord = word
-            self.connectedCount = 0
-        }
+        targetWord = word
+        connectedCount = 0
     }
 
     func gateSceneDidUpdateConnectedPrefix(_ prefix: String) {
-        Task { @MainActor in
-            self.connectedCount = prefix.count
-        }
+        connectedCount = prefix.count
     }
 
     func gateSceneDidWin(starsAwarded: Int) {
-        Task { @MainActor in
-            self.starsAwarded = starsAwarded
-            self.showUnlocked = true
-        }
+        self.starsAwarded = starsAwarded
+        showUnlocked = true
     }
 }
