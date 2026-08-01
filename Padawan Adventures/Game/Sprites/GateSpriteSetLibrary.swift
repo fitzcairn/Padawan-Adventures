@@ -81,6 +81,13 @@ final class GateSpriteSetLibrary {
         }
     }
 
+    /// Clears the active set so level-exit can free its textures.
+    func release() {
+        gateSet = nil
+        setName = nil
+        textures = [:]
+    }
+
     func texture(for axis: GateSpriteSet.Axis) -> SKTexture? {
         textures[axis.rawValue]
     }

@@ -82,6 +82,13 @@ final class LetterSpriteSetLibrary {
         }
     }
 
+    /// Clears the active set so level-exit can free its textures.
+    func release() {
+        letterSet = nil
+        setName = nil
+        textures = [:]
+    }
+
     func allTextures() -> [SKTexture] {
         Array(textures.values)
     }

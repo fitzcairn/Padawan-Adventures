@@ -212,9 +212,16 @@ final class AppSession {
         return ids
     }
 
-    /// Frees enemy and per-level treasure textures after leaving a level.
+    /// Frees enemy, per-level treasure, atlas sets, and screen backgrounds after leaving a level.
     func releaseLevelScopedSprites() {
         spriteLibrary.retain(ids: persistentSpriteIDs)
+        floorTileSetLibrary.release()
+        letterSpriteSetLibrary.release()
+        pitSpriteSetLibrary.release()
+        gateSpriteSetLibrary.release()
+        // Keep no backgrounds at level exit — the next screen reloads what it needs.
+        backgroundLibrary.retain(names: [])
+        MemoryProbe.mark("level-assets-released")
     }
 
     /// Drops level-scoped textures under memory pressure.

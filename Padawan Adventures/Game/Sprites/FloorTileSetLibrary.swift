@@ -82,6 +82,13 @@ final class FloorTileSetLibrary {
         }
     }
 
+    /// Clears the active set so level-exit can free its textures.
+    func release() {
+        tileSet = nil
+        setName = nil
+        textures = [:]
+    }
+
     func texture(_ tileID: String) -> SKTexture? {
         textures[tileID]
     }

@@ -85,6 +85,13 @@ final class PitSpriteSetLibrary {
         }
     }
 
+    /// Clears the active set so level-exit can free its textures.
+    func release() {
+        pitSet = nil
+        setName = nil
+        textures = [:]
+    }
+
     func texture(_ tileID: String) -> SKTexture? {
         textures[tileID]
     }
