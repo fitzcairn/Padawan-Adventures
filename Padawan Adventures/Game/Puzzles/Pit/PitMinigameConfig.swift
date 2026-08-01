@@ -106,8 +106,10 @@ nonisolated struct PitConfig: Equatable, Sendable {
 
     /// Weighted pick, same semantics as `CombatConfig.pickMinigame`: weight 0 is never
     /// chosen unless every weight is 0, in which case the first entry wins.
-    func pickMinigame(using rng: inout some RandomNumberGenerator) -> PitMinigameConfig {
-        precondition(!minigames.isEmpty, "PitConfig.minigames must not be empty")
+    func pickMinigame(using rng: inout some RandomNumberGenerator) throws -> PitMinigameConfig {
+        guard !minigames.isEmpty else {
+            throw WorldSeedError.decodeFailed("pit.minigames must not be empty")
+        }
         let total = minigames.reduce(0.0) { $0 + max($1.weight, 0) }
         guard total > 0 else { return minigames[0] }
         var roll = Double.random(in: 0..<total, using: &rng)

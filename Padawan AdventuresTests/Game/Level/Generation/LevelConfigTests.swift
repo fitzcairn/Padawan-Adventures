@@ -1311,18 +1311,18 @@ struct LevelConfigTests {
         #expect(deflect.letters.map(\.letter) == ["a", "b", "c"])
     }
 
-    @Test func pickMinigameNeverChoosesAZeroWeightEntry() {
+    @Test func pickMinigameNeverChoosesAZeroWeightEntry() throws {
         let config = CombatConfig(minigames: [
             .slash(CombatSlashConfig(weight: 0)),
             .deflect(CombatDeflectConfig(weight: 1)),
         ])
         var rng = CombatSeededGenerator(seed: 5)
         for _ in 0..<200 {
-            #expect(config.pickMinigame(using: &rng).kind == .deflect)
+            #expect(try config.pickMinigame(using: &rng).kind == .deflect)
         }
     }
 
-    @Test func pickMinigameEventuallyChoosesBothWhenBothAreWeighted() {
+    @Test func pickMinigameEventuallyChoosesBothWhenBothAreWeighted() throws {
         let config = CombatConfig(minigames: [
             .slash(CombatSlashConfig(weight: 1)),
             .deflect(CombatDeflectConfig(weight: 1)),
@@ -1330,18 +1330,34 @@ struct LevelConfigTests {
         var rng = CombatSeededGenerator(seed: 11)
         var seen = Set<CombatMinigameKind>()
         for _ in 0..<200 {
-            seen.insert(config.pickMinigame(using: &rng).kind)
+            seen.insert(try config.pickMinigame(using: &rng).kind)
         }
         #expect(seen == Set(CombatMinigameKind.allCases))
     }
 
-    @Test func pickMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() {
+    @Test func pickMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() throws {
         let config = CombatConfig(minigames: [
             .slash(CombatSlashConfig(weight: 0)),
             .deflect(CombatDeflectConfig(weight: 0)),
         ])
         var rng = CombatSeededGenerator(seed: 3)
-        #expect(config.pickMinigame(using: &rng).kind == .slash)
+        #expect(try config.pickMinigame(using: &rng).kind == .slash)
+    }
+
+    @Test func pickMinigameThrowsWhenMinigamesEmpty() {
+        let config = CombatConfig(minigames: [])
+        var rng = CombatSeededGenerator(seed: 3)
+        #expect(throws: WorldSeedError.self) {
+            try config.pickMinigame(using: &rng)
+        }
+    }
+
+    @Test func pickGateMinigameKindThrowsWhenMinigamesEmpty() {
+        let config = GateConfig(fx: .empty, minigames: [])
+        var rng = CombatSeededGenerator(seed: 3)
+        #expect(throws: WorldSeedError.self) {
+            try config.pickMinigameKind(using: &rng)
+        }
     }
 
     @Test func rejectsUnknownCombatMinigameType() {
@@ -1794,7 +1810,7 @@ struct LevelConfigTests {
         #expect(level.pit.minigames.map(\.kind) == [.bridge])
     }
 
-    @Test func pickPitMinigameNeverChoosesAZeroWeightEntry() {
+    @Test func pickPitMinigameNeverChoosesAZeroWeightEntry() throws {
         let config = PitConfig(
             fx: .empty,
             minigames: [
@@ -1804,11 +1820,11 @@ struct LevelConfigTests {
         )
         var rng = PitSeededGenerator(seed: 5)
         for _ in 0..<200 {
-            #expect(config.pickMinigame(using: &rng).kind == .bridge)
+            #expect(try config.pickMinigame(using: &rng).kind == .bridge)
         }
     }
 
-    @Test func pickPitMinigameEventuallyChoosesBothWhenBothAreWeighted() {
+    @Test func pickPitMinigameEventuallyChoosesBothWhenBothAreWeighted() throws {
         let config = PitConfig(
             fx: .empty,
             minigames: [
@@ -1819,12 +1835,12 @@ struct LevelConfigTests {
         var rng = PitSeededGenerator(seed: 11)
         var seen = Set<PitMinigameKind>()
         for _ in 0..<200 {
-            seen.insert(config.pickMinigame(using: &rng).kind)
+            seen.insert(try config.pickMinigame(using: &rng).kind)
         }
         #expect(seen == Set(PitMinigameKind.allCases))
     }
 
-    @Test func pickPitMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() {
+    @Test func pickPitMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() throws {
         let config = PitConfig(
             fx: .empty,
             minigames: [
@@ -1833,7 +1849,15 @@ struct LevelConfigTests {
             ]
         )
         var rng = PitSeededGenerator(seed: 3)
-        #expect(config.pickMinigame(using: &rng).kind == .spelling)
+        #expect(try config.pickMinigame(using: &rng).kind == .spelling)
+    }
+
+    @Test func pickPitMinigameThrowsWhenMinigamesEmpty() {
+        let config = PitConfig(fx: .empty, minigames: [])
+        var rng = PitSeededGenerator(seed: 3)
+        #expect(throws: WorldSeedError.self) {
+            try config.pickMinigame(using: &rng)
+        }
     }
 
     @Test func rejectsUnknownPitMinigameType() {

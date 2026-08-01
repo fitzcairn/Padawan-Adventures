@@ -360,6 +360,47 @@ final class AppSession {
         fallbackAppConfig()
     }
 
+    /// Creates player/save stores without trapping when Application Support is unavailable.
+    private static func makePersistenceStores() -> (PlayerStateStore, GameSaveService) {
+        func pair(at directory: URL?) -> (PlayerStateStore, GameSaveService)? {
+            guard let store = try? PlayerStateStore(directoryURL: directory),
+                  let save = try? GameSaveService(directoryURL: store.rootDirectoryURL) else {
+                return nil
+            }
+            return (store, save)
+        }
+
+        if let stores = pair(at: nil) {
+            return stores
+        }
+
+        var candidates: [URL] = [
+            FileManager.default.temporaryDirectory
+                .appendingPathComponent("PadawanAdventures", isDirectory: true),
+        ]
+        candidates.append(contentsOf: (0..<16).map { _ in
+            FileManager.default.temporaryDirectory
+                .appendingPathComponent("PadawanAdventures-\(UUID().uuidString)", isDirectory: true)
+        })
+
+        for directory in candidates {
+            if let stores = pair(at: directory) {
+                GameLogger.fault(.session, "Persistence using fallback directory: \(directory.path)")
+                return stores
+            }
+        }
+
+        // Non-trapping last resort for transient I/O failures during bootstrap.
+        while true {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("PadawanAdventures-\(UUID().uuidString)", isDirectory: true)
+            if let stores = pair(at: directory) {
+                GameLogger.fault(.session, "Persistence using extended fallback: \(directory.path)")
+                return stores
+            }
+        }
+    }
+
     /// Loads config, stores, and warms screen + shared gameplay assets before tap-to-start.
     ///
     /// Call after the loading screen has already warmed title art into `spriteLibrary`.
@@ -459,20 +500,7 @@ final class AppSession {
 
         await report(0.10)
 
-        let playerStore: PlayerStateStore
-        let saveService: GameSaveService
-        if let store = try? PlayerStateStore() {
-            playerStore = store
-            // Unbound placeholder until a player is selected; directory is the store root.
-            saveService = (try? GameSaveService(directoryURL: store.rootDirectoryURL))
-                ?? (try! GameSaveService(directoryURL: FileManager.default.temporaryDirectory))
-        } else {
-            let temp = FileManager.default.temporaryDirectory
-                .appendingPathComponent("PadawanAdventures", isDirectory: true)
-            try? FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
-            playerStore = try! PlayerStateStore(directoryURL: temp)
-            saveService = try! GameSaveService(directoryURL: temp)
-        }
+        let (playerStore, saveService) = Self.makePersistenceStores()
 
         try? await playerStore.purgeOrphans()
         await report(configEnd)

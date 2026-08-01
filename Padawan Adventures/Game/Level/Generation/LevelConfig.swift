@@ -443,9 +443,11 @@ nonisolated struct GateConfig: Equatable, Sendable {
     }
 
     /// Uniform pick among distinct kinds (generation only).
-    func pickMinigameKind(using rng: inout some RandomNumberGenerator) -> GateMinigameKind {
+    func pickMinigameKind(using rng: inout some RandomNumberGenerator) throws -> GateMinigameKind {
         let kinds = distinctMinigameKinds
-        precondition(!kinds.isEmpty)
+        guard !kinds.isEmpty else {
+            throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
+        }
         return kinds[Int.random(in: 0..<kinds.count, using: &rng)]
     }
 

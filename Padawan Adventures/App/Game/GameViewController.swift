@@ -221,7 +221,8 @@ final class GameViewController: LandscapeHostingController {
         )
         // Each encounter rolls its own arena from the level's weighted list.
         var minigameRNG = SystemRandomNumberGenerator()
-        let chosenMinigame = session.selectedCombatConfig.pickMinigame(using: &minigameRNG)
+        let chosenMinigame = (try? session.selectedCombatConfig.pickMinigame(using: &minigameRNG))
+            ?? CombatConfig.fallback.minigames[0]
         GameLogger.mark(
             .combat,
             """
@@ -318,7 +319,8 @@ final class GameViewController: LandscapeHostingController {
         let pitConfig = session.selectedPitConfig
         // Each pit rolls its own game from the level's weighted list.
         var minigameRNG = SystemRandomNumberGenerator()
-        let chosenMinigame = pitConfig.pickMinigame(using: &minigameRNG)
+        let chosenMinigame = (try? pitConfig.pickMinigame(using: &minigameRNG))
+            ?? PitConfig.fallback.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
         let outcomeBox = PitOutcomeBox()
