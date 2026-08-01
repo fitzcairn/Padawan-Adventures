@@ -59,7 +59,7 @@ struct PitMinigameView: View {
                 OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    PitSpriteView(scene: scene)
+                    SpriteKitSceneView(scene: scene)
                         .ignoresSafeArea()
                 }
 
@@ -212,24 +212,6 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
             self.targetWord = word
             self.starsAwarded = starsAwarded
             self.showEscaped = true
-        }
-    }
-}
-
-private struct PitSpriteView: UIViewRepresentable {
-    let scene: PitScene
-
-    func makeUIView(context: Context) -> SKView {
-        let view = SKView()
-        view.allowsTransparency = false
-        view.ignoresSiblingOrder = true
-        view.presentScene(scene)
-        return view
-    }
-
-    func updateUIView(_ uiView: SKView, context: Context) {
-        if uiView.scene !== scene {
-            uiView.presentScene(scene)
         }
     }
 }

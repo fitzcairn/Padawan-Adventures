@@ -36,7 +36,7 @@ struct GateMinigameView: View {
                 OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    GateSpriteView(scene: scene)
+                    SpriteKitSceneView(scene: scene)
                         .ignoresSafeArea()
                 }
 
@@ -140,24 +140,6 @@ final class GateSessionController: ObservableObject, GateSceneDelegate {
         Task { @MainActor in
             self.starsAwarded = starsAwarded
             self.showUnlocked = true
-        }
-    }
-}
-
-private struct GateSpriteView: UIViewRepresentable {
-    let scene: GateScene
-
-    func makeUIView(context: Context) -> SKView {
-        let view = SKView()
-        view.allowsTransparency = false
-        view.ignoresSiblingOrder = true
-        view.presentScene(scene)
-        return view
-    }
-
-    func updateUIView(_ uiView: SKView, context: Context) {
-        if uiView.scene !== scene {
-            uiView.presentScene(scene)
         }
     }
 }

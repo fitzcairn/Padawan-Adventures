@@ -35,7 +35,7 @@ struct GateWordPlugMinigameView: View {
                 OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    GateWordPlugSpriteView(scene: scene)
+                    SpriteKitSceneView(scene: scene)
                         .ignoresSafeArea()
                 }
 
@@ -114,24 +114,6 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
         Task { @MainActor in
             self.starsAwarded = starsAwarded
             self.showUnlocked = true
-        }
-    }
-}
-
-private struct GateWordPlugSpriteView: UIViewRepresentable {
-    let scene: GateWordPlugScene
-
-    func makeUIView(context: Context) -> SKView {
-        let view = SKView()
-        view.allowsTransparency = false
-        view.ignoresSiblingOrder = true
-        view.presentScene(scene)
-        return view
-    }
-
-    func updateUIView(_ uiView: SKView, context: Context) {
-        if uiView.scene !== scene {
-            uiView.presentScene(scene)
         }
     }
 }

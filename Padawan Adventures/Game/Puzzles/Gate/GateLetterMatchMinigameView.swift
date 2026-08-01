@@ -35,7 +35,7 @@ struct GateLetterMatchMinigameView: View {
                 OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    GateLetterMatchSpriteView(scene: scene)
+                    SpriteKitSceneView(scene: scene)
                         .ignoresSafeArea()
                 }
 
@@ -114,24 +114,6 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
         Task { @MainActor in
             self.starsAwarded = starsAwarded
             self.showUnlocked = true
-        }
-    }
-}
-
-private struct GateLetterMatchSpriteView: UIViewRepresentable {
-    let scene: GateLetterMatchScene
-
-    func makeUIView(context: Context) -> SKView {
-        let view = SKView()
-        view.allowsTransparency = false
-        view.ignoresSiblingOrder = true
-        view.presentScene(scene)
-        return view
-    }
-
-    func updateUIView(_ uiView: SKView, context: Context) {
-        if uiView.scene !== scene {
-            uiView.presentScene(scene)
         }
     }
 }

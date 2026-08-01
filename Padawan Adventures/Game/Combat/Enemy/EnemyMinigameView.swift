@@ -79,7 +79,7 @@ struct EnemyMinigameView: View {
                 OverlayChrome.backgroundColor.ignoresSafeArea()
 
                 if let scene = session.scene {
-                    CombatSpriteView(scene: scene)
+                    SpriteKitSceneView(scene: scene)
                         .ignoresSafeArea()
                 }
 
@@ -241,24 +241,6 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         didFinish = true
         Task { @MainActor in
             self.onLost?()
-        }
-    }
-}
-
-private struct CombatSpriteView: UIViewRepresentable {
-    let scene: CombatScene
-
-    func makeUIView(context: Context) -> SKView {
-        let view = SKView()
-        view.allowsTransparency = false
-        view.ignoresSiblingOrder = true
-        view.presentScene(scene)
-        return view
-    }
-
-    func updateUIView(_ uiView: SKView, context: Context) {
-        if uiView.scene !== scene {
-            uiView.presentScene(scene)
         }
     }
 }
