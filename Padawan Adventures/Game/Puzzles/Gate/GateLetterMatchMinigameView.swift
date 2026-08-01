@@ -30,15 +30,14 @@ struct GateLetterMatchMinigameView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                OverlayChrome.backgroundColor.ignoresSafeArea()
-
-                if let scene = session.scene {
-                    SpriteKitSceneView(scene: scene)
-                        .ignoresSafeArea()
-                }
-
+        MinigameShellView(
+            scene: session.scene,
+            accessibilityRootID: "minigame.gate.letter_match",
+            ensureScene: session.ensureScene(size:),
+            updateSceneSize: session.updateSceneSizeIfNeeded(_:),
+            includesHUDLayer: false,
+            hud: { EmptyView() },
+            overlay: {
                 if session.showUnlocked {
                     MinigameResultOverlay(
                         kind: .unlocked(starsAwarded: session.starsAwarded)
@@ -47,14 +46,7 @@ struct GateLetterMatchMinigameView: View {
                     }
                 }
             }
-            .onAppear {
-                session.ensureScene(size: proxy.size)
-            }
-            .onChange(of: proxy.size) { _, newSize in
-                session.updateSceneSizeIfNeeded(newSize)
-            }
-        }
-        .accessibilityIdentifier("minigame.gate.letter_match")
+        )
     }
 }
 

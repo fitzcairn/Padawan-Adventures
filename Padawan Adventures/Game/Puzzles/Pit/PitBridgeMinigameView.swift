@@ -50,15 +50,12 @@ struct PitBridgeMinigameView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                OverlayChrome.backgroundColor.ignoresSafeArea()
-
-                if let scene = session.scene {
-                    SpriteKitSceneView(scene: scene)
-                        .ignoresSafeArea()
-                }
-
+        MinigameShellView(
+            scene: session.scene,
+            accessibilityRootID: "minigame.pit_bridge",
+            ensureScene: session.ensureScene(size:),
+            updateSceneSize: session.updateSceneSizeIfNeeded(_:),
+            hud: {
                 HUDHostRepresentable(
                     makeHUD: {
                         SpellingProgressHUDView(
@@ -72,10 +69,8 @@ struct PitBridgeMinigameView: View {
                         hud.setWord(session.word, progressCount: 0)
                     }
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
+            },
+            overlay: {
                 if session.showWon {
                     MinigameResultOverlay(
                         kind: .bridged(starsAwarded: session.starsAwarded)
@@ -84,14 +79,7 @@ struct PitBridgeMinigameView: View {
                     }
                 }
             }
-            .onAppear {
-                session.ensureScene(size: proxy.size)
-            }
-            .onChange(of: proxy.size) { _, newSize in
-                session.updateSceneSizeIfNeeded(newSize)
-            }
-        }
-        .accessibilityIdentifier("minigame.pit_bridge")
+        )
     }
 }
 

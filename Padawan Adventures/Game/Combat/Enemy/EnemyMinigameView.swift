@@ -74,15 +74,13 @@ struct EnemyMinigameView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                OverlayChrome.backgroundColor.ignoresSafeArea()
-
-                if let scene = session.scene {
-                    SpriteKitSceneView(scene: scene)
-                        .ignoresSafeArea()
-                }
-
+        MinigameShellView(
+            scene: session.scene,
+            accessibilityRootID: "minigame.enemy",
+            ensureScene: session.ensureScene(size:),
+            updateSceneSize: session.updateSceneSizeIfNeeded(_:),
+            onAppear: { session.onLost = { onFinished(.lost) } },
+            hud: {
                 HUDHostRepresentable(
                     makeHUD: {
                         CombatHUDView(
@@ -97,27 +95,15 @@ struct EnemyMinigameView: View {
                         hud.setProgress(current: session.stars, goal: enemyType.starsToWin)
                     }
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-                // HUD must not steal touches from the SpriteKit slash input underneath.
-                .allowsHitTesting(false)
-
+            },
+            overlay: {
                 if session.showVictory {
                     MinigameResultOverlay(kind: .combatVictory) {
                         session.confirmVictory(onFinished: onFinished)
                     }
                 }
             }
-            .onAppear {
-                session.onLost = { onFinished(.lost) }
-                session.ensureScene(size: proxy.size)
-            }
-            .onChange(of: proxy.size) { _, newSize in
-                // Only adopt meaningful size changes; ignore layout jitter.
-                session.updateSceneSizeIfNeeded(newSize)
-            }
-        }
-        .accessibilityIdentifier("minigame.enemy")
+        )
     }
 }
 
