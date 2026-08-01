@@ -3,43 +3,25 @@ import SpriteKit
 extension IsometricRenderer {
     /// Reuses ceiling diamonds when a cell still needs a roof overlay.
     func syncCeilingNodes(world: GameWorld, story: Int) {
-        var liveCoords = Set<GridCoord>()
-
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                let coord = GridCoord(x: x, y: y, story: story)
-                guard showsWall(at: coord) else { continue }
-                guard let identity = PlaceholderFactory.ceilingIdentity(at: coord, in: world) else {
-                    continue
-                }
-                liveCoords.insert(coord)
-
-                if let existing = ceilingNodes[coord], ceilingIdentities[coord] == identity {
-                    if existing.parent !== wallLayer {
-                        existing.removeFromParent()
-                        wallLayer.addChild(existing)
-                    }
-                    existing.position = IsometricMath.gridToScreen(coord, config: config)
-                    existing.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                    continue
-                }
-
-                ceilingNodes[coord]?.removeFromParent()
-                let ceiling = PlaceholderFactory.ceilingNode(config: config)
-                ceiling.position = IsometricMath.gridToScreen(coord, config: config)
-                ceiling.zPosition = IsometricMath.wallSortValue(for: coord, config: config)
-                applyRevealAlpha(to: ceiling, at: coord)
-                wallLayer.addChild(ceiling)
-                ceilingNodes[coord] = ceiling
-                ceilingIdentities[coord] = identity
+        syncIdentityKeyedNodes(
+            world: world,
+            story: story,
+            nodes: &ceilingNodes,
+            identities: &ceilingIdentities,
+            identity: { coord, _ in
+                guard showsWall(at: coord) else { return nil }
+                return PlaceholderFactory.ceilingIdentity(at: coord, in: world)
+            },
+            parent: { _, _ in wallLayer },
+            sortCoord: { coord, _ in coord },
+            layout: { node, coord, _, sort in
+                node.position = IsometricMath.gridToScreen(coord, config: config)
+                node.zPosition = IsometricMath.wallSortValue(for: sort, config: config)
+            },
+            makeNode: { _, _ in
+                PlaceholderFactory.ceilingNode(config: config)
             }
-        }
-
-        for coord in ceilingNodes.keys where !liveCoords.contains(coord) {
-            ceilingNodes[coord]?.removeFromParent()
-            ceilingNodes[coord] = nil
-            ceilingIdentities[coord] = nil
-        }
+        )
     }
 
     func clearWallNodes() {

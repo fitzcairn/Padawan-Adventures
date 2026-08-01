@@ -3,56 +3,40 @@ import SpriteKit
 extension IsometricRenderer {
     /// Reuses base floor sprite nodes when terrain identity is unchanged.
     func syncFloorNodes(world: GameWorld, story: Int) {
-        var liveCoords = Set<GridCoord>()
-
-        for y in 0..<world.height {
-            for x in 0..<world.width {
-                let coord = GridCoord(x: x, y: y, story: story)
-                let tile = world.tiles[story][y][x]
+        syncIdentityKeyedNodes(
+            world: world,
+            story: story,
+            nodes: &floorNodes,
+            identities: &floorIdentities,
+            identity: { coord, tile in
                 guard case .floor = tile.kind,
                       showsFloor(at: coord),
-                      let identity = PlaceholderFactory.floorIdentity(for: tile) else {
-                    continue
+                      let tileIdentity = PlaceholderFactory.floorIdentity(for: tile) else {
+                    return nil
                 }
-                liveCoords.insert(coord)
-
-                if let existing = floorNodes[coord], floorIdentities[coord] == identity {
-                    if existing.parent !== floorLayer {
-                        existing.removeFromParent()
-                        floorLayer.addChild(existing)
-                    }
-                    existing.position = PlaceholderFactory.floorScreenPosition(
-                        for: tile,
-                        at: coord,
-                        config: config
-                    )
-                    existing.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-                    continue
-                }
-
-                floorNodes[coord]?.removeFromParent()
-                let node = PlaceholderFactory.tileNode(
+                return tileIdentity
+            },
+            parent: { _, _ in floorLayer },
+            sortCoord: { coord, _ in coord },
+            layout: { node, coord, tile, sort in
+                node.position = PlaceholderFactory.floorScreenPosition(
+                    for: tile,
+                    at: coord,
+                    config: config
+                )
+                node.zPosition = IsometricMath.floorSortValue(for: sort, config: config)
+            },
+            makeNode: { coord, tile in
+                PlaceholderFactory.tileNode(
                     for: tile,
                     at: coord,
                     in: world,
                     config: config,
                     floorTileSetLibrary: floorTileSetLibrary
                 )
-                node.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
-                applyRevealAlpha(to: node, at: coord)
-                floorLayer.addChild(node)
-                floorNodes[coord] = node
-                floorIdentities[coord] = identity
             }
-        }
-
-        for coord in floorNodes.keys where !liveCoords.contains(coord) {
-            floorNodes[coord]?.removeFromParent()
-            floorNodes[coord] = nil
-            floorIdentities[coord] = nil
-        }
+        )
     }
-
 
     func clearFloorNodes() {
         for node in floorNodes.values {
