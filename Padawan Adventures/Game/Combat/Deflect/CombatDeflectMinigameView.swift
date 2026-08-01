@@ -125,6 +125,27 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     private let isoSquash: CGFloat
     private var starsAwarded = 0
     private var didFinish = false
+    private lazy var sceneHost = MinigameSceneHost<CombatDeflectScene>(
+        make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, wallHeight, isoSquash] size in
+            CombatDeflectScene(
+                size: size,
+                deflectConfig: deflectConfig,
+                enemyType: enemyType,
+                playerFx: playerFx,
+                startingHealth: startingHealth,
+                spriteLibrary: spriteLibrary,
+                combatSprite: combatSprite,
+                enemySprite: enemySprite,
+                wallHeight: wallHeight,
+                isoSquash: isoSquash
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.deflectDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         deflectConfig: CombatDeflectConfig,
@@ -152,37 +173,11 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     }
 
     func ensureScene(size: CGSize) {
-        guard scene == nil else {
-            updateSceneSizeIfNeeded(size)
-            return
-        }
-        let created = CombatDeflectScene(
-            size: Self.sanitizedSize(size),
-            deflectConfig: deflectConfig,
-            enemyType: enemyType,
-            playerFx: playerFx,
-            startingHealth: startingHealth,
-            spriteLibrary: spriteLibrary,
-            combatSprite: combatSprite,
-            enemySprite: enemySprite,
-            wallHeight: wallHeight,
-            isoSquash: isoSquash
-        )
-        created.deflectDelegate = self
-        scene = created
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        guard let scene else { return }
-        let safeSize = Self.sanitizedSize(size)
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmVictory(onFinished: (MinigameOutcome) -> Void) {
