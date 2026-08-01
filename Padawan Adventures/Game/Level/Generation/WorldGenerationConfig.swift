@@ -66,69 +66,20 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard generation.algorithm == "rooms_doors" else {
-            throw WorldSeedError.unsupportedGenerationAlgorithm(generation.algorithm)
-        }
         guard world.stories == 1 else {
             throw WorldSeedError.invalidStoryCount(world.stories)
         }
-        guard world.width > 4, world.height > 4 else {
-            throw WorldSeedError.worldTooSmall
-        }
-        guard !floorSet.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw WorldSeedError.emptyFloorSet
-        }
-        guard decorProb >= 0, decorProb <= 1 else {
-            throw WorldSeedError.invalidDecorProb(decorProb)
-        }
-        guard generation.corridorWidth >= 2 else {
-            throw WorldSeedError.corridorTooNarrow(generation.corridorWidth)
-        }
-        guard generation.room.minRoomSize >= 2 else {
-            throw WorldSeedError.roomTooNarrow(generation.room.minRoomSize)
-        }
-        guard generation.room.maxRoomSize >= generation.room.minRoomSize else {
-            throw WorldSeedError.invalidRoomSizeRange
-        }
-        guard generation.room.pitChance >= 0, generation.room.pitChance <= 1 else {
-            throw WorldSeedError.invalidRoomPitChance(generation.room.pitChance)
-        }
-        guard generation.room.pitMaxSize >= 1 else {
-            throw WorldSeedError.invalidRoomPitSize(
-                mean: generation.room.pitMeanSize,
-                max: generation.room.pitMaxSize
-            )
-        }
-        guard generation.room.pitMeanSize >= 1,
-              generation.room.pitMeanSize <= Double(generation.room.pitMaxSize) else {
-            throw WorldSeedError.invalidRoomPitSize(
-                mean: generation.room.pitMeanSize,
-                max: generation.room.pitMaxSize
-            )
-        }
-        guard generation.room.partitionGateChance >= 0,
-              generation.room.partitionGateChance <= 1 else {
-            throw WorldSeedError.invalidRoomPartitionGateChance(generation.room.partitionGateChance)
-        }
-        if let enemies {
-            guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {
-                throw WorldSeedError.invalidEnemyType
-            }
-            guard enemies.spawnChancePerRoom >= 0, enemies.spawnChancePerRoom <= 1 else {
-                throw WorldSeedError.invalidEnemySpawnChance(enemies.spawnChancePerRoom)
-            }
-        }
-        if let pickups {
-            try Self.validatePickupChance(pickups.health?.spawnChancePerRoom, kind: .health)
-            try Self.validatePickupChance(pickups.energy?.spawnChancePerRoom, kind: .energy)
-        }
-    }
-
-    private static func validatePickupChance(_ chance: Double?, kind: PickupKind) throws {
-        guard let chance else { return }
-        guard chance >= 0, chance <= 1 else {
-            throw WorldSeedError.invalidPickupSpawnChance(kind: kind, chance: chance)
-        }
+        try GenerationParamsValidator.validate(
+            algorithm: generation.algorithm,
+            width: world.width,
+            height: world.height,
+            corridorWidth: generation.corridorWidth,
+            room: generation.room,
+            floorSet: floorSet,
+            decorProb: decorProb,
+            enemies: enemies,
+            pickups: pickups
+        )
     }
 }
 

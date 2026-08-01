@@ -318,70 +318,29 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 
     func validate() throws {
-        guard algorithm == "rooms_doors" else {
-            throw WorldSeedError.unsupportedGenerationAlgorithm(algorithm)
-        }
+        try GenerationParamsValidator.validate(
+            algorithm: algorithm,
+            width: width,
+            height: height,
+            corridorWidth: corridorWidth,
+            room: room,
+            floorSet: floor.set,
+            decorProb: floor.decorProb,
+            enemies: enemies,
+            pickups: pickups
+        )
         guard letterSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
         }
         guard combatLetterSpawnRate > 0 else {
             throw WorldSeedError.invalidCombatLetterSpawnRate(combatLetterSpawnRate)
         }
-        guard width > 4, height > 4 else {
-            throw WorldSeedError.worldTooSmall
-        }
-        guard corridorWidth >= 2 else {
-            throw WorldSeedError.corridorTooNarrow(corridorWidth)
-        }
-        guard room.minRoomSize >= 2 else {
-            throw WorldSeedError.roomTooNarrow(room.minRoomSize)
-        }
-        guard room.maxRoomSize >= room.minRoomSize else {
-            throw WorldSeedError.invalidRoomSizeRange
-        }
-        guard room.pitChance >= 0, room.pitChance <= 1 else {
-            throw WorldSeedError.invalidRoomPitChance(room.pitChance)
-        }
-        guard room.pitMaxSize >= 1 else {
-            throw WorldSeedError.invalidRoomPitSize(mean: room.pitMeanSize, max: room.pitMaxSize)
-        }
-        guard room.pitMeanSize >= 1, room.pitMeanSize <= Double(room.pitMaxSize) else {
-            throw WorldSeedError.invalidRoomPitSize(mean: room.pitMeanSize, max: room.pitMaxSize)
-        }
-        guard room.partitionGateChance >= 0, room.partitionGateChance <= 1 else {
-            throw WorldSeedError.invalidRoomPartitionGateChance(room.partitionGateChance)
-        }
-        guard !floor.set.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw WorldSeedError.emptyFloorSet
-        }
-        guard floor.decorProb >= 0, floor.decorProb <= 1 else {
-            throw WorldSeedError.invalidDecorProb(floor.decorProb)
-        }
         guard !letters.set.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WorldSeedError.emptyLetterSet
-        }
-        if let enemies {
-            guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {
-                throw WorldSeedError.invalidEnemyType
-            }
-            guard enemies.spawnChancePerRoom >= 0, enemies.spawnChancePerRoom <= 1 else {
-                throw WorldSeedError.invalidEnemySpawnChance(enemies.spawnChancePerRoom)
-            }
-        }
-        if let pickups {
-            try Self.validatePickupChance(pickups.health?.spawnChancePerRoom, kind: .health)
-            try Self.validatePickupChance(pickups.energy?.spawnChancePerRoom, kind: .energy)
         }
         try pit.validate()
         try gate.validate()
         try combat.validate()
-    }
-
-    private static func validatePickupChance(_ chance: Double?, kind: PickupKind) throws {
-        guard let chance else { return }
-        guard chance >= 0, chance <= 1 else {
-            throw WorldSeedError.invalidPickupSpawnChance(kind: kind, chance: chance)
-        }
     }
 
     var musicCue: MusicCue {
