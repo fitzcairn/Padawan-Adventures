@@ -25,6 +25,17 @@ final class GameViewController: LandscapeHostingController {
             }
         }
     )
+    private lazy var encounterCoordinator = GameEncounterCoordinator(
+        overlayPresenter: overlayPresenter,
+        buildOverlayHost: { [weak self] content in
+            guard let self else {
+                return FullscreenOverlayHost { _ in AnyView(EmptyView()) }
+            }
+            return self.makeOverlayHost { finish in
+                content(finish)
+            }
+        }
+    )
 
     init(world: GameWorld, isoConfig: IsometricConfig, session: AppSession) {
         self.world = world
@@ -200,7 +211,6 @@ final class GameViewController: LandscapeHostingController {
         let letterCase = session.selectedCombatLetterCase
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
-        let outcomeBox = CombatOutcomeBox()
 
         let context = CombatPresentationContext(
             enemyType: enemyType,
@@ -237,30 +247,22 @@ final class GameViewController: LandscapeHostingController {
             trackID: enemyType.fx.trackID(for: "notice")
         )
 
-        BackgroundMusicController.shared.apply(session.selectedGameMusic.combatCue)
-        MemoryProbe.mark("minigame-present-combat")
-
-        overlayPresenter.present(
-            fadeWorldOut: true,
-            makeViewController: {
-                self.makeOverlayHost { finish in
-                    CombatMinigameFactory.makeView(
-                        config: chosenMinigame,
-                        context: context,
-                        onFinished: { outcome in
-                            outcomeBox.outcome = outcome
-                            finish()
-                        }
-                    )
-                }
+        encounterCoordinator.presentMinigame(
+            music: session.selectedGameMusic.combatCue,
+            memoryLabel: "combat",
+            makeView: { finish in
+                CombatMinigameFactory.makeView(
+                    config: chosenMinigame,
+                    context: context,
+                    onFinished: finish
+                )
             },
-            onResolved: { [weak self] done in
-                MemoryProbe.mark("minigame-dismiss-combat")
+            onOutcome: { [weak self] outcome, done in
                 guard let self, let scene = self.gameScene else {
                     done()
                     return
                 }
-                switch outcomeBox.outcome {
+                switch outcome {
                 case let .won(starsAwarded):
                     BackgroundMusicController.shared.apply(
                         MusicCue.parse(self.session.selectedLevelMusic)
