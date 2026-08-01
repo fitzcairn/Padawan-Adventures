@@ -1,10 +1,5 @@
 import Foundation
 
-nonisolated enum CombatOutcome: Equatable, Sendable {
-    case won(starsAwarded: Int)
-    case lost
-}
-
 nonisolated enum CombatSlashResult: Equatable, Sendable {
     case correct
     case wrong

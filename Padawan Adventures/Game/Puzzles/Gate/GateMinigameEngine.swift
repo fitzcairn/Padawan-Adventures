@@ -1,10 +1,5 @@
 import Foundation
 
-nonisolated enum GateOutcome: Equatable, Sendable {
-    case won(starsAwarded: Int)
-    case lost
-}
-
 /// Pure gate puzzle session rules (word pick, letter bag, staging win check).
 nonisolated struct GateMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {

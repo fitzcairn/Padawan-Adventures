@@ -1,10 +1,5 @@
 import Foundation
 
-nonisolated enum PitOutcome: Equatable, Sendable {
-    case won(starsAwarded: Int)
-    case lost
-}
-
 nonisolated enum PitLetterTapResult: Equatable, Sendable {
     /// Letter matched the next required character; `prefix` is the solved prefix so far.
     case correct(prefix: String, won: Bool)
