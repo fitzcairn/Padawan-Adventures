@@ -67,6 +67,20 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
     private let puzzleConfig: GateWordPlugConfig
     private let playerFx: SoundEffectTable
     private var didFinish = false
+    private lazy var sceneHost = MinigameSceneHost<GateWordPlugScene>(
+        make: { [puzzleConfig, playerFx] size in
+            GateWordPlugScene(
+                size: size,
+                puzzleConfig: puzzleConfig,
+                playerFx: playerFx
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.wordPlugDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         puzzleConfig: GateWordPlugConfig,
@@ -77,31 +91,11 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
     }
 
     func ensureScene(size: CGSize) {
-        guard scene == nil else {
-            updateSceneSizeIfNeeded(size)
-            return
-        }
-        let safeSize = Self.sanitizedSize(size)
-        let created = GateWordPlugScene(
-            size: safeSize,
-            puzzleConfig: puzzleConfig,
-            playerFx: playerFx
-        )
-        created.wordPlugDelegate = self
-        scene = created
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        guard let scene else { return }
-        let safeSize = Self.sanitizedSize(size)
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmUnlocked(onFinished: (MinigameOutcome) -> Void) {
@@ -111,9 +105,7 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
     }
 
     func gateWordPlugSceneDidWin(starsAwarded: Int) {
-        Task { @MainActor in
-            self.starsAwarded = starsAwarded
-            self.showUnlocked = true
-        }
+        self.starsAwarded = starsAwarded
+        showUnlocked = true
     }
 }
