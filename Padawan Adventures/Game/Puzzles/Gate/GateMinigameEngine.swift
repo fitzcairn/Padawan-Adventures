@@ -26,11 +26,7 @@ nonisolated struct GateMinigameEngine {
         }
     }
 
-    nonisolated struct LetterToken: Equatable, Sendable, Identifiable {
-        let id: UUID
-        /// Single lowercase letter.
-        let letter: String
-    }
+    typealias LetterToken = SpellingMinigameCore.LetterToken
 
     let config: Config
     private(set) var isActive = false
@@ -41,8 +37,6 @@ nonisolated struct GateMinigameEngine {
     private(set) var isFrozen = false
 
     private var rng: any RandomNumberGenerator
-
-    private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
 
     /// Spelling track for the chosen word (open cue / non-advancing moves).
     var targetSoundTrackID: String { targetEntry.spelling }
@@ -93,24 +87,14 @@ nonisolated struct GateMinigameEngine {
     }
 
     private mutating func pickTargetEntry() -> GateWord {
-        let words = config.words
-        guard !words.isEmpty else {
-            return .fallbackEntry(word: "gate")
-        }
-        let index = Int.random(in: 0..<words.count, using: &rng)
-        return words[index]
+        SpellingMinigameCore.pickTargetEntry(from: config.words, fallbackWord: "gate", using: &rng)
     }
 
     private mutating func buildLetterBag(for word: String) -> [LetterToken] {
-        let targetCount = word.count + config.numPaddingLetters
-        var bag: [LetterToken] = word.map { character in
-            LetterToken(id: UUID(), letter: String(character).lowercased())
-        }
-        while bag.count < targetCount {
-            let index = Int.random(in: 0..<Self.alphabet.count, using: &rng)
-            bag.append(LetterToken(id: UUID(), letter: Self.alphabet[index]))
-        }
-        bag.shuffle(using: &rng)
-        return bag
+        SpellingMinigameCore.buildLetterBag(
+            for: word,
+            numPaddingLetters: config.numPaddingLetters,
+            using: &rng
+        )
     }
 }

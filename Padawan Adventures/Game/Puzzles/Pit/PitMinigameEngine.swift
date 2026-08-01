@@ -33,11 +33,7 @@ nonisolated struct PitMinigameEngine {
         }
     }
 
-    nonisolated struct LetterToken: Equatable, Sendable, Identifiable {
-        let id: UUID
-        /// Single lowercase letter.
-        let letter: String
-    }
+    typealias LetterToken = SpellingMinigameCore.LetterToken
 
     let config: Config
     private(set) var isActive = false
@@ -52,8 +48,6 @@ nonisolated struct PitMinigameEngine {
     private(set) var isFrozen = false
 
     private var rng: any RandomNumberGenerator
-
-    private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
 
     /// Spelling track for the chosen word (open / after progressive / win).
     var targetSoundTrackID: String { targetEntry.spelling }
@@ -118,29 +112,17 @@ nonisolated struct PitMinigameEngine {
     }
 
     private mutating func pickTargetEntry() -> GateWord {
-        let words = config.words
-        guard !words.isEmpty else {
-            return .fallbackEntry(word: "star")
-        }
-        let index = Int.random(in: 0..<words.count, using: &rng)
-        return words[index]
+        SpellingMinigameCore.pickTargetEntry(from: config.words, fallbackWord: "star", using: &rng)
     }
 
     /// One sprite per word occurrence, plus `numPaddingLetters` random letters.
     private mutating func buildLetterBag(for word: String) -> [LetterToken] {
-        let wordTokens: [LetterToken] = word.map { character in
-            LetterToken(id: UUID(), letter: String(character).lowercased())
-        }
-        wordLetterIDs = wordTokens.map(\.id)
-
-        var bag = wordTokens
-        let targetCount = word.count + config.numPaddingLetters
-        while bag.count < targetCount {
-            let index = Int.random(in: 0..<Self.alphabet.count, using: &rng)
-            bag.append(LetterToken(id: UUID(), letter: Self.alphabet[index]))
-        }
-
-        bag.shuffle(using: &rng)
-        return bag
+        let result = SpellingMinigameCore.buildLetterBagWithWordIDs(
+            for: word,
+            numPaddingLetters: config.numPaddingLetters,
+            using: &rng
+        )
+        wordLetterIDs = result.wordLetterIDs
+        return result.letters
     }
 }
