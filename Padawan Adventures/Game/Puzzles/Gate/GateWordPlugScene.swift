@@ -6,7 +6,7 @@ protocol GateWordPlugSceneDelegate: AnyObject {
 }
 
 /// SpriteKit gate word-plug puzzle: drag first-letter parts onto word sockets.
-final class GateWordPlugScene: SKScene {
+final class GateWordPlugScene: MinigameScene {
     weak var wordPlugDelegate: GateWordPlugSceneDelegate?
 
     private let puzzleConfig: GateWordPlugConfig
@@ -21,9 +21,6 @@ final class GateWordPlugScene: SKScene {
     private var laidOutDiameter: CGFloat = 0
     private var laidOutRectSize: CGSize = .zero
 
-    private var didEnd = false
-    private var didSetup = false
-    private var isBuilding = false
     private var inputLocked = false
 
     private var dragTokenID: UUID?
@@ -58,10 +55,6 @@ final class GateWordPlugScene: SKScene {
         self.playerFx = playerFx
         self.engine = GateWordPlugMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -69,13 +62,7 @@ final class GateWordPlugScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         engine.begin()
         GameLogger.step(.world, "gateWordPlug.buildPuzzle") { buildPuzzle() }
     }
@@ -85,13 +72,6 @@ final class GateWordPlugScene: SKScene {
         // The speaker is a shared singleton; without this a phrase (and its music
         // duck) keeps running after the gate overlay is dismissed.
         SpokenPhrasePlayer.shared.cancel()
-    }
-
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
-        rebuildLayout()
     }
 
     // MARK: - Layout
@@ -267,7 +247,7 @@ final class GateWordPlugScene: SKScene {
         return root
     }
 
-    private func rebuildLayout() {
+    override func rebuildLayout() {
         let plugged = engine.plugged
         buildPuzzle()
         for (slotID, letterID) in plugged {
