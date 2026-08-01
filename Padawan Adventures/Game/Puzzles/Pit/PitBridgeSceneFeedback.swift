@@ -77,7 +77,7 @@ extension PitBridgeScene {
         let overlay = SKShapeNode(rectOf: CGSize(width: side, height: side * 0.6), cornerRadius: 4)
         overlay.fillColor = color.withAlphaComponent(0.55)
         overlay.strokeColor = .clear
-        overlay.zPosition = 50
+        overlay.zPosition = SceneLayer.overlay
         overlay.name = "flashOverlay"
         node.addChild(overlay)
         let flash = SKAction.doubleFlash(

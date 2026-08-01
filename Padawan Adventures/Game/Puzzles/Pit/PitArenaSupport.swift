@@ -101,7 +101,7 @@ func makeFloorPadCluster(
             tile.position = origin
             // Local painter order only — world `floorSortValue` is ~10k×row and
             // buries the player when the SKView uses ignoresSiblingOrder / parent z sum.
-            tile.zPosition = CGFloat(row) * 10 + CGFloat(col)
+            tile.zPosition = IsometricMath.localTileSort(row: row, col: col)
             cluster.addChild(tile)
         }
     }

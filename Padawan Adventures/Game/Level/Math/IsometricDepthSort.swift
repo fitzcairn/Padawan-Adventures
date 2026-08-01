@@ -56,6 +56,11 @@ extension IsometricMath {
         depthSortValue(x: x, y: y, story: story, config: config) + 0.5
     }
 
+    /// Local painter order inside a small floor cluster (row-major, col tie-break).
+    static func localTileSort(row: Int, col: Int) -> CGFloat {
+        CGFloat(row) * 10 + CGFloat(col)
+    }
+
     /// Effective scene z for a floor tile (parent band + local sort).
     static func effectiveFloorZ(for coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGFloat {
         floorBandBase + floorSortValue(for: coord, config: config)

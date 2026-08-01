@@ -32,7 +32,7 @@ enum OutlinedLetterFactory {
                     x: CGFloat(dx) * outlineOffset,
                     y: CGFloat(dy) * outlineOffset
                 )
-                outline.zPosition = 0
+                outline.zPosition = SceneLayer.LabelStack.outline
                 outline.isUserInteractionEnabled = !disablesInteraction
                 root.addChild(outline)
             }
@@ -46,7 +46,7 @@ enum OutlinedLetterFactory {
         innerShadow.horizontalAlignmentMode = .center
         // Slightly up-left so the fill covers most of it → thin inset shadow.
         innerShadow.position = CGPoint(x: -shadowOffset, y: shadowOffset)
-        innerShadow.zPosition = 1
+        innerShadow.zPosition = SceneLayer.LabelStack.innerShadow
         innerShadow.isUserInteractionEnabled = !disablesInteraction
         root.addChild(innerShadow)
 
@@ -56,7 +56,7 @@ enum OutlinedLetterFactory {
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        label.zPosition = 2
+        label.zPosition = SceneLayer.LabelStack.fill
         label.isUserInteractionEnabled = !disablesInteraction
         root.addChild(label)
 

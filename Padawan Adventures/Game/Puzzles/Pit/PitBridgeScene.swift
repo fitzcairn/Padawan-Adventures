@@ -43,12 +43,12 @@ final class PitBridgeScene: MinigameScene {
 
     static let jumpDuration: TimeInterval = 1.0
     static let playerLibraryID = "player"
-    static let playerZ: CGFloat = 1_000
-    static let padsZ: CGFloat = 1
-    static let placedTilesZ: CGFloat = 5
-    static let slotBoxZ: CGFloat = 8
-    static let trayTilesZ: CGFloat = 10
-    static let draggedZ: CGFloat = 60
+    static let playerZ: CGFloat = SceneLayer.player
+    static let padsZ: CGFloat = SceneLayer.pads
+    static let placedTilesZ: CGFloat = SceneLayer.placedTiles
+    static let slotBoxZ: CGFloat = SceneLayer.slotBox
+    static let trayTilesZ: CGFloat = SceneLayer.trayTiles
+    static let draggedZ: CGFloat = SceneLayer.dragged
     static let promptWatchdogSeconds: TimeInterval = 10
     static let promptWatchdogKey = "pitBridgePromptWatchdog"
     static let winSoundActionKey = "pitBridgeWinSound"
