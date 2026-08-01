@@ -8,7 +8,7 @@ protocol PitSceneDelegate: AnyObject {
 }
 
 /// SpriteKit pit puzzle: side pads, hoppable letter platforms.
-final class PitScene: SKScene {
+final class PitScene: MinigameScene {
     weak var pitDelegate: PitSceneDelegate?
 
     private let puzzleConfig: PitPuzzleConfig
@@ -30,9 +30,6 @@ final class PitScene: SKScene {
     private var leftPadRect: CGRect = .zero
     private var rightPadRect: CGRect = .zero
     private var playFieldRect: CGRect = .zero
-    private var didEnd = false
-    private var didSetup = false
-    private var isBuilding = false
     private var isJumping = false
     private var placementRNG = SystemRandomNumberGenerator()
 
@@ -80,10 +77,6 @@ final class PitScene: SKScene {
         self.playerSpriteConfig = playerSpriteConfig
         self.engine = PitMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -91,13 +84,7 @@ final class PitScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         engine.begin()
         pitDelegate?.pitSceneDidSelectWord(engine.targetWord)
         pitDelegate?.pitSceneDidUpdateSolvedCount(0)
@@ -115,10 +102,7 @@ final class PitScene: SKScene {
         }
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
+    override func rebuildLayout() {
         rebuildLayoutPreservingLetters()
     }
 
