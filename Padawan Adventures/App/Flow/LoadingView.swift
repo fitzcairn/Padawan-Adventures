@@ -74,6 +74,13 @@ struct LoadingView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isReady else { return }
+                // Drop the 25 MB kam / yoda clips — only this screen animates them.
+                // `logo` stays resident for MenuView.
+                kamFrames = []
+                yodaFrames = []
+                spriteLibrary.invalidate(id: "kam")
+                spriteLibrary.invalidate(id: "yoda")
+                MemoryProbe.mark("loading-art-released")
                 router.showPlayerSelect()
             }
         }

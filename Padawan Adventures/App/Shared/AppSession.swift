@@ -194,6 +194,8 @@ final class AppSession {
 
     /// Tier 0 + Tier 1 sprite ids warmed at bootstrap and kept across levels.
     private var persistentSpriteIDs: Set<String> {
+        // `logo` stays pinned — MenuView reads it. `kam`/`yoda` are loading-screen-only
+        // and are invalidated when the player leaves LoadingView.
         var ids: Set<String> = [
             "player",
             "player_combat",
@@ -202,8 +204,6 @@ final class AppSession {
             "coin",
             "treasure",
             "logo",
-            "kam",
-            "yoda",
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))
