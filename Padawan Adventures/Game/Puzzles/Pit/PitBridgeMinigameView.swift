@@ -110,8 +110,37 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     private let spriteLibrary: SpriteLibrary
     private let playerSpriteConfig: SpriteConfig?
     private var didFinish = false
-    private var isCreatingScene = false
-    private var pendingSceneSize: CGSize?
+    private lazy var sceneHost = MinigameSceneHost<PitBridgeScene>(
+        prepare: { [spriteLibrary, playerSpriteConfig] in
+            if let config = playerSpriteConfig {
+                let missingNewClip =
+                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
+                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
+                if missingNewClip,
+                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
+                    spriteLibrary.invalidate(id: "player")
+                }
+                await spriteLibrary.ensureLoaded(config, id: "player")
+            }
+        },
+        make: { [bridgeConfig, pitFx, playerFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
+            PitBridgeScene(
+                size: size,
+                bridgeConfig: bridgeConfig,
+                pitFx: pitFx,
+                playerFx: playerFx,
+                floorTileSetLibrary: floorTileSetLibrary,
+                isoConfig: isoConfig,
+                spriteLibrary: spriteLibrary,
+                playerSpriteConfig: playerSpriteConfig
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.bridgeDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         bridgeConfig: PitBridgeConfig,
@@ -132,57 +161,11 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     }
 
     func ensureScene(size: CGSize) {
-        let safeSize = Self.sanitizedSize(size)
-        if scene != nil {
-            updateSceneSizeIfNeeded(safeSize)
-            return
-        }
-        pendingSceneSize = safeSize
-        guard !isCreatingScene else { return }
-        isCreatingScene = true
-        Task {
-            if let config = playerSpriteConfig {
-                let missingNewClip =
-                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
-                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
-                if missingNewClip,
-                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
-                    spriteLibrary.invalidate(id: "player")
-                }
-                await spriteLibrary.ensureLoaded(config, id: "player")
-            }
-            let finalSize = pendingSceneSize ?? safeSize
-            let created = PitBridgeScene(
-                size: finalSize,
-                bridgeConfig: bridgeConfig,
-                pitFx: pitFx,
-                playerFx: playerFx,
-                floorTileSetLibrary: floorTileSetLibrary,
-                isoConfig: isoConfig,
-                spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
-            )
-            created.bridgeDelegate = self
-            scene = created
-            isCreatingScene = false
-        }
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        let safeSize = Self.sanitizedSize(size)
-        if scene == nil {
-            pendingSceneSize = safeSize
-            return
-        }
-        guard let scene else { return }
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmWon(onFinished: (MinigameOutcome) -> Void) {
@@ -192,15 +175,11 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     }
 
     func pitBridgeSceneDidUpdateWord(_ word: String) {
-        Task { @MainActor in
-            self.word = word
-        }
+        self.word = word
     }
 
     func pitBridgeSceneDidWin(starsAwarded: Int) {
-        Task { @MainActor in
-            self.starsAwarded = starsAwarded
-            self.showWon = true
-        }
+        self.starsAwarded = starsAwarded
+        showWon = true
     }
 }
