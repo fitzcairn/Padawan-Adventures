@@ -124,17 +124,12 @@ nonisolated struct CombatMinigameEngine {
     private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
     private(set) var sequenceRequiredLetter: String = ""
-    /// Correct slashes still needed before the cue sound / required letter changes.
-    private(set) var correctSlashesRemainingInSequence: Int = 0
 
     private var nextCueReplayAt: Double = .infinity
     private var pendingEvents: [CombatEngineEvent] = []
     private var rng: any RandomNumberGenerator
 
-    /// Mean number of correct slashes required before changing the cue sound.
-    static let correctSlashesPerCueMean: Double = 3
     static let spawnIntervalJitterRange: ClosedRange<Double> = 0.5...1.5
-    static let correctSlashesJitterRange: ClosedRange<Double> = 0.5...1.5
     /// Spawn weight for the currently cued letter vs `1` for each other letter.
     static let cuedLetterSpawnWeight: Double = 2.5
 
@@ -158,7 +153,6 @@ nonisolated struct CombatMinigameEngine {
         shots = [:]
         outcome = nil
         sequenceRequiredLetter = ""
-        correctSlashesRemainingInSequence = 0
         nextCueReplayAt = .infinity
         pendingEvents = []
         nextSpawnAt = scheduleNextSpawnDelay()
@@ -195,7 +189,7 @@ nonisolated struct CombatMinigameEngine {
         while nextSpawnAt <= elapsed,
               outcome == nil,
               !isFrozen {
-            if correctSlashesRemainingInSequence <= 0 {
+            if sequenceRequiredLetter.isEmpty {
                 beginNewSequence(&events)
             }
 
@@ -286,16 +280,9 @@ nonisolated struct CombatMinigameEngine {
         return config.meanShotIntervalSeconds * factor
     }
 
-    mutating func scheduleCorrectSlashesRequired() -> Int {
-        let raw = Self.correctSlashesPerCueMean * Double.random(in: Self.correctSlashesJitterRange, using: &rng)
-        return max(1, Int(raw.rounded()))
-    }
-
     private mutating func beginNewSequence(_ events: inout [CombatEngineEvent]) {
         let required = randomDifferentShotLetter(excluding: sequenceRequiredLetter)
         sequenceRequiredLetter = required
-        // One correct slash per cue — the next spawn loop must not immediately roll again.
-        correctSlashesRemainingInSequence = 1
         nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
         events.append(.sequenceCue(requiredLetter: required))
     }

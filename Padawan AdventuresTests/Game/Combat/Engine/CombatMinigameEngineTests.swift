@@ -378,27 +378,6 @@ struct CombatMinigameEngineTests {
         #expect(engine.isFrozen)
     }
 
-    @Test func correctSlashesRequiredStaysWithinJitterBounds() {
-        var lengths: [Int] = []
-        for seed in UInt64(1)...UInt64(40) {
-            var e = CombatMinigameEngine(
-                config: .init(
-                    shotPacingSeconds: 30,
-                    shotTravelSeconds: 1,
-                    starsToWin: 99
-                ),
-                rng: CombatSeededGenerator(seed: seed)
-            )
-            lengths.append(e.scheduleCorrectSlashesRequired())
-        }
-        for length in lengths {
-            #expect(length >= 1)
-            #expect(length <= 5)
-        }
-        let mean = Double(lengths.reduce(0, +)) / Double(lengths.count)
-        #expect(mean > 2.0 && mean < 4.5)
-    }
-
     @Test func correctSlashChangesCueToADifferentLetter() throws {
         var engine = makeEngine(
             starsToWin: 99,
