@@ -116,11 +116,7 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
     }
 
     private func configureSessionIfNeeded() {
-        guard !didConfigureSession else { return }
-        didConfigureSession = true
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.ambient, mode: .default, options: [])
-        try? session.setActive(true)
+        AVAudioSessionConfigurator.configureAmbientIfNeeded()
     }
 
     static func audioURL(

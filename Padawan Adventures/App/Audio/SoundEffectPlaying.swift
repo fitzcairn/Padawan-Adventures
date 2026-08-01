@@ -158,18 +158,13 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         }
 
         let startVolumes = playing.map(\.volume)
-        let steps = max(1, Int(duration / 0.02))
-        let stepDuration = duration / Double(steps)
         let task = Task { @MainActor in
-            for step in 1...steps {
+            await VolumeFader.fadeOutMultiplicative(startVolume: 1, duration: duration) { scale in
                 guard !Task.isCancelled else { return }
-                let t = Float(step) / Float(steps)
                 for (player, start) in zip(playing, startVolumes) {
                     guard player.isPlaying else { continue }
-                    player.volume = start * (1 - t)
+                    player.volume = start * scale
                 }
-                let nanos = UInt64(stepDuration * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: nanos)
             }
             guard !Task.isCancelled else { return }
             for player in playing {
