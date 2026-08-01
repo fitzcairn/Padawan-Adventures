@@ -233,6 +233,33 @@ struct AppSessionTests {
         }
     }
 
+    @Test func levelExitReturnsResidencyTowardBootstrapBaseline() async {
+        let session = await AppSession.loadResources()
+        let bootstrapSpriteBytes = session.spriteLibrary.residentBytes
+        let bootstrapBackgroundBytes = session.backgroundLibrary.residentBytes
+
+        await session.ensureEnemySpritesLoaded()
+        await session.ensureFloorTileSetLoaded()
+        await session.ensureLetterSpriteSetLoaded()
+        await session.ensurePitSpriteSetLoaded()
+        await session.ensureGateSpriteSetLoaded()
+
+        #expect(session.floorTileSetLibrary.isLoaded)
+        #expect(session.letterSpriteSetLibrary.isLoaded)
+        #expect(session.pitSpriteSetLibrary.isLoaded)
+        #expect(session.gateSpriteSetLibrary.isLoaded)
+
+        session.releaseLevelScopedAssets()
+
+        #expect(session.floorTileSetLibrary.isLoaded == false)
+        #expect(session.letterSpriteSetLibrary.isLoaded == false)
+        #expect(session.pitSpriteSetLibrary.isLoaded == false)
+        #expect(session.gateSpriteSetLibrary.isLoaded == false)
+        #expect(session.backgroundLibrary.residentBytes == 0)
+        #expect(session.backgroundLibrary.residentBytes <= bootstrapBackgroundBytes)
+        #expect(session.spriteLibrary.residentBytes <= bootstrapSpriteBytes)
+    }
+
     @Test func releaseCutsceneSpritesDropsCutsceneClips() async {
         let session = await AppSession.loadResources()
         #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.playerID))
