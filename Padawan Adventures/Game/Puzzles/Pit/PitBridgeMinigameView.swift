@@ -100,16 +100,10 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<PitBridgeScene>(
         prepare: { [spriteLibrary, playerSpriteConfig] in
-            if let config = playerSpriteConfig {
-                let missingNewClip =
-                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
-                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
-                if missingNewClip,
-                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
-                    spriteLibrary.invalidate(id: "player")
-                }
-                await spriteLibrary.ensureLoaded(config, id: "player")
-            }
+            await MinigamePlayerController.preparePlayerSprites(
+                in: spriteLibrary,
+                config: playerSpriteConfig
+            )
         },
         make: { [bridgeConfig, pitFx, playerFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
             PitBridgeScene(

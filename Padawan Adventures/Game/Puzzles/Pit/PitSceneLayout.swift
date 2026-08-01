@@ -37,7 +37,7 @@ extension PitScene {
 
     func computeLayoutFrames() {
         // Pad rect matches the world-scale AABB of a 2×2 isometric floor block.
-        let padSize = Self.floorPadBounds(config: isoConfig).size
+        let padSize = PitArenaLayout.floorPadBounds(config: isoConfig).size
         let padY = (size.height - padSize.height) * 0.5
         leftPadRect = CGRect(x: 0, y: padY, width: padSize.width, height: padSize.height)
         rightPadRect = CGRect(
@@ -56,31 +56,6 @@ extension PitScene {
             width: max(rightPadRect.minX - leftPadRect.maxX - fieldInset * 2, letterRadius * 2),
             height: max(size.height - bottomInset - topInset, letterRadius * 2)
         )
-    }
-
-    /// Axis-aligned bounds of a `padCols`×`padRows` isometric floor diamond block.
-    static func floorPadBounds(config: IsometricConfig) -> CGRect {
-        var minX = CGFloat.greatestFiniteMagnitude
-        var minY = CGFloat.greatestFiniteMagnitude
-        var maxX = -CGFloat.greatestFiniteMagnitude
-        var maxY = -CGFloat.greatestFiniteMagnitude
-        let corners = IsometricTileGeometry.floorCorners(config: config)
-        for row in 0..<padRows {
-            for col in 0..<padCols {
-                let origin = IsometricMath.gridToScreen(
-                    GridCoord(x: col, y: row, story: 0),
-                    config: config
-                )
-                for point in [corners.north, corners.east, corners.south, corners.west] {
-                    let world = CGPoint(x: origin.x + point.x, y: origin.y + point.y)
-                    minX = min(minX, world.x)
-                    maxX = max(maxX, world.x)
-                    minY = min(minY, world.y)
-                    maxY = max(maxY, world.y)
-                }
-            }
-        }
-        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
     func buildPuzzle() {
         layoutScale = 1.0
@@ -206,61 +181,25 @@ extension PitScene {
         let root = SKNode()
         root.name = name
         root.position = CGPoint(x: rect.midX, y: rect.midY)
-        root.zPosition = 1
+        root.zPosition = SceneLayer.pads
 
-        if let cluster = makeFloorPadCluster() {
+        if let cluster = makeFloorPadCluster(
+            library: floorTileSetLibrary,
+            config: isoConfig,
+            using: &placementRNG
+        ) {
             root.addChild(cluster)
         } else {
             let fallback = SKShapeNode(rectOf: rect.size, cornerRadius: 6)
             fallback.fillColor = padFill
             fallback.strokeColor = UIColor(white: 0.2, alpha: 1)
             fallback.lineWidth = 2
-            fallback.zPosition = 0
+            fallback.zPosition = SceneLayer.background
             root.addChild(fallback)
         }
         addChild(root)
     }
 
-    /// Builds a 2×2 isometric floor block at the world engine's tile scale / perspective.
-    func makeFloorPadCluster() -> SKNode? {
-        guard let tileSet = floorTileSetLibrary.tileSet else { return nil }
-        let floorIDs = tileSet.floorTileIDs
-        guard !floorIDs.isEmpty else { return nil }
-
-        let config = isoConfig
-        let cluster = SKNode()
-        let bounds = Self.floorPadBounds(config: config)
-
-        for row in 0..<Self.padRows {
-            for col in 0..<Self.padCols {
-                let coord = GridCoord(x: col, y: row, story: 0)
-                let origin = IsometricMath.gridToScreen(coord, config: config)
-                let tid = floorIDs[Int.random(in: 0..<floorIDs.count, using: &placementRNG)]
-                guard let texture = floorTileSetLibrary.texture(tid),
-                      let frame = tileSet.frames[tid] else {
-                    continue
-                }
-                let tile = PlaceholderFactory.floorTileNode(
-                    tileID: tid,
-                    texture: texture,
-                    frame: frame,
-                    diamond: tileSet.meta.diamond,
-                    config: config
-                )
-                tile.position = origin
-                // Local painter order only — world `floorSortValue` is ~10k×row and
-                // buries the player when the SKView uses ignoresSiblingOrder / parent z sum.
-                tile.zPosition = CGFloat(row) * 10 + CGFloat(col)
-                cluster.addChild(tile)
-            }
-        }
-
-        guard !cluster.children.isEmpty, bounds.width > 0, bounds.height > 0 else { return nil }
-
-        // Center on the pad midpoint at 1:1 world scale (no squash — keeps perspective).
-        cluster.position = CGPoint(x: -bounds.midX, y: -bounds.midY)
-        return cluster
-    }
     /// Minimum center-to-center separation on each axis so AABBs do not overlap.
     func minAxisSeparation(for radius: CGFloat) -> CGFloat {
         radius * 2 + platformGap

@@ -40,7 +40,7 @@ final class PitScene: MinigameScene {
     static let jumpDuration: TimeInterval = 1.0
     static let playerLibraryID = "player"
     /// Above pads (z≈1) and letter platforms (z≈10).
-    static let playerZ: CGFloat = 1_000
+    static let playerZ: CGFloat = SceneLayer.player
     static let connectedSoundActionKey = "pitConnectedSound"
     static let winSoundActionKey = "pitWinSound"
     /// Extra margin around the letter relative to font size (each side).
@@ -48,8 +48,6 @@ final class PitScene: MinigameScene {
     /// Platform sprites are drawn this much larger than the letter+padding box.
     static let platformScale: CGFloat = 1.75
     /// Side pads are a 2×2 block of level floor tiles.
-    static let padCols = 2
-    static let padRows = 2
     /// Keep jump platforms clear of the top-center HUD word (44pt) + margin.
     static let hudWordClearance: CGFloat = 72
     /// Shrinks platform size across placement retries when the field is overcrowded.
