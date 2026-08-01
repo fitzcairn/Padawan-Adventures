@@ -318,6 +318,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 
     func validate() throws {
+        guard algorithm == "rooms_doors" else {
+            throw WorldSeedError.unsupportedGenerationAlgorithm(algorithm)
+        }
         guard letterSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
         }

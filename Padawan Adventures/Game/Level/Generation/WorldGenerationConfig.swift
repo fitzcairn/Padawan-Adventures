@@ -66,6 +66,9 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     }
 
     func validate() throws {
+        guard generation.algorithm == "rooms_doors" else {
+            throw WorldSeedError.unsupportedGenerationAlgorithm(generation.algorithm)
+        }
         guard world.stories == 1 else {
             throw WorldSeedError.invalidStoryCount(world.stories)
         }

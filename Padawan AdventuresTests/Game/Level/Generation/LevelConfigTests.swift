@@ -116,6 +116,30 @@ struct LevelConfigTests {
         #expect(level.letters.set == LevelConfig.fallbackLetters.set)
     }
 
+    @Test func rejectsUnsupportedGenerationAlgorithm() {
+        #expect {
+            try LevelConfig.decode(from: """
+            name: Level 1
+            width: 20
+            height: 20
+            algorithm: cellular_automata
+            room_count: 5
+            corridor_width: 2
+            room:
+              min_room_size: 4
+              max_room_size: 8
+              pit_chance: 0
+              partition_gate_chance: 0
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .unsupportedGenerationAlgorithm(let name) = error else {
+                return false
+            }
+            return name == "cellular_automata"
+        }
+    }
+
     @Test func decodesLetterSpriteSet() throws {
         let level = try LevelConfig.decode(from: """
         name: Tatooine
