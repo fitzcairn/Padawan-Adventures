@@ -6,108 +6,23 @@ import UIKit
 ///
 /// Loads `Levels/{set}/{set}-letters-spritesheet.png` + atlas.
 /// Switching levels replaces the previous set.
-@MainActor
-final class LetterSpriteSetLibrary {
-    private(set) var setName: String?
-    private(set) var letterSet: LetterSpriteSet?
-    private var textures: [String: SKTexture] = [:]
-    private let bundle: Bundle
+typealias LetterSpriteSetLibrary = AtlasSpriteSetLibrary<LetterSpriteSetAtlas>
 
-    var isLoaded: Bool { letterSet != nil }
-
-    init(bundle: Bundle = .main) {
-        self.bundle = bundle
-    }
-
-    /// Loads (or reloads) the named letter set. Drops prior textures when the name changes.
-    func ensureLoaded(set name: String, onProgress: ((Double) -> Void)? = nil) async {
-        if setName == name, letterSet != nil {
-            onProgress?(1)
-            return
-        }
-
-        onProgress?(0)
-        do {
-            let loaded = try LetterSpriteSet.loadFromBundle(set: name, bundle: bundle)
-            onProgress?(0.3)
-
-            let sheetName = LevelAssetPaths.basename(set: name, .letters, .spritesheet)
-            let root = LevelAssetPaths.root(set: name, .letters)
-            let sheetURL = try SpriteSheetLoader.resourceURL(
-                named: sheetName,
-                extensions: ["png", "jpg", "jpeg"],
-                root: root,
-                bundle: bundle
-            )
-            guard let uiImage = UIImage(contentsOfFile: sheetURL.path),
-                  let cgImage = uiImage.cgImage else {
-                throw SpriteLoadError.invalidImage(sheetName)
-            }
-            onProgress?(0.5)
-
-            let parent = SKTexture(image: UIImage(cgImage: cgImage, scale: 1, orientation: .up))
-            parent.filteringMode = .nearest
-            parent.usesMipmaps = false
-
-            let sheetW = loaded.meta.size.w
-            let sheetH = loaded.meta.size.h
-            var nextTextures: [String: SKTexture] = [:]
-            let keys = loaded.frames.keys.sorted()
-            for (index, key) in keys.enumerated() {
-                guard let frame = loaded.frames[key] else { continue }
-                nextTextures[key] = SpriteSheetLoader.makeSubrectTexture(
-                    x: frame.x,
-                    y: frame.y,
-                    w: frame.w,
-                    h: frame.h,
-                    sheetWidth: sheetW,
-                    sheetHeight: sheetH,
-                    parent: parent
-                )
-                if index % 8 == 0 {
-                    onProgress?(0.5 + 0.5 * Double(index) / Double(max(keys.count, 1)))
-                }
-            }
-
-            letterSet = loaded
-            setName = name
-            textures = nextTextures
-            onProgress?(1)
-        } catch {
-            GameLogger.error(.sprites, "LetterSpriteSetLibrary: failed to load set '\(name)' — \(error)")
-            letterSet = nil
-            setName = nil
-            textures = [:]
-            onProgress?(1)
-        }
-    }
-
-    /// Clears the active set so level-exit can free its textures.
-    func release() {
-        letterSet = nil
-        setName = nil
-        textures = [:]
-    }
-
-    func allTextures() -> [SKTexture] {
-        Array(textures.values)
-    }
+extension AtlasSpriteSetLibrary where Provider == LetterSpriteSetAtlas {
+    var letterSet: LetterSpriteSet? { loadedSet }
 
     /// Case-sensitive first; if missing, try opposite case; else nil.
     func texture(forLetter letter: String) -> SKTexture? {
         let key = letter.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
-        if let texture = textures[key] { return texture }
-        if let texture = textures[key.uppercased()] { return texture }
-        if let texture = textures[key.lowercased()] { return texture }
+        if let texture = texture(key) { return texture }
+        if let texture = texture(key.uppercased()) { return texture }
+        if let texture = texture(key.lowercased()) { return texture }
         return nil
     }
 
-    /// Testing seam: inject a set without reading the bundle.
     func seedForTesting(letterSet: LetterSpriteSet, textures: [String: SKTexture]) {
-        self.letterSet = letterSet
-        self.setName = letterSet.meta.letterSet
-        self.textures = textures
+        seedForTesting(set: letterSet, textures: textures)
     }
 }
 
