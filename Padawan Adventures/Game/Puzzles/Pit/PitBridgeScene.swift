@@ -22,7 +22,7 @@ final class PitBridgeScene: SKScene {
     private let speaker = PhonicsSpeaker()
     private var placementRNG = SystemRandomNumberGenerator()
 
-    private var playerNode: SKNode!
+    private var playerNode: SKNode?
     private var playerSprite: AnimatedSpriteNode?
     private var playerFacingLeft = false
     private var trayNodes: [UUID: SKNode] = [:]
@@ -215,7 +215,7 @@ final class PitBridgeScene: SKScene {
     }
 
     private func playJumpAnimation(toward target: CGPoint) {
-        guard let playerSprite else { return }
+        guard let playerSprite, let playerNode else { return }
         playerFacingLeft = target.x < playerNode.position.x - 0.5
         let name = playerFacingLeft ? "jump_left" : "jump_right"
         playerSprite.playOnce(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
@@ -522,6 +522,10 @@ final class PitBridgeScene: SKScene {
         landAnimation: String? = nil,
         completion: @escaping () -> Void
     ) {
+        guard let playerNode else {
+            completion()
+            return
+        }
         playDucked(event: "jump", from: pitFx)
         let start = playerNode.position
         playJumpAnimation(toward: target)
@@ -535,17 +539,21 @@ final class PitBridgeScene: SKScene {
         )
         let duration = Self.jumpDuration
         let action = SKAction.customAction(withDuration: duration) { [weak self] _, elapsedTime in
-            guard let self else { return }
+            guard let self, let playerNode = self.playerNode else { return }
             let t = min(max(elapsedTime / CGFloat(duration), 0), 1)
-            self.playerNode.position = PitArenaLayout.jumpPoint(
+            playerNode.position = PitArenaLayout.jumpPoint(
                 t: t,
                 start: start,
                 control: control,
                 end: target
             )
         }
-        playerNode.run(action) {
-            self.playerNode.position = target
+        playerNode.run(action) { [weak self] in
+            guard let self, let playerNode = self.playerNode else {
+                completion()
+                return
+            }
+            playerNode.position = target
             if let landAnimation,
                self.spriteLibrary.animation(id: Self.playerLibraryID, named: landAnimation) != nil {
                 self.playPlayerLoop(landAnimation)
@@ -601,9 +609,9 @@ final class PitBridgeScene: SKScene {
         for (index, choice) in trayChoices.enumerated() {
             trayNodes[choice.id]?.position = geo.trayCenter(index)
         }
-        if !isJumping, placedTileNodes.isEmpty {
+        if !isJumping, placedTileNodes.isEmpty, let playerNode {
             playerNode.position = CGPoint(x: geo.leftPadRect.midX, y: geo.leftPadRect.midY)
-        } else if !isJumping, let last = placedTileNodes.last {
+        } else if !isJumping, let last = placedTileNodes.last, let playerNode {
             playerNode.position = last.position
         }
     }
