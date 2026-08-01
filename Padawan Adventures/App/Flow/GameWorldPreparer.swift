@@ -54,7 +54,7 @@ enum GameWorldPreparer {
         }
         guard enemiesReady else {
             GameLogger.fault(.world, "aborting launch — enemy sprites incomplete")
-            session.releaseLevelScopedSprites()
+            session.releaseLevelScopedAssets()
             session.startObservingMemoryPressure()
             return nil
         }

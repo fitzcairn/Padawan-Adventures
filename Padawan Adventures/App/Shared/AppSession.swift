@@ -213,7 +213,7 @@ final class AppSession {
     }
 
     /// Frees enemy, per-level treasure, atlas sets, and screen backgrounds after leaving a level.
-    func releaseLevelScopedSprites() {
+    func releaseLevelScopedAssets() {
         spriteLibrary.retain(ids: persistentSpriteIDs)
         floorTileSetLibrary.release()
         letterSpriteSetLibrary.release()
@@ -237,7 +237,7 @@ final class AppSession {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 MemoryProbe.mark("memory-warning")
-                self?.releaseLevelScopedSprites()
+                self?.releaseLevelScopedAssets()
             }
         }
     }

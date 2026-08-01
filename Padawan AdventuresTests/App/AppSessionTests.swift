@@ -229,7 +229,7 @@ struct AppSessionTests {
 
     @Test func treasureIconsSurviveLevelScopedRelease() async {
         let session = await AppSession.loadResources()
-        session.releaseLevelScopedSprites()
+        session.releaseLevelScopedAssets()
         for treasureID in LevelCatalog.loadFromBundle().compactMap(\.treasure) {
             #expect(
                 session.spriteLibrary.uiImage(id: treasureID) != nil,

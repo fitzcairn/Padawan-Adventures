@@ -530,7 +530,7 @@ final class GameViewController: LandscapeHostingController {
                 }
             }
             await session.refreshContinueEligibility()
-            session.releaseLevelScopedSprites()
+            session.releaseLevelScopedAssets()
             session.startObservingMemoryPressure()
 
             let flow = LandscapeSwiftUIHost(
