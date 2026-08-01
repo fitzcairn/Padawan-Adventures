@@ -60,7 +60,7 @@ struct CombatDeflectMinigameView: View {
     var body: some View {
         MinigameShellView(
             scene: session.scene,
-            accessibilityRootID: "minigame.enemy",
+            accessibilityRootID: "minigame.enemy.deflect",
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             onAppear: { session.onLost = { onFinished(.lost) } },
