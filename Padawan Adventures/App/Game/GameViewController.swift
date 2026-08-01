@@ -15,6 +15,7 @@ final class GameViewController: LandscapeHostingController {
     private weak var hud: GameHUDView?
     private let runExitHandler = GameRunExitHandler()
     private var didApplyLevelMusic = false
+    private lazy var cachedHudConfig: HudConfig = Self.loadHudConfig()
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
         fadeWorldOut: { [weak self] completion in
@@ -130,7 +131,7 @@ final class GameViewController: LandscapeHostingController {
     }
 
     private func installHUD() {
-        let hudConfig = loadHudConfig()
+        let hudConfig = cachedHudConfig
 
         let levelResource = session.selectedLevelResourceName
         let starsCount = levelResource.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
@@ -210,7 +211,7 @@ final class GameViewController: LandscapeHostingController {
         let enemySprite = typeID.flatMap { session.enemyConfig.spriteConfig(for: $0) }
         let combatSprite = session.playerConfig.combatSprite
         let healthCount = scene.currentWorld.healthCount
-        let hudConfig = loadHudConfig()
+        let hudConfig = cachedHudConfig
         let playerFx = session.playerConfig.fx
         let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
         let letterSpawnRate = session.selectedCombatLetterSpawnRate
@@ -295,7 +296,7 @@ final class GameViewController: LandscapeHostingController {
         hud?.isHidden = hidden
     }
 
-    private func loadHudConfig() -> HudConfig {
+    private static func loadHudConfig() -> HudConfig {
         do {
             let loaded = try HudConfig.loadFromBundle()
             try loaded.validate()
@@ -330,7 +331,7 @@ final class GameViewController: LandscapeHostingController {
         let chosenMinigame = (try? pitConfig.pickMinigame(using: &minigameRNG))
             ?? PitConfig.fallback.minigames[0]
         let playerFx = session.playerConfig.fx
-        let hudConfig = loadHudConfig()
+        let hudConfig = cachedHudConfig
 
         encounterCoordinator.presentMinigame(
             music: session.selectedGameMusic.pitCue,
@@ -422,7 +423,7 @@ final class GameViewController: LandscapeHostingController {
         let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .spelling
         let chosen = gateConfig.minigame(for: kind) ?? gateConfig.minigames[0]
         let playerFx = session.playerConfig.fx
-        let hudConfig = loadHudConfig()
+        let hudConfig = cachedHudConfig
 
         let musicName = chosen.music ?? session.selectedGameMusic.gate
         encounterCoordinator.presentMinigame(
