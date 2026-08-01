@@ -59,20 +59,12 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard !letters.isEmpty else {
-            throw WorldSeedError.invalidGateLetterMatchLetters
-        }
-        let letterSet = CharacterSet.letters
-        var seen = Set<String>()
-        for entry in letters {
-            guard entry.letter.count == 1,
-                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  seen.insert(entry.letter).inserted else {
-                throw WorldSeedError.invalidGateLetterMatchLetters
-            }
-        }
+        try CatalogValidators.validateLetterEntries(
+            letters,
+            requirePronunciation: true,
+            emptyError: .invalidGateLetterMatchLetters,
+            invalidEntryError: .invalidGateLetterMatchLetters
+        )
     }
 
     static func loadFromBundle(

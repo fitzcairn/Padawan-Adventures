@@ -54,25 +54,11 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard !words.isEmpty else {
-            throw WorldSeedError.invalidGateWords
-        }
-        let letterSet = CharacterSet.letters
-        for entry in words {
-            guard !entry.word.isEmpty,
-                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw WorldSeedError.invalidGateWords
-            }
-            var prefix = ""
-            for character in entry.word {
-                prefix.append(character)
-                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !track.isEmpty else {
-                    throw WorldSeedError.invalidGateWords
-                }
-            }
-        }
+        try CatalogValidators.validateWordEntries(
+            words,
+            emptyError: .invalidGateWords,
+            invalidEntryError: .invalidGateWords
+        )
     }
 
     static func loadFromBundle(

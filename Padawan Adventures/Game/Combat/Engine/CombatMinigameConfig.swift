@@ -83,16 +83,12 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         guard letters.count == Self.ringCount else {
             throw WorldSeedError.invalidCombatDeflectLetters
         }
-        let letterSet = CharacterSet.letters
-        var seen = Set<String>()
-        for entry in letters {
-            guard entry.letter.count == 1,
-                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  seen.insert(entry.letter).inserted else {
-                throw WorldSeedError.invalidCombatDeflectLetters
-            }
-        }
+        try CatalogValidators.validateLetterEntries(
+            letters,
+            requirePronunciation: false,
+            emptyError: .invalidCombatDeflectLetters,
+            invalidEntryError: .invalidCombatDeflectLetters
+        )
     }
 }
 

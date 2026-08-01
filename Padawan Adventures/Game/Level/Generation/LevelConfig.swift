@@ -43,25 +43,11 @@ nonisolated struct PitPuzzleConfig: Equatable, Sendable {
         guard numPaddingLetters >= 0 else {
             throw WorldSeedError.invalidPitWords
         }
-        guard !words.isEmpty else {
-            throw WorldSeedError.invalidPitWords
-        }
-        let letterSet = CharacterSet.letters
-        for entry in words {
-            guard !entry.word.isEmpty,
-                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw WorldSeedError.invalidPitWords
-            }
-            var prefix = ""
-            for character in entry.word {
-                prefix.append(character)
-                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !track.isEmpty else {
-                    throw WorldSeedError.invalidPitWords
-                }
-            }
-        }
+        try CatalogValidators.validateWordEntries(
+            words,
+            emptyError: .invalidPitWords,
+            invalidEntryError: .invalidPitWords
+        )
     }
 }
 

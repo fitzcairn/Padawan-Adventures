@@ -42,25 +42,11 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
         guard numPaddingLetters >= 0 else {
             throw WorldSeedError.invalidGatePaddingLetters(numPaddingLetters)
         }
-        guard !words.isEmpty else {
-            throw WorldSeedError.invalidGateWords
-        }
-        let letterSet = CharacterSet.letters
-        for entry in words {
-            guard !entry.word.isEmpty,
-                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw WorldSeedError.invalidGateWords
-            }
-            var prefix = ""
-            for character in entry.word {
-                prefix.append(character)
-                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !track.isEmpty else {
-                    throw WorldSeedError.invalidGateWords
-                }
-            }
-        }
+        try CatalogValidators.validateWordEntries(
+            words,
+            emptyError: .invalidGateWords,
+            invalidEntryError: .invalidGateWords
+        )
     }
 
     static func normalizedWords(_ words: [GateWord]) -> [GateWord] {
@@ -147,17 +133,12 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
         guard !letters.isEmpty else {
             throw WorldSeedError.invalidGateLetterMatchLetters
         }
-        let letterSet = CharacterSet.letters
-        var seen = Set<String>()
-        for entry in letters {
-            guard entry.letter.count == 1,
-                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  seen.insert(entry.letter).inserted else {
-                throw WorldSeedError.invalidGateLetterMatchLetters
-            }
-        }
+        try CatalogValidators.validateLetterEntries(
+            letters,
+            requirePronunciation: true,
+            emptyError: .invalidGateLetterMatchLetters,
+            invalidEntryError: .invalidGateLetterMatchLetters
+        )
     }
 
     static func normalizedLetters(_ letters: [GateLetter]) -> [GateLetter] {
