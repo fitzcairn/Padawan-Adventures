@@ -10,7 +10,7 @@ protocol CombatSceneDelegate: AnyObject {
 }
 
 /// SpriteKit combat arena: player/enemy sprites, curved shots, slash input, VFX.
-final class CombatScene: SKScene {
+final class CombatScene: MinigameScene {
     private struct ShotVisual {
         /// Current quadratic path (may be retargeted when the cue changes).
         var pathStart: CGPoint
@@ -52,9 +52,6 @@ final class CombatScene: SKScene {
     private(set) var slashContainerBuildCount = 0
     private var slashStartedAt: TimeInterval?
     private var isSlashActive = false
-    private var didEnd = false
-    private var didSetup = false
-    private var isBuilding = false
     private var lastUpdateTime: TimeInterval?
     private var activeLoopTrackID: String?
 
@@ -99,12 +96,6 @@ final class CombatScene: SKScene {
             startingHealth: startingHealth
         )
         super.init(size: size)
-        // Aspect-fit avoids distorting paths when the SKView aspect differs from scene size.
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        // Bottom-left origin — more reliable for path motion than a centered anchorPoint.
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -112,13 +103,7 @@ final class CombatScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         GameLogger.step(.combat, "combat.buildArena") { buildArena() }
         engine.begin()
         // Enable before combat FX so hum/slash sit under letter cues; music −20%.
@@ -138,10 +123,7 @@ final class CombatScene: SKScene {
         clearCombatMix()
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
+    override func rebuildLayout() {
         // Keep the fight running; only re-layout sprites. Live shots keep their paths.
         repositionArenaNodes()
     }
