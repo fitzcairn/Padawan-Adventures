@@ -59,10 +59,18 @@ struct PitBridgeMinigameView: View {
                         .ignoresSafeArea()
                 }
 
-                PitHUDRepresentable(
-                    config: hudConfig,
-                    word: session.word,
-                    solvedCount: 0
+                HUDHostRepresentable(
+                    makeHUD: {
+                        SpellingProgressHUDView(
+                            config: hudConfig,
+                            word: session.word,
+                            progressCount: 0,
+                            accessibilityID: "pit.word"
+                        )
+                    },
+                    update: { hud in
+                        hud.setWord(session.word, progressCount: 0)
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()

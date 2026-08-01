@@ -1,19 +1,24 @@
 import UIKit
 
-/// Gate-only HUD: large target word (top-center).
-/// Connected prefix letters render red; remaining letters stay white.
-final class GateHUDView: UIView {
+/// Spelling minigame HUD: large target word (top-center).
+/// Solved prefix letters render red; remaining letters stay white.
+final class SpellingProgressHUDView: UIView {
     private let wordLabel = UILabel()
     private let wordFont = AppFont.uiKit(size: 44, weight: .bold)
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
     private var currentWord = ""
-    private var connectedCount = 0
+    private var progressCount = 0
 
-    init(config: HudConfig, word: String = "", connectedCount: Int = 0) {
+    init(
+        config: HudConfig,
+        word: String = "",
+        progressCount: Int = 0,
+        accessibilityID: String
+    ) {
         super.init(frame: .zero)
         _ = config
-        setup(word: word, connectedCount: connectedCount)
+        setup(word: word, progressCount: progressCount, accessibilityID: accessibilityID)
     }
 
     @available(*, unavailable)
@@ -35,32 +40,32 @@ final class GateHUDView: UIView {
         updateEdgeInsets()
     }
 
-    func setWord(_ word: String, connectedCount: Int = 0) {
+    func setWord(_ word: String, progressCount: Int = 0) {
         currentWord = word.lowercased()
-        self.connectedCount = max(0, min(connectedCount, currentWord.count))
+        self.progressCount = max(0, min(progressCount, currentWord.count))
         wordLabel.attributedText = Self.attributedWord(
             currentWord,
-            connectedCount: self.connectedCount,
+            progressCount: self.progressCount,
             font: wordFont
         )
     }
 
-    private func setup(word: String, connectedCount: Int) {
+    private func setup(word: String, progressCount: Int, accessibilityID: String) {
         backgroundColor = .clear
         isUserInteractionEnabled = false
         translatesAutoresizingMaskIntoConstraints = true
 
         currentWord = word.lowercased()
-        self.connectedCount = max(0, min(connectedCount, currentWord.count))
+        self.progressCount = max(0, min(progressCount, currentWord.count))
         wordLabel.attributedText = Self.attributedWord(
             currentWord,
-            connectedCount: self.connectedCount,
+            progressCount: self.progressCount,
             font: wordFont
         )
         wordLabel.textAlignment = .center
         wordLabel.translatesAutoresizingMaskIntoConstraints = false
         wordLabel.applyAppCopyShadow()
-        wordLabel.accessibilityIdentifier = "gate.word"
+        wordLabel.accessibilityIdentifier = accessibilityID
         wordLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         addSubview(wordLabel)
@@ -88,7 +93,7 @@ final class GateHUDView: UIView {
 
     private static func attributedWord(
         _ word: String,
-        connectedCount: Int,
+        progressCount: Int,
         font: UIFont
     ) -> NSAttributedString {
         let result = NSMutableAttributedString(string: word)
@@ -100,7 +105,7 @@ final class GateHUDView: UIView {
             ],
             range: fullRange
         )
-        let redCount = max(0, min(connectedCount, word.count))
+        let redCount = max(0, min(progressCount, word.count))
         if redCount > 0 {
             result.addAttribute(
                 .foregroundColor,

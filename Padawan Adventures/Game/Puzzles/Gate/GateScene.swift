@@ -173,7 +173,7 @@ final class GateScene: SKScene {
         let hostSize = host?.bounds.size ?? size
         let safeArea = host?.safeAreaInsets ?? .zero
         let topInset = ScreenLayout.uiInsets(size: hostSize, safeArea: safeArea).top
-        // Matches GateHUDView's 44pt bold word, plus a little breathing room under the label.
+        // Matches SpellingProgressHUDView's 44pt bold word, plus a little breathing room under the label.
         let wordBand: CGFloat = 56
         return topInset + wordBand
     }

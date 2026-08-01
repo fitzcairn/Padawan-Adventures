@@ -63,10 +63,18 @@ struct PitMinigameView: View {
                         .ignoresSafeArea()
                 }
 
-                PitHUDRepresentable(
-                    config: hudConfig,
-                    word: session.targetWord,
-                    solvedCount: session.solvedCount
+                HUDHostRepresentable(
+                    makeHUD: {
+                        SpellingProgressHUDView(
+                            config: hudConfig,
+                            word: session.targetWord,
+                            progressCount: session.solvedCount,
+                            accessibilityID: "pit.word"
+                        )
+                    },
+                    update: { hud in
+                        hud.setWord(session.targetWord, progressCount: session.solvedCount)
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -213,45 +221,5 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
             self.starsAwarded = starsAwarded
             self.showEscaped = true
         }
-    }
-}
-
-struct PitHUDRepresentable: UIViewRepresentable {
-    let config: HudConfig
-    let word: String
-    let solvedCount: Int
-
-    final class Coordinator {
-        var hud: PitHUDView?
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> UIView {
-        let container = UIView()
-        container.backgroundColor = .clear
-        container.isUserInteractionEnabled = false
-
-        let hud = PitHUDView(
-            config: config,
-            word: word,
-            solvedCount: solvedCount
-        )
-        hud.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(hud)
-        NSLayoutConstraint.activate([
-            hud.topAnchor.constraint(equalTo: container.topAnchor),
-            hud.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hud.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            hud.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        context.coordinator.hud = hud
-        return container
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.hud?.setWord(word, solvedCount: solvedCount)
     }
 }

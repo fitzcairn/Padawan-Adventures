@@ -83,11 +83,19 @@ struct EnemyMinigameView: View {
                         .ignoresSafeArea()
                 }
 
-                CombatHUDRepresentable(
-                    config: hudConfig,
-                    healthCount: session.health,
-                    progress: session.stars,
-                    progressGoal: enemyType.starsToWin
+                HUDHostRepresentable(
+                    makeHUD: {
+                        CombatHUDView(
+                            config: hudConfig,
+                            healthCount: session.health,
+                            progress: session.stars,
+                            progressGoal: enemyType.starsToWin
+                        )
+                    },
+                    update: { hud in
+                        hud.setHealth(session.health)
+                        hud.setProgress(current: session.stars, goal: enemyType.starsToWin)
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -242,49 +250,5 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         Task { @MainActor in
             self.onLost?()
         }
-    }
-}
-
-private struct CombatHUDRepresentable: UIViewRepresentable {
-    let config: HudConfig
-    let healthCount: Int
-    let progress: Int
-    let progressGoal: Int
-
-    final class Coordinator {
-        var hud: CombatHUDView?
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> UIView {
-        // SwiftUI sizes this container via autoresizing; the HUD is pinned inside.
-        let container = UIView()
-        container.backgroundColor = .clear
-        container.isUserInteractionEnabled = false
-
-        let hud = CombatHUDView(
-            config: config,
-            healthCount: healthCount,
-            progress: progress,
-            progressGoal: progressGoal
-        )
-        hud.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(hud)
-        NSLayoutConstraint.activate([
-            hud.topAnchor.constraint(equalTo: container.topAnchor),
-            hud.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hud.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            hud.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-        context.coordinator.hud = hud
-        return container
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.hud?.setHealth(healthCount)
-        context.coordinator.hud?.setProgress(current: progress, goal: progressGoal)
     }
 }
