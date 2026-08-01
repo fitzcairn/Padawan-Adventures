@@ -6,6 +6,15 @@ import Testing
 @MainActor
 struct SpriteLibraryResidencyTests {
     @Test
+    func byteBudgetLimitIsDerivedFromAvailableMemory() {
+        let available = MemoryProbe.availableBytes()
+        let library = SpriteLibrary()
+        let limit = library.byteBudgetLimit
+        #expect(limit > 0)
+        #expect(limit == max(Int(Double(available) * 0.20), 1))
+    }
+
+    @Test
     func retainDropsNonKeptIdsAndRestoresResidentBytes() {
         let library = SpriteLibrary()
         let playerTexture = Self.makeTexture(width: 16, height: 8)

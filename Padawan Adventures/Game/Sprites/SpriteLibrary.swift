@@ -12,9 +12,21 @@ final class SpriteLibrary {
     private var uiImagesCache: [String: [(image: UIImage, duration: TimeInterval)]] = [:]
     private var actionCache: [String: SKAction] = [:]
     private let bundle: Bundle
+    /// Fraction of `os_proc_available_memory()` captured at first budget check.
+    private static let byteBudgetFraction = 0.20
+    private var byteBudget: Int?
 
     init(bundle: Bundle = .main) {
         self.bundle = bundle
+    }
+
+    /// Resident-texture tripwire derived from launch-time headroom; diagnostic only.
+    var byteBudgetLimit: Int {
+        if let byteBudget { return byteBudget }
+        let available = MemoryProbe.availableBytes()
+        let budget = max(Int(Double(available) * Self.byteBudgetFraction), 1)
+        byteBudget = budget
+        return budget
     }
 
     /// Approximate resident texture bytes (RGBA8), for eviction and diagnostics.
@@ -109,6 +121,7 @@ final class SpriteLibrary {
         bytesByID[id] = Self.textureBytes(of: loaded)
         loadedIDs.insert(id)
         onProgress?(1)
+        checkByteBudget()
     }
 
     /// Configured animation names not yet resident for `id` (sorted).
@@ -177,6 +190,22 @@ final class SpriteLibrary {
             guard let id = entry.key.split(separator: "|").first else { return false }
             return keep.contains(String(id))
         }
+        checkByteBudget()
+    }
+
+    /// Logs when resident texture bytes exceed the launch-time budget; never evicts.
+    private func checkByteBudget() {
+        let resident = residentBytes
+        let budget = byteBudgetLimit
+        guard resident > budget else { return }
+        let breakdown = bytesByID
+            .sorted { $0.value > $1.value }
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: ", ")
+        GameLogger.fault(
+            .sprites,
+            "residentBytes \(resident) exceeds budget \(budget): [\(breakdown)]"
+        )
     }
 
     /// Every distinct texture currently resident, for GPU pre-upload.
