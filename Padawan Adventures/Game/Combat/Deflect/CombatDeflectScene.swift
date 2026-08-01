@@ -35,14 +35,15 @@ final class CombatDeflectScene: SKScene {
     private let isoSquash: CGFloat
 
     private var engine: CombatDeflectMinigameEngine
-    private var playerNode: AnimatedSpriteNode!
-    private var enemyNode: AnimatedSpriteNode!
+    private var playerNode: AnimatedSpriteNode?
+    private var enemyNode: AnimatedSpriteNode?
     private var ringLayer = SKNode()
     private var hpTrack: SKSpriteNode?
     private var hpFill: SKSpriteNode?
     private var activeOrb: OrbVisual?
     private var didEnd = false
     private var didSetup = false
+    private var isBuilding = false
     private var activeLoopTrackID: String?
     private var cachedPlayerWidth: CGFloat?
 
@@ -114,7 +115,11 @@ final class CombatDeflectScene: SKScene {
 
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
-        didSetup = true
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
         GameLogger.mark(
             .combat,
             """
@@ -147,7 +152,7 @@ final class CombatDeflectScene: SKScene {
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !didEnd else { return }
+        guard didSetup, !isBuilding, !didEnd else { return }
         guard size.width > 1, size.height > 1 else { return }
         guard oldSize != size else { return }
         // SpriteKit can resize the scene while `buildArena` is still running,
@@ -425,6 +430,7 @@ final class CombatDeflectScene: SKScene {
         ring: CombatDeflectRing,
         travelSeconds: Double
     ) {
+        guard let playerNode, let enemyNode else { return }
         let travel = max(travelSeconds, 0.2)
         // A previous deflect may have left the player mirrored.
         setPlayerFacingLeft(false)
@@ -541,7 +547,7 @@ final class CombatDeflectScene: SKScene {
 
     /// Swing toward the tapped ring, then send the orb home at double speed.
     private func playDeflect(ring: CombatDeflectRing) {
-        guard let orb = activeOrb else { return }
+        guard let orb = activeOrb, let playerNode, let enemyNode else { return }
         SoundEffectsController.shared.play(event: "slash", from: playerFx)
         if combatSprite != nil {
             playerNode.playOnce(
@@ -592,7 +598,7 @@ final class CombatDeflectScene: SKScene {
 
     /// Wrong ring: dash the orb into the player so the miss visibly lands.
     private func playWrongTap() {
-        guard let orb = activeOrb else { return }
+        guard let orb = activeOrb, let playerNode else { return }
         SoundEffectsController.shared.playCommon(event: "error")
         orb.node.removeAction(forKey: orbFlightActionKey)
 
@@ -626,6 +632,7 @@ final class CombatDeflectScene: SKScene {
 
     private func resolvePlayerHit() {
         guard !didEnd else { return }
+        guard let playerNode else { return }
         let position = activeOrb?.node.position
             ?? bodyCenter(of: playerNode, height: playerSpriteHeight)
         removeOrbNode()
