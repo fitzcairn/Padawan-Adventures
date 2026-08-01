@@ -200,6 +200,7 @@ struct LevelSelectView: View {
             }
         }
         .playScreenMusic("level_select")
+        .onAppear { MemoryProbe.mark("level-select") }
         .task {
             // Assets are warmed on the loading screen; refresh icons if progression changed.
             refreshInventoryIcons(ids: inventoryTreasureIDs)

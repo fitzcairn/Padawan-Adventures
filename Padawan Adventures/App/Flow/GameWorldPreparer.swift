@@ -87,11 +87,13 @@ enum GameWorldPreparer {
         }
         report(assetsEnd)
 
-        return await GameLogger.step(.world, "loadWorld(\(mode))") {
+        let world = await GameLogger.step(.world, "loadWorld(\(mode))") {
             await loadWorld(session: session, mode: mode) { local in
                 report(LoadProgress.map(local, from: assetsEnd, to: 1))
             }
         }
+        MemoryProbe.mark("world-ready")
+        return world
     }
 
     @MainActor

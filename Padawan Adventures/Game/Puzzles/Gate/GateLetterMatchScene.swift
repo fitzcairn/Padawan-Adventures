@@ -50,7 +50,7 @@ final class GateLetterMatchScene: SKScene {
         guard !didSetup else { return }
         didSetup = true
         engine.begin()
-        buildPuzzle()
+        GameLogger.step(.world, "gateLetterMatch.buildPuzzle") { buildPuzzle() }
         playTargetPronunciation()
     }
 

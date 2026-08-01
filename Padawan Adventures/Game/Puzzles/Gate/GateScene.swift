@@ -98,11 +98,12 @@ final class GateScene: SKScene {
         didSetup = true
         engine.begin()
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
-        buildPuzzle()
+        GameLogger.step(.world, "gate.buildPuzzle") { buildPuzzle() }
         playWordSound()
     }
 
     override func willMove(from view: SKView) {
+        GameLogger.mark(.world, "gate.willMove teardown")
         stopGateLoop()
     }
 

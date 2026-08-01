@@ -237,6 +237,7 @@ final class GameViewController: LandscapeHostingController {
         )
 
         BackgroundMusicController.shared.apply(session.selectedGameMusic.combatCue)
+        MemoryProbe.mark("minigame-present-combat")
 
         overlayPresenter.present(
             fadeWorldOut: true,
@@ -253,6 +254,7 @@ final class GameViewController: LandscapeHostingController {
                 }
             },
             onResolved: { [weak self] done in
+                MemoryProbe.mark("minigame-dismiss-combat")
                 guard let self, let scene = self.gameScene else {
                     done()
                     return
@@ -322,6 +324,7 @@ final class GameViewController: LandscapeHostingController {
         let outcomeBox = PitOutcomeBox()
 
         BackgroundMusicController.shared.apply(session.selectedGameMusic.pitCue)
+        MemoryProbe.mark("minigame-present-pit")
 
         overlayPresenter.present(
             fadeWorldOut: true,
@@ -345,6 +348,7 @@ final class GameViewController: LandscapeHostingController {
                 }
             },
             onResolved: { [weak self] done in
+                MemoryProbe.mark("minigame-dismiss-pit")
                 guard let self, let scene = self.gameScene else {
                     done()
                     return
@@ -422,6 +426,7 @@ final class GameViewController: LandscapeHostingController {
 
         let musicName = chosen.music ?? session.selectedGameMusic.gate
         BackgroundMusicController.shared.apply(MusicCue.parse(musicName))
+        MemoryProbe.mark("minigame-present-gate")
 
         overlayPresenter.present(
             fadeWorldOut: true,
@@ -439,6 +444,7 @@ final class GameViewController: LandscapeHostingController {
                 }
             },
             onResolved: { [weak self] done in
+                MemoryProbe.mark("minigame-dismiss-gate")
                 guard let self, let scene = self.gameScene else {
                     done()
                     return

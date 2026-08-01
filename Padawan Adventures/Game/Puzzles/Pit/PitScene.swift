@@ -96,7 +96,7 @@ final class PitScene: SKScene {
         engine.begin()
         pitDelegate?.pitSceneDidSelectWord(engine.targetWord)
         pitDelegate?.pitSceneDidUpdateSolvedCount(0)
-        buildPuzzle()
+        GameLogger.step(.world, "pit.buildPuzzle") { buildPuzzle() }
         playWordSound()
     }
 

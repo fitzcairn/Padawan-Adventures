@@ -14,6 +14,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Earliest possible point, so every later breadcrumb is covered.
         GameLogger.installCrashHandlers()
         GameLogger.mark(.lifecycle, "didFinishLaunching")
+        MemoryProbe.mark("launch")
         return true
     }
 

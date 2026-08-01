@@ -114,7 +114,7 @@ final class CombatScene: SKScene {
     override func didMove(to view: SKView) {
         guard !didSetup else { return }
         didSetup = true
-        buildArena()
+        GameLogger.step(.combat, "combat.buildArena") { buildArena() }
         engine.begin()
         // Enable before combat FX so hum/slash sit under letter cues; music −20%.
         SoundEffectsController.shared.setCombatMixActive(true)
@@ -128,6 +128,7 @@ final class CombatScene: SKScene {
     }
 
     override func willMove(from view: SKView) {
+        GameLogger.mark(.combat, "combat.willMove teardown")
         stopCombatLoop()
         clearCombatMix()
     }

@@ -72,10 +72,11 @@ final class GateWordPlugScene: SKScene {
         guard !didSetup else { return }
         didSetup = true
         engine.begin()
-        buildPuzzle()
+        GameLogger.step(.world, "gateWordPlug.buildPuzzle") { buildPuzzle() }
     }
 
     override func willMove(from view: SKView) {
+        GameLogger.mark(.world, "gateWordPlug.willMove teardown")
         // The speaker is a shared singleton; without this a phrase (and its music
         // duck) keeps running after the gate overlay is dismissed.
         SpokenPhrasePlayer.shared.cancel()

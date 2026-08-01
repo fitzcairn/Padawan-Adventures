@@ -229,6 +229,7 @@ final class AppSession {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
+                MemoryProbe.mark("memory-warning")
                 self?.releaseLevelScopedSprites()
             }
         }
@@ -645,6 +646,7 @@ final class AppSession {
             assertionFailure("ConfigAudit failed: \(error)")
         }
         GameLogger.mark(.session, "loadResources complete")
+        MemoryProbe.mark("loadResources-complete")
 
         return AppSession(
             appConfig: appConfig,

@@ -141,6 +141,7 @@ final class CombatDeflectScene: SKScene {
     }
 
     override func willMove(from view: SKView) {
+        GameLogger.mark(.combat, "deflect.willMove teardown")
         stopCombatLoop()
         clearCombatMix()
     }

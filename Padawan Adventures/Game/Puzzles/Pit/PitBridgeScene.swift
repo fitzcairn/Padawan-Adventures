@@ -98,11 +98,12 @@ final class PitBridgeScene: SKScene {
         guard !didSetup else { return }
         didSetup = true
         engine.begin()
-        buildArena()
+        GameLogger.step(.world, "pitBridge.buildArena") { buildArena() }
         beginRound()
     }
 
     override func willMove(from view: SKView) {
+        GameLogger.mark(.world, "pitBridge.willMove teardown")
         speaker.cancel()
         removeAction(forKey: Self.promptWatchdogKey)
     }
