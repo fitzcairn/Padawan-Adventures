@@ -503,4 +503,42 @@ extension ProceduralGenerator {
             return false
         }
     }
+
+    func runGatesPass(state: inout GenerationAttemptState, config: WorldGenerationConfig) {
+        let params = config.generation
+        let roomByCell: [GridCoord: Int] = state.rooms.reduce(into: [:]) { map, room in
+            for cell in room.cells {
+                map[cell] = room.id
+            }
+        }
+        let segmentsByPair = sharedWallSegmentsByPair(in: state.tiles[0], roomByCell: roomByCell)
+        state.joinEdges = adjacencySpanningTree(rooms: state.rooms, segmentsByPair: segmentsByPair)
+        state.topRight = topRightRoom(from: state.rooms)
+        state.spawn = spawnCell(for: state.topRight)
+
+        placeJoinGates(
+            state.joinEdges,
+            segmentsByPair: segmentsByPair,
+            tiles: &state.tiles,
+            story: 0,
+            gateMinigameKinds: config.gateMinigameKinds,
+            rng: &state.rng
+        )
+        ensureGateConnectivity(
+            rooms: state.rooms,
+            spawn: state.spawn,
+            segmentsByPair: segmentsByPair,
+            tiles: &state.tiles,
+            story: 0,
+            gateMinigameKinds: config.gateMinigameKinds,
+            rng: &state.rng
+        )
+        placePartitionGates(
+            rooms: state.rooms,
+            in: &state.tiles[0],
+            chance: params.room.partitionGateChance,
+            gateMinigameKinds: config.gateMinigameKinds,
+            rng: &state.rng
+        )
+    }
 }

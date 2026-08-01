@@ -361,4 +361,22 @@ extension ProceduralGenerator {
             return lhsScore < rhsScore
         } ?? rooms[0]
     }
+
+    func runRoomsPass(state: inout GenerationAttemptState, config: WorldGenerationConfig) {
+        let params = config.generation
+        state.tiles = filledWalls(
+            width: state.width,
+            height: state.height,
+            stories: state.stories
+        )
+        state.rooms = placePackedRooms(
+            count: params.roomCount,
+            minSize: params.room.minRoomSize,
+            maxSize: params.room.maxRoomSize,
+            width: state.width,
+            height: state.height,
+            rng: &state.rng
+        )
+        carveRooms(state.rooms, into: &state.tiles[0])
+    }
 }

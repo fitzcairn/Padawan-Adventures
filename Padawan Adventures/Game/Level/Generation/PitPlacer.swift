@@ -174,4 +174,19 @@ extension ProceduralGenerator {
         }
         return false
     }
+
+    func runPitsPass(state: inout GenerationAttemptState, config: WorldGenerationConfig) {
+        let params = config.generation
+        sprinklePits(
+            rooms: state.rooms,
+            into: &state.tiles[0],
+            chance: params.room.pitChance,
+            meanSize: params.room.pitMeanSize,
+            maxSize: params.room.pitMaxSize,
+            excludingRoomID: state.topRight.id,
+            excluding: state.spawn,
+            rng: &state.rng
+        )
+        clearPits(around: state.spawn, tiles: &state.tiles, story: 0)
+    }
 }

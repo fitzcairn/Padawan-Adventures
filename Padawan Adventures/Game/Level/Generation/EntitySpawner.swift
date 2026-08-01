@@ -316,4 +316,129 @@ extension ProceduralGenerator {
             return false
         }
     }
+
+    func runEntitiesPass(
+        state: inout GenerationAttemptState,
+        config: WorldGenerationConfig,
+        playerConfig: PlayerConfig,
+        enemyConfig: EnemyConfig
+    ) {
+        let letter = playerConfig.letter.first ?? "P"
+        let player = GameEntity(letter: letter, position: state.spawn, isPlayer: true)
+        state.entities = [player]
+        state.occupied = [state.spawn]
+        state.pickupCells = []
+
+        if let spawnConfig = config.enemies {
+            let resolvedTypes: [(id: String, config: EnemyTypeConfig)] = spawnConfig.types.compactMap { id in
+                guard let typeConfig = enemyConfig.type(named: id) else { return nil }
+                return (id, typeConfig)
+            }
+            if !resolvedTypes.isEmpty {
+                let enemies = spawnEnemies(
+                    in: state.rooms,
+                    excludingRoomID: state.topRight.id,
+                    tiles: state.tiles,
+                    types: resolvedTypes,
+                    chance: spawnConfig.spawnChancePerRoom,
+                    occupied: &state.occupied,
+                    rng: &state.rng
+                )
+                state.entities.append(contentsOf: enemies)
+            }
+        }
+
+        if let pickups = config.pickups {
+            let spawned = spawnPickups(
+                pickups,
+                in: state.rooms,
+                excludingRoomID: state.topRight.id,
+                tiles: state.tiles,
+                occupied: &state.occupied,
+                pickupCells: &state.pickupCells,
+                rng: &state.rng
+            )
+            state.entities.append(contentsOf: spawned)
+        }
+
+        if let treasure = spawnTreasure(
+            in: state.rooms,
+            spawn: state.spawn,
+            tiles: state.tiles,
+            occupied: &state.occupied,
+            pickupCells: &state.pickupCells,
+            rng: &state.rng
+        ) {
+            state.entities.append(treasure)
+        }
+    }
+
+    func runFinalizePass(
+        state: inout GenerationAttemptState,
+        config: WorldGenerationConfig,
+        playerConfig: PlayerConfig,
+        enemyConfig: EnemyConfig,
+        floorTileSet: FloorTileSet,
+        seed: UInt64
+    ) {
+        ensureRequiredInteractables(
+            rooms: state.rooms,
+            excludingRoomID: state.topRight.id,
+            spawn: state.spawn,
+            tiles: &state.tiles,
+            entities: &state.entities,
+            occupied: &state.occupied,
+            config: config,
+            enemyConfig: enemyConfig,
+            rng: &state.rng
+        )
+
+        var floorRng = SeededGenerator(seed: seed ^ FloorTiler.seedSalt)
+        for storyIndex in state.tiles.indices {
+            FloorTiler.tile(
+                tiles: &state.tiles[storyIndex],
+                story: storyIndex,
+                set: floorTileSet,
+                options: FloorTiler.Options(decorProb: config.decorProb),
+                rng: &floorRng
+            )
+        }
+    }
+}
+
+extension ProceduralGenerator {
+    func runGenerationPass(
+        _ pass: GenerationPass,
+        state: inout GenerationAttemptState,
+        config: WorldGenerationConfig,
+        playerConfig: PlayerConfig,
+        enemyConfig: EnemyConfig,
+        floorTileSet: FloorTileSet,
+        seed: UInt64
+    ) {
+        switch pass {
+        case .rooms:
+            runRoomsPass(state: &state, config: config)
+        case .gates:
+            runGatesPass(state: &state, config: config)
+        case .pits:
+            runPitsPass(state: &state, config: config)
+        case .entities:
+            runEntitiesPass(
+                state: &state,
+                config: config,
+                playerConfig: playerConfig,
+                enemyConfig: enemyConfig
+            )
+        case .finalize:
+            runFinalizePass(
+                state: &state,
+                config: config,
+                playerConfig: playerConfig,
+                enemyConfig: enemyConfig,
+                floorTileSet: floorTileSet,
+                seed: seed
+            )
+        }
+    }
 }
