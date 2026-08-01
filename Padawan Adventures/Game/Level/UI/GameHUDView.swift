@@ -3,26 +3,25 @@ import UIKit
 final class GameHUDView: UIView {
     var onFleeTapped: (() -> Void)?
 
-    private let config: HudConfig
-    private let fleeButton: UIButton
-    private let heartsStack: UIStackView
-    private let boltsStack: UIStackView
-    private let heartImage: UIImage?
-    private let boltImage: UIImage?
-    private let scoreLabel = UILabel()
-    private let coinHost = UIView()
-    private let coinImageView: UIImageView
+    let config: HudConfig
+    let fleeButton: UIButton
+    let heartsStack: UIStackView
+    let boltsStack: UIStackView
+    let heartImage: UIImage?
+    let boltImage: UIImage?
+    let scoreLabel = UILabel()
+    let coinHost = UIView()
+    let coinImageView: UIImageView
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
-    private var displayedStarCount = 0
-    private var starAwardTask: Task<Void, Never>?
-    private var sparkleLayer: CAEmitterLayer?
-    private var sparkleStopWorkItem: DispatchWorkItem?
+    var displayedStarCount = 0
+    var starAwardTask: Task<Void, Never>?
+    var sparkleLayer: CAEmitterLayer?
+    var sparkleStopWorkItem: DispatchWorkItem?
 
-    private static let hudIconFadeDuration: TimeInterval = 0.2
-    private static let starStepNanoseconds: UInt64 = 280_000_000
-    private static let sparkleLingerNanoseconds: UInt64 = 700_000_000
-
+    static let hudIconFadeDuration: TimeInterval = 0.2
+    static let starStepNanoseconds: UInt64 = 280_000_000
+    static let sparkleLingerNanoseconds: UInt64 = 700_000_000
     init(
         config: HudConfig,
         healthCount: Int = 0,
@@ -110,41 +109,7 @@ final class GameHUDView: UIView {
         scoreLabel.text = "\(displayedStarCount)"
         scoreLabel.transform = .identity
     }
-
-    /// Sparkles the HUD coin and counts the score label from `from` up to `to`.
-    @MainActor
-    func animateStarAward(from: Int, to: Int) async {
-        let start = max(from, 0)
-        let end = max(to, start)
-        starAwardTask?.cancel()
-        stopCoinSparkles(immediate: true)
-
-        displayedStarCount = start
-        scoreLabel.text = "\(start)"
-        scoreLabel.transform = .identity
-        guard end > start else { return }
-
-        let task = Task { @MainActor in
-            self.startCoinSparkles()
-            for value in (start + 1)...end {
-                try? await Task.sleep(nanoseconds: Self.starStepNanoseconds)
-                guard !Task.isCancelled else { return }
-                self.displayedStarCount = value
-                self.scoreLabel.text = "\(value)"
-                self.pulseScoreLabel()
-            }
-            try? await Task.sleep(nanoseconds: Self.sparkleLingerNanoseconds)
-            guard !Task.isCancelled else { return }
-            self.stopCoinSparkles(immediate: false)
-        }
-        starAwardTask = task
-        await task.value
-        if starAwardTask == task {
-            starAwardTask = nil
-        }
-    }
-
-    private func setup(healthCount: Int, energyCount: Int, starsCount: Int) {
+    func setup(healthCount: Int, energyCount: Int, starsCount: Int) {
         backgroundColor = .clear
         isUserInteractionEnabled = true
         translatesAutoresizingMaskIntoConstraints = false
@@ -198,184 +163,5 @@ final class GameHUDView: UIView {
             fleeTrailing,
         ])
         edgeInsets.update()
-    }
-
-    private func addIcon(image: UIImage?, to stack: UIStackView, animated: Bool) {
-        let imageView = UIImageView(image: image)
-        imageView.contentMode = .scaleAspectFit
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.isUserInteractionEnabled = false
-        let size = CGFloat(config.iconSize)
-        NSLayoutConstraint.activate([
-            imageView.widthAnchor.constraint(equalToConstant: size),
-            imageView.heightAnchor.constraint(equalToConstant: size),
-        ])
-
-        imageView.alpha = animated ? 0 : 1
-        // Avoid UIStackView's implicit layout animation fighting SpriteKit's frame.
-        UIView.performWithoutAnimation {
-            stack.addArrangedSubview(imageView)
-            stack.layoutIfNeeded()
-        }
-
-        guard animated else { return }
-        UIView.animate(
-            withDuration: Self.hudIconFadeDuration,
-            delay: 0,
-            options: [.curveEaseOut, .allowUserInteraction]
-        ) {
-            imageView.alpha = 1
-        }
-    }
-
-    private func removeIcon(from stack: UIStackView, animated: Bool) {
-        guard let icon = stack.arrangedSubviews.last else { return }
-        let remove = {
-            UIView.performWithoutAnimation {
-                stack.removeArrangedSubview(icon)
-                icon.removeFromSuperview()
-                stack.layoutIfNeeded()
-            }
-        }
-        guard animated else {
-            remove()
-            return
-        }
-        UIView.animate(
-            withDuration: Self.hudIconFadeDuration,
-            delay: 0,
-            options: [.curveEaseIn, .allowUserInteraction],
-            animations: { icon.alpha = 0 },
-            completion: { _ in remove() }
-        )
-    }
-
-    private func clearIcons(in stack: UIStackView) {
-        UIView.performWithoutAnimation {
-            for view in stack.arrangedSubviews {
-                stack.removeArrangedSubview(view)
-                view.removeFromSuperview()
-            }
-            stack.layoutIfNeeded()
-        }
-    }
-
-    private static func makeIconStack(spacing: Int) -> UIStackView {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = CGFloat(spacing)
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.isUserInteractionEnabled = false
-        return stack
-    }
-
-    private func makeScoreRow(starsCount: Int) -> UIStackView {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = CGFloat(config.scoreTextGap)
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.isUserInteractionEnabled = false
-        stack.clipsToBounds = false
-
-        let size = CGFloat(config.iconSize)
-        coinHost.translatesAutoresizingMaskIntoConstraints = false
-        coinHost.isUserInteractionEnabled = false
-        coinHost.clipsToBounds = false
-        if coinImageView.superview !== coinHost {
-            coinHost.addSubview(coinImageView)
-            NSLayoutConstraint.activate([
-                coinHost.widthAnchor.constraint(equalToConstant: size),
-                coinHost.heightAnchor.constraint(equalToConstant: size),
-                coinImageView.centerXAnchor.constraint(equalTo: coinHost.centerXAnchor),
-                coinImageView.centerYAnchor.constraint(equalTo: coinHost.centerYAnchor),
-            ])
-        }
-
-        scoreLabel.text = "\(max(starsCount, 0))"
-        scoreLabel.textColor = .white
-        scoreLabel.font = AppFont.uiKit(size: 22, weight: .semibold)
-        scoreLabel.translatesAutoresizingMaskIntoConstraints = false
-        scoreLabel.isUserInteractionEnabled = false
-        scoreLabel.applyAppCopyShadow()
-
-        stack.addArrangedSubview(coinHost)
-        stack.addArrangedSubview(scoreLabel)
-        return stack
-    }
-
-    private func pulseScoreLabel() {
-        scoreLabel.layer.removeAnimation(forKey: "scorePulse")
-        let pulse = CABasicAnimation(keyPath: "transform.scale")
-        pulse.fromValue = 1.18
-        pulse.toValue = 1
-        pulse.duration = 0.22
-        pulse.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        scoreLabel.layer.add(pulse, forKey: "scorePulse")
-    }
-
-    private func startCoinSparkles() {
-        stopCoinSparkles(immediate: true)
-        coinHost.layoutIfNeeded()
-
-        let side = max(coinHost.bounds.width, CGFloat(config.iconSize))
-        let emitter = GoldSparkleEmitter.makeLayer(
-            side: side,
-            position: CGPoint(x: coinHost.bounds.midX, y: coinHost.bounds.midY)
-        )
-        coinHost.layer.addSublayer(emitter)
-        sparkleLayer = emitter
-    }
-
-    private func stopCoinSparkles(immediate: Bool) {
-        sparkleStopWorkItem?.cancel()
-        sparkleStopWorkItem = nil
-        guard let emitter = sparkleLayer else { return }
-        emitter.birthRate = 0
-        if immediate {
-            emitter.removeFromSuperlayer()
-            sparkleLayer = nil
-            return
-        }
-        let work = DispatchWorkItem { [weak self, weak emitter] in
-            emitter?.removeFromSuperlayer()
-            if self?.sparkleLayer === emitter {
-                self?.sparkleLayer = nil
-            }
-        }
-        sparkleStopWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
-    }
-
-    private static let fleeButtonSize: CGFloat = 52
-
-    private static func makeFleeButton() -> UIButton {
-        let symbol = UIImage.SymbolConfiguration(
-            pointSize: fleeButtonSize * 0.42,
-            weight: .semibold
-        )
-        var configuration = UIButton.Configuration.filled()
-        configuration.image = UIImage(systemName: "figure.run", withConfiguration: symbol)
-        configuration.baseForegroundColor = AppChrome.uiButtonForegroundColor
-        configuration.baseBackgroundColor = AppChrome.uiButtonBackgroundColor
-        configuration.background.strokeColor = AppChrome.uiButtonOutlineColor
-        configuration.background.strokeWidth = AppChrome.buttonOutlineWidth
-        configuration.background.cornerRadius = fleeButtonSize / 2
-        configuration.cornerStyle = .fixed
-        configuration.contentInsets = .zero
-
-        let button = UIButton(configuration: configuration)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.accessibilityLabel = "Flee the planet!"
-        NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: fleeButtonSize),
-            button.heightAnchor.constraint(equalToConstant: fleeButtonSize),
-        ])
-        return button
-    }
-
-    @objc private func fleeTapped() {
-        onFleeTapped?()
     }
 }
