@@ -417,29 +417,20 @@ final class GameViewController: LandscapeHostingController {
         let chosen = gateConfig.minigame(for: kind) ?? gateConfig.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
-        let outcomeBox = GateOutcomeBox()
 
         let musicName = chosen.music ?? session.selectedGameMusic.gate
-        BackgroundMusicController.shared.apply(MusicCue.parse(musicName))
-        MemoryProbe.mark("minigame-present-gate")
-
-        overlayPresenter.present(
-            fadeWorldOut: true,
-            makeViewController: {
-                self.makeOverlayHost { finish in
-                    GateMinigameFactory.makeView(
-                        config: chosen,
-                        playerFx: playerFx,
-                        hudConfig: hudConfig,
-                        onFinished: { outcome in
-                            outcomeBox.outcome = outcome
-                            finish()
-                        }
-                    )
-                }
+        encounterCoordinator.presentMinigame(
+            music: MusicCue.parse(musicName),
+            memoryLabel: "gate",
+            makeView: { finish in
+                GateMinigameFactory.makeView(
+                    config: chosen,
+                    playerFx: playerFx,
+                    hudConfig: hudConfig,
+                    onFinished: finish
+                )
             },
-            onResolved: { [weak self] done in
-                MemoryProbe.mark("minigame-dismiss-gate")
+            onOutcome: { [weak self] outcome, done in
                 guard let self, let scene = self.gameScene else {
                     done()
                     return
@@ -447,7 +438,7 @@ final class GameViewController: LandscapeHostingController {
                 BackgroundMusicController.shared.apply(
                     MusicCue.parse(self.session.selectedLevelMusic)
                 )
-                switch outcomeBox.outcome {
+                switch outcome {
                 case let .won(starsAwarded):
                     Task {
                         await self.session.recordStat { $0.gatesOpened += 1 }
