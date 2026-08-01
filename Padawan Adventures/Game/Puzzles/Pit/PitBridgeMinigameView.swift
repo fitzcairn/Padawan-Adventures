@@ -77,7 +77,7 @@ struct PitBridgeMinigameView: View {
                 .allowsHitTesting(false)
 
                 if session.showWon {
-                    PitResultOverlay(
+                    MinigameResultOverlay(
                         kind: .bridged(starsAwarded: session.starsAwarded)
                     ) {
                         session.confirmWon(onFinished: onFinished)

@@ -58,7 +58,7 @@ struct GateMinigameView: View {
                 .allowsHitTesting(false)
 
                 if session.showUnlocked {
-                    GateResultOverlay(kind: .unlocked(starsAwarded: session.starsAwarded)) {
+                    MinigameResultOverlay(kind: .unlocked(starsAwarded: session.starsAwarded)) {
                         session.confirmUnlocked(onFinished: onFinished)
                     }
                 }

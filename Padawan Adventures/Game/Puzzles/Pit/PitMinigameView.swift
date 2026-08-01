@@ -81,7 +81,7 @@ struct PitMinigameView: View {
                 .allowsHitTesting(false)
 
                 if session.showEscaped {
-                    PitResultOverlay(
+                    MinigameResultOverlay(
                         kind: .escaped(word: session.targetWord, starsAwarded: session.starsAwarded)
                     ) {
                         session.confirmEscaped(onFinished: onFinished)

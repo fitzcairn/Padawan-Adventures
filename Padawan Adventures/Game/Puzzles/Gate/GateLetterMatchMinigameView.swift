@@ -40,7 +40,7 @@ struct GateLetterMatchMinigameView: View {
                 }
 
                 if session.showUnlocked {
-                    GateResultOverlay(
+                    MinigameResultOverlay(
                         kind: .unlocked(starsAwarded: session.starsAwarded)
                     ) {
                         session.confirmUnlocked(onFinished: onFinished)

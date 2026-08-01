@@ -86,7 +86,7 @@ struct CombatDeflectMinigameView: View {
                 .allowsHitTesting(false)
 
                 if session.showVictory {
-                    CombatVictoryView {
+                    MinigameResultOverlay(kind: .combatVictory) {
                         session.confirmVictory(onFinished: onFinished)
                     }
                 }
