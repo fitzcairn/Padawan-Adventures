@@ -6,7 +6,7 @@ protocol GateLetterMatchSceneDelegate: AnyObject {
 }
 
 /// SpriteKit gate letter-match puzzle: switch letter buttons.
-final class GateLetterMatchScene: SKScene {
+final class GateLetterMatchScene: MinigameScene {
     weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
 
     private let puzzleConfig: GateLetterMatchConfig
@@ -18,9 +18,6 @@ final class GateLetterMatchScene: SKScene {
     private var switchTextures: GateLetterMatchSwitchSprites.Textures?
     /// Side length used by the last `layoutLetterRow` (for hit-testing).
     private var laidOutTileSide: CGFloat = 0
-    private var didEnd = false
-    private var didSetup = false
-    private var isBuilding = false
     private var inputLocked = false
 
     private let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
@@ -36,10 +33,6 @@ final class GateLetterMatchScene: SKScene {
         self.playerFx = playerFx
         self.engine = GateLetterMatchMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -47,23 +40,10 @@ final class GateLetterMatchScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         engine.begin()
         GameLogger.step(.world, "gateLetterMatch.buildPuzzle") { buildPuzzle() }
         playTargetPronunciation()
-    }
-
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
-        rebuildLayout()
     }
 
     // MARK: - Layout
@@ -163,7 +143,7 @@ final class GateLetterMatchScene: SKScene {
         layoutLetterRow()
     }
 
-    private func rebuildLayout() {
+    override func rebuildLayout() {
         let matched = engine.matchedIDs
         buildPuzzle()
         for id in matched {
