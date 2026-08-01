@@ -116,8 +116,38 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     private let spriteLibrary: SpriteLibrary
     private let playerSpriteConfig: SpriteConfig?
     private var didFinish = false
-    private var isCreatingScene = false
-    private var pendingSceneSize: CGSize?
+    private lazy var sceneHost = MinigameSceneHost<PitScene>(
+        prepare: { [spriteLibrary, playerSpriteConfig] in
+            if let config = playerSpriteConfig {
+                let missingNewClip =
+                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
+                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
+                if missingNewClip,
+                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
+                    spriteLibrary.invalidate(id: "player")
+                }
+                await spriteLibrary.ensureLoaded(config, id: "player")
+            }
+        },
+        make: { [puzzleConfig, pitFx, playerFx, pitSpriteSetLibrary, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
+            PitScene(
+                size: size,
+                puzzleConfig: puzzleConfig,
+                pitFx: pitFx,
+                playerFx: playerFx,
+                pitSpriteSetLibrary: pitSpriteSetLibrary,
+                floorTileSetLibrary: floorTileSetLibrary,
+                isoConfig: isoConfig,
+                spriteLibrary: spriteLibrary,
+                playerSpriteConfig: playerSpriteConfig
+            )
+        },
+        onReady: { [weak self] created in
+            guard let self else { return }
+            created.pitDelegate = self
+            self.scene = created
+        }
+    )
 
     init(
         puzzleConfig: PitPuzzleConfig,
@@ -140,60 +170,11 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     }
 
     func ensureScene(size: CGSize) {
-        let safeSize = Self.sanitizedSize(size)
-        if scene != nil {
-            updateSceneSizeIfNeeded(safeSize)
-            return
-        }
-        pendingSceneSize = safeSize
-        guard !isCreatingScene else { return }
-        isCreatingScene = true
-        // Ensure player sheets are loaded (covers cold start / jump clip added mid-session).
-        Task {
-            if let config = playerSpriteConfig {
-                let missingNewClip =
-                    spriteLibrary.animation(id: "player", named: "jump_right") == nil
-                    || spriteLibrary.animation(id: "player", named: "celebrate_down") == nil
-                if missingNewClip,
-                   spriteLibrary.animation(id: "player", named: "idle_right") != nil {
-                    // Player was loaded before newer clips existed — reload once.
-                    spriteLibrary.invalidate(id: "player")
-                }
-                await spriteLibrary.ensureLoaded(config, id: "player")
-            }
-            let finalSize = pendingSceneSize ?? safeSize
-            let created = PitScene(
-                size: finalSize,
-                puzzleConfig: puzzleConfig,
-                pitFx: pitFx,
-                playerFx: playerFx,
-                pitSpriteSetLibrary: pitSpriteSetLibrary,
-                floorTileSetLibrary: floorTileSetLibrary,
-                isoConfig: isoConfig,
-                spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
-            )
-            created.pitDelegate = self
-            scene = created
-            isCreatingScene = false
-        }
+        sceneHost.ensureScene(size: size)
     }
 
     func updateSceneSizeIfNeeded(_ size: CGSize) {
-        let safeSize = Self.sanitizedSize(size)
-        if scene == nil {
-            pendingSceneSize = safeSize
-            return
-        }
-        guard let scene else { return }
-        let dw = abs(scene.size.width - safeSize.width)
-        let dh = abs(scene.size.height - safeSize.height)
-        guard dw > 8 || dh > 8 else { return }
-        scene.size = safeSize
-    }
-
-    private static func sanitizedSize(_ size: CGSize) -> CGSize {
-        CGSize(width: max(size.width, 320), height: max(size.height, 240))
+        sceneHost.updateSceneSizeIfNeeded(size)
     }
 
     func confirmEscaped(onFinished: (MinigameOutcome) -> Void) {
@@ -203,23 +184,17 @@ final class PitSessionController: ObservableObject, PitSceneDelegate {
     }
 
     func pitSceneDidSelectWord(_ word: String) {
-        Task { @MainActor in
-            self.targetWord = word
-            self.solvedCount = 0
-        }
+        targetWord = word
+        solvedCount = 0
     }
 
     func pitSceneDidUpdateSolvedCount(_ count: Int) {
-        Task { @MainActor in
-            self.solvedCount = count
-        }
+        solvedCount = count
     }
 
     func pitSceneDidWin(word: String, starsAwarded: Int) {
-        Task { @MainActor in
-            self.targetWord = word
-            self.starsAwarded = starsAwarded
-            self.showEscaped = true
-        }
+        targetWord = word
+        self.starsAwarded = starsAwarded
+        showEscaped = true
     }
 }
