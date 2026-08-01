@@ -325,34 +325,25 @@ final class GameViewController: LandscapeHostingController {
             ?? PitConfig.fallback.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = loadHudConfig()
-        let outcomeBox = PitOutcomeBox()
 
-        BackgroundMusicController.shared.apply(session.selectedGameMusic.pitCue)
-        MemoryProbe.mark("minigame-present-pit")
-
-        overlayPresenter.present(
-            fadeWorldOut: true,
-            makeViewController: {
-                self.makeOverlayHost { finish in
-                    PitMinigameFactory.makeView(
-                        config: chosenMinigame,
-                        pitFx: pitConfig.fx,
-                        playerFx: playerFx,
-                        hudConfig: hudConfig,
-                        pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,
-                        floorTileSetLibrary: self.session.floorTileSetLibrary,
-                        isoConfig: self.isoConfig,
-                        spriteLibrary: self.session.spriteLibrary,
-                        playerSpriteConfig: self.session.playerConfig.sprite,
-                        onFinished: { outcome in
-                            outcomeBox.outcome = outcome
-                            finish()
-                        }
-                    )
-                }
+        encounterCoordinator.presentMinigame(
+            music: session.selectedGameMusic.pitCue,
+            memoryLabel: "pit",
+            makeView: { finish in
+                PitMinigameFactory.makeView(
+                    config: chosenMinigame,
+                    pitFx: pitConfig.fx,
+                    playerFx: playerFx,
+                    hudConfig: hudConfig,
+                    pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,
+                    floorTileSetLibrary: self.session.floorTileSetLibrary,
+                    isoConfig: self.isoConfig,
+                    spriteLibrary: self.session.spriteLibrary,
+                    playerSpriteConfig: self.session.playerConfig.sprite,
+                    onFinished: finish
+                )
             },
-            onResolved: { [weak self] done in
-                MemoryProbe.mark("minigame-dismiss-pit")
+            onOutcome: { [weak self] outcome, done in
                 guard let self, let scene = self.gameScene else {
                     done()
                     return
@@ -360,7 +351,7 @@ final class GameViewController: LandscapeHostingController {
                 BackgroundMusicController.shared.apply(
                     MusicCue.parse(self.session.selectedLevelMusic)
                 )
-                switch outcomeBox.outcome {
+                switch outcome {
                 case let .won(starsAwarded):
                     Task {
                         await self.session.recordStat { $0.pitsCrossed += 1 }
