@@ -1,119 +1,5 @@
 import Foundation
-import os
 import Yams
-
-/// A shared / gate vocabulary entry: spelling track + progressive prefix tracks.
-nonisolated struct GateWord: Equatable, Sendable {
-    var word: String
-    /// Full spelling cue, e.g. "s, t, a, r. Star".
-    var spelling: String
-    /// Prefix → track basename (`s`, `st`, `sta`, `star`, …).
-    var progressive: [String: String]
-
-    /// Convenience for the full-word spelling track (open / auto-repeat).
-    var sound: String { spelling }
-
-    func progressiveTrack(forPrefix prefix: String) -> String? {
-        let key = prefix.lowercased()
-        guard let track = progressive[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !track.isEmpty else {
-            return nil
-        }
-        return track
-    }
-
-    static func fallbackEntry(word: String, fxPrefix: String = "sfx_word_") -> GateWord {
-        let w = word.lowercased()
-        let prefixBase = fxPrefix.isEmpty ? "sfx_word_" : fxPrefix
-        var progressive: [String: String] = [:]
-        var prefix = ""
-        for character in w {
-            prefix.append(character)
-            progressive[prefix] = "\(prefixBase)\(w)_\(prefix)"
-        }
-        return GateWord(word: w, spelling: "\(prefixBase)\(w)", progressive: progressive)
-    }
-}
-
-/// Per-entry gate spelling-puzzle config (was `GatePuzzleConfig`).
-/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
-nonisolated struct GateSpellingConfig: Equatable, Sendable {
-    /// In-puzzle FX (optional `win` override for shared `sound.yaml`).
-    var fx: SoundEffectTable
-    /// Extra random letters beyond the chosen word (total sprites = word length + this).
-    var numPaddingLetters: Int
-    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
-    var words: [GateWord]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
-    var music: String?
-
-    nonisolated static let fallback = GateSpellingConfig(
-        numPaddingLetters: 6,
-        words: WordCatalog.fallback.words,
-        music: "gate"
-    )
-
-    nonisolated init(
-        fx: SoundEffectTable = SoundEffectTable(),
-        numPaddingLetters: Int = 6,
-        wordIDs: [String]? = nil,
-        words: [GateWord],
-        music: String? = nil
-    ) {
-        self.fx = fx
-        self.numPaddingLetters = numPaddingLetters
-        self.wordIDs = wordIDs?.map { $0.lowercased() }
-        self.words = Self.normalizedWords(words)
-        self.music = music
-    }
-
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        words = try catalog.resolve(ids: wordIDs)
-    }
-
-    func validate() throws {
-        guard numPaddingLetters >= 0 else {
-            throw WorldSeedError.invalidGatePaddingLetters(numPaddingLetters)
-        }
-        guard !words.isEmpty else {
-            throw WorldSeedError.invalidGateWords
-        }
-        let letterSet = CharacterSet.letters
-        for entry in words {
-            guard !entry.word.isEmpty,
-                  entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                throw WorldSeedError.invalidGateWords
-            }
-            var prefix = ""
-            for character in entry.word {
-                prefix.append(character)
-                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !track.isEmpty else {
-                    throw WorldSeedError.invalidGateWords
-                }
-            }
-        }
-    }
-
-    static func normalizedWords(_ words: [GateWord]) -> [GateWord] {
-        words
-            .map { entry in
-                var progressive: [String: String] = [:]
-                for (key, value) in entry.progressive {
-                    progressive[key.lowercased()] = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                return GateWord(
-                    word: entry.word.lowercased(),
-                    spelling: entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines),
-                    progressive: progressive
-                )
-            }
-            .sorted { $0.word < $1.word }
-    }
-}
 
 /// Per-entry pit spelling-hop settings under `pit.minigames` with `type: spelling`.
 /// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
@@ -179,339 +65,6 @@ nonisolated struct PitPuzzleConfig: Equatable, Sendable {
     }
 }
 
-/// A gate letter-match puzzle letter: glyph + pronunciation/name track basenames.
-nonisolated struct GateLetter: Equatable, Sendable {
-    var letter: String
-    var pronunciation: String
-    var name: String
-}
-
-/// Per-entry gate letter-matching config.
-/// Letter FX lives in shared `Resources/Config/Catalogs/letters.yaml`; levels may optionally subset via `letters: [id, …]`.
-nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
-    /// Seconds after an incorrect tap before replaying the target pronunciation.
-    var incorrectReplayDelaySeconds: Double
-    /// Inclusive lower bound for letters chosen per round (clamped to the letter pool).
-    var letterCountMin: Int
-    /// Inclusive upper bound for letters chosen per round (clamped to the letter pool).
-    var letterCountMax: Int
-    /// In-puzzle FX (optional `correct` override for shared `sound.yaml`).
-    var fx: SoundEffectTable
-    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var letterIDs: [String]?
-    /// Resolved letters (sorted). Populated via `resolveLetters(from:)`.
-    var letters: [GateLetter]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
-    var music: String?
-
-    nonisolated static let fallback = GateLetterMatchConfig(
-        incorrectReplayDelaySeconds: 1,
-        letterCountMin: 4,
-        letterCountMax: 8,
-        letters: LetterCatalog.fallback.letters,
-        music: "gate"
-    )
-
-    nonisolated init(
-        incorrectReplayDelaySeconds: Double = 1,
-        letterCountMin: Int = 4,
-        letterCountMax: Int = 8,
-        fx: SoundEffectTable = SoundEffectTable(),
-        letterIDs: [String]? = nil,
-        letters: [GateLetter],
-        music: String? = nil
-    ) {
-        self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
-        self.letterCountMin = letterCountMin
-        self.letterCountMax = letterCountMax
-        self.fx = fx
-        self.letterIDs = letterIDs?.map { $0.lowercased() }
-        self.letters = Self.normalizedLetters(letters)
-        self.music = music
-    }
-
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        letters = try catalog.resolve(ids: letterIDs)
-    }
-
-    func validate() throws {
-        guard incorrectReplayDelaySeconds > 0 else {
-            throw WorldSeedError.invalidGateLetterMatchIncorrectReplayDelay(incorrectReplayDelaySeconds)
-        }
-        guard letterCountMin >= 1, letterCountMax >= letterCountMin else {
-            throw WorldSeedError.invalidGateLetterMatchLetterCountRange(
-                min: letterCountMin,
-                max: letterCountMax
-            )
-        }
-        guard !letters.isEmpty else {
-            throw WorldSeedError.invalidGateLetterMatchLetters
-        }
-        let letterSet = CharacterSet.letters
-        var seen = Set<String>()
-        for entry in letters {
-            guard entry.letter.count == 1,
-                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  seen.insert(entry.letter).inserted else {
-                throw WorldSeedError.invalidGateLetterMatchLetters
-            }
-        }
-    }
-
-    static func normalizedLetters(_ letters: [GateLetter]) -> [GateLetter] {
-        letters
-            .map {
-                GateLetter(
-                    letter: $0.letter.lowercased(),
-                    pronunciation: $0.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines),
-                    name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-            }
-            .sorted { $0.letter < $1.letter }
-    }
-}
-
-/// Per-entry gate word-plug config: match each word's missing first letter.
-/// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/letters.yaml`.
-nonisolated struct GateWordPlugConfig: Equatable, Sendable {
-    /// Inclusive lower bound for words per round. Must be even and >= 2.
-    var wordCountMin: Int
-    /// Inclusive upper bound for words per round. Must be even and <= `maxWordsPerRound`.
-    var wordCountMax: Int
-    var fx: SoundEffectTable
-    /// Optional subset of shared word-catalog ids (`nil` = full catalog).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
-    var words: [GateWord]
-    /// Resolved full letter catalog. Populated via `resolveLetters(from:)`.
-    var letters: [GateLetter]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
-    var music: String?
-
-    /// 2 columns x 3 rows of word plates.
-    nonisolated static let maxWordsPerRound = 6
-
-    nonisolated static let fallback = GateWordPlugConfig(
-        wordCountMin: 2,
-        wordCountMax: 6,
-        words: WordCatalog.fallback.words,
-        letters: LetterCatalog.fallback.letters,
-        music: "gate"
-    )
-
-    nonisolated init(
-        wordCountMin: Int = 2,
-        wordCountMax: Int = 6,
-        fx: SoundEffectTable = SoundEffectTable(),
-        wordIDs: [String]? = nil,
-        words: [GateWord],
-        letters: [GateLetter],
-        music: String? = nil
-    ) {
-        self.wordCountMin = wordCountMin
-        self.wordCountMax = wordCountMax
-        self.fx = fx
-        self.wordIDs = wordIDs?.map { $0.lowercased() }
-        self.words = GateSpellingConfig.normalizedWords(words)
-        self.letters = GateLetterMatchConfig.normalizedLetters(letters)
-        self.music = music
-    }
-
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        words = try catalog.resolve(ids: wordIDs)
-    }
-
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        letters = try catalog.resolve(ids: nil)
-    }
-
-    func validate() throws {
-        guard wordCountMin >= 2, wordCountMin.isMultiple(of: 2),
-              wordCountMax >= wordCountMin,
-              wordCountMax.isMultiple(of: 2),
-              wordCountMax <= Self.maxWordsPerRound else {
-            throw WorldSeedError.invalidGateWordPlugWordCountRange(
-                min: wordCountMin,
-                max: wordCountMax
-            )
-        }
-        guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
-        guard !letters.isEmpty else { throw WorldSeedError.invalidGateWordPlugLetters }
-        // Every word's first letter must have name + pronunciation audio.
-        let known = Set(letters.map(\.letter))
-        for entry in words {
-            guard let first = entry.word.first,
-                  known.contains(String(first).lowercased()) else {
-                throw WorldSeedError.invalidGateWordPlugLetters
-            }
-        }
-    }
-}
-
-/// Discriminator for which gate puzzle a tile/strip runs. YAML raw values match minigame `type:`.
-nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
-    case spelling
-    case letterMatch = "letter_match"
-    case wordPlug = "word_plug"
-}
-
-/// Discriminated union over the gate minigame entries in level YAML.
-nonisolated enum GateMinigameConfig: Equatable, Sendable {
-    case spelling(GateSpellingConfig)
-    case letterMatch(GateLetterMatchConfig)
-    case wordPlug(GateWordPlugConfig)
-
-    var kind: GateMinigameKind {
-        switch self {
-        case .spelling: .spelling
-        case .letterMatch: .letterMatch
-        case .wordPlug: .wordPlug
-        }
-    }
-
-    var music: String? {
-        switch self {
-        case .spelling(let c): c.music
-        case .letterMatch(let c): c.music
-        case .wordPlug(let c): c.music
-        }
-    }
-}
-
-/// Resolved gate host config from level YAML `gate:`.
-nonisolated struct GateConfig: Equatable, Sendable {
-    /// Must include `"opened"` — the world-level gate-open SFX.
-    var fx: SoundEffectTable
-    /// Probability of presenting a minigame on gate contact (`0...1`). Miss → free-open.
-    var minigameChance: Double
-    var minigames: [GateMinigameConfig]
-
-    nonisolated static let fallback = GateConfig(
-        fx: SoundEffectTable(events: ["opened": "gate-open"]),
-        minigames: [
-            .spelling(.fallback),
-            .letterMatch(.fallback),
-        ],
-        minigameChance: 0.6
-    )
-
-    nonisolated init(
-        fx: SoundEffectTable,
-        minigames: [GateMinigameConfig],
-        minigameChance: Double = 0.6
-    ) {
-        self.fx = fx
-        self.minigameChance = minigameChance
-        self.minigames = minigames
-    }
-
-    func validate() throws {
-        guard fx.trackID(for: "opened") != nil else {
-            throw WorldSeedError.invalidGateWords
-        }
-        guard minigameChance >= 0, minigameChance <= 1 else {
-            throw WorldSeedError.invalidGateMinigameChance(minigameChance)
-        }
-        guard !minigames.isEmpty else {
-            throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
-        }
-        for minigame in minigames {
-            switch minigame {
-            case .spelling(let c): try c.validate()
-            case .letterMatch(let c): try c.validate()
-            case .wordPlug(let c): try c.validate()
-            }
-        }
-    }
-
-    /// Unique kinds in `minigames`, first-seen order.
-    var distinctMinigameKinds: [GateMinigameKind] {
-        var seen = Set<GateMinigameKind>()
-        var ordered: [GateMinigameKind] = []
-        for entry in minigames {
-            if seen.insert(entry.kind).inserted {
-                ordered.append(entry.kind)
-            }
-        }
-        return ordered
-    }
-
-    func minigame(for kind: GateMinigameKind) -> GateMinigameConfig? {
-        minigames.first { $0.kind == kind }
-    }
-
-    /// Uniform pick among distinct kinds (generation only).
-    func pickMinigameKind(using rng: inout some RandomNumberGenerator) throws -> GateMinigameKind {
-        let kinds = distinctMinigameKinds
-        guard !kinds.isEmpty else {
-            throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
-        }
-        return kinds[Int.random(in: 0..<kinds.count, using: &rng)]
-    }
-
-    mutating func resolveMinigames(
-        wordCatalog: WordCatalog,
-        letterCatalog: LetterCatalog
-    ) throws {
-        for i in minigames.indices {
-            switch minigames[i] {
-            case .spelling(var config):
-                try config.resolveWords(from: wordCatalog)
-                minigames[i] = .spelling(config)
-            case .letterMatch(var config):
-                try config.resolveLetters(from: letterCatalog)
-                minigames[i] = .letterMatch(config)
-            case .wordPlug(var config):
-                try config.resolveWords(from: wordCatalog)
-                try config.resolveLetters(from: letterCatalog)
-                minigames[i] = .wordPlug(config)
-            }
-        }
-    }
-}
-
-/// Per-level minigame music track basenames (`Resources/Audio/Music/<name>.mp3`).
-nonisolated struct GameMusicConfig: Codable, Equatable, Sendable {
-    var combat: String?
-    var pit: String?
-    var gate: String?
-
-    enum CodingKeys: String, CodingKey {
-        case combat
-        case pit
-        case gate
-    }
-
-    nonisolated static let fallback = GameMusicConfig(
-        combat: "combat",
-        pit: "pit",
-        gate: "gate"
-    )
-
-    nonisolated init(
-        combat: String? = nil,
-        pit: String? = nil,
-        gate: String? = nil
-    ) {
-        self.combat = combat
-        self.pit = pit
-        self.gate = gate
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        combat = try container.decodeIfPresent(String.self, forKey: .combat)
-        pit = try container.decodeIfPresent(String.self, forKey: .pit)
-        gate = try container.decodeIfPresent(String.self, forKey: .gate)
-    }
-
-    var combatCue: MusicCue { MusicCue.parse(combat) }
-    var pitCue: MusicCue { MusicCue.parse(pit) }
-    var gateCue: MusicCue { MusicCue.parse(gate) }
-}
-
 /// Per-level map size and generation settings loaded from `Levels/_defaults.yaml` / `Levels/<id>/level.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
@@ -557,50 +110,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var floor: Floor
     /// Per-level baked letter glyph set (`Levels/{set}/{set}-letters-*`).
     var letters: Letters
-
-    /// Floor tile set reference and decor sprinkle probability.
-    nonisolated struct Floor: Codable, Equatable, Sendable {
-        var set: String
-        var decorProb: Double
-
-        enum CodingKeys: String, CodingKey {
-            case set
-            case decorProb = "decor_prob"
-        }
-
-        nonisolated init(set: String = LevelConfig.offlineFallbackSet, decorProb: Double = 0.06) {
-            self.set = set
-            self.decorProb = decorProb
-        }
-
-        /// An absent `set:` decodes empty and is filled in from the level's folder
-        /// name by `LevelConfig.decode`. Defaulting to a real set here would silently
-        /// give a level another level's art.
-        nonisolated init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
-            decorProb = try c.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
-        }
-    }
-
-    /// Letter glyph set reference for combat / puzzle letter sprites.
-    nonisolated struct Letters: Codable, Equatable, Sendable {
-        var set: String
-
-        enum CodingKeys: String, CodingKey {
-            case set
-        }
-
-        nonisolated init(set: String = LevelConfig.offlineFallbackSet) {
-            self.set = set
-        }
-
-        /// See `Floor.init(from:)` — absent means "derive from the level folder".
-        nonisolated init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
-        }
-    }
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -893,110 +402,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         )
     }
 
-    nonisolated struct GenerationParams: Codable, Equatable, Sendable {
-        var algorithm: String
-        var roomCount: Int
-        var corridorWidth: Int
-        var room: RoomParams
-
-        enum CodingKeys: String, CodingKey {
-            case algorithm
-            case roomCount = "room_count"
-            case corridorWidth = "corridor_width"
-            case room
-        }
-
-        nonisolated init(
-            algorithm: String,
-            roomCount: Int,
-            corridorWidth: Int,
-            room: RoomParams
-        ) {
-            self.algorithm = algorithm
-            self.roomCount = roomCount
-            self.corridorWidth = corridorWidth
-            self.room = room
-        }
-
-        /// Convenience for tests / fallbacks.
-        nonisolated init(
-            algorithm: String,
-            roomCount: Int,
-            corridorWidth: Int,
-            minRoomSize: Int = 4,
-            maxRoomSize: Int = 12,
-            pitChance: Double,
-            pitMeanSize: Double = 2,
-            pitMaxSize: Int = 5,
-            partitionGateChance: Double = 0.8
-        ) {
-            self.init(
-                algorithm: algorithm,
-                roomCount: roomCount,
-                corridorWidth: corridorWidth,
-                room: RoomParams(
-                    minRoomSize: minRoomSize,
-                    maxRoomSize: maxRoomSize,
-                    pitChance: pitChance,
-                    pitMeanSize: pitMeanSize,
-                    pitMaxSize: pitMaxSize,
-                    partitionGateChance: partitionGateChance
-                )
-            )
-        }
-    }
-
-    /// Per-room generation knobs (sizes, pit/gate chances, etc.).
-    nonisolated struct RoomParams: Codable, Equatable, Sendable {
-        var minRoomSize: Int
-        var maxRoomSize: Int
-        /// Probability that a room contains a pit (at most one pit area per room).
-        var pitChance: Double
-        /// Expected pit area size in tiles (clamped to `1...pitMaxSize`).
-        var pitMeanSize: Double
-        /// Maximum pit area size in tiles.
-        var pitMaxSize: Int
-        /// Probability that a sealed shared-wall segment becomes a shortcut gate.
-        var partitionGateChance: Double
-
-        enum CodingKeys: String, CodingKey {
-            case minRoomSize = "min_room_size"
-            case maxRoomSize = "max_room_size"
-            case pitChance = "pit_chance"
-            case pitMeanSize = "pit_mean_size"
-            case pitMaxSize = "pit_max_size"
-            case partitionGateChance = "partition_gate_chance"
-        }
-
-        nonisolated init(
-            minRoomSize: Int = 4,
-            maxRoomSize: Int = 12,
-            pitChance: Double,
-            pitMeanSize: Double = 2,
-            pitMaxSize: Int = 5,
-            partitionGateChance: Double = 0.8
-        ) {
-            self.minRoomSize = minRoomSize
-            self.maxRoomSize = maxRoomSize
-            self.pitChance = pitChance
-            self.pitMeanSize = pitMeanSize
-            self.pitMaxSize = pitMaxSize
-            self.partitionGateChance = partitionGateChance
-        }
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
-            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
-            pitChance = try container.decode(Double.self, forKey: .pitChance)
-            pitMeanSize = try container.decodeIfPresent(Double.self, forKey: .pitMeanSize) ?? 2
-            pitMaxSize = try container.decodeIfPresent(Int.self, forKey: .pitMaxSize) ?? 5
-            partitionGateChance = try container.decodeIfPresent(
-                Double.self, forKey: .partitionGateChance
-            ) ?? 0.8
-        }
-    }
-
     nonisolated struct EnemiesSpawnConfig: Codable, Equatable, Sendable {
         /// Enemy type ids from `combat.yaml` (one or more; spawn picks uniformly).
         var types: [String]
@@ -1193,298 +598,152 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 }
 
-/// A playable level discovered from `Resources/Levels/<id>/`.
-nonisolated struct LevelDescriptor: Equatable, Sendable {
-    let resourceName: String
-    let displayName: String
-    let order: Int
-    /// Hex fill for the level-select planet sprite.
-    let color: String
-    /// Level-select planet art from the level YAML `sprite:` block.
-    let sprite: SpriteConfig?
-    /// Item id for this level's treasure part, shown in the inventory once earned.
-    let treasure: String?
-    /// SF Symbol awarded on completion; the inventory glyph fallback.
-    let artifact: String
-}
+extension LevelConfig {
+    /// Floor tile set reference and decor sprinkle probability.
+    nonisolated struct Floor: Codable, Equatable, Sendable {
+        var set: String
+        var decorProb: Double
 
-nonisolated enum LevelCatalog {
-    static let subdirectory = ConfigPath.levelRoot
-    private static let logger = Logger(subsystem: "PadawanAdventures", category: "LevelCatalog")
+        enum CodingKeys: String, CodingKey {
+            case set
+            case decorProb = "decor_prob"
+        }
 
-    static func loadFromBundle(
-        withExtension ext: String = "yaml"
-    ) -> [LevelDescriptor] {
-        return levelIDs().compactMap { resourceName -> LevelDescriptor? in
-            do {
-                let level = try LevelConfig.loadFromBundle(
-                    named: resourceName,
-                    withExtension: ext,
-                    subdirectory: subdirectory
+        nonisolated init(set: String = LevelConfig.offlineFallbackSet, decorProb: Double = 0.06) {
+            self.set = set
+            self.decorProb = decorProb
+        }
+
+        /// An absent `set:` decodes empty and is filled in from the level's folder
+        /// name by `LevelConfig.decode`. Defaulting to a real set here would silently
+        /// give a level another level's art.
+        nonisolated init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
+            decorProb = try c.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
+        }
+    }
+
+    /// Letter glyph set reference for combat / puzzle letter sprites.
+    nonisolated struct Letters: Codable, Equatable, Sendable {
+        var set: String
+
+        enum CodingKeys: String, CodingKey {
+            case set
+        }
+
+        nonisolated init(set: String = LevelConfig.offlineFallbackSet) {
+            self.set = set
+        }
+
+        /// See `Floor.init(from:)` — absent means "derive from the level folder".
+        nonisolated init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
+        }
+    }
+
+    nonisolated struct GenerationParams: Codable, Equatable, Sendable {
+        var algorithm: String
+        var roomCount: Int
+        var corridorWidth: Int
+        var room: RoomParams
+
+        enum CodingKeys: String, CodingKey {
+            case algorithm
+            case roomCount = "room_count"
+            case corridorWidth = "corridor_width"
+            case room
+        }
+
+        nonisolated init(
+            algorithm: String,
+            roomCount: Int,
+            corridorWidth: Int,
+            room: RoomParams
+        ) {
+            self.algorithm = algorithm
+            self.roomCount = roomCount
+            self.corridorWidth = corridorWidth
+            self.room = room
+        }
+
+        /// Convenience for tests / fallbacks.
+        nonisolated init(
+            algorithm: String,
+            roomCount: Int,
+            corridorWidth: Int,
+            minRoomSize: Int = 4,
+            maxRoomSize: Int = 12,
+            pitChance: Double,
+            pitMeanSize: Double = 2,
+            pitMaxSize: Int = 5,
+            partitionGateChance: Double = 0.8
+        ) {
+            self.init(
+                algorithm: algorithm,
+                roomCount: roomCount,
+                corridorWidth: corridorWidth,
+                room: RoomParams(
+                    minRoomSize: minRoomSize,
+                    maxRoomSize: maxRoomSize,
+                    pitChance: pitChance,
+                    pitMeanSize: pitMeanSize,
+                    pitMaxSize: pitMaxSize,
+                    partitionGateChance: partitionGateChance
                 )
-                return LevelDescriptor(
-                    resourceName: resourceName,
-                    displayName: level.name,
-                    order: level.order,
-                    color: level.color,
-                    sprite: level.sprite,
-                    treasure: level.treasure,
-                    artifact: level.artifact
-                )
-            } catch {
-                logger.error(
-                    "Failed to load level '\(resourceName, privacy: .public)': \(String(describing: error), privacy: .public)"
-                )
-                return nil
-            }
-        }
-        .sorted {
-            if $0.order != $1.order { return $0.order < $1.order }
-            return $0.resourceName < $1.resourceName
+            )
         }
     }
 
-    /// Every directory under `Levels/` is a playable level, so adding one needs no code
-    /// change. Names beginning with `_` are shared config (`_defaults.yaml`), not levels.
-    static func levelIDs() -> [String] {
-        guard let root = Bundle.main.resourceURL?
-            .appendingPathComponent(subdirectory, isDirectory: true) else { return [] }
-        let entries = (try? FileManager.default.contentsOfDirectory(
-            at: root,
-            includingPropertiesForKeys: [.isDirectoryKey]
-        )) ?? []
-        return entries.compactMap { url in
-            let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory
-            guard isDirectory == true else { return nil }
-            let name = url.lastPathComponent
-            return name.hasPrefix("_") ? nil : name
+    /// Per-room generation knobs (sizes, pit/gate chances, etc.).
+    nonisolated struct RoomParams: Codable, Equatable, Sendable {
+        var minRoomSize: Int
+        var maxRoomSize: Int
+        /// Probability that a room contains a pit (at most one pit area per room).
+        var pitChance: Double
+        /// Expected pit area size in tiles (clamped to `1...pitMaxSize`).
+        var pitMeanSize: Double
+        /// Maximum pit area size in tiles.
+        var pitMaxSize: Int
+        /// Probability that a sealed shared-wall segment becomes a shortcut gate.
+        var partitionGateChance: Double
+
+        enum CodingKeys: String, CodingKey {
+            case minRoomSize = "min_room_size"
+            case maxRoomSize = "max_room_size"
+            case pitChance = "pit_chance"
+            case pitMeanSize = "pit_mean_size"
+            case pitMaxSize = "pit_max_size"
+            case partitionGateChance = "partition_gate_chance"
         }
-    }
-}
 
-// MARK: - GateConfig Decodable (private DTO)
-
-extension GateConfig {
-    /// Decodes the `gate:` keyed block or falls back to `.fallback`.
-    nonisolated init(
-        from decoder: Decoder,
-        container: KeyedDecodingContainer<LevelConfig.CodingKeys>
-    ) throws {
-        guard container.contains(.gate) else {
-            self = .fallback
-            return
+        nonisolated init(
+            minRoomSize: Int = 4,
+            maxRoomSize: Int = 12,
+            pitChance: Double,
+            pitMeanSize: Double = 2,
+            pitMaxSize: Int = 5,
+            partitionGateChance: Double = 0.8
+        ) {
+            self.minRoomSize = minRoomSize
+            self.maxRoomSize = maxRoomSize
+            self.pitChance = pitChance
+            self.pitMeanSize = pitMeanSize
+            self.pitMaxSize = pitMaxSize
+            self.partitionGateChance = partitionGateChance
         }
-        let dto = try container.decode(GateConfigDTO.self, forKey: .gate)
-        fx = dto.fx ?? SoundEffectTable(events: ["opened": "gate-open"])
-        minigameChance = dto.minigameChance ?? 0.6
-        guard let entries = dto.minigames, !entries.isEmpty else {
-            throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
+            maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
+            pitChance = try container.decode(Double.self, forKey: .pitChance)
+            pitMeanSize = try container.decodeIfPresent(Double.self, forKey: .pitMeanSize) ?? 2
+            pitMaxSize = try container.decodeIfPresent(Int.self, forKey: .pitMaxSize) ?? 5
+            partitionGateChance = try container.decodeIfPresent(
+                Double.self, forKey: .partitionGateChance
+            ) ?? 0.8
         }
-        minigames = try entries.map { entry in
-            switch entry.type {
-            case "spelling":
-                return .spelling(GateSpellingConfig(
-                    fx: entry.fx ?? SoundEffectTable(),
-                    numPaddingLetters: entry.numPaddingLetters
-                        ?? GateSpellingConfig.fallback.numPaddingLetters,
-                    wordIDs: entry.words?.map { $0.lowercased() },
-                    words: [],
-                    music: entry.music
-                ))
-            case "letter_match":
-                return .letterMatch(GateLetterMatchConfig(
-                    incorrectReplayDelaySeconds: entry.incorrectReplayDelaySeconds
-                        ?? GateLetterMatchConfig.fallback.incorrectReplayDelaySeconds,
-                    letterCountMin: entry.letterCountMin
-                        ?? GateLetterMatchConfig.fallback.letterCountMin,
-                    letterCountMax: entry.letterCountMax
-                        ?? GateLetterMatchConfig.fallback.letterCountMax,
-                    fx: entry.fx ?? SoundEffectTable(),
-                    letterIDs: entry.letters?.map { $0.lowercased() },
-                    letters: [],
-                    music: entry.music
-                ))
-            case "word_plug":
-                return .wordPlug(GateWordPlugConfig(
-                    wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,
-                    wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
-                    fx: entry.fx ?? SoundEffectTable(),
-                    wordIDs: entry.words?.map { $0.lowercased() },
-                    words: [],
-                    letters: [],
-                    music: entry.music
-                ))
-            default:
-                throw WorldSeedError.decodeFailed(
-                    "Unknown gate minigame type: '\(entry.type)'"
-                )
-            }
-        }
-    }
-}
-
-private nonisolated struct GateConfigDTO: Decodable {
-    var fx: SoundEffectTable?
-    var minigameChance: Double?
-    var minigames: [GateMinigameDTO]?
-
-    enum CodingKeys: String, CodingKey {
-        case fx
-        case minigameChance = "minigame_chance"
-        case minigames
-    }
-}
-
-private nonisolated struct GateMinigameDTO: Decodable {
-    var type: String
-    var fx: SoundEffectTable?
-    var music: String?
-    var numPaddingLetters: Int?
-    var words: [String]?
-    var incorrectReplayDelaySeconds: Double?
-    var letterCountMin: Int?
-    var letterCountMax: Int?
-    var letters: [String]?
-    var wordCountMin: Int?
-    var wordCountMax: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case fx
-        case music
-        case numPaddingLetters = "num_padding_letters"
-        case words
-        case incorrectReplayDelaySeconds = "incorrect_replay_delay_seconds"
-        case letterCountMin = "letter_count_min"
-        case letterCountMax = "letter_count_max"
-        case letters
-        case wordCountMin = "word_count_min"
-        case wordCountMax = "word_count_max"
-    }
-}
-
-// MARK: - CombatConfig Decodable (private DTO)
-
-extension CombatConfig {
-    /// Decodes the `combat:` keyed block or falls back to slash-only.
-    nonisolated init(
-        from decoder: Decoder,
-        container: KeyedDecodingContainer<LevelConfig.CodingKeys>
-    ) throws {
-        guard container.contains(.combat) else {
-            self = .fallback
-            return
-        }
-        let dto = try container.decode(CombatConfigDTO.self, forKey: .combat)
-        guard let entries = dto.minigames, !entries.isEmpty else {
-            throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
-        }
-        minigames = try entries.map { entry in
-            switch entry.type {
-            case CombatMinigameKind.slash.rawValue:
-                return .slash(CombatSlashConfig(weight: entry.weight ?? 1))
-            case CombatMinigameKind.deflect.rawValue:
-                return .deflect(CombatDeflectConfig(
-                    weight: entry.weight ?? 1,
-                    monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
-                    orbTravelSeconds: entry.orbTravelSeconds
-                        ?? CombatDeflectConfig.defaultOrbTravelSeconds,
-                    letterIDs: entry.letters?.map { $0.lowercased() },
-                    // Filled by `resolveLetters(from:)` after decode.
-                    letters: []
-                ))
-            default:
-                throw WorldSeedError.decodeFailed(
-                    "Unknown combat minigame type: '\(entry.type)'"
-                )
-            }
-        }
-    }
-}
-
-private nonisolated struct CombatConfigDTO: Decodable {
-    var minigames: [CombatMinigameDTO]?
-}
-
-private nonisolated struct CombatMinigameDTO: Decodable {
-    var type: String
-    var weight: Double?
-    var monsterHP: Int?
-    var orbTravelSeconds: Double?
-    var letters: [String]?
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case weight
-        case monsterHP = "monster_hp"
-        case orbTravelSeconds = "orb_travel_seconds"
-        case letters
-    }
-}
-
-// MARK: - PitConfig Decodable (private DTO)
-
-extension PitConfig {
-    /// Decodes the `pit:` keyed block or falls back to spelling-only.
-    nonisolated init(
-        from decoder: Decoder,
-        container: KeyedDecodingContainer<LevelConfig.CodingKeys>
-    ) throws {
-        guard container.contains(.pit) else {
-            self = .fallback
-            return
-        }
-        let dto = try container.decode(PitConfigDTO.self, forKey: .pit)
-        fx = dto.fx ?? Self.fallback.fx
-        guard let entries = dto.minigames, !entries.isEmpty else {
-            throw WorldSeedError.decodeFailed("pit.minigames must not be empty")
-        }
-        minigames = try entries.map { entry in
-            switch entry.type {
-            case PitMinigameKind.spelling.rawValue:
-                return .spelling(PitPuzzleConfig(
-                    weight: entry.weight ?? 1,
-                    numPaddingLetters: entry.numPaddingLetters
-                        ?? PitPuzzleConfig.fallback.numPaddingLetters,
-                    // `nil` → full shared catalog; YAML subsets via `words: [id, …]`.
-                    wordIDs: entry.words?.map { $0.lowercased() },
-                    // Filled by `resolveWords(from:)` after decode.
-                    words: []
-                ))
-            case PitMinigameKind.bridge.rawValue:
-                return .bridge(PitBridgeConfig(
-                    weight: entry.weight ?? 1,
-                    minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
-                    maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
-                    words: entry.words ?? PitBridgeConfig.defaultWords
-                ))
-            default:
-                throw WorldSeedError.decodeFailed("Unknown pit minigame type: '\(entry.type)'")
-            }
-        }
-    }
-}
-
-private nonisolated struct PitConfigDTO: Decodable {
-    var fx: SoundEffectTable?
-    var minigames: [PitMinigameDTO]?
-}
-
-private nonisolated struct PitMinigameDTO: Decodable {
-    var type: String
-    var weight: Double?
-    var numPaddingLetters: Int?
-    /// Catalog ids for `spelling`, plain words for `bridge`.
-    var words: [String]?
-    var minWords: Int?
-    var maxWords: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case type
-        case weight
-        case numPaddingLetters = "num_padding_letters"
-        case words
-        case minWords = "min_words"
-        case maxWords = "max_words"
     }
 }
