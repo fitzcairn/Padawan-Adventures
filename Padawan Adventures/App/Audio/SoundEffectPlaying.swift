@@ -41,7 +41,6 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     private var loopBaseVolumes: [String: Float] = [:]
     private var loopDuckScale: Float = 1
     private var oneShotFadeTasks: [String: Task<Void, Never>] = [:]
-    private var didConfigureSession = false
 
     /// Simultaneous instances of the *same* effect before the oldest is retriggered.
     static let playersPerTrack = 2
@@ -241,10 +240,6 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     }
 
     private func configureSessionIfNeeded() {
-        guard !didConfigureSession else { return }
-        didConfigureSession = true
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.ambient, mode: .default, options: [])
-        try? session.setActive(true)
+        AVAudioSessionConfigurator.configureAmbientIfNeeded()
     }
 }

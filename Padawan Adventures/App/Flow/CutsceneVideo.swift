@@ -75,14 +75,14 @@ final class CutsceneVideo {
         let generation = fadeGeneration
         isFadingOut = true
         let startVolume = player.volume
-        let steps = max(Int((duration / 0.02).rounded(.up)), 1)
-        let stepNanos = UInt64((duration / Double(steps)) * 1_000_000_000)
 
         let task = Task { @MainActor in
-            for step in 1...steps {
+            await VolumeFader.fadeOutMultiplicative(
+                startVolume: startVolume,
+                duration: duration
+            ) { volume in
                 guard !Task.isCancelled else { return }
-                player.volume = startVolume * Float(steps - step) / Float(steps)
-                try? await Task.sleep(nanoseconds: stepNanos)
+                player.volume = volume
             }
         }
         fadeTask = task

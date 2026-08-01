@@ -24,7 +24,6 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
     private var looper: AVPlayerLooper?
     private var fadeTask: Task<Void, Never>?
     private var fadeGeneration = 0
-    private var didConfigureSession = false
 
     var volume: Float {
         get { Float(queuePlayer?.volume ?? 0) }
@@ -82,17 +81,10 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
         }
 
         let start = queuePlayer.volume
-        let delta = volume - start
-        let steps = max(1, Int(duration / 0.02))
-        let stepDuration = duration / Double(steps)
-
         let task = Task { @MainActor in
-            for step in 1...steps {
+            await VolumeFader.linearFade(from: start, to: volume, duration: duration) { value in
                 guard !Task.isCancelled, generation == self.fadeGeneration else { return }
-                let t = Float(step) / Float(steps)
-                queuePlayer.volume = start + delta * t
-                let nanos = UInt64(stepDuration * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: nanos)
+                queuePlayer.volume = value
             }
             guard !Task.isCancelled, generation == self.fadeGeneration else { return }
             queuePlayer.volume = volume
