@@ -211,6 +211,13 @@ final class AppSession {
         return ids
     }
 
+    /// Frees cutscene character clips after the cutscene ends; video preload stays warm.
+    func releaseCutsceneSprites() {
+        spriteLibrary.invalidate(id: CutsceneSpritesConfig.playerID)
+        spriteLibrary.invalidate(id: CutsceneSpritesConfig.yodaID)
+        MemoryProbe.mark("cutscene-sprites-released")
+    }
+
     /// Frees enemy, per-level treasure, atlas sets, and screen backgrounds after leaving a level.
     func releaseLevelScopedAssets() {
         spriteLibrary.retain(ids: persistentSpriteIDs)

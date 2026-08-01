@@ -233,6 +233,16 @@ struct AppSessionTests {
         }
     }
 
+    @Test func releaseCutsceneSpritesDropsCutsceneClips() async {
+        let session = await AppSession.loadResources()
+        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.playerID))
+        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.yodaID))
+        session.releaseCutsceneSprites()
+        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.playerID) == false)
+        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.yodaID) == false)
+        #expect(session.cutsceneVideo.player != nil)
+    }
+
     @Test func sharedPickupIconsSurviveLevelScopedRelease() async {
         let session = await AppSession.loadResources()
         session.releaseLevelScopedAssets()

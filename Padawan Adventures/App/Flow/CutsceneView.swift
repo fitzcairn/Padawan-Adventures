@@ -75,6 +75,7 @@ struct CutsceneView: View {
         guard !didFinish else { return }
         didFinish = true
         GameLogger.mark(.flow, "cutscene finish (fadeAudio: \(fadeAudio))")
+        releaseCutsceneSprites()
         // Navigate immediately so the view crossfade starts with the audio fade.
         router.showLevelSelect()
         if fadeAudio {
@@ -84,6 +85,12 @@ struct CutsceneView: View {
         } else {
             session.cutsceneVideo.stop()
         }
+    }
+
+    private func releaseCutsceneSprites() {
+        playerFrames = []
+        yodaFrames = []
+        session.releaseCutsceneSprites()
     }
 
     private func loadCharacters() async {
