@@ -54,6 +54,15 @@ final class FlowRouter {
         path.removeLast()
     }
 
+    /// Pops one route when the stack is non-empty; otherwise returns to the menu root.
+    func popOrShowMenu() {
+        if path.isEmpty {
+            showMenu()
+        } else {
+            pop()
+        }
+    }
+
     private func setRoot(_ newRoot: FlowRoot) {
         GameLogger.mark(.flow, "root \(root) -> \(newRoot) (clearing \(describeStack()))")
         root = newRoot

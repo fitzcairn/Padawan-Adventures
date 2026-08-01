@@ -97,11 +97,7 @@ struct LevelSelectView: View {
                                 accessibilityID: "levelSelect.back",
                                 accessibilityLabel: "Back"
                             ) {
-                                if router.path.isEmpty {
-                                    router.showMenu()
-                                } else {
-                                    router.pop()
-                                }
+                                router.popOrShowMenu()
                             }
 
                             InventoryRackView(

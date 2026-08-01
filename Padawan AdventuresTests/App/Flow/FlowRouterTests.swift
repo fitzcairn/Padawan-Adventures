@@ -73,6 +73,22 @@ struct FlowRouterTests {
         #expect(router.path.isEmpty)
     }
 
+    @Test func popOrShowMenuPopsWhenStacked() {
+        let router = FlowRouter(root: .menu, path: [.settings])
+        router.popOrShowMenu()
+        #expect(router.root == .menu)
+        #expect(router.path.isEmpty)
+    }
+
+    @Test func popOrShowMenuShowsMenuWhenEmpty() {
+        let router = FlowRouter(root: .menu, path: [.levelSelect])
+        router.popOrShowMenu()
+        #expect(router.path.isEmpty)
+        router.popOrShowMenu()
+        #expect(router.root == .menu)
+        #expect(router.path.isEmpty)
+    }
+
     @Test func postGameRouterStartsAtMenuWithLevelSelect() {
         let router = FlowRouter.postGameRouter()
         #expect(router.root == .menu)

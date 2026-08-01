@@ -10,32 +10,30 @@ struct PreparingView: View {
 
     var body: some View {
         AppScreen {
-            VStack(spacing: 28) {
-                if loadFailed {
-                    AppTitleText(text: "COULD NOT LOAD ENEMIES", size: 28, weight: .semibold)
-                        .accessibilityIdentifier("preparing.status")
-                    AppTitleText(
-                        text: "Sprite sheets failed to load. Try again from level select.",
-                        size: 18,
-                        weight: .regular
-                    )
-                    .accessibilityIdentifier("preparing.error")
-                    AppLargeButton(title: "Back", accessibilityID: "preparing.back") {
-                        if router.path.isEmpty {
-                            router.showMenu()
-                        } else {
-                            router.pop()
+            if loadFailed {
+                LoadingScreenScaffold(
+                    statusText: "COULD NOT LOAD ENEMIES",
+                    statusAccessibilityID: "preparing.status",
+                    extra: {
+                        AppTitleText(
+                            text: "Sprite sheets failed to load. Try again from level select.",
+                            size: 18,
+                            weight: .regular
+                        )
+                        .accessibilityIdentifier("preparing.error")
+                        AppLargeButton(title: "Back", accessibilityID: "preparing.back") {
+                            router.popOrShowMenu()
                         }
-                    }
-                    .frame(maxWidth: 280)
-                } else {
-                    AppTitleText(text: "PREPARING FOR TAKEOFF...", size: 28, weight: .semibold)
-                        .accessibilityIdentifier("preparing.status")
-
-                    AppProgressBar(progress: progress, accessibilityID: "preparing.progress")
                         .frame(maxWidth: 280)
-                        .appReadableWidth()
-                }
+                    }
+                )
+            } else {
+                LoadingScreenScaffold(
+                    statusText: "PREPARING FOR TAKEOFF...",
+                    statusAccessibilityID: "preparing.status",
+                    progress: progress,
+                    progressAccessibilityID: "preparing.progress"
+                )
             }
         }
         .playScreenMusic("preparing")

@@ -50,11 +50,7 @@ struct SettingsView: View {
                 Spacer()
 
                 AppLargeButton(title: "Back", accessibilityID: "settings.back") {
-                    if router.path.isEmpty {
-                        router.showMenu()
-                    } else {
-                        router.pop()
-                    }
+                    router.popOrShowMenu()
                 }
                 .frame(maxWidth: 280)
             }
