@@ -8,7 +8,7 @@ protocol GateSceneDelegate: AnyObject {
 }
 
 /// SpriteKit gate puzzle: staging area, draggable letter tokens.
-final class GateScene: SKScene {
+final class GateScene: MinigameScene {
     private static let connectedSoundActionKey = "gateConnectedSound"
     private static let wrongMoveActionKey = "gateWrongMove"
     private static let winSequenceActionKey = "gateWinSequence"
@@ -34,10 +34,7 @@ final class GateScene: SKScene {
     private var draggedNode: SKNode?
     private var dragOffset: CGPoint = .zero
     private var dragStartPosition: CGPoint = .zero
-    private var didEnd = false
     private var isCompletingWin = false
-    private var didSetup = false
-    private var isBuilding = false
     private var lastUpdateTime: TimeInterval?
     private var activeLoopTrackID: String?
     private var lastConnectedPrefix = ""
@@ -83,10 +80,6 @@ final class GateScene: SKScene {
         self.playerFx = playerFx
         self.engine = GateMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
-        scaleMode = .aspectFit
-        backgroundColor = .black
-        isUserInteractionEnabled = true
-        anchorPoint = .zero
     }
 
     @available(*, unavailable)
@@ -94,13 +87,7 @@ final class GateScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func didMove(to view: SKView) {
-        guard !didSetup else { return }
-        isBuilding = true
-        defer {
-            isBuilding = false
-            didSetup = true
-        }
+    override func buildContent() {
         engine.begin()
         gateDelegate?.gateSceneDidSelectWord(engine.targetWord)
         GameLogger.step(.world, "gate.buildPuzzle") { buildPuzzle() }
@@ -112,10 +99,7 @@ final class GateScene: SKScene {
         stopGateLoop()
     }
 
-    override func didChangeSize(_ oldSize: CGSize) {
-        guard didSetup, !isBuilding, !didEnd else { return }
-        guard size.width > 1, size.height > 1 else { return }
-        guard oldSize != size else { return }
+    override func rebuildLayout() {
         rebuildLayoutPreservingLetters()
     }
 
