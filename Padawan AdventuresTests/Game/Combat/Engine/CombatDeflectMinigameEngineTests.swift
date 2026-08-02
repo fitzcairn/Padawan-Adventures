@@ -205,6 +205,22 @@ struct CombatDeflectMinigameEngineTests {
         #expect(seen == Set(CombatDeflectRing.allCases))
     }
 
+    @Test func nextThrowExcludesTheLastDeflectedLetter() {
+        var engine = makeEngine(monsterHP: 500, seed: 11)
+        var previous: CombatDeflectRing?
+        for _ in 0..<100 {
+            guard let ring = ring(in: engine.throwNextOrb()) else {
+                Issue.record("expected a thrown orb")
+                return
+            }
+            if let previous {
+                #expect(ring != previous, "deflected letter must not repeat on the next throw")
+            }
+            previous = ring
+            _ = engine.registerOrbReachedMonster()
+        }
+    }
+
     @Test func ringRawValuesMapLeftToRight() {
         #expect(CombatDeflectRing.northwest.rawValue == 0)
         #expect(CombatDeflectRing.up.rawValue == 1)

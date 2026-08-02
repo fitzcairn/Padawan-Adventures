@@ -312,10 +312,10 @@ struct SpriteSystemTests {
         let sprite = SpriteConfig(root: "Sprites/Player", scale: 1.2)
         let iso = IsometricConfig(tileWidth: 80, tileHeight: 40, wallHeight: 80)
         let height = PlaceholderFactory.spriteDisplayHeight(isoConfig: iso, spriteConfig: sprite)
-        #expect(abs(height - 96) < 0.001) // 80 * 1.2
+        #expect(abs(height - 115.2) < 0.001) // 80 * 1.2 * 1.2
         let size = PlaceholderFactory.spriteDisplaySize(isoConfig: iso, spriteConfig: sprite)
-        #expect(abs(size.height - 96) < 0.001)
-        #expect(abs(size.width - 96) < 0.001) // provisional square; width refined from texture aspect
+        #expect(abs(size.height - 115.2) < 0.001)
+        #expect(abs(size.width - 115.2) < 0.001) // provisional square; width refined from texture aspect
     }
 
     @Test func compassDirectionMapsGridStepToScreenFacing() {

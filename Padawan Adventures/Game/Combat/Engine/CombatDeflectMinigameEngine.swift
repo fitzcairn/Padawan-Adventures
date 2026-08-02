@@ -70,6 +70,8 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     private let startingHealth: Int
     private var rng: any RandomNumberGenerator
+    /// Ring of the most recently deflected orb; excluded from the next throw's pool.
+    private var lastDeflectedRing: CombatDeflectRing?
 
     init(
         config: Config,
@@ -92,6 +94,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         healthCount = startingHealth
         monsterHP = config.monsterHP
         activeOrb = nil
+        lastDeflectedRing = nil
     }
 
     mutating func end() {
@@ -99,12 +102,18 @@ nonisolated struct CombatDeflectMinigameEngine {
     }
 
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
+    /// The letter is chosen uniformly from the configured set, excluding the last letter
+    /// that was successfully deflected.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
         guard isActive, outcome == nil, activeOrb == nil, !config.letters.isEmpty else {
             return []
         }
-        let index = Int.random(in: 0..<config.letters.count, using: &rng)
-        guard let ring = CombatDeflectRing(rawValue: index) else { return [] }
+        let candidates = config.letters.indices.filter { index in
+            lastDeflectedRing.map { $0.rawValue != index } ?? true
+        }
+        guard let index = candidates.randomElement(using: &rng),
+              let ring = CombatDeflectRing(rawValue: index)
+        else { return [] }
         let entry = config.letters[index]
         let orb = Orb(id: UUID(), letter: entry.letter, ring: ring, isResolved: false)
         activeOrb = orb
@@ -133,7 +142,8 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     /// The deflected orb reached the monster: -1 monster HP, maybe win.
     mutating func registerOrbReachedMonster() -> [CombatDeflectEvent] {
-        guard isActive, outcome == nil, activeOrb != nil else { return [] }
+        guard isActive, outcome == nil, let orb = activeOrb else { return [] }
+        lastDeflectedRing = orb.ring
         activeOrb = nil
         monsterHP = max(0, monsterHP - 1)
         var events: [CombatDeflectEvent] = [.monsterHealthChanged(monsterHP)]

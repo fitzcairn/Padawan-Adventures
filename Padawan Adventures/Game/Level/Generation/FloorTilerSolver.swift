@@ -2,7 +2,7 @@ import Foundation
 
 
 
-extension FloorTiler {
+nonisolated extension FloorTiler {
     // MARK: - Solver
 
     static func solve(

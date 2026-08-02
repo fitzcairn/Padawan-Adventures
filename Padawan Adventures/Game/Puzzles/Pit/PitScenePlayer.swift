@@ -12,7 +12,7 @@ extension PitScene {
             || spriteLibrary.animation(id: Self.playerLibraryID, named: "idle_down") != nil {
             let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
             sprite.fitHeight(height)
-            // Above pad tiles / letters (pad tiles use small local z; world depthSort is huge).
+            // Above pad / letter floor tiles (local tile sort stays small; world depthSort is huge).
             sprite.zPosition = Self.playerZ
             sprite.name = "player"
             sprite.position = position
@@ -236,6 +236,8 @@ extension PitScene {
                 return
             }
             playerNode.position = target
+            // Keep Kam above the landed floor tile (letter platforms sit at SceneLayer.letterPlatform).
+            playerNode.zPosition = Self.playerZ
             if let landAnimation,
                self.spriteLibrary.animation(id: Self.playerLibraryID, named: landAnimation) != nil {
                 self.playPlayerLoop(landAnimation)

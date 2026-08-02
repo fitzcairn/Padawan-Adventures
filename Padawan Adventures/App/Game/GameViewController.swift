@@ -344,7 +344,6 @@ final class GameViewController: LandscapeHostingController {
                     pitFx: pitConfig.fx,
                     playerFx: playerFx,
                     hudConfig: hudConfig,
-                    pitSpriteSetLibrary: self.session.pitSpriteSetLibrary,
                     floorTileSetLibrary: self.session.floorTileSetLibrary,
                     isoConfig: self.isoConfig,
                     spriteLibrary: self.session.spriteLibrary,

@@ -1,6 +1,6 @@
 import Foundation
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     /// True when no two rooms' interiors are reachable from each other treating `.gate` as blocked
     /// (floors/pits passable, walls blocked). This is the gated-passage invariant.
     static func roomsAreSeparatedByGates(rooms: [GeneratedRoom], tiles: [[Tile]]) -> Bool {

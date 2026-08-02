@@ -1,4 +1,5 @@
 import SpriteKit
+import SwiftUI
 import UIKit
 
 extension CombatDeflectScene {
@@ -7,33 +8,26 @@ extension CombatDeflectScene {
     func buildMonsterHPBar() {
         hpTrack?.removeFromParent()
 
-        let track = SKSpriteNode(color: UIColor.white.withAlphaComponent(0.22), size: .zero)
+        let track = SKSpriteNode(color: .clear, size: .zero)
         track.anchorPoint = CGPoint(x: 0, y: 0.5)
         track.zPosition = Layer.hpBar
         track.name = "monsterHP"
         addChild(track)
         hpTrack = track
 
-        let fill = SKSpriteNode(color: CombatHUDView.color(forProgress: 1), size: .zero)
-        fill.anchorPoint = CGPoint(x: 0, y: 0.5)
-        fill.zPosition = 1
-        track.addChild(fill)
-        hpFill = fill
-
         layoutMonsterHPBar()
     }
 
     /// Sits directly to the right of the monster, vertically centered on it.
     func layoutMonsterHPBar() {
-        guard let hpTrack, let hpFill, let enemyNode else { return }
+        guard let hpTrack, let enemyNode else { return }
         let frame = enemyNode.calculateAccumulatedFrame()
-        let width = size.width * 0.18
-        let height: CGFloat = 18
-        hpTrack.size = CGSize(width: width, height: height)
+        let width = size.width * 0.22
+        let height: CGFloat = 28
+        let barSize = CGSize(width: width, height: height)
+        hpTrack.size = barSize
         hpTrack.position = CGPoint(x: frame.maxX + 12, y: frame.midY)
-        hpFill.position = .zero
-        hpFill.size = CGSize(width: width * monsterHPFraction, height: height)
-        hpFill.color = CombatHUDView.color(forProgress: monsterHPFraction)
+        hpTrack.texture = makeMonsterHPTexture(size: barSize, fraction: monsterHPFraction)
     }
 
     var monsterHPFraction: CGFloat {
@@ -43,9 +37,24 @@ extension CombatDeflectScene {
 
     /// Full and green at the start, draining toward red as the monster is worn down.
     func animateMonsterHPBar() {
-        guard let hpTrack, let hpFill else { return }
+        guard let hpTrack else { return }
         let fraction = monsterHPFraction
-        hpFill.run(.resize(toWidth: hpTrack.size.width * fraction, duration: 0.22))
-        hpFill.color = CombatHUDView.color(forProgress: fraction)
+        hpTrack.texture = makeMonsterHPTexture(size: hpTrack.size, fraction: fraction)
+        hpTrack.run(
+            .sequence([
+                .fadeAlpha(to: 0.65, duration: 0.06),
+                .fadeAlpha(to: 1, duration: 0.14),
+            ]),
+            withKey: "monsterHPPulse"
+        )
+    }
+
+    private func makeMonsterHPTexture(size: CGSize, fraction: CGFloat) -> SKTexture {
+        let fill = Color(uiColor: CombatHUDView.color(forProgress: fraction))
+        return StarWarsConsoleProgressBar.makeTexture(
+            progress: Double(fraction),
+            size: size,
+            fillColor: fill
+        )
     }
 }

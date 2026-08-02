@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-extension IsometricMath {
+nonisolated extension IsometricMath {
     static func screenToGrid(
         _ point: CGPoint,
         story: Int,

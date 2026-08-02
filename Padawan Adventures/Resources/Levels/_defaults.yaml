@@ -76,8 +76,8 @@ pit:
       words: [cat, dog, star]
     - type: bridge
       weight: 1.0
-      min_words: 2
-      max_words: 4
+      min_words: 4
+      max_words: 6
       words: [open, start, dog, man, bat, kam]
 
 # Gate minigames (triggered on gate tile contact).
@@ -90,8 +90,8 @@ gate:
   minigames:
     - type: word_plug
       # Words per round: multiples of 3, 3...9 (2 cols, or 3 equal cols if needed).
-      word_count_min: 6
-      word_count_max: 6
+      word_count_min: 2
+      word_count_max: 2
       words: [cat, dog, star, gate, open, bat, man, mom, poo, slice, lightsaber]
       music: gate
       fx: { loop: gate-spelling-loop-arc }

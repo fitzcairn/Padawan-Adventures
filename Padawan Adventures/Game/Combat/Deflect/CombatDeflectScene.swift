@@ -39,7 +39,6 @@ final class CombatDeflectScene: MinigameScene {
     var enemyNode: AnimatedSpriteNode?
     var ringLayer = SKNode()
     var hpTrack: SKSpriteNode?
-    var hpFill: SKSpriteNode?
     var activeOrb: OrbVisual?
     var activeLoopTrackID: String?
     var cachedPlayerWidth: CGFloat?
@@ -48,7 +47,6 @@ final class CombatDeflectScene: MinigameScene {
     let orbBaseSize: CGFloat = 103.68 * 1.2
     let ringLineWidth: CGFloat = 2
     let ringDashLengths: [CGFloat] = [10, 8]
-    let outerRingColor = UIColor.lightGray
     /// Indexed by `CombatDeflectRing.rawValue` — left to right.
     let ringColors: [UIColor] = [.systemRed, .systemYellow, .systemBlue]
     let interOrbDelaySeconds: TimeInterval = 0.6
@@ -63,6 +61,7 @@ final class CombatDeflectScene: MinigameScene {
     let enemyFlashActionKey = "enemyFlash"
     let orbFlightActionKey = "orbFlight"
     let nextOrbActionKey = "nextOrb"
+    let deflectFlashActionKey = "deflectFlash"
 
     enum Layer {
         static let sprites: CGFloat = 10

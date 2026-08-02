@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-extension IsometricMath {
+nonisolated extension IsometricMath {
     /// World-space position for a grid cell. Y increases upward in world space;
     /// larger `x + y` values map toward the bottom of the screen (front of the level).
     static func gridToScreen(_ coord: GridCoord, config: IsometricConfig = IsometricConfig()) -> CGPoint {

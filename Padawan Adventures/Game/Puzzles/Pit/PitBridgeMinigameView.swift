@@ -157,11 +157,17 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     }
 
     func pitBridgeSceneDidUpdateWord(_ word: String) {
-        self.word = word
+        guard word != self.word else { return }
+        // SpriteKit callbacks can land during a SwiftUI view update; defer publishes.
+        Task { @MainActor in
+            self.word = word
+        }
     }
 
     func pitBridgeSceneDidWin(starsAwarded: Int) {
         self.starsAwarded = starsAwarded
-        showWon = true
+        Task { @MainActor in
+            self.showWon = true
+        }
     }
 }

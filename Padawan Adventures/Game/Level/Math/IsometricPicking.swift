@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-extension IsometricMath {
+nonisolated extension IsometricMath {
     /// Picks the frontmost drawn floor-surface tile under a tap on `story`.
     /// Walls, pits, doors, and entities are ignored; only non-pit floors, ramps, and slides count.
     static func pickVisibleFloor(

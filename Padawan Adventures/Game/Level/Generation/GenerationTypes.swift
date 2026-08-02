@@ -16,7 +16,7 @@ nonisolated struct GenerationResult: Sendable {
     let joinPairs: [(Int, Int)]
 }
 
-struct RoomPair: Hashable {
+nonisolated struct RoomPair: Hashable, Sendable {
     let low: Int
     let high: Int
     init(_ a: Int, _ b: Int) {
@@ -26,7 +26,7 @@ struct RoomPair: Hashable {
 }
 
 /// Mutable workspace threaded through each generation pass in deterministic order.
-struct GenerationAttemptState {
+nonisolated struct GenerationAttemptState {
     var rng: SeededGenerator
     var tiles: [[[Tile]]]
     var rooms: [GeneratedRoom]
@@ -42,7 +42,7 @@ struct GenerationAttemptState {
 }
 
 /// Fixed-order generation phases; RNG call sequence must match legacy `generateAttempt`.
-enum GenerationPass: Int, CaseIterable {
+nonisolated enum GenerationPass: Int, CaseIterable, Sendable {
     case rooms = 1
     case gates = 2
     case pits = 3

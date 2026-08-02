@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-extension IsometricMath {
+nonisolated extension IsometricMath {
     /// Floor tiles live in a band strictly below walls/entities so floor art (including
     /// tall decor) never paints over sprites. Local depth still orders floors among themselves.
     static let floorBandBase: CGFloat = 0

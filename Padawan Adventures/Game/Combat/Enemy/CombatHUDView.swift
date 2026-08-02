@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 
 /// Combat-only HUD: health (top-leading), net-progress bar (bottom-leading).
@@ -7,15 +8,14 @@ final class CombatHUDView: UIView {
     private let heartsStack: UIStackView
     private let heartImage: UIImage?
     private let showsProgressBar: Bool
-    private let progressTrack = UIView()
-    private let progressFill = UIView()
-    private var progressFillWidth: NSLayoutConstraint?
+    private let progressImageView = UIImageView()
     private var progressGoal = 1
     private var displayedProgress: CGFloat = 0
+    private var progressBarSize = CGSize.zero
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
 
-    private static let progressBarHeight: CGFloat = 17.5
-    private static let progressBarWidthFraction: CGFloat = 0.0625
+    private static let progressBarHeight: CGFloat = 28
+    private static let progressBarWidthFraction: CGFloat = 0.28
 
     init(
         config: HudConfig,
@@ -45,7 +45,7 @@ final class CombatHUDView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         edgeInsets.update()
-        applyProgressFill(animated: false)
+        refreshProgressImageIfNeeded()
     }
 
     override func safeAreaInsetsDidChange() {
@@ -59,7 +59,7 @@ final class CombatHUDView: UIView {
         let target = Self.clampedFraction(current: current, goal: progressGoal)
         guard abs(target - displayedProgress) > 0.000_1 else { return }
         displayedProgress = target
-        applyProgressFill(animated: true)
+        renderProgressImage(animated: true)
     }
 
     func setHealth(_ count: Int) {
@@ -96,24 +96,15 @@ final class CombatHUDView: UIView {
             return
         }
 
-        progressTrack.backgroundColor = UIColor.white.withAlphaComponent(0.22)
-        progressTrack.layer.cornerRadius = Self.progressBarHeight * 0.5
-        progressTrack.clipsToBounds = true
-        progressTrack.translatesAutoresizingMaskIntoConstraints = false
-        progressTrack.accessibilityIdentifier = "combat.progress"
-
-        progressFill.translatesAutoresizingMaskIntoConstraints = false
-        progressTrack.addSubview(progressFill)
+        progressImageView.contentMode = .scaleToFill
+        progressImageView.translatesAutoresizingMaskIntoConstraints = false
+        progressImageView.accessibilityIdentifier = "combat.progress"
+        addSubview(progressImageView)
 
         displayedProgress = Self.clampedFraction(current: progress, goal: progressGoal)
-        progressFill.backgroundColor = Self.color(forProgress: displayedProgress)
-        let fillWidth = progressFill.widthAnchor.constraint(equalToConstant: 0)
-        progressFillWidth = fillWidth
 
-        addSubview(progressTrack)
-
-        let progressBottom = progressTrack.bottomAnchor.constraint(equalTo: bottomAnchor)
-        let progressLeading = progressTrack.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let progressBottom = progressImageView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let progressLeading = progressImageView.leadingAnchor.constraint(equalTo: leadingAnchor)
 
         edgeInsets.addBottom(progressBottom)
         edgeInsets.addLeading(progressLeading)
@@ -121,39 +112,45 @@ final class CombatHUDView: UIView {
         NSLayoutConstraint.activate([
             progressBottom,
             progressLeading,
-            progressTrack.widthAnchor.constraint(
+            progressImageView.widthAnchor.constraint(
                 equalTo: widthAnchor,
                 multiplier: Self.progressBarWidthFraction
             ),
-            progressTrack.heightAnchor.constraint(equalToConstant: Self.progressBarHeight),
-
-            progressFill.leadingAnchor.constraint(equalTo: progressTrack.leadingAnchor),
-            progressFill.topAnchor.constraint(equalTo: progressTrack.topAnchor),
-            progressFill.bottomAnchor.constraint(equalTo: progressTrack.bottomAnchor),
-            fillWidth,
+            progressImageView.heightAnchor.constraint(equalToConstant: Self.progressBarHeight),
         ])
         edgeInsets.update()
     }
 
-    private func applyProgressFill(animated: Bool) {
+    private func refreshProgressImageIfNeeded() {
         guard showsProgressBar else { return }
-        let trackWidth = progressTrack.bounds.width
-        guard trackWidth > 0 else { return }
-        let targetWidth = trackWidth * displayedProgress
-        let targetColor = Self.color(forProgress: displayedProgress)
-        progressFillWidth?.constant = targetWidth
-        guard animated else {
-            progressFill.backgroundColor = targetColor
-            layoutIfNeeded()
+        let size = progressImageView.bounds.size
+        guard size.width > 1, size.height > 1 else { return }
+        if size != progressBarSize || progressImageView.image == nil {
+            progressBarSize = size
+            renderProgressImage(animated: false)
+        }
+    }
+
+    private func renderProgressImage(animated: Bool) {
+        let size = progressImageView.bounds.size
+        guard size.width > 1, size.height > 1 else { return }
+        progressBarSize = size
+        let fill = Color(uiColor: Self.color(forProgress: displayedProgress))
+        let image = StarWarsConsoleProgressBar.makeUIImage(
+            progress: Double(displayedProgress),
+            size: size,
+            fillColor: fill
+        )
+        guard animated, progressImageView.image != nil else {
+            progressImageView.image = image
             return
         }
-        UIView.animate(
-            withDuration: 0.22,
-            delay: 0,
-            options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        UIView.transition(
+            with: progressImageView,
+            duration: 0.22,
+            options: [.transitionCrossDissolve, .allowUserInteraction, .beginFromCurrentState]
         ) {
-            self.progressFill.backgroundColor = targetColor
-            self.layoutIfNeeded()
+            self.progressImageView.image = image
         }
     }
 

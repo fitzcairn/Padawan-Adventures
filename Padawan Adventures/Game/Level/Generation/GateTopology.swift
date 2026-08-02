@@ -1,6 +1,6 @@
 import Foundation
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     // MARK: - Packed adjacency joins
 
     /// Gate-ready 2-cell wall segments grouped by the room pair they separate.

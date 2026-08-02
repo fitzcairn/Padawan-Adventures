@@ -218,25 +218,13 @@ struct AppSlider: View {
 /// Non-interactive left-to-right fill bar for bootstrap / takeoff loading.
 struct AppProgressBar: View {
     var progress: Double
-    var height: CGFloat = 12
-    var trackColor: Color = Color(white: 0.25)
-    var fillColor: Color = AppChrome.controlAccentColor
+    var height: CGFloat = 32
     var accessibilityID: String? = nil
 
     var body: some View {
-        GeometryReader { geo in
-            let width = max(geo.size.width, 1)
-            let clamped = min(1, max(0, progress))
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(trackColor)
-                Capsule()
-                    .fill(fillColor)
-                    .frame(width: max(width * clamped, clamped > 0 ? height : 0))
-            }
-        }
-        .frame(height: height)
-        .accessibilityIdentifier(accessibilityID ?? "progress.bar")
-        .accessibilityValue(Text("\(Int((min(1, max(0, progress)) * 100).rounded())) percent"))
+        StarWarsConsoleProgressBar(progress: progress)
+            .frame(height: height)
+            .accessibilityIdentifier(accessibilityID ?? "progress.bar")
+            .accessibilityValue(Text("\(Int((min(1, max(0, progress)) * 100).rounded())) percent"))
     }
 }

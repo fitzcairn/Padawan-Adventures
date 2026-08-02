@@ -1,6 +1,6 @@
 import Foundation
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     // MARK: - Room placement
 
     func filledWalls(width: Int, height: Int, stories: Int) -> [[[Tile]]] {

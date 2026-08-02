@@ -7,13 +7,12 @@ protocol PitSceneDelegate: AnyObject {
     func pitSceneDidWin(word: String, starsAwarded: Int)
 }
 
-/// SpriteKit pit puzzle: side pads, hoppable letter platforms.
+/// SpriteKit pit puzzle: side pads, hoppable letter floor tiles.
 final class PitScene: MinigameScene {
     weak var pitDelegate: PitSceneDelegate?
 
     let puzzleConfig: PitPuzzleConfig
     let pitFx: SoundEffectTable
-    let pitSpriteSetLibrary: PitSpriteSetLibrary
     let floorTileSetLibrary: FloorTileSetLibrary
     /// Same isometric footprint as the world engine (`app.yaml` display tiles).
     let isoConfig: IsometricConfig
@@ -57,7 +56,6 @@ final class PitScene: MinigameScene {
         size: CGSize,
         puzzleConfig: PitPuzzleConfig,
         pitFx: SoundEffectTable,
-        pitSpriteSetLibrary: PitSpriteSetLibrary,
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
@@ -65,7 +63,6 @@ final class PitScene: MinigameScene {
     ) {
         self.puzzleConfig = puzzleConfig
         self.pitFx = pitFx
-        self.pitSpriteSetLibrary = pitSpriteSetLibrary
         self.floorTileSetLibrary = floorTileSetLibrary
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary

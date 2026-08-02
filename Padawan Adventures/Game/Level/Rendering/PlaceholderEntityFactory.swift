@@ -134,12 +134,16 @@ extension PlaceholderFactory {
         (node.userData?["usesSpriteAnimation"] as? Bool) == true
     }
 
-    /// Display height = `wall_height` × `scale`. Width follows texture aspect at play time.
+    /// Applied on top of per-sprite YAML `scale` so world entities render larger.
+    static let spriteDisplayScaleMultiplier: CGFloat = 1.2
+
+    /// Display height = `wall_height` × `scale` × `spriteDisplayScaleMultiplier`.
+    /// Width follows texture aspect at play time.
     static func spriteDisplayHeight(
         isoConfig: IsometricConfig,
         spriteConfig: SpriteConfig
     ) -> CGFloat {
-        isoConfig.wallHeight * CGFloat(spriteConfig.scale)
+        isoConfig.wallHeight * CGFloat(spriteConfig.scale) * spriteDisplayScaleMultiplier
     }
 
     /// Provisional square size from wall height (width refined when the texture is known).
@@ -171,7 +175,7 @@ extension PlaceholderFactory {
         if let library = spriteLibrary,
            let spriteConfig,
            library.animation(id: itemID, named: "idle") != nil {
-            // Display height = wall_height × items.yaml `sprite.scale`.
+            // Display height = wall_height × items.yaml `sprite.scale` × 1.2.
             let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
             let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
             if let highlight = itemsConfig?.highlight(id: itemID) {

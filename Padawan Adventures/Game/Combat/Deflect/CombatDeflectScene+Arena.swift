@@ -6,10 +6,11 @@ extension CombatDeflectScene {
     /// 40% screen height × 1.2 (20% larger) — same as the slash arena.
     var playerSpriteHeight: CGFloat { size.height * 0.48 }
 
-    /// 2× world height, then −30% (`2 × 0.7 × wallHeight × scale`).
+    /// 2× world height, then −30%, then ×1.2 (`2 × 0.7 × 1.2 × wallHeight × scale`).
     var enemySpriteHeight: CGFloat {
         guard let enemySprite else { return size.height * 0.084 }
-        return 1.4 * wallHeight * CGFloat(enemySprite.config.scale)
+        return 1.4 * PlaceholderFactory.spriteDisplayScaleMultiplier
+            * wallHeight * CGFloat(enemySprite.config.scale)
     }
 
     /// Feet (sprite bottom-middle) sit on the view's bottom-middle.

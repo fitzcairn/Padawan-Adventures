@@ -16,6 +16,7 @@ fx:
   combat_loop: combat-loop-lightsaber-hum
   slash: combat-lightsaber-slash
   slash_hit: lightsaber-cut
+  deflect: combat-lightsaber-deflect
 
 # Animated sprite sheets under Resources/Sprites/Player/<name>/.
 # Cardinals: up / down / left / right. Diagonals keep compass names.

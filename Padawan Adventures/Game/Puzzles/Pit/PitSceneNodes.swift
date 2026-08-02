@@ -6,26 +6,40 @@ extension PitScene {
         let root = SKNode()
         root.name = "letter:\(token.id.uuidString)"
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
-        root.zPosition = 10
+        root.zPosition = SceneLayer.letterPlatform
 
-        var spriteHeight = side
-        if let texture = pitSpriteSetLibrary.randomTexture(using: &placementRNG),
-           let sprite = PitSpriteFactory.sprite(texture: texture, side: side) {
-            sprite.zPosition = 0
-            sprite.alpha = 0.90 // spritesheet platform only — letters stay fully opaque
-            if engine.isSpent(token.id) {
-                applyPlatformTint(sprite, color: platformCorrectTint, blend: 0.45)
+        var tileHeight: CGFloat = side * 0.6
+        if let tile = makeFloorTileNode(
+            library: floorTileSetLibrary,
+            config: isoConfig,
+            using: &placementRNG
+        ) {
+            let measured = tile.calculateAccumulatedFrame()
+            if measured.width > 1 {
+                tile.setScale(side / measured.width)
             }
-            root.addChild(sprite)
-            platformNodes[token.id] = sprite
-            spriteHeight = sprite.size.height
+            // Center the isometric floor diamond on the letter root so the glyph and
+            // Kam land on the tile face (anchor alone sits at the north tip).
+            let bounds = tile.calculateAccumulatedFrame()
+            tileHeight = bounds.height
+            // Nudge the tile up one full height; letter moves down by the same amount.
+            tile.position = CGPoint(x: -bounds.midX, y: -bounds.midY + tileHeight)
+            tile.zPosition = 0
+            root.addChild(tile)
+
+            if let sprite = tile.children.first as? SKSpriteNode {
+                if engine.isSpent(token.id) {
+                    applyPlatformTint(sprite, color: platformCorrectTint, blend: 0.45)
+                }
+                platformNodes[token.id] = sprite
+            }
         } else {
-            let fallback = SKShapeNode(circleOfRadius: side * 0.5)
+            let fallback = SKShapeNode(rectOf: CGSize(width: side, height: tileHeight), cornerRadius: 4)
             fallback.fillColor = UIColor(white: 0.22, alpha: 1)
             fallback.strokeColor = UIColor(white: 0.65, alpha: 1)
             fallback.lineWidth = 2
+            fallback.position = CGPoint(x: 0, y: tileHeight)
             fallback.zPosition = 0
-            fallback.alpha = 0.90
             if engine.isSpent(token.id) {
                 fallback.fillColor = platformCorrectTint
             }
@@ -33,8 +47,7 @@ extension PitScene {
         }
 
         let engraved = makeEngravedLetter(text: token.letter, fontSize: letterFontSize)
-        // Bottom padding = 10% of sprite height → shift letter up toward the platform top.
-        engraved.position = CGPoint(x: 0, y: spriteHeight * 0.10)
+        engraved.position = CGPoint(x: 0, y: -tileHeight)
         engraved.zPosition = 1
         engraved.alpha = 1
         engraved.isUserInteractionEnabled = false

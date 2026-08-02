@@ -1,6 +1,6 @@
 import Foundation
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     /// Force-places any missing required interactables (chance rolls already applied).
     func ensureRequiredInteractables(
         rooms: [GeneratedRoom],
@@ -396,7 +396,7 @@ extension ProceduralGenerator {
     }
 }
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     func runGenerationPass(
         _ pass: GenerationPass,
         state: inout GenerationAttemptState,

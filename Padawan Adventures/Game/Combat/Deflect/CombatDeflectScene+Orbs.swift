@@ -171,7 +171,6 @@ extension CombatDeflectScene {
     /// Swing toward the tapped ring, then send the orb home at double speed.
     func playDeflect(ring: CombatDeflectRing) {
         guard let orb = activeOrb, let playerNode, let enemyNode else { return }
-        SoundEffectsController.shared.play(event: "slash", from: playerFx)
         if combatSprite != nil {
             playerNode.playOnce(
                 name: playerSwingAnimationName,
@@ -182,11 +181,24 @@ extension CombatDeflectScene {
             // (`playOnce` resets scale from the clip; re-apply facing after.)
             setPlayerFacingLeft(ring == .northwest)
         }
-
         let progress = inboundProgress(of: orb)
+        let letterPosition = orb.node.position
+        // Flash + deflect cue land at 75% of the swing clip.
+        let flashDelay = swingAnimationDurationSeconds() * 0.75
+        run(
+            .sequence([
+                .wait(forDuration: flashDelay),
+                .run { [weak self] in
+                    guard let self else { return }
+                    SoundEffectsController.shared.play(event: "deflect", from: self.playerFx)
+                    self.playLightsaberDeflectFlash(letterPosition: letterPosition)
+                },
+            ]),
+            withKey: deflectFlashActionKey
+        )
         orb.node.removeAction(forKey: orbFlightActionKey)
 
-        let start = orb.node.position
+        let start = letterPosition
         let end = bodyCenter(of: enemyNode, height: enemySpriteHeight)
         let mid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
         // Bend away from the ring the player tapped so the return reads as a deflection.

@@ -1,6 +1,6 @@
 import Foundation
 
-extension ProceduralGenerator {
+nonisolated extension ProceduralGenerator {
     /// Rolls `chance` once per room; on success places a contiguous pit area in that room.
     func sprinklePits(
         rooms: [GeneratedRoom],

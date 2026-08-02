@@ -25,6 +25,87 @@ extension CombatDeflectScene {
         ]))
     }
 
+    /// Total length of the combat swing clip (used to time the deflect flash).
+    func swingAnimationDurationSeconds() -> TimeInterval {
+        guard let animation = spriteLibrary.animation(
+            id: playerCombatLibraryID,
+            named: playerSwingAnimationName
+        ), !animation.frames.isEmpty else {
+            return 0
+        }
+        return animation.frames.reduce(0) { $0 + $1.duration }
+    }
+
+    /// Quickly expanding radial flash halfway between the player and the letter orb (0.3s).
+    func playLightsaberDeflectFlash(letterPosition: CGPoint) {
+        guard let playerNode else { return }
+
+        let flash = SKSpriteNode(texture: Self.lightsaberFlashTexture())
+        let base = max(playerSpriteHeight * 0.4, 48)
+        flash.size = CGSize(width: base, height: base)
+        let origin = playerNode.position
+        flash.position = CGPoint(
+            x: (origin.x + letterPosition.x) * 0.5,
+            y: (origin.y + letterPosition.y) * 0.5
+        )
+        flash.zPosition = Layer.vfx
+        // Additive so the blue-white core reads as a bright saber bloom.
+        flash.blendMode = .add
+        flash.setScale(0.12)
+        flash.alpha = 1
+        addChild(flash)
+
+        let duration: TimeInterval = 0.3
+        flash.run(.sequence([
+            .group([
+                .scale(to: 5.5, duration: duration),
+                .fadeOut(withDuration: duration),
+            ]),
+            .removeFromParent(),
+        ]))
+    }
+
+    /// Bright blue-white core falling off to transparency at the rim. Drawn once and reused.
+    private static var cachedLightsaberFlashTexture: SKTexture?
+
+    private static func lightsaberFlashTexture() -> SKTexture {
+        if let cachedLightsaberFlashTexture {
+            return cachedLightsaberFlashTexture
+        }
+        let size = CGSize(width: 256, height: 256)
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            let cg = context.cgContext
+            cg.clear(CGRect(origin: .zero, size: size))
+            let colors = [
+                UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1).cgColor,
+                UIColor(red: 0.75, green: 0.92, blue: 1.0, alpha: 1).cgColor,
+                UIColor(red: 0.35, green: 0.7, blue: 1.0, alpha: 0.75).cgColor,
+                UIColor(red: 0.15, green: 0.45, blue: 1.0, alpha: 0).cgColor,
+            ] as CFArray
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: colors,
+                locations: [0, 0.2, 0.5, 1] as [CGFloat]
+            ) else {
+                return
+            }
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            cg.drawRadialGradient(
+                gradient,
+                startCenter: center,
+                startRadius: 0,
+                endCenter: center,
+                endRadius: size.width / 2,
+                options: []
+            )
+        }
+        let texture = SKTexture(image: image)
+        cachedLightsaberFlashTexture = texture
+        return texture
+    }
+
     func playExplosion(at position: CGPoint) {
         SoundEffectsController.shared.play(event: "slash_hit", from: playerFx)
         let circle = SKShapeNode(circleOfRadius: 12)
@@ -50,6 +131,7 @@ extension CombatDeflectScene {
         GameLogger.mark(.combat, "deflect win (stars: \(starsAwarded))")
         engine.end()
         removeAction(forKey: nextOrbActionKey)
+        removeAction(forKey: deflectFlashActionKey)
         removeOrbNode()
         stopCombatLoop()
         SoundEffectsController.shared.playCommon(event: "win")
@@ -62,6 +144,7 @@ extension CombatDeflectScene {
         GameLogger.mark(.combat, "deflect loss")
         engine.end()
         removeAction(forKey: nextOrbActionKey)
+        removeAction(forKey: deflectFlashActionKey)
         removeOrbNode()
         stopCombatLoop()
         SoundEffectsController.shared.playCommon(event: "lose")

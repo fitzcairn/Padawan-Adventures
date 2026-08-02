@@ -8,10 +8,6 @@ extension CombatDeflectScene {
         ringLayer.removeAllChildren()
         let geo = geometry
 
-        // Outer ring: centered on the player, so its lower half sits off-screen by design.
-        let outer = makeDashedEllipse(rect: geo.outerRect, color: outerRingColor)
-        ringLayer.addChild(outer)
-
         for ring in CombatDeflectRing.allCases {
             let color = ringColor(for: ring)
             let ellipse = makeDashedEllipse(rect: geo.ringRect(ring), color: color)
