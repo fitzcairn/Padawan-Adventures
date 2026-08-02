@@ -1,12 +1,14 @@
 import SwiftUI
 import UIKit
 
-/// Periodic white spiral particle trail that orbits a SwiftUI icon (inventory rack).
+/// Periodic rotating star twinkle on a sprite's upper-rightmost opaque pixel.
 struct SpiralGleamView: UIViewRepresentable {
-    /// When false, cancels the schedule and tears down any in-flight gleam.
+    /// When false, cancels the schedule and tears down any in-flight twinkle.
     var isEnabled: Bool
-    /// Icon diameter in points; orbit radius and particle size scale with this.
+    /// Icon frame side in points (matches the inventory `scaledToFit` box).
     var diameter: CGFloat
+    /// Treasure art as shown in the rack (before the 90° layout rotation).
+    var image: UIImage?
 
     func makeUIView(context: Context) -> SpiralGleamHostView {
         let view = SpiralGleamHostView()
@@ -17,6 +19,7 @@ struct SpiralGleamView: UIViewRepresentable {
 
     func updateUIView(_ uiView: SpiralGleamHostView, context: Context) {
         uiView.preferredDiameter = diameter
+        uiView.spriteImage = image
         uiView.setEnabled(isEnabled)
     }
 
@@ -27,21 +30,29 @@ struct SpiralGleamView: UIViewRepresentable {
 
 final class SpiralGleamHostView: UIView {
     var preferredDiameter: CGFloat = 52
+    var spriteImage: UIImage? {
+        didSet {
+            if spriteImage !== oldValue {
+                cachedHotspot = nil
+            }
+        }
+    }
 
     private var scheduleWorkItem: DispatchWorkItem?
     private var cleanupWorkItem: DispatchWorkItem?
-    private var gleamLayer: CAEmitterLayer?
+    private var twinkleLayer: CALayer?
+    private var cachedHotspot: CGPoint?
     private var isEnabled = false
     private var isPlaying = false
 
-    /// Mean seconds between gleam starts.
+    /// Mean seconds between twinkles.
     private static let meanInterval: TimeInterval = 5
     /// Wait spread around the mean (`3…7` with the default mean).
     private static let intervalHalfRange: TimeInterval = 2
-    private static let orbitDuration: TimeInterval = 0.9
-    private static let particleLifetime: Float = 0.38
+    private static let twinkleDuration: TimeInterval = 0.7
+    private static let alphaThreshold: UInt8 = 16
 
-    private static var cachedParticle: CGImage?
+    private static var cachedStar: CGImage?
 
     func setEnabled(_ enabled: Bool) {
         guard enabled != isEnabled else { return }
@@ -50,15 +61,20 @@ final class SpiralGleamHostView: UIView {
             scheduleNext(initial: true)
         } else {
             cancelSchedule()
-            stopGleam(immediate: true)
+            stopTwinkle(immediate: true)
         }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        cachedHotspot = nil
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
             cancelSchedule()
-            stopGleam(immediate: true)
+            stopTwinkle(immediate: true)
         } else if isEnabled, scheduleWorkItem == nil, !isPlaying {
             scheduleNext(initial: true)
         }
@@ -76,7 +92,7 @@ final class SpiralGleamHostView: UIView {
             delay = TimeInterval.random(in: lo...hi)
         }
         let work = DispatchWorkItem { [weak self] in
-            self?.playGleam()
+            self?.playTwinkle()
             self?.scheduleNext(initial: false)
         }
         scheduleWorkItem = work
@@ -88,165 +104,299 @@ final class SpiralGleamHostView: UIView {
         scheduleWorkItem = nil
     }
 
-    private func playGleam() {
+    private func playTwinkle() {
         guard isEnabled, !isPlaying, bounds.width > 0, bounds.height > 0 else { return }
-        isPlaying = true
         layoutIfNeeded()
+        guard let hotspot = hotspotInView() else { return }
 
-        let side = max(bounds.width, preferredDiameter, 24)
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        let startRadius = side * 0.32
-        let endRadius = side * 0.52
+        isPlaying = true
+        let side = max(preferredDiameter * 0.55, 22)
 
-        let emitter = CAEmitterLayer()
-        emitter.emitterShape = .point
-        emitter.emitterMode = .points
-        emitter.renderMode = .additive
-        emitter.zPosition = 1
-        emitter.emitterPosition = spiralPoint(
-            center: center,
-            radius: startRadius,
-            endRadius: endRadius,
-            t: 0
-        )
+        // Outer layer owns opacity/scale; inner owns rotation so transforms don't clash.
+        let host = CALayer()
+        host.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        host.position = hotspot
+        host.opacity = 0
+        host.zPosition = 1
 
-        let cell = CAEmitterCell()
-        cell.contents = Self.particleImage()
-        cell.birthRate = 90
-        cell.lifetime = Self.particleLifetime
-        cell.lifetimeRange = 0.1
-        cell.velocity = side * 0.12
-        cell.velocityRange = side * 0.04
-        cell.emissionRange = .pi * 0.35
-        cell.scale = 0.18
-        cell.scaleRange = 0.08
-        cell.scaleSpeed = -0.35
-        cell.alphaSpeed = -2.4
-        cell.color = UIColor.white.withAlphaComponent(0.95).cgColor
-        cell.spinRange = 4
-        emitter.emitterCells = [cell]
+        let star = CALayer()
+        star.contents = Self.starImage()
+        star.contentsGravity = .resize
+        star.frame = host.bounds
+        // Additive so it reads as a bright glint on the art.
+        star.compositingFilter = "plusL"
+        host.addSublayer(star)
+        layer.addSublayer(host)
+        twinkleLayer = host
 
-        layer.addSublayer(emitter)
-        gleamLayer = emitter
+        let fade = CAKeyframeAnimation(keyPath: "opacity")
+        fade.values = [0, 1, 1, 0]
+        fade.keyTimes = [0, 0.2, 0.55, 1]
+        fade.duration = Self.twinkleDuration
 
-        let path = spiralPath(
-            center: center,
-            startRadius: startRadius,
-            endRadius: endRadius
-        )
-        let orbit = CAKeyframeAnimation(keyPath: "emitterPosition")
-        orbit.path = path
-        orbit.duration = Self.orbitDuration
-        orbit.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        orbit.calculationMode = .paced
-        orbit.fillMode = .forwards
-        orbit.isRemovedOnCompletion = false
-        emitter.add(orbit, forKey: "spiralOrbit")
+        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+        scale.values = [0.2, 1.15, 1, 0.35]
+        scale.keyTimes = [0, 0.25, 0.55, 1]
+        scale.duration = Self.twinkleDuration
+
+        let hostGroup = CAAnimationGroup()
+        hostGroup.animations = [fade, scale]
+        hostGroup.duration = Self.twinkleDuration
+        hostGroup.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        host.add(hostGroup, forKey: "twinkle")
+
+        let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+        spin.fromValue = 0
+        spin.toValue = CGFloat.pi * 0.75
+        spin.duration = Self.twinkleDuration
+        spin.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        star.add(spin, forKey: "spin")
 
         cleanupWorkItem?.cancel()
-        let cleanup = DispatchWorkItem { [weak self, weak emitter] in
-            emitter?.birthRate = 0
-            let remove = DispatchWorkItem { [weak self, weak emitter] in
-                emitter?.removeFromSuperlayer()
-                if self?.gleamLayer === emitter {
-                    self?.gleamLayer = nil
-                }
-                self?.isPlaying = false
+        let cleanup = DispatchWorkItem { [weak self, weak host] in
+            host?.removeFromSuperlayer()
+            if self?.twinkleLayer === host {
+                self?.twinkleLayer = nil
             }
-            self?.cleanupWorkItem = remove
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + TimeInterval(Self.particleLifetime) + 0.15,
-                execute: remove
-            )
+            self?.isPlaying = false
         }
         cleanupWorkItem = cleanup
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + Self.orbitDuration,
+            deadline: .now() + Self.twinkleDuration,
             execute: cleanup
         )
     }
 
-    private func stopGleam(immediate: Bool) {
+    private func stopTwinkle(immediate: Bool) {
         cleanupWorkItem?.cancel()
         cleanupWorkItem = nil
         isPlaying = false
-        guard let emitter = gleamLayer else { return }
-        emitter.removeAllAnimations()
-        emitter.birthRate = 0
+        guard let twinkle = twinkleLayer else { return }
+        twinkle.removeAllAnimations()
         if immediate {
-            emitter.removeFromSuperlayer()
-            gleamLayer = nil
+            twinkle.removeFromSuperlayer()
+            twinkleLayer = nil
         }
     }
 
-    private func spiralPath(
-        center: CGPoint,
-        startRadius: CGFloat,
-        endRadius: CGFloat
-    ) -> CGPath {
-        let path = CGMutablePath()
-        let steps = 64
-        for i in 0...steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            let point = spiralPoint(
-                center: center,
-                radius: startRadius,
-                endRadius: endRadius,
-                t: t
-            )
-            if i == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
+    /// Upper-rightmost opaque pixel of the *displayed* sprite (after aspect-fit
+    /// and the rack's 90° clockwise layout rotation).
+    private func hotspotInView() -> CGPoint? {
+        if let cachedHotspot {
+            return cachedHotspot
+        }
+        guard let image = spriteImage?.cgImage else { return nil }
+        let point = Self.upperRightOpaqueHotspot(in: image, bounds: bounds)
+        cachedHotspot = point
+        return point
+    }
+
+    /// First non-clear pixel nearest the upper-right of the laid-out sprite.
+    static func upperRightOpaqueHotspot(
+        in image: CGImage,
+        bounds: CGRect,
+        alphaThreshold: UInt8 = 16
+    ) -> CGPoint? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0, bounds.width > 0, bounds.height > 0 else { return nil }
+
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var data = [UInt8](repeating: 0, count: height * bytesPerRow)
+        guard let context = CGContext(
+            data: &data,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+        context.interpolationQuality = .none
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        let corner = CGPoint(x: bounds.maxX, y: bounds.minY)
+        var bestPoint: CGPoint?
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+
+        for y in 0..<height {
+            for x in 0..<width {
+                guard data[(y * width + x) * bytesPerPixel + 3] >= alphaThreshold else {
+                    continue
+                }
+                let point = mapImagePixel(
+                    CGPoint(x: x, y: y),
+                    imageWidth: width,
+                    imageHeight: height,
+                    into: bounds
+                )
+                let dx = point.x - corner.x
+                let dy = point.y - corner.y
+                let distance = dx * dx + dy * dy
+                if distance < bestDistance {
+                    bestDistance = distance
+                    bestPoint = point
+                }
             }
         }
-        return path
+        return bestPoint
     }
 
-    private func spiralPoint(
-        center: CGPoint,
-        radius startRadius: CGFloat,
-        endRadius: CGFloat,
-        t: CGFloat
+    /// Maps an image pixel through `scaledToFit` into `rect`, then 90° clockwise
+    /// around the rect center — matching `InventoryRackView`'s layout.
+    static func mapImagePixel(
+        _ pixel: CGPoint,
+        imageWidth: Int,
+        imageHeight: Int,
+        into rect: CGRect
     ) -> CGPoint {
-        let angle = t * .pi * 2 - .pi / 2
-        let r = startRadius + (endRadius - startRadius) * t
-        return CGPoint(
-            x: center.x + cos(angle) * r,
-            y: center.y + sin(angle) * r
+        let imageSize = CGSize(width: imageWidth, height: imageHeight)
+        guard imageSize.width > 0, imageSize.height > 0, rect.width > 0, rect.height > 0 else {
+            return CGPoint(x: rect.midX, y: rect.midY)
+        }
+        let scale = min(rect.width / imageSize.width, rect.height / imageSize.height)
+        let drawSize = CGSize(
+            width: imageSize.width * scale,
+            height: imageSize.height * scale
         )
+        let origin = CGPoint(
+            x: rect.minX + (rect.width - drawSize.width) * 0.5,
+            y: rect.minY + (rect.height - drawSize.height) * 0.5
+        )
+        let fit = CGPoint(
+            x: origin.x + (pixel.x + 0.5) * scale,
+            y: origin.y + (pixel.y + 0.5) * scale
+        )
+        // 90° CW with y-down: (dx, dy) → (-dy, dx)
+        let dx = fit.x - rect.midX
+        let dy = fit.y - rect.midY
+        return CGPoint(x: rect.midX - dy, y: rect.midY + dx)
     }
 
-    private static func particleImage() -> CGImage {
-        if let cachedParticle {
-            return cachedParticle
+    /// Four intersecting spokes (cross + diagonals) that taper to points.
+    private static func starImage() -> CGImage {
+        if let cachedStar {
+            return cachedStar
         }
-        let size = CGSize(width: 24, height: 24)
+        let size = CGSize(width: 64, height: 64)
         let image = UIGraphicsImageRenderer(size: size).image { context in
             let cg = context.cgContext
-            let colors = [
-                UIColor.white.cgColor,
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+
+            // Soft core glow behind the spokes.
+            let glowColors = [
+                UIColor.white.withAlphaComponent(0.95).cgColor,
                 UIColor.white.withAlphaComponent(0).cgColor,
             ] as CFArray
-            guard let gradient = CGGradient(
+            if let glow = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                colors: colors,
+                colors: glowColors,
                 locations: [0, 1]
-            ) else {
-                return
+            ) {
+                cg.drawRadialGradient(
+                    glow,
+                    startCenter: center,
+                    startRadius: 0,
+                    endCenter: center,
+                    endRadius: size.width * 0.18,
+                    options: []
+                )
             }
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            cg.drawRadialGradient(
-                gradient,
-                startCenter: center,
-                startRadius: 0,
-                endCenter: center,
-                endRadius: size.width / 2,
-                options: []
+
+            // Long cross + shorter diagonals.
+            drawSpoke(
+                in: cg,
+                center: center,
+                angle: 0,
+                halfLength: size.width * 0.48,
+                halfWidth: size.width * 0.055
+            )
+            drawSpoke(
+                in: cg,
+                center: center,
+                angle: .pi / 2,
+                halfLength: size.width * 0.48,
+                halfWidth: size.width * 0.055
+            )
+            drawSpoke(
+                in: cg,
+                center: center,
+                angle: .pi / 4,
+                halfLength: size.width * 0.32,
+                halfWidth: size.width * 0.035
+            )
+            drawSpoke(
+                in: cg,
+                center: center,
+                angle: -.pi / 4,
+                halfLength: size.width * 0.32,
+                halfWidth: size.width * 0.035
             )
         }
         let cgImage = image.cgImage!
-        cachedParticle = cgImage
+        cachedStar = cgImage
         return cgImage
+    }
+
+    /// Diamond-shaped spoke centered on `center`, pointed at both ends.
+    private static func drawSpoke(
+        in cg: CGContext,
+        center: CGPoint,
+        angle: CGFloat,
+        halfLength: CGFloat,
+        halfWidth: CGFloat
+    ) {
+        let cosA = cos(angle)
+        let sinA = sin(angle)
+        let along = CGPoint(x: cosA, y: sinA)
+        let across = CGPoint(x: -sinA, y: cosA)
+
+        let tipA = CGPoint(
+            x: center.x + along.x * halfLength,
+            y: center.y + along.y * halfLength
+        )
+        let tipB = CGPoint(
+            x: center.x - along.x * halfLength,
+            y: center.y - along.y * halfLength
+        )
+        let sideA = CGPoint(
+            x: center.x + across.x * halfWidth,
+            y: center.y + across.y * halfWidth
+        )
+        let sideB = CGPoint(
+            x: center.x - across.x * halfWidth,
+            y: center.y - across.y * halfWidth
+        )
+
+        cg.saveGState()
+        cg.beginPath()
+        cg.move(to: tipA)
+        cg.addLine(to: sideA)
+        cg.addLine(to: tipB)
+        cg.addLine(to: sideB)
+        cg.closePath()
+        cg.clip()
+
+        let colors = [
+            UIColor.white.withAlphaComponent(0).cgColor,
+            UIColor.white.cgColor,
+            UIColor.white.withAlphaComponent(0).cgColor,
+        ] as CFArray
+        if let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: colors,
+            locations: [0, 0.5, 1]
+        ) {
+            cg.drawLinearGradient(
+                gradient,
+                start: tipA,
+                end: tipB,
+                options: []
+            )
+        }
+        cg.restoreGState()
     }
 }

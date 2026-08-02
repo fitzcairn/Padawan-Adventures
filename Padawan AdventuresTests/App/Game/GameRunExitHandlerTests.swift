@@ -13,23 +13,32 @@ struct GameRunExitHandlerTests {
         return AppSession(
             appConfig: AppSession.fallbackAppConfig(),
             selectedLevel: .fallback,
-            selectedLevelResourceName: "1-tython",
-            selectedLevelArtifact: "key.fill",
             playerStore: store,
             saveService: saveService
         )
     }
 
-    @Test func completingLevelMarksProgressAndClearsMidRunSave() async throws {
-        let session = try makeSession()
-        try await session.createAndBindPlayer(name: "Win")
-        await session.markLevelStarted(resourceName: "1-tython")
+    private func bindAndSelectLevel(_ session: AppSession, player: String) async throws -> String {
+        try await session.createAndBindPlayer(name: player)
+        let resourceName = try #require(LevelCatalog.loadFromBundle().first?.resourceName)
+        try session.selectLevel(resourceName: resourceName)
+        await session.markLevelStarted(resourceName: resourceName)
+        return resourceName
+    }
 
-        let world = TestWorldFactory.emptyFloor(
+    private func compatibleWorld(for session: AppSession) -> GameWorld {
+        TestWorldFactory.emptyFloor(
             width: session.generationConfig.world.width,
             height: session.generationConfig.world.height,
             stories: session.generationConfig.world.stories
         )
+    }
+
+    @Test func completingLevelMarksProgressAndClearsMidRunSave() async throws {
+        let session = try makeSession()
+        let resourceName = try await bindAndSelectLevel(session, player: "Win")
+
+        let world = compatibleWorld(for: session)
         try await session.saveService.save(world)
         await session.refreshContinueEligibility()
         #expect(session.hasCompatibleSave)
@@ -40,7 +49,7 @@ struct GameRunExitHandlerTests {
             session: session
         )
 
-        #expect(session.playerState?.levels["1-tython"]?.completed == true)
+        #expect(session.playerState?.levels[resourceName]?.completed == true)
         #expect(try await session.saveService.load() == nil)
         #expect(session.hasCompatibleSave == false)
         // Campaign progress must keep CONTINUE available after the mid-run save is deleted.
@@ -48,21 +57,15 @@ struct GameRunExitHandlerTests {
         #expect(session.continueDestination == .levelSelect)
 
         let reloaded = try await session.playerStore.loadState(for: "Win")
-        #expect(reloaded.levels["1-tython"]?.completed == true)
-        #expect(reloaded.lastLevelStarted == "1-tython")
+        #expect(reloaded.levels[resourceName]?.completed == true)
+        #expect(reloaded.lastLevelStarted == resourceName)
     }
 
     @Test func completingLevelPersistsEvenWithoutWorldSnapshot() async throws {
         let session = try makeSession()
-        try await session.createAndBindPlayer(name: "NoWorld")
-        await session.markLevelStarted(resourceName: "1-tython")
+        let resourceName = try await bindAndSelectLevel(session, player: "NoWorld")
 
-        let world = TestWorldFactory.emptyFloor(
-            width: session.generationConfig.world.width,
-            height: session.generationConfig.world.height,
-            stories: session.generationConfig.world.stories
-        )
-        try await session.saveService.save(world)
+        try await session.saveService.save(compatibleWorld(for: session))
 
         await GameRunExitHandler.persistExitState(
             completedLevel: true,
@@ -70,7 +73,7 @@ struct GameRunExitHandlerTests {
             session: session
         )
 
-        #expect(session.playerState?.levels["1-tython"]?.completed == true)
+        #expect(session.playerState?.levels[resourceName]?.completed == true)
         #expect(try await session.saveService.load() == nil)
         #expect(session.shouldShowContinue)
         #expect(session.continueDestination == .levelSelect)
@@ -78,14 +81,9 @@ struct GameRunExitHandlerTests {
 
     @Test func fleeingPersistsMidRunSaveForContinue() async throws {
         let session = try makeSession()
-        try await session.createAndBindPlayer(name: "Flee")
-        await session.markLevelStarted(resourceName: "1-tython")
+        let resourceName = try await bindAndSelectLevel(session, player: "Flee")
 
-        var world = TestWorldFactory.emptyFloor(
-            width: session.generationConfig.world.width,
-            height: session.generationConfig.world.height,
-            stories: session.generationConfig.world.stories
-        )
+        var world = compatibleWorld(for: session)
         world.healthCount = 3
         world.energyCount = 2
 
@@ -95,7 +93,7 @@ struct GameRunExitHandlerTests {
             session: session
         )
 
-        #expect(session.playerState?.levels["1-tython"]?.completed != true)
+        #expect(session.playerState?.levels[resourceName]?.completed != true)
         #expect(try await session.saveService.load() != nil)
         #expect(session.hasCompatibleSave)
         #expect(session.shouldShowContinue)

@@ -1,9 +1,9 @@
 import Foundation
 
 enum ContinueDestination: Equatable, Sendable {
-    /// Resume an in-progress mid-run world save.
+    /// Resume an in-progress mid-run world save (player left mid-level).
     case resumeSave
-    /// Return to the planet map with existing campaign progress.
+    /// Return to the planet map (player last left from level select, e.g. after a win).
     case levelSelect
 }
 

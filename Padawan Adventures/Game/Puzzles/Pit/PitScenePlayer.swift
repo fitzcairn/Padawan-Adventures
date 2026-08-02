@@ -11,6 +11,9 @@ extension PitScene {
            spriteLibrary.animation(id: Self.playerLibraryID, named: "idle_right") != nil
             || spriteLibrary.animation(id: Self.playerLibraryID, named: "idle_down") != nil {
             let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
+            // Sized once here: the first idle clip locks pixels-to-points for the rest.
+            // Re-fitting per clip would squash jump and celebrate, whose trims are taller
+            // than a standing pose, back down to standing height.
             sprite.fitHeight(height)
             // Above pad / letter floor tiles (local tile sort stays small; world depthSort is huge).
             sprite.zPosition = Self.playerZ
@@ -63,7 +66,6 @@ extension PitScene {
     func playPlayerLoop(_ name: String) {
         guard let playerSprite else { return }
         playerSprite.play(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
-        playerSprite.fitHeight(playerDisplayHeight)
     }
 
     func playJumpAnimation(toward target: CGPoint) {
@@ -71,7 +73,6 @@ extension PitScene {
         playerFacingLeft = target.x < playerNode.position.x - 0.5
         let name = playerFacingLeft ? "jump_left" : "jump_right"
         playerSprite.playOnce(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
-        playerSprite.fitHeight(playerDisplayHeight)
     }
     // MARK: - Events / audio
 

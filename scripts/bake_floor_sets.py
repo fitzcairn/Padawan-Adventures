@@ -71,12 +71,6 @@ PIT_TRUTH_MIN_RATIO = 0.25
 # Max per-channel difference before a marked cell counts as "drifted" art.
 PIT_ART_TOLERANCE = 16
 
-# Photometric normalization (Stage 1).
-SRGB_GAMMA = 2.2
-NORM_GAIN_MIN, NORM_GAIN_MAX = 0.75, 1.35
-NORM_OFFSET_MAX = 40.0
-NORM_STRENGTH = 1.0
-
 # Family clustering (Stage 2).
 FAMILY_SEED = 0xF10026
 FAMILY_K_INIT = 6
@@ -162,14 +156,6 @@ def cell_to_array(img: Image.Image, geom: "TileGeom") -> np.ndarray:
 
 def array_to_cell(arr: np.ndarray) -> Image.Image:
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
-
-
-def to_linear(a: np.ndarray) -> np.ndarray:
-    return np.power(np.clip(a, 0, 255) / 255.0, SRGB_GAMMA)
-
-
-def to_srgb(a: np.ndarray) -> np.ndarray:
-    return np.power(np.clip(a, 0.0, 1.0), 1.0 / SRGB_GAMMA) * 255.0
 
 
 def diamond_interior_mask(
@@ -939,181 +925,8 @@ def build_matches(
 
 
 # ---------------------------------------------------------------------------
-# Photometric normalization / families / seam fix
+# Palettes / families / seam fix
 # ---------------------------------------------------------------------------
-
-
-def _fit_luma_ramp(
-    luma: np.ndarray, mask: np.ndarray, cx: float, cy: float, hw: float, hh: float
-) -> tuple[float, float, float]:
-    """Least-squares L ~ a + b*u + c*v over interior mask; u,v in [-1,1]."""
-    ys, xs = np.where(mask)
-    if len(xs) < 16:
-        return 0.0, 0.0, 0.0
-    u = (xs.astype(np.float64) - cx) / max(hw, 1e-6)
-    v = (ys.astype(np.float64) - cy) / max(hh, 1e-6)
-    L = luma[ys, xs].astype(np.float64)
-    A = np.column_stack([np.ones(len(u)), u, v])
-    try:
-        coef, *_ = np.linalg.lstsq(A, L, rcond=None)
-        return float(coef[0]), float(coef[1]), float(coef[2])
-    except Exception:
-        return float(L.mean()), 0.0, 0.0
-
-
-def normalize_tiles(
-    img: Image.Image,
-    tiles: list[TileGeom],
-    roles: dict[str, str],
-    diamond_w: float,
-    diamond_h: float,
-    *,
-    target_mean: list[float] | None = None,
-    target_std: list[float] | None = None,
-) -> tuple[dict[str, Image.Image], dict[str, Any]]:
-    """Photometric-normalize non-pit tiles in linear light.
-
-    Returns cell overrides (full cell RGBA images) and photometry meta.
-    Pit tiles are returned unchanged (copied cells) so callers can always
-    look up a cell image.
-    """
-    cells: dict[str, Image.Image] = {}
-    # First pass: collect per-tile mean/std/ramp over interior.
-    tile_stats: dict[str, dict[str, Any]] = {}
-    for geom in tiles:
-        arr = cell_to_array(img, geom)
-        h, w = arr.shape[:2]
-        # Provisional alpha from dark-bg flood (opaque_mask); dark interiors stay.
-        mask_bool = np.array(geom.mask, dtype=bool)
-        if mask_bool.shape != (h, w):
-            # Geometry mask is cell-sized; assert and fall back.
-            mask_bool = np.ones((h, w), dtype=bool)
-        interior = diamond_interior_mask(
-            h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
-        ) & mask_bool
-        # Prefer opaque-looking pixels (high max channel when still opaque RGB).
-        opaque = arr[..., 3] > 250 if arr.shape[2] == 4 else np.ones((h, w), dtype=bool)
-        # Source cells are typically fully opaque RGB on black; treat non-bg as opaque.
-        rgb_max = arr[..., :3].max(axis=2)
-        opaque = (rgb_max > BG_MAX) & mask_bool
-        interior = interior & opaque
-        if roles.get(geom.tid) == "pit" or interior.sum() < 16:
-            cells[geom.tid] = array_to_cell(arr)
-            continue
-        lin = to_linear(arr[..., :3])
-        luma = lin.mean(axis=2)
-        cy = geom.apex_y + diamond_h / 2.0
-        a, b, c = _fit_luma_ramp(
-            luma, interior, geom.cx, cy, diamond_w / 2.0, diamond_h / 2.0
-        )
-        mean = [float(lin[interior, ch].mean()) for ch in range(3)]
-        std = [
-            float(max(lin[interior, ch].std(), 1e-6)) for ch in range(3)
-        ]
-        tile_stats[geom.tid] = {
-            "arr": arr,
-            "lin": lin,
-            "interior": interior,
-            "opaque": opaque,
-            "mean": mean,
-            "std": std,
-            "ramp": (a, b, c),
-            "geom": geom,
-        }
-
-    if not tile_stats:
-        for geom in tiles:
-            if geom.tid not in cells:
-                cells[geom.tid] = array_to_cell(cell_to_array(img, geom))
-        return cells, {
-            "space": "linear_rgb",
-            "strength": NORM_STRENGTH,
-            "target_mean": [],
-            "target_std": [],
-            "gradient": {"b": 0.0, "c": 0.0},
-            "clamped": [],
-        }
-
-    bs = [tile_stats[t]["ramp"][1] for t in tile_stats]
-    cs = [tile_stats[t]["ramp"][2] for t in tile_stats]
-    b_med = float(statistics.median(bs))
-    c_med = float(statistics.median(cs))
-
-    if target_mean is None:
-        target_mean = [
-            float(statistics.median([tile_stats[t]["mean"][i] for t in tile_stats]))
-            for i in range(3)
-        ]
-    if target_std is None:
-        target_std = [
-            float(statistics.median([tile_stats[t]["std"][i] for t in tile_stats]))
-            for i in range(3)
-        ]
-
-    clamped: list[str] = []
-    for tid, st in tile_stats.items():
-        arr = st["arr"].copy()
-        lin = st["lin"].copy()
-        interior = st["interior"]
-        geom = st["geom"]
-        h, w = arr.shape[:2]
-        yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
-        cy = geom.apex_y + diamond_h / 2.0
-        u = (xx - geom.cx) / max(diamond_w / 2.0, 1e-6)
-        v = (yy - cy) / max(diamond_h / 2.0, 1e-6)
-        _, b, c = st["ramp"]
-        # Remove own ramp, restore set-median ramp — on luminance via RGB scale.
-        luma = lin.mean(axis=2)
-        correction = (b_med - b) * u + (c_med - c) * v
-        # Apply ramp correction only where we have opaque art.
-        opaque = st["opaque"]
-        lin_adj = lin.copy()
-        for ch in range(3):
-            lin_adj[..., ch] = np.where(
-                opaque, np.clip(lin[..., ch] + correction, 0.0, 1.0), lin[..., ch]
-            )
-
-        # Affine match on interior.
-        out = lin_adj.copy()
-        for ch in range(3):
-            tile_mean = float(lin_adj[interior, ch].mean()) if interior.any() else st["mean"][ch]
-            tile_std = float(max(lin_adj[interior, ch].std(), 1e-6)) if interior.any() else st["std"][ch]
-            gain = float(
-                np.clip(target_std[ch] / tile_std, NORM_GAIN_MIN, NORM_GAIN_MAX)
-            )
-            matched = (lin_adj[..., ch] - tile_mean) * gain + target_mean[ch]
-            out[..., ch] = np.where(
-                opaque,
-                lin_adj[..., ch] * (1.0 - NORM_STRENGTH) + matched * NORM_STRENGTH,
-                lin_adj[..., ch],
-            )
-        out = np.clip(out, 0.0, 1.0)
-        srgb = to_srgb(out)
-        # Guard rail: mean shift in sRGB.
-        old_mean = arr[interior, :3].mean(axis=0) if interior.any() else arr[..., :3].mean(axis=(0, 1))
-        new_mean = srgb[interior].mean(axis=0) if interior.any() else srgb.mean(axis=(0, 1))
-        if float(np.max(np.abs(new_mean - old_mean))) > NORM_OFFSET_MAX:
-            clamped.append(tid)
-            print(
-                f"  WARNING photometry clamp {tid}: "
-                f"mean shift {float(np.max(np.abs(new_mean - old_mean))):.1f}"
-            )
-        arr[..., :3] = srgb
-        cells[tid] = array_to_cell(arr)
-
-    for geom in tiles:
-        if geom.tid not in cells:
-            cells[geom.tid] = array_to_cell(cell_to_array(img, geom))
-
-    meta = {
-        "space": "linear_rgb",
-        "strength": NORM_STRENGTH,
-        "target_mean": [round(v, 5) for v in target_mean],
-        "target_std": [round(v, 5) for v in target_std],
-        "gradient": {"b": round(b_med, 5), "c": round(c_med, 5)},
-        "clamped": sorted(clamped),
-    }
-    return cells, meta
 
 
 def _laplacian_busyness(luma: np.ndarray, mask: np.ndarray) -> float:

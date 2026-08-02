@@ -44,7 +44,7 @@ struct ContinueEligibilityServiceTests {
         #expect(ContinueEligibilityService.hasCampaignProgress(starsOnly))
     }
 
-    @Test func continueDestinationPrefersResumeSaveOverLevelSelect() {
+    @Test func continueDestinationResumesMidRunSaveWhenPresent() {
         var state = PlayerGameState(health: 5, energy: 4)
         state.markLevelStarted("1-tython")
 
@@ -54,6 +54,14 @@ struct ContinueEligibilityServiceTests {
                 playerState: state
             ) == .resumeSave
         )
+    }
+
+    @Test func continueDestinationReturnsToLevelSelectWhenLastAtPlanetMap() {
+        // After beating a level the mid-run save is cleared; CONTINUE must reopen level select.
+        var state = PlayerGameState(health: 5, energy: 4)
+        state.markLevelStarted("1-tython")
+        state.markLevelCompleted("1-tython", artifact: "key.fill")
+
         #expect(
             ContinueEligibilityService.continueDestination(
                 hasCompatibleSave: false,

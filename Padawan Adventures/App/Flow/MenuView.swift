@@ -57,6 +57,8 @@ struct MenuView: View {
                     VStack(spacing: 16) {
                         if showContinue {
                             AppLargeButton(title: "CONTINUE", accessibilityID: "menu.continue") {
+                                // Mid-run save → jump back into the world; otherwise reopen
+                                // level select (where the player left after beating / quitting).
                                 switch session.continueDestination {
                                 case .resumeSave:
                                     router.navigate(to: .preparing(.continueSave))
