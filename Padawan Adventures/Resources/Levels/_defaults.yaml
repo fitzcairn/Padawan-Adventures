@@ -90,7 +90,7 @@ gate:
   minigames:
     - type: word_plug
       # Words per round: even, 2...6 (2 columns x 3 rows), clamped to the pool.
-      word_count_min: 2
+      word_count_min: 4
       word_count_max: 6
       words: [cat, dog, star, gate, open]
       music: gate

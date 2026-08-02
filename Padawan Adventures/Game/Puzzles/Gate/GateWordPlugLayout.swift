@@ -12,6 +12,10 @@ extension GateWordPlugScene {
         tokenCircles = [:]
         tokenHome = [:]
 
+        if let background = GateMinigameBackground.wordPlug(sceneSize: size) {
+            addChild(background)
+        }
+
         let slots = engine.slots
         guard !slots.isEmpty else { return }
 
@@ -29,49 +33,48 @@ extension GateWordPlugScene {
         let rowSlotHeight = gridArea.height / CGFloat(rows)
         let columnGap = size.width * columnGapRatio
         let cellWidth = (gridArea.width - columnGap) / CGFloat(columnCount)
-        let rectHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax)
-        let diameter = rectHeight
-        let rectWidth = max(1, cellWidth - diameter)
+        // Reference sizes as if filling the play grid; draw at uiScale and pack tightly.
+        let layoutHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax)
+        let layoutDiameter = layoutHeight
+        let layoutRectWidth = max(1, cellWidth - layoutDiameter)
+        let diameter = layoutDiameter * uiScale
+        let rectHeight = layoutHeight * uiScale
+        let rectWidth = layoutRectWidth * uiScale
         laidOutDiameter = diameter
         laidOutRectSize = CGSize(width: rectWidth, height: rectHeight)
+
+        let socketRectGap = diameter * 0.20
+        let pairWidth = diameter + socketRectGap + rectWidth
+        let hGap = columnGap * uiScale
+        let vGap = rectHeight * (rowGapRatio / max(1 - rowGapRatio, 0.01))
+        let gridWidth = CGFloat(columnCount) * pairWidth + CGFloat(max(columnCount - 1, 0)) * hGap
+        let gridHeight = CGFloat(rows) * rectHeight + CGFloat(max(rows - 1, 0)) * vGap
+        // Center the board group in the middle of the screen.
+        let gridMinX = size.width * 0.5 - gridWidth * 0.5
+        let gridMinY = size.height * 0.5 - gridHeight * 0.5
 
         for (index, slot) in slots.enumerated() {
             let row = index / columnCount
             let column = index % columnCount
-            let rowCenterY = gridArea.maxY - rowSlotHeight * (CGFloat(row) + 0.5)
-            let cellMinX = gridArea.minX + CGFloat(column) * (cellWidth + columnGap)
+            let cellMinX = gridMinX + CGFloat(column) * (pairWidth + hGap)
+            let rowCenterY = gridMinY + gridHeight - rectHeight * 0.5 - CGFloat(row) * (rectHeight + vGap)
 
-            let socketCenter: CGPoint
-            let rectCenter: CGPoint
-            if column == 0 {
-                socketCenter = CGPoint(x: cellMinX + diameter * 0.5, y: rowCenterY)
-                rectCenter = CGPoint(x: cellMinX + diameter + rectWidth * 0.5, y: rowCenterY)
-            } else {
-                socketCenter = CGPoint(x: cellMinX + rectWidth + diameter * 0.5, y: rowCenterY)
-                rectCenter = CGPoint(x: cellMinX + rectWidth * 0.5, y: rowCenterY)
-            }
+            let socketCenter = CGPoint(x: cellMinX + diameter * 0.5, y: rowCenterY)
+            let rectCenter = CGPoint(x: cellMinX + diameter + socketRectGap + rectWidth * 0.5, y: rowCenterY)
 
-            let plate = SKShapeNode(
-                rectOf: CGSize(width: rectWidth, height: rectHeight),
-                cornerRadius: rectHeight * 0.12
+            let plateSize = CGSize(width: rectWidth, height: rectHeight)
+            let plate = SKSpriteNode(
+                texture: StarWarsConsoleView.makeTexture(
+                    text: slot.maskedText,
+                    size: plateSize
+                ),
+                size: plateSize
             )
-            plate.fillColor = rectFill
-            plate.strokeColor = rectStroke
-            plate.lineWidth = max(2, rectHeight * 0.06)
             plate.position = rectCenter
             plate.name = "rect:\(slot.id.uuidString)"
             plate.zPosition = 10
             addChild(plate)
             plateNodes[slot.id] = plate
-
-            let wordLabel = makeFittingWordLabel(
-                text: slot.maskedText,
-                maxWidth: rectWidth * 0.86,
-                preferredFontSize: rectHeight * 0.42
-            )
-            wordLabel.zPosition = 1
-            wordLabel.isUserInteractionEnabled = false
-            plate.addChild(wordLabel)
 
             let socket = SKShapeNode(circleOfRadius: diameter * 0.5)
             socket.fillColor = socketFill
@@ -88,64 +91,17 @@ extension GateWordPlugScene {
     }
 
     func layoutTrayTokens(diameter: CGFloat) {
-        let trayBand = CGRect(
-            x: 0,
-            y: 0,
-            width: size.width,
-            height: size.height * trayHeightRatio
-        )
-        // Keep the placement band large enough that circle centers stay on-screen.
-        // Diameter is sized from the play area and can exceed half the tray height,
-        // so a fixed `diameter * 0.6` inset can invert the rect and crash `random(in:)`.
-        let marginX = min(diameter * 0.6, max(0, trayBand.width * 0.5 - 1))
-        let marginY = min(diameter * 0.6, max(0, trayBand.height * 0.5 - 1))
-        let trayArea = trayBand.insetBy(dx: marginX, dy: marginY)
-
         let tokens = engine.tray
-        let n = max(tokens.count, 1)
-        let canSample = trayArea.width > 1 && trayArea.height > 1
+        guard !tokens.isEmpty else { return }
 
-        var positions: [CGPoint] = []
-        if canSample {
-            var rng = SystemRandomNumberGenerator()
-            let minDistance = max(diameter * 1.08, 1)
-            for _ in tokens {
-                var placed: CGPoint?
-                for _ in 0..<200 {
-                    let candidate = CGPoint(
-                        x: CGFloat.random(in: trayArea.minX...trayArea.maxX, using: &rng),
-                        y: CGFloat.random(in: trayArea.minY...trayArea.maxY, using: &rng)
-                    )
-                    let overlaps = positions.contains { existing in
-                        hypot(existing.x - candidate.x, existing.y - candidate.y) < minDistance
-                    }
-                    if !overlaps {
-                        placed = candidate
-                        break
-                    }
-                }
-                if let placed {
-                    positions.append(placed)
-                } else {
-                    positions = []
-                    break
-                }
-            }
-        }
-
-        if positions.count != tokens.count {
-            positions = (0..<tokens.count).map { i in
-                CGPoint(
-                    x: trayArea.minX + trayArea.width * (CGFloat(i) + 0.5) / CGFloat(n),
-                    y: trayArea.midY
-                )
-            }
-        }
+        let spacing = diameter * 1.2
+        let span = CGFloat(tokens.count - 1) * spacing
+        let startX = size.width * 0.5 - span * 0.5
+        // Center the letter row in the bottom tray band.
+        let y = size.height * trayHeightRatio * 0.5
 
         for (index, token) in tokens.enumerated() {
-            let position = index < positions.count
-                ? positions[index]
-                : CGPoint(x: trayArea.midX, y: trayArea.midY)
+            let position = CGPoint(x: startX + CGFloat(index) * spacing, y: y)
             let node = makeTokenNode(token: token, diameter: diameter)
             node.position = position
             addChild(node)
@@ -173,16 +129,6 @@ extension GateWordPlugScene {
         root.addChild(letter)
 
         return root
-    }
-
-    func makeFittingWordLabel(text: String, maxWidth: CGFloat, preferredFontSize: CGFloat) -> SKNode {
-        var fontSize = preferredFontSize
-        var label = OutlinedLetterFactory.make(text: text, fontSize: fontSize)
-        while label.calculateAccumulatedFrame().width > maxWidth, fontSize > 8 {
-            fontSize *= 0.9
-            label = OutlinedLetterFactory.make(text: text, fontSize: fontSize)
-        }
-        return label
     }
 
     // MARK: - Hit testing

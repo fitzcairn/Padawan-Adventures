@@ -14,6 +14,7 @@ enum GateMinigameBackground {
         let specs = [
             ("letter_match-bg", "Sprites/Gate/letter_match"),
             ("spelling-bg", "Sprites/Gate/spelling"),
+            ("word_plug_bg", "Sprites/Gate/word_plug"),
         ]
         var loaded: [SKTexture] = []
         for (name, root) in specs {
@@ -36,6 +37,11 @@ enum GateMinigameBackground {
     /// Spelling art under `Sprites/Gate/spelling/spelling-bg.png`.
     static func spelling(sceneSize: CGSize) -> SKSpriteNode? {
         makeNode(named: "spelling-bg", root: "Sprites/Gate/spelling", sceneSize: sceneSize)
+    }
+
+    /// Word-plug art under `Sprites/Gate/word_plug/word_plug_bg.png`.
+    static func wordPlug(sceneSize: CGSize) -> SKSpriteNode? {
+        makeNode(named: "word_plug_bg", root: "Sprites/Gate/word_plug", sceneSize: sceneSize)
     }
 
     /// Scene-space frame of the letter-match background (width-fit, centered).

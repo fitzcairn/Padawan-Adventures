@@ -154,11 +154,13 @@ extension GateWordPlugScene {
                 period: 0.18,
                 count: 2,
                 apply: { [weak self] in
-                    self?.plateNodes[slotID]?.fillColor = self?.solvedFill ?? .green
-                    self?.socketNodes[slotID]?.fillColor = self?.solvedFill ?? .green
+                    guard let self else { return }
+                    self.plateNodes[slotID]?.color = self.solvedFill
+                    self.plateNodes[slotID]?.colorBlendFactor = 0.55
+                    self.socketNodes[slotID]?.fillColor = self.solvedFill
                 },
                 clear: { [weak self] in
-                    self?.plateNodes[slotID]?.fillColor = self?.rectFill ?? .blue
+                    self?.plateNodes[slotID]?.colorBlendFactor = 0
                     self?.socketNodes[slotID]?.fillColor = self?.socketFill ?? .gray
                 }
             )
@@ -224,7 +226,14 @@ extension GateWordPlugScene {
     }
 
     func applySolvedAppearance(slotID: UUID) {
-        plateNodes[slotID]?.fillColor = solvedFill
+        if let plate = plateNodes[slotID], let slot = engine.slot(id: slotID) {
+            plate.texture = StarWarsConsoleView.makeTexture(
+                text: slot.word,
+                size: plate.size,
+                isSolved: true
+            )
+            plate.colorBlendFactor = 0
+        }
         socketNodes[slotID]?.fillColor = solvedFill
     }
 

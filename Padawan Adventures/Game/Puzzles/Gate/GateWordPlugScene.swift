@@ -13,7 +13,7 @@ final class GateWordPlugScene: MinigameScene {
     let playerFx: SoundEffectTable
 
     var engine: GateWordPlugMinigameEngine
-    var plateNodes: [UUID: SKShapeNode] = [:]
+    var plateNodes: [UUID: SKSpriteNode] = [:]
     var socketNodes: [UUID: SKShapeNode] = [:]
     var tokenNodes: [UUID: SKNode] = [:]
     var tokenCircles: [UUID: SKShapeNode] = [:]
@@ -35,10 +35,10 @@ final class GateWordPlugScene: MinigameScene {
     let columnGapRatio: CGFloat = 0.06
     let rowGapRatio: CGFloat = 0.18
     let socketWidthShareMax: CGFloat = 0.45
+    /// Drawn size of circles, rects, and letter sprites relative to a filled-slot layout.
+    let uiScale: CGFloat = 0.50
     let tapMoveThreshold: CGFloat = 10
 
-    let rectFill = UIColor(red: 0.06, green: 0.14, blue: 0.36, alpha: 1)
-    let rectStroke = UIColor(white: 0.28, alpha: 1)
     let socketFill = UIColor(white: 0.55, alpha: 1)
     let socketStroke = UIColor.white
     let tokenFill = UIColor(white: 0.28, alpha: 1)
