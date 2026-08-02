@@ -53,6 +53,7 @@ final class PitBridgeScene: MinigameScene {
     static let promptWatchdogKey = "pitBridgePromptWatchdog"
     static let winSoundActionKey = "pitBridgeWinSound"
     static let springBackDuration: TimeInterval = 0.18
+    static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
 
     init(
         size: CGSize,

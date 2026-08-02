@@ -10,6 +10,20 @@ enum StarWarsConsolePalette {
     static let screenBackground = Color(red: 0.02, green: 0.04, blue: 0.08)
     static let solvedGreen = Color(red: 0.20, green: 0.85, blue: 0.35)
     static let solvedGlow = Color(red: 0.15, green: 0.75, blue: 0.30).opacity(0.55)
+
+    /// CRT blue → solved green as `progress` goes 0...1.
+    static func fillColor(warmingWith progress: Double) -> Color {
+        let t = min(1, max(0, progress))
+        return Color(
+            red: 0.0 + (0.20 - 0.0) * t,
+            green: 0.78 + (0.85 - 0.78) * t,
+            blue: 1.0 + (0.35 - 1.0) * t
+        )
+    }
+
+    static func glowColor(warmingWith progress: Double) -> Color {
+        fillColor(warmingWith: progress).opacity(0.55)
+    }
 }
 
 // MARK: - Chrome metrics
@@ -126,7 +140,7 @@ struct StarWarsConsoleView: View {
 /// CRT console progress fill — shared by loading, combat HUD, and in-scene HP bars.
 struct StarWarsConsoleProgressBar: View {
     var progress: Double
-    /// When nil, uses CRT blue and flips to solved green at full progress.
+    /// When nil, warms from CRT blue → solved green with progress.
     var fillColor: Color? = nil
 
     private var clamped: Double {
@@ -134,15 +148,14 @@ struct StarWarsConsoleProgressBar: View {
     }
 
     private var resolvedFill: Color {
-        if let fillColor { return fillColor }
-        return clamped >= 1 ? StarWarsConsolePalette.solvedGreen : StarWarsConsolePalette.crtBlue
+        fillColor ?? StarWarsConsolePalette.fillColor(warmingWith: clamped)
     }
 
     private var resolvedGlow: Color {
         if fillColor != nil {
             return resolvedFill.opacity(0.55)
         }
-        return clamped >= 1 ? StarWarsConsolePalette.solvedGlow : StarWarsConsolePalette.crtGlow
+        return StarWarsConsolePalette.glowColor(warmingWith: clamped)
     }
 
     var body: some View {

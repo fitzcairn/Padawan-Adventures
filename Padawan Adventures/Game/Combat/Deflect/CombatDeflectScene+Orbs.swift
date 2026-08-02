@@ -177,14 +177,14 @@ extension CombatDeflectScene {
                 library: spriteLibrary,
                 libraryID: playerCombatLibraryID
             )
-            // Only one swing clip exists, so mirror it for the left-hand ring.
+            // Only one swing clip exists, so mirror it for rings on the left side.
             // (`playOnce` resets scale from the clip; re-apply facing after.)
-            setPlayerFacingLeft(ring == .northwest)
+            setPlayerFacingLeft(cos(geometry.angle(for: ring)) < 0)
         }
         let progress = inboundProgress(of: orb)
         let letterPosition = orb.node.position
-        // Flash + deflect cue land at 75% of the swing clip.
-        let flashDelay = swingAnimationDurationSeconds() * 0.75
+        // Flash + deflect cue land at 20% of the swing clip.
+        let flashDelay = swingAnimationDurationSeconds() * 0.2
         run(
             .sequence([
                 .wait(forDuration: flashDelay),
@@ -202,7 +202,9 @@ extension CombatDeflectScene {
         let end = bodyCenter(of: enemyNode, height: enemySpriteHeight)
         let mid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
         // Bend away from the ring the player tapped so the return reads as a deflection.
-        let bend = size.width * 0.28 * (ring == .northwest ? -1 : ring == .northeast ? 1 : 0.12)
+        let lateral = cos(geometry.angle(for: ring))
+        let bendFactor: CGFloat = abs(lateral) < 0.08 ? 0.12 : (lateral < 0 ? -1 : 1)
+        let bend = size.width * 0.28 * bendFactor
         let control = CGPoint(x: mid.x + bend, y: mid.y)
         let seconds = max(
             orb.travelSeconds * progress / deflectSpeedMultiplier,

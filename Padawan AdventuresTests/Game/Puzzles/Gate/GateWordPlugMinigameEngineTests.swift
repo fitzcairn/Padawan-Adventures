@@ -46,7 +46,7 @@ struct GateWordPlugMinigameEngineTests {
         #expect(engine.tray.isEmpty)
     }
 
-    @Test func beginPicksMultipleOfThreeWithinRangeAndPool() {
+    @Test func beginSnapsToMultipleOfThreeWhenAvailableInRange() {
         for seed in UInt64(1)...40 {
             let engine = makeEngine(
                 wordCountMin: 3,
@@ -54,8 +54,20 @@ struct GateWordPlugMinigameEngineTests {
                 pool: ["cat", "dog", "star", "gate", "open"],
                 seed: seed
             )
+            // Pool has 5 unique first letters; range snaps to 3.
             #expect(engine.slots.count == 3)
-            #expect(engine.slots.count.isMultiple(of: 3))
+        }
+    }
+
+    @Test func beginKeepsCountWhenNoMultipleOfThreeInRange() {
+        for seed in UInt64(1)...20 {
+            let engine = makeEngine(
+                wordCountMin: 2,
+                wordCountMax: 2,
+                pool: ["cat", "dog", "star", "gate", "open"],
+                seed: seed
+            )
+            #expect(engine.slots.count == 2)
         }
     }
 
@@ -234,5 +246,72 @@ struct GateWordPlugMinigameEngineTests {
             #expect(count <= 9)
             #expect(count.isMultiple(of: 3))
         }
+    }
+
+    @Test func sampleWordCountKeepsPickWhenNoMultipleOfThreeInRange() {
+        var rng = SeededGenerator(seed: 1)
+        for _ in 0..<20 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 2,
+                poolSize: 10,
+                rng: &rng
+            )
+            #expect(count == 2)
+        }
+        for _ in 0..<20 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 4,
+                maximum: 5,
+                poolSize: 10,
+                rng: &rng
+            )
+            #expect((4...5).contains(count))
+        }
+    }
+
+    @Test func sampleWordCountSnapsToNearestMultipleOfThreeInRange() {
+        var rng = SeededGenerator(seed: 7)
+        // Only 3 is a multiple of 3 in [2, 5].
+        for _ in 0..<40 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 5,
+                poolSize: 10,
+                rng: &rng
+            )
+            #expect(count == 3)
+        }
+        // Only 6 is a multiple of 3 in [4, 6].
+        for _ in 0..<40 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 4,
+                maximum: 6,
+                poolSize: 10,
+                rng: &rng
+            )
+            #expect(count == 6)
+        }
+        // [2, 8] can snap to 3 or 6.
+        var seen: Set<Int> = []
+        for _ in 0..<80 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 2,
+                maximum: 8,
+                poolSize: 20,
+                rng: &rng
+            )
+            #expect([3, 6].contains(count))
+            seen.insert(count)
+        }
+        #expect(seen == [3, 6])
+    }
+
+    @Test func nearestMultipleOfThreePrefersCloserThenLower() {
+        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 2, in: 2...5) == 3)
+        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 5, in: 3...6) == 6)
+        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 4, in: 3...6) == 3)
+        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 2, in: 2...2) == nil)
+        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 4, in: 4...5) == nil)
     }
 }

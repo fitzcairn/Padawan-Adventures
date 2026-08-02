@@ -43,6 +43,10 @@ final class GateWordPlugScene: MinigameScene {
     var boardColumnCount = 2
     let preferredColumnCount = 2
     let expandedColumnCount = 3
+    /// Floor for vertical sizing so 1–2 word boards don't inflate to full play-area height.
+    let minLayoutRows = 3
+    /// Multiplier on the sparse-board size cap (1.0 = baseline from `minLayoutRows`).
+    let sizeCapScale: CGFloat = 1.2
     let gridInsetXRatio: CGFloat = 0.04
     let gridInsetYRatio: CGFloat = 0.06
     let columnGapRatio: CGFloat = 0.06

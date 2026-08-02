@@ -32,16 +32,18 @@ extension GateWordPlugScene {
         )
 
         // Prefer 2 equal columns; use 3 equal columns when 2 can't balance or the board is too wide.
-        // Word counts are multiples of 3 so a 3-column board always has equal column sizes.
+        // Sampling prefers multiples of 3 in range so a 3-column board can stay balanced.
         boardColumnCount = preferredColumnCount
         var rows = max(1, Int((Double(slots.count) / Double(boardColumnCount)).rounded(.up)))
         let columnGap = size.width * columnGapRatio
         let hGapBase = columnGap * uiScale
 
         func metrics(columns: Int, rows: Int) -> (diameter: CGFloat, rectHeight: CGFloat, rectWidth: CGFloat, pairWidth: CGFloat, hGap: CGFloat, vGap: CGFloat, gridWidth: CGFloat, gridHeight: CGFloat) {
-            let rowSlotHeight = gridArea.height / CGFloat(rows)
+            // Size against at least `minLayoutRows` so sparse boards keep a sane element size.
+            let sizingRows = max(rows, minLayoutRows)
+            let rowSlotHeight = gridArea.height / CGFloat(sizingRows)
             let cellWidth = (gridArea.width - columnGap * CGFloat(max(columns - 1, 0))) / CGFloat(columns)
-            let layoutHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax)
+            let layoutHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax) * sizeCapScale
             let diameter = layoutHeight * uiScale
             let rectHeight = layoutHeight * uiScale
             let fontSize = rectHeight * 0.42
@@ -58,6 +60,28 @@ extension GateWordPlugScene {
             return (diameter, rectHeight, rectWidth, pairWidth, hGap, vGap, gridWidth, gridHeight)
         }
 
+        func fit(
+            _ layout: (diameter: CGFloat, rectHeight: CGFloat, rectWidth: CGFloat, pairWidth: CGFloat, hGap: CGFloat, vGap: CGFloat, gridWidth: CGFloat, gridHeight: CGFloat)
+        ) -> (diameter: CGFloat, rectHeight: CGFloat, rectWidth: CGFloat, pairWidth: CGFloat, hGap: CGFloat, vGap: CGFloat, gridWidth: CGFloat, gridHeight: CGFloat) {
+            guard layout.gridWidth > 0, layout.gridHeight > 0 else { return layout }
+            let scale = min(
+                1,
+                gridArea.width / layout.gridWidth,
+                gridArea.height / layout.gridHeight
+            )
+            guard scale < 1 else { return layout }
+            return (
+                layout.diameter * scale,
+                layout.rectHeight * scale,
+                layout.rectWidth * scale,
+                layout.pairWidth * scale,
+                layout.hGap * scale,
+                layout.vGap * scale,
+                layout.gridWidth * scale,
+                layout.gridHeight * scale
+            )
+        }
+
         var layout = metrics(columns: boardColumnCount, rows: rows)
         let cannotBalanceTwoColumns = !slots.count.isMultiple(of: preferredColumnCount)
         let twoColumnBoardTooWide = layout.gridWidth > gridArea.width + 0.5
@@ -67,6 +91,7 @@ extension GateWordPlugScene {
             rows = max(1, slots.count / boardColumnCount)
             layout = metrics(columns: boardColumnCount, rows: rows)
         }
+        layout = fit(layout)
 
         let diameter = layout.diameter
         let rectHeight = layout.rectHeight

@@ -84,17 +84,19 @@ extension PitBridgeScene {
         ]
         root.zPosition = Self.trayTilesZ
 
+        // Root origin == Kam feet on land. Shift the floor tile so its visual middle
+        // sits on that point (north-tip anchor alone would land the tip under the feet).
         if let tile = makeFloorTileNode(
             library: floorTileSetLibrary,
             config: isoConfig,
             using: &placementRNG
         ) {
-            // Scale the isometric floor tile roughly to `side` wide.
             let measured = tile.calculateAccumulatedFrame()
             if measured.width > 1 {
-                let scale = side / measured.width
-                tile.setScale(scale)
+                tile.setScale(side / measured.width)
             }
+            let bounds = tile.calculateAccumulatedFrame()
+            tile.position = CGPoint(x: -bounds.midX, y: -bounds.midY)
             tile.zPosition = 0
             root.addChild(tile)
         } else {
@@ -106,16 +108,15 @@ extension PitBridgeScene {
             root.addChild(fallback)
         }
 
-        let label = SKLabelNode(text: choice.letter)
+        let label = OutlinedLetterFactory.make(
+            text: choice.letter,
+            fontSize: max(side * 0.55, 18),
+            disablesInteraction: true
+        )
         label.name = "letterLabel"
-        label.fontName = AppFont.name
-        label.fontSize = max(side * 0.55, 18)
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        label.position = CGPoint(x: 0, y: side * 0.75)
+        // On the centered tile face (root origin).
+        label.position = .zero
         label.zPosition = 1
-        label.isUserInteractionEnabled = false
         root.addChild(label)
 
         return root
@@ -139,6 +140,7 @@ extension PitBridgeScene {
         dragStartPosition = node.position
         dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
         node.zPosition = Self.draggedZ
+        startForceLiftSparkles(on: node)
         if let letter = node.userData?["letter"] as? String {
             speaker.speak([letter], completion: {})
         }
@@ -165,6 +167,7 @@ extension PitBridgeScene {
     func endDrag() {
         guard let node = draggedNode else { return }
         draggedNode = nil
+        stopForceLiftSparkles(on: node)
         guard let idString = node.userData?["id"] as? String,
               let id = UUID(uuidString: idString) else {
             node.zPosition = Self.trayTilesZ
@@ -190,6 +193,43 @@ extension PitBridgeScene {
         case .incorrect:
             handleIncorrectDrop(node: node)
         }
+    }
+
+    /// Blue + white Force sparkles while a tray tile is held.
+    func startForceLiftSparkles(on node: SKNode) {
+        node.removeAction(forKey: Self.forceLiftSparkleCleanupKey)
+        for case let emitter as SKEmitterNode in node.children
+        where emitter.name == SparkleEmitterFactory.nodeName {
+            emitter.removeFromParent()
+        }
+        let height = geometry.tileSide
+        for config in [HighlightConfig.forceLiftBlue, HighlightConfig.forceLiftWhite] {
+            let glow = SparkleEmitterFactory.makeNode(config: config, referenceHeight: height)
+            glow.zPosition = -1
+            node.insertChild(glow, at: 0)
+        }
+    }
+
+    /// Stops spawning so existing sparkles fade out after release / place.
+    func stopForceLiftSparkles(on node: SKNode) {
+        SparkleEmitterFactory.stop(in: node)
+        let linger = max(
+            HighlightConfig.forceLiftBlue.lifetime,
+            HighlightConfig.forceLiftWhite.lifetime
+        )
+        node.removeAction(forKey: Self.forceLiftSparkleCleanupKey)
+        node.run(
+            .sequence([
+                .wait(forDuration: linger),
+                .run {
+                    for case let emitter as SKEmitterNode in node.children
+                    where emitter.name == SparkleEmitterFactory.nodeName {
+                        emitter.removeFromParent()
+                    }
+                },
+            ]),
+            withKey: Self.forceLiftSparkleCleanupKey
+        )
     }
     func choiceNode(at point: CGPoint) -> SKNode? {
         let hits = nodes(at: point)

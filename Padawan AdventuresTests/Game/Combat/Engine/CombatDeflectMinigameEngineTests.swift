@@ -107,7 +107,7 @@ struct CombatDeflectMinigameEngineTests {
             Issue.record("expected a thrown orb")
             return
         }
-        guard let wrong = CombatDeflectRing.allCases.first(where: { $0 != target }) else {
+        guard let wrong = engine.rings.first(where: { $0 != target }) else {
             Issue.record("expected another ring to exist")
             return
         }
@@ -117,7 +117,7 @@ struct CombatDeflectMinigameEngineTests {
 
     @Test func tapWithNoLiveOrbIsIgnored() {
         var engine = makeEngine()
-        #expect(engine.registerTap(ring: .up) == .ignored)
+        #expect(engine.registerTap(ring: CombatDeflectRing(1)) == .ignored)
     }
 
     @Test func deflectedOrbDrainsMonsterHP() {
@@ -172,7 +172,7 @@ struct CombatDeflectMinigameEngineTests {
         // A late animation callback must not resurrect the fight.
         #expect(engine.throwNextOrb().isEmpty)
         #expect(engine.registerOrbHitPlayer().isEmpty)
-        #expect(engine.registerTap(ring: .up) == .ignored)
+        #expect(engine.registerTap(ring: CombatDeflectRing(1)) == .ignored)
         #expect(engine.monsterHP == 0)
     }
 
@@ -202,7 +202,7 @@ struct CombatDeflectMinigameEngineTests {
             seen.insert(ring)
             _ = engine.registerOrbReachedMonster()
         }
-        #expect(seen == Set(CombatDeflectRing.allCases))
+        #expect(seen == Set(engine.rings))
     }
 
     @Test func nextThrowExcludesTheLastDeflectedLetter() {
@@ -221,10 +221,24 @@ struct CombatDeflectMinigameEngineTests {
         }
     }
 
-    @Test func ringRawValuesMapLeftToRight() {
-        #expect(CombatDeflectRing.northwest.rawValue == 0)
-        #expect(CombatDeflectRing.up.rawValue == 1)
-        #expect(CombatDeflectRing.northeast.rawValue == 2)
-        #expect(CombatDeflectRing.allCases.count == CombatDeflectConfig.ringCount)
+    @Test(arguments: [2, 6])
+    func supportsConfiguredRingCounts(count: Int) {
+        let pool = Array("abcdef").prefix(count).map(String.init)
+        var engine = makeEngine(monsterHP: 500, pool: pool, seed: 5)
+        #expect(engine.config.ringCount == count)
+        #expect(engine.rings.count == count)
+        var seen = Set<CombatDeflectRing>()
+        for _ in 0..<120 {
+            guard let ring = ring(in: engine.throwNextOrb()) else { break }
+            seen.insert(ring)
+            _ = engine.registerOrbReachedMonster()
+        }
+        #expect(seen == Set(engine.rings))
+    }
+
+    @Test func ringIndicesMapLeftToRight() {
+        let rings = CombatDeflectRing.all(count: 3)
+        #expect(rings.map(\.index) == [0, 1, 2])
+        #expect(rings.count == CombatDeflectConfig.defaultRingCount)
     }
 }

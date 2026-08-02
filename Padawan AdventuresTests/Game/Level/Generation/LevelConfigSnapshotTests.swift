@@ -63,8 +63,8 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected word-plug gate entry")
             return
         }
-        #expect(wordPlug.wordCountMin == 6)
-        #expect(wordPlug.wordCountMax == 6)
+        #expect(wordPlug.wordCountMin == 2)
+        #expect(wordPlug.wordCountMax == 2)
         #expect(wordPlug.words.map(\.word) == [
             "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
         ])

@@ -777,8 +777,8 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wordPlug = wordPlugConfigs[0]
-        #expect(wordPlug.wordCountMin == 6)
-        #expect(wordPlug.wordCountMax == 6)
+        #expect(wordPlug.wordCountMin == 2)
+        #expect(wordPlug.wordCountMax == 2)
         #expect(wordPlug.words.map(\.word).contains("gate"))
         #expect(wordPlug.words.contains {
             $0.word == "cat"
@@ -1123,8 +1123,8 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wp = wordPlugConfigs[0]
-        #expect(wp.wordCountMin == 6)
-        #expect(wp.wordCountMax == 6)
+        #expect(wp.wordCountMin == 2)
+        #expect(wp.wordCountMax == 2)
         #expect(wp.words.map(\.word) == [
             "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
         ])
@@ -1163,7 +1163,7 @@ struct LevelConfigTests {
         #expect(!wp.letters.isEmpty)
     }
 
-    @Test func rejectsNonMultipleOfThreeGateWordPlugWordCount() {
+    @Test func acceptsNonMultipleOfThreeGateWordPlugWordCount() throws {
         let yaml = """
         name: Level 1
         width: 20
@@ -1180,13 +1180,17 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 4
-              word_count_max: 6
+              word_count_min: 2
+              word_count_max: 4
               words: [cat, dog]
         """
-        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 4, max: 6)) {
-            try LevelConfig.decode(from: yaml)
+        let level = try LevelConfig.decode(from: yaml)
+        guard case .wordPlug(let wp) = level.gate.minigames.first else {
+            Issue.record("expected word_plug minigame")
+            return
         }
+        #expect(wp.wordCountMin == 2)
+        #expect(wp.wordCountMax == 4)
     }
 
     @Test func rejectsTooManyGateWordPlugWords() {
@@ -1472,15 +1476,37 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func rejectsCombatDeflectLetterCountOtherThanThree() {
+    @Test func rejectsCombatDeflectLetterCountOutsideTwoToSix() {
         #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
                 - type: deflect
-                  letters: [a, b]
+                  letters: [a]
             """)
         }
+        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+            try LevelConfig.decode(from: Self.combatLevelPrefix + """
+            combat:
+              minigames:
+                - type: deflect
+                  letters: [a, b, c, d, e, f, g]
+            """)
+        }
+    }
+
+    @Test func acceptsCombatDeflectLetterCountsFromTwoToSix() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: deflect
+              letters: [a, b, c, d]
+        """)
+        guard case .deflect(let deflect) = level.combat.minigames.first else {
+            Issue.record("expected a deflect entry")
+            return
+        }
+        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
     }
 
     @Test func rejectsDuplicateCombatDeflectLetters() {

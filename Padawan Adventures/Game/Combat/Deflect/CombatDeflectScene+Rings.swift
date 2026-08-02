@@ -8,7 +8,7 @@ extension CombatDeflectScene {
         ringLayer.removeAllChildren()
         let geo = geometry
 
-        for ring in CombatDeflectRing.allCases {
+        for ring in geo.rings {
             let color = ringColor(for: ring)
             let ellipse = makeDashedEllipse(rect: geo.ringRect(ring), color: color)
             ringLayer.addChild(ellipse)
@@ -26,14 +26,20 @@ extension CombatDeflectScene {
     }
 
     func ringColor(for ring: CombatDeflectRing) -> UIColor {
-        guard ring.rawValue < ringColors.count else { return .white }
-        return ringColors[ring.rawValue]
+        let count = max(engine.config.ringCount, 1)
+        // Spread the 6-color palette across whatever ring count is configured so
+        // the default 3-letter set still lands on red / yellow / blue.
+        let paletteIndex = min(
+            ring.index * ringColors.count / count,
+            ringColors.count - 1
+        )
+        return ringColors[paletteIndex]
     }
 
     func letter(for ring: CombatDeflectRing) -> String? {
         let letters = engine.config.letters
-        guard ring.rawValue < letters.count else { return nil }
-        return letters[ring.rawValue].letter
+        guard ring.index >= 0, ring.index < letters.count else { return nil }
+        return letters[ring.index].letter
     }
 
     /// `SKShapeNode` has no dash property, so the dashes are baked into the path.

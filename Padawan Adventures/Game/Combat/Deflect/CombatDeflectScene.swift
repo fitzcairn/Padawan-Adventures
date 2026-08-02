@@ -47,8 +47,10 @@ final class CombatDeflectScene: MinigameScene {
     let orbBaseSize: CGFloat = 103.68 * 1.2
     let ringLineWidth: CGFloat = 2
     let ringDashLengths: [CGFloat] = [10, 8]
-    /// Indexed by `CombatDeflectRing.rawValue` — left to right.
-    let ringColors: [UIColor] = [.systemRed, .systemYellow, .systemBlue]
+    /// Indexed by ring index — left to right (supports up to `maxRingCount`).
+    let ringColors: [UIColor] = [
+        .systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple,
+    ]
     let interOrbDelaySeconds: TimeInterval = 0.6
     let wrongTapDashSeconds: TimeInterval = 0.25
     /// The deflected orb returns at double speed.

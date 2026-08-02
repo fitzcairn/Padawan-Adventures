@@ -318,6 +318,42 @@ struct SpriteSystemTests {
         #expect(abs(size.width - 115.2) < 0.001) // provisional square; width refined from texture aspect
     }
 
+    @Test @MainActor func animatedSpriteKeepsPixelScaleAcrossClips() {
+        // Trimmed walk sheets are often taller than idle; fitHeight must not shrink
+        // the character when swapping clips — lock pixels-to-points from the first fit.
+        let idleTex = Self.makeSolidTexture(width: 60, height: 100)
+        let walkTex = Self.makeSolidTexture(width: 60, height: 140)
+        let idle = SpriteAnimation(frames: [SpriteFrame(texture: idleTex, duration: 0.1)])
+        let walk = SpriteAnimation(frames: [SpriteFrame(texture: walkTex, duration: 0.1)])
+
+        let node = AnimatedSpriteNode(size: CGSize(width: 120, height: 120))
+        node.fitHeight(120)
+        node.play(animation: idle, name: "idle_down")
+        #expect(abs(node.size.height - 120) < 0.001)
+        #expect(abs(node.size.width - 72) < 0.001) // 60/100 * 120
+
+        node.play(animation: walk, name: "walk_down")
+        // Same pixels-to-points (1.2): walk frame is taller, not downscaled to 120.
+        #expect(abs(node.size.height - 168) < 0.001) // 140 * 1.2
+        #expect(abs(node.size.width - 72) < 0.001) // 60 * 1.2
+    }
+
+    private static func makeSolidTexture(width: Int, height: Int) -> SKTexture {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return SKTexture(cgImage: context.makeImage()!)
+    }
+
     @Test func compassDirectionMapsGridStepToScreenFacing() {
         // Iso projection: screen up = decreasing x+y, screen right = increasing x-y.
         #expect(CompassDirection(dx: -1, dy: -1) == .up)          // upper middle

@@ -195,7 +195,9 @@ nonisolated struct GateWordPlugMinigameEngine {
         return events
     }
 
-    /// Uniform over multiples of 3 in range, clamped to the pool and to `maxWordsPerRound`.
+    /// Uniform pick in `[minimum, maximum]`, clamped to the pool and `maxWordsPerRound`.
+    /// When that range contains a multiple of 3, snaps to the nearest one still in range
+    /// (ties prefer the lower value) so 3-column boards stay balanced when possible.
     static func sampleWordCount(
         minimum: Int,
         maximum: Int,
@@ -203,14 +205,32 @@ nonisolated struct GateWordPlugMinigameEngine {
         rng: inout some RandomNumberGenerator
     ) -> Int {
         let cap = min(max(poolSize, 1), GateWordPlugConfig.maxWordsPerRound)
-        var hi = min(max(minimum, maximum), cap)
-        hi -= hi % 3
-        guard hi >= 3 else { return cap }
-        var lo = max(3, min(minimum, maximum))
-        let rem = lo % 3
-        if rem != 0 { lo += 3 - rem }
-        if lo > hi { lo = hi }
-        let choices = (hi - lo) / 3 + 1
-        return lo + Int.random(in: 0..<choices, using: &rng) * 3
+        let lo = max(1, min(minimum, maximum))
+        let hi = min(max(minimum, maximum), cap)
+        guard lo <= hi else { return cap }
+
+        let chosen = Int.random(in: lo...hi, using: &rng)
+        return Self.nearestMultipleOfThree(to: chosen, in: lo...hi) ?? chosen
+    }
+
+    /// Nearest multiple of 3 in `range` to `value`, if any. Ties prefer the lower multiple.
+    static func nearestMultipleOfThree(to value: Int, in range: ClosedRange<Int>) -> Int? {
+        let lo = range.lowerBound
+        let hi = range.upperBound
+        let first = lo.isMultiple(of: 3) ? lo : lo + (3 - lo % 3)
+        guard first <= hi else { return nil }
+
+        var best = first
+        var bestDistance = abs(value - first)
+        var candidate = first + 3
+        while candidate <= hi {
+            let distance = abs(value - candidate)
+            if distance < bestDistance {
+                best = candidate
+                bestDistance = distance
+            }
+            candidate += 3
+        }
+        return best
     }
 }

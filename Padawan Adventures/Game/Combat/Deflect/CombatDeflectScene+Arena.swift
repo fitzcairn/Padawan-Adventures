@@ -80,7 +80,8 @@ extension CombatDeflectScene {
         CombatDeflectGeometry(
             sceneSize: size,
             squash: isoSquash,
-            playerSpriteWidth: measuredPlayerWidth
+            playerSpriteWidth: measuredPlayerWidth,
+            ringCount: engine.config.ringCount
         )
     }
 

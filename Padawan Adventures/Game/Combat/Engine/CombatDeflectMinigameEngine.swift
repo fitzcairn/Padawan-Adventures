@@ -1,11 +1,29 @@
 import Foundation
 
-/// The three tap targets around the player, ordered left to right on screen.
-/// Raw values index into `CombatDeflectConfig.letters`.
-nonisolated enum CombatDeflectRing: Int, CaseIterable, Equatable, Sendable {
-    case northwest = 0
-    case up = 1
-    case northeast = 2
+/// A tap target around the player. `index` is an index into `CombatDeflectConfig.letters`,
+/// ordered left to right on screen.
+nonisolated struct CombatDeflectRing: Hashable, Equatable, Comparable, Sendable {
+    let index: Int
+
+    var rawValue: Int { index }
+
+    init(_ index: Int) {
+        self.index = index
+    }
+
+    init?(rawValue: Int) {
+        guard rawValue >= 0 else { return nil }
+        self.index = rawValue
+    }
+
+    static func < (lhs: CombatDeflectRing, rhs: CombatDeflectRing) -> Bool {
+        lhs.index < rhs.index
+    }
+
+    /// Rings `0..<count`, left to right.
+    static func all(count: Int) -> [CombatDeflectRing] {
+        (0..<max(count, 0)).map(CombatDeflectRing.init)
+    }
 }
 
 nonisolated enum CombatDeflectTapResult: Equatable, Sendable {
@@ -32,10 +50,12 @@ nonisolated enum CombatDeflectEvent: Equatable, Sendable {
 /// calls, so there is no internal clock and no `tick`.
 nonisolated struct CombatDeflectMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        /// Ring letters left to right (northwest, up, northeast).
+        /// Ring letters left to right (2…6 entries).
         var letters: [GateLetter]
         var monsterHP: Int
         var orbTravelSeconds: Double
+
+        var ringCount: Int { letters.count }
 
         init(letters: [GateLetter], monsterHP: Int, orbTravelSeconds: Double) {
             self.letters = letters
@@ -87,6 +107,7 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     var hasWon: Bool { monsterHP <= 0 }
     var hasLost: Bool { healthCount <= 0 }
+    var rings: [CombatDeflectRing] { CombatDeflectRing.all(count: config.ringCount) }
 
     mutating func begin() {
         isActive = true
@@ -109,11 +130,10 @@ nonisolated struct CombatDeflectMinigameEngine {
             return []
         }
         let candidates = config.letters.indices.filter { index in
-            lastDeflectedRing.map { $0.rawValue != index } ?? true
+            lastDeflectedRing.map { $0.index != index } ?? true
         }
-        guard let index = candidates.randomElement(using: &rng),
-              let ring = CombatDeflectRing(rawValue: index)
-        else { return [] }
+        guard let index = candidates.randomElement(using: &rng) else { return [] }
+        let ring = CombatDeflectRing(index)
         let entry = config.letters[index]
         let orb = Orb(id: UUID(), letter: entry.letter, ring: ring, isResolved: false)
         activeOrb = orb

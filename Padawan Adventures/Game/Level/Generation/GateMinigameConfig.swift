@@ -157,9 +157,9 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
 /// Per-entry gate word-plug config: match each word's missing first letter.
 /// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/letters.yaml`.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
-    /// Inclusive lower bound for words per round. Must be a multiple of 3 and >= 3.
+    /// Inclusive lower bound for words per round (>= 1).
     var wordCountMin: Int
-    /// Inclusive upper bound for words per round. Must be a multiple of 3 and <= `maxWordsPerRound`.
+    /// Inclusive upper bound for words per round (<= `maxWordsPerRound`).
     var wordCountMax: Int
     var fx: SoundEffectTable
     /// Optional subset of shared word-catalog ids (`nil` = full catalog).
@@ -209,9 +209,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard wordCountMin >= 3, wordCountMin.isMultiple(of: 3),
+        guard wordCountMin >= 1,
               wordCountMax >= wordCountMin,
-              wordCountMax.isMultiple(of: 3),
               wordCountMax <= Self.maxWordsPerRound else {
             throw WorldSeedError.invalidGateWordPlugWordCountRange(
                 min: wordCountMin,

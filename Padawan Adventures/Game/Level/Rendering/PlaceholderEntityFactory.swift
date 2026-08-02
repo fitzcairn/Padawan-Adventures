@@ -88,7 +88,7 @@ extension PlaceholderFactory {
 
         let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
         let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
-        sprite.targetHeight = height
+        sprite.fitHeight(height)
         sprite.zPosition = entityBodyZ
         // Shift toward bottom of screen by anchor_correction % of scaled height.
         let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100
@@ -115,7 +115,7 @@ extension PlaceholderFactory {
 
         let height = spriteDisplayHeight(isoConfig: config, spriteConfig: spriteConfig)
         let sprite = AnimatedSpriteNode(size: CGSize(width: height, height: height))
-        sprite.targetHeight = height
+        sprite.fitHeight(height)
         sprite.zPosition = entityBodyZ
         // Shift toward bottom of screen by anchor_correction % of scaled height.
         let correction = height * CGFloat(spriteConfig.anchorCorrection) / 100

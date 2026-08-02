@@ -115,4 +115,26 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
         alpha: 0.92,
         yOffset: 0.55
     )
+
+    /// Soft blue halo while the Force lifts a pit-bridge tile.
+    static let forceLiftBlue = HighlightConfig(
+        color: "#5AC8FA",
+        birthRate: 36,
+        lifetime: 0.9,
+        radius: 0.7,
+        particleSize: 0.14,
+        alpha: 0.9,
+        yOffset: 0
+    )
+
+    /// White twin sparkles paired with `forceLiftBlue`.
+    static let forceLiftWhite = HighlightConfig(
+        color: "#FFFFFF",
+        birthRate: 28,
+        lifetime: 0.85,
+        radius: 0.65,
+        particleSize: 0.11,
+        alpha: 0.95,
+        yOffset: 0
+    )
 }

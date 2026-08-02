@@ -27,21 +27,26 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     var monsterHP: Int
     /// Seconds for an orb to fly from the monster to the player.
     var orbTravelSeconds: Double
-    /// Optional subset of shared catalog ids (`nil` = first `ringCount` catalog entries).
-    /// Order is meaningful: left to right on screen (northwest, up, northeast).
+    /// Optional subset of shared catalog ids (`nil` = first `defaultRingCount` catalog entries).
+    /// Order is meaningful: left to right on screen.
     var letterIDs: [String]?
     /// Resolved letters in `letterIDs` order. Populated via `resolveLetters(from:)`.
+    /// Count (2…6) is the number of deflection circles drawn.
     var letters: [GateLetter]
 
     static let defaultMonsterHP = 5
     static let defaultOrbTravelSeconds: Double = 3
-    /// Exactly three rings are drawn, so exactly three letters are used.
-    static let ringCount = 3
+    static let minRingCount = 2
+    static let maxRingCount = 6
+    /// Used when YAML omits `letters:` (and for the code fallback).
+    static let defaultRingCount = 3
+    /// Back-compat alias for the default letter / ring count.
+    static let ringCount = defaultRingCount
 
     nonisolated static let fallback = CombatDeflectConfig(
         weight: 1,
         letterIDs: ["a", "b", "c"],
-        letters: Array(LetterCatalog.fallback.letters.prefix(ringCount))
+        letters: Array(LetterCatalog.fallback.letters.prefix(defaultRingCount))
     )
 
     nonisolated init(
@@ -61,7 +66,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     /// Resolves `letterIDs` against the shared catalog, preserving YAML order.
     /// Gate letter-match sorts its letters; ring order here is positional, so it must not.
     mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        let ids = letterIDs ?? catalog.letters.prefix(Self.ringCount).map(\.letter)
+        let ids = letterIDs ?? catalog.letters.prefix(Self.defaultRingCount).map(\.letter)
         var resolved: [GateLetter] = []
         resolved.reserveCapacity(ids.count)
         for id in ids {
@@ -80,7 +85,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         guard orbTravelSeconds > 0 else {
             throw WorldSeedError.invalidCombatOrbTravelSeconds(orbTravelSeconds)
         }
-        guard letters.count == Self.ringCount else {
+        guard (Self.minRingCount...Self.maxRingCount).contains(letters.count) else {
             throw WorldSeedError.invalidCombatDeflectLetters
         }
         try CatalogValidators.validateLetterEntries(

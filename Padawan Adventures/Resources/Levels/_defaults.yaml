@@ -25,7 +25,7 @@ combat_letter_case: lower
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # `slash` is the swipe arena (knobs live in enemies.yaml + combat_letter_* above).
 # `deflect`: tap the ring whose letter matches the incoming orb. Letters map
-# left -> right onto the red / yellow / blue rings and must resolve in letters.yaml.
+# left -> right onto evenly spaced rings (2–6 letters) and must resolve in letters.yaml.
 combat:
   minigames:
     - type: slash
@@ -34,7 +34,7 @@ combat:
       weight: 1.0
       monster_hp: 5
       orb_travel_seconds: 3.0
-      letters: [a, b, c]
+      letters: [a, b, c, d]
 
 width: 20
 height: 20
@@ -76,8 +76,8 @@ pit:
       words: [cat, dog, star]
     - type: bridge
       weight: 1.0
-      min_words: 4
-      max_words: 6
+      min_words: 3
+      max_words: 5
       words: [open, start, dog, man, bat, kam]
 
 # Gate minigames (triggered on gate tile contact).
@@ -89,7 +89,7 @@ gate:
   minigame_chance: 1.0
   minigames:
     - type: word_plug
-      # Words per round: multiples of 3, 3...9 (2 cols, or 3 equal cols if needed).
+      # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       word_count_min: 2
       word_count_max: 2
       words: [cat, dog, star, gate, open, bat, man, mom, poo, slice, lightsaber]

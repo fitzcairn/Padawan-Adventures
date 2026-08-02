@@ -11,6 +11,9 @@ final class AnimatedSpriteNode: SKSpriteNode {
     var targetHeight: CGFloat?
     /// When set, width is locked and height follows the texture aspect ratio.
     var targetWidth: CGFloat?
+    /// Points per texture pixel, locked from the first fitted clip so idle/walk/
+    /// facing changes keep a stable character scale when trimmed sheet heights differ.
+    private var lockedPixelsToPoints: CGFloat?
     /// When true (default), applies `yScale = -1` to correct UIImage→SKTexture V-inversion.
     /// Floor tiles sit under an isometric diamond and need `false` so content stays below the origin.
     var correctsUIImageVInversion = true
@@ -24,28 +27,18 @@ final class AnimatedSpriteNode: SKSpriteNode {
         anchorPoint = CGPoint(x: 0.5, y: 1)
     }
 
-    /// Locks height and sets width from the current texture's aspect ratio.
+    /// Locks height from the current texture and freezes pixels-to-points for later clips.
     func fitHeight(_ height: CGFloat) {
         targetHeight = height
         targetWidth = nil
-        guard let texture, texture.size().height > 0 else {
-            size = CGSize(width: height, height: height)
-            return
-        }
-        let aspect = texture.size().width / texture.size().height
-        size = CGSize(width: height * aspect, height: height)
+        applyTargetSizing(resetLock: true)
     }
 
-    /// Locks width and sets height from the current texture's aspect ratio.
+    /// Locks width from the current texture and freezes pixels-to-points for later clips.
     func fitWidth(_ width: CGFloat) {
         targetWidth = width
         targetHeight = nil
-        guard let texture, texture.size().width > 0 else {
-            size = CGSize(width: width, height: width)
-            return
-        }
-        let aspect = texture.size().height / texture.size().width
-        size = CGSize(width: width, height: width * aspect)
+        applyTargetSizing(resetLock: true)
     }
 
     /// Plays `name` from `library` if present. No-ops when already playing the same clip.
@@ -193,15 +186,60 @@ final class AnimatedSpriteNode: SKSpriteNode {
 
         let textures = animation.frames.map(\.texture)
         texture = textures[0]
-        if let targetWidth {
-            fitWidth(targetWidth)
-        } else if let targetHeight {
-            fitHeight(targetHeight)
+        if targetWidth != nil || targetHeight != nil {
+            // Keep the first-fitted pixels-to-points so walk/facing sheets that
+            // trim taller/shorter than idle do not rescale the character.
+            applyTargetSizing(resetLock: false)
         } else if size == .zero {
             size = textures[0].size()
         }
 
         applyScale(flipsHorizontally: animation.flipsHorizontally)
+    }
+
+    /// Sizes the node from `targetHeight` / `targetWidth`, optionally establishing
+    /// a locked pixels-to-points scale used by later animation swaps.
+    private func applyTargetSizing(resetLock: Bool) {
+        if resetLock {
+            lockedPixelsToPoints = nil
+        }
+
+        guard let texture else {
+            if let targetHeight {
+                size = CGSize(width: targetHeight, height: targetHeight)
+            } else if let targetWidth {
+                size = CGSize(width: targetWidth, height: targetWidth)
+            }
+            return
+        }
+
+        let texSize = texture.size()
+        guard texSize.width > 0, texSize.height > 0 else {
+            if let targetHeight {
+                size = CGSize(width: targetHeight, height: targetHeight)
+            } else if let targetWidth {
+                size = CGSize(width: targetWidth, height: targetWidth)
+            }
+            return
+        }
+
+        if let locked = lockedPixelsToPoints {
+            size = CGSize(width: texSize.width * locked, height: texSize.height * locked)
+            return
+        }
+
+        if let targetHeight {
+            let pixelsToPoints = targetHeight / texSize.height
+            lockedPixelsToPoints = pixelsToPoints
+            size = CGSize(width: texSize.width * pixelsToPoints, height: targetHeight)
+            return
+        }
+
+        if let targetWidth {
+            let pixelsToPoints = targetWidth / texSize.width
+            lockedPixelsToPoints = pixelsToPoints
+            size = CGSize(width: targetWidth, height: texSize.height * pixelsToPoints)
+        }
     }
 
     private func applyScale(flipsHorizontally: Bool) {
