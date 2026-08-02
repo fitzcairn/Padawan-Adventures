@@ -19,7 +19,8 @@ Processing per sheet (mirrors SpriteSheetLoader / FloorSpriteLoader):
   4. Vertical flip (FLIP_TOP_BOTTOM) for character/item/enemy/planet sheets so
      runtime need not call flipAroundXAxis. Floors are NOT flipped (they use
      node xScale mirroring only).
-  5. Optional bake_scale (default 1.0; items default 0.5 when unset).
+  5. Optional bake_scale (default 1.0; items default 0.5 when unset). Set on the
+     sprite for the whole set, or on a single animation to override it.
   6. Tight shelf-pack into a new sheet; regenerate atlas JSON.
   7. Floors: copy current atlas rects as-is (no re-trim) so T10b `anchor`
      blocks stay valid (frame-relative).
@@ -698,6 +699,12 @@ def collect_animation_jobs(
                 continue
         if "flip_of" in source:
             continue
+        # A clip drawn on a bigger source canvas than the rest of its set needs its own
+        # scale, otherwise it bakes at a higher pixel density and the runtime — which
+        # locks one pixels-to-points ratio per sprite — renders it oversized.
+        anim_scale = scale
+        if source.get("bake_scale") is not None:
+            anim_scale = float(source["bake_scale"])
         sheet_name = source.get("sheet")
         atlas_name = source.get("atlas") or sheet_name
         if not sheet_name or not atlas_name:
@@ -725,7 +732,7 @@ def collect_animation_jobs(
                 chroma=chroma,
                 trim=trim,
                 trim_mode=trim_mode,
-                bake_scale=scale,
+                bake_scale=anim_scale,
                 flip_vertical=flip_vertical,
                 isolate_primary=isolate_primary,
                 preserve_anchors=preserve_anchors,

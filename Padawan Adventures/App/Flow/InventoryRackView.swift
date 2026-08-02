@@ -49,6 +49,9 @@ struct InventoryRackView: View {
     private func inventoryIcon(for level: LevelDescriptor) -> some View {
         let isCelebrating = celebratingInventoryResource == level.resourceName
         let opacity: Double = (isCelebrating && !celebrationRevealed) ? 0 : 1
+        let hasSprite = level.treasure.flatMap { inventoryIcons[$0] } != nil
+        // Idle gleam on visible treasure art only; pause during the unlock burst.
+        let gleamEnabled = hasSprite && opacity > 0 && !(isCelebrating && inventorySparklesActive)
 
         ZStack {
             if let id = level.treasure, let image = inventoryIcons[id] {
@@ -67,6 +70,10 @@ struct InventoryRackView: View {
                     .frame(width: inventoryIconSide, height: inventoryIconSide)
                     .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
             }
+
+            SpiralGleamView(isEnabled: gleamEnabled, diameter: inventoryIconSide)
+                .frame(width: inventoryIconSide, height: inventoryIconSide)
+                .allowsHitTesting(false)
 
             if isCelebrating {
                 SparkleBurstView(isActive: inventorySparklesActive, diameter: inventoryIconSide)

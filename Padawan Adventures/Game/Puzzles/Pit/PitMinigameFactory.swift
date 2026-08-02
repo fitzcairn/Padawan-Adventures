@@ -30,7 +30,6 @@ enum PitMinigameFactory {
                 bridgeConfig: bridge,
                 pitFx: pitFx,
                 playerFx: playerFx,
-                hudConfig: hudConfig,
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,

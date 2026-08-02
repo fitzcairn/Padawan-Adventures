@@ -11,7 +11,7 @@ nonisolated struct PitBridgeMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var minWords: Int
         var maxWords: Int
-        var words: [String]
+        var words: [GateWord]
 
         init(from bridge: PitBridgeConfig) {
             self.init(
@@ -21,14 +21,12 @@ nonisolated struct PitBridgeMinigameEngine {
             )
         }
 
-        init(minWords: Int = 2, maxWords: Int = 4, words: [String]) {
+        init(minWords: Int = 2, maxWords: Int = 4, words: [GateWord]) {
             let upper = max(1, maxWords)
             let lower = min(max(1, minWords), upper)
             self.minWords = lower
             self.maxWords = upper
-            self.words = words.map {
-                $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            }
+            self.words = GateSpellingConfig.normalizedWords(words)
         }
     }
 
@@ -46,7 +44,7 @@ nonisolated struct PitBridgeMinigameEngine {
     private(set) var isActive = false
     private(set) var isFrozen = false
     /// Words for this session, in play order.
-    private(set) var words: [String] = []
+    private(set) var words: [GateWord] = []
     /// Word being answered; also the count of tiles already placed.
     private(set) var roundIndex = 0
     private(set) var choices: [Choice] = []
@@ -58,26 +56,29 @@ nonisolated struct PitBridgeMinigameEngine {
 
     var wordCount: Int { words.count }
 
-    var currentWord: String {
-        guard roundIndex >= 0, roundIndex < words.count else { return "" }
+    var currentEntry: GateWord? {
+        guard roundIndex >= 0, roundIndex < words.count else { return nil }
         return words[roundIndex]
+    }
+
+    var currentWord: String {
+        currentEntry?.word ?? ""
+    }
+
+    /// Illustration basename under `Sprites/Words/`.
+    var currentImageName: String? {
+        currentEntry?.image
+    }
+
+    /// Full-word pronunciation track from `words.yaml`.
+    var currentSfx: String {
+        currentEntry?.sfx ?? ""
     }
 
     /// Last letter of the current word — the answer.
     var currentAnswer: String {
         guard let last = currentWord.last else { return "" }
         return String(last)
-    }
-
-    /// TTS phrases: the question, then the end sound three times.
-    var promptPhrases: [String] {
-        guard !currentWord.isEmpty, !currentAnswer.isEmpty else { return [] }
-        return [
-            "What sound is at the end of \(currentWord)?",
-            currentAnswer,
-            currentAnswer,
-            currentAnswer,
-        ]
     }
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {

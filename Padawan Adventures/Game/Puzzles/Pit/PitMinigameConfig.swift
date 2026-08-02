@@ -9,33 +9,50 @@ nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIter
 }
 
 /// Per-entry config for the bridge-building pit game.
-/// `words` are plain words, not `words.yaml` ids: every prompt is synthesized, so no
-/// `sfx_word_*` assets are required.
+/// `words:` are shared catalog ids from `words.yaml` (must resolve to imaged entries).
 nonisolated struct PitBridgeConfig: Equatable, Sendable {
     var weight: Double
     /// Inclusive lower bound on words (and therefore bridge tiles) per session.
     var minWords: Int
     /// Inclusive upper bound on words per session; the pool must be at least this large.
     var maxWords: Int
-    var words: [String]
+    /// Optional subset of shared catalog ids (`nil` / omitted YAML → `defaultWordIDs`).
+    var wordIDs: [String]?
+    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    var words: [GateWord]
 
     static let defaultMinWords = 2
     static let defaultMaxWords = 4
-    static let defaultWords = ["car", "start", "dog", "trash", "sun", "kam"]
+    /// Catalog ids with illustrations — used when YAML omits `words:`.
+    static let defaultWordIDs = ["car", "dog", "trash", "sun", "star", "book"]
 
-    nonisolated static let fallback = PitBridgeConfig(weight: 1)
+    nonisolated static let fallback = PitBridgeConfig(
+        weight: 1,
+        wordIDs: defaultWordIDs,
+        words: WordCatalog.fallback.words.filter { defaultWordIDs.contains($0.word) }
+    )
 
     nonisolated init(
         weight: Double = 1,
         minWords: Int = defaultMinWords,
         maxWords: Int = defaultMaxWords,
-        words: [String] = defaultWords
+        wordIDs: [String]? = defaultWordIDs,
+        words: [GateWord] = []
     ) {
         self.weight = weight
         self.minWords = minWords
         self.maxWords = maxWords
-        self.words = words.map {
+        self.wordIDs = wordIDs?.map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        self.words = GateSpellingConfig.normalizedWords(words)
+    }
+
+    mutating func resolveWords(from catalog: WordCatalog) throws {
+        do {
+            words = try catalog.resolve(ids: wordIDs)
+        } catch WorldSeedError.invalidGateWords {
+            throw WorldSeedError.invalidPitBridgeWords
         }
     }
 
@@ -47,12 +64,17 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         guard words.count >= maxWords else {
             throw WorldSeedError.invalidPitBridgeWords
         }
-        let letterSet = CharacterSet.letters
+        try CatalogValidators.validateWordEntries(
+            words,
+            emptyError: .invalidPitBridgeWords,
+            invalidEntryError: .invalidPitBridgeWords
+        )
         var seen = Set<String>()
-        for word in words {
-            guard word.count >= 2,
-                  word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  seen.insert(word).inserted else {
+        for entry in words {
+            guard entry.word.count >= 2,
+                  let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !image.isEmpty,
+                  seen.insert(entry.word).inserted else {
                 throw WorldSeedError.invalidPitBridgeWords
             }
         }
@@ -118,9 +140,13 @@ nonisolated struct PitConfig: Equatable, Sendable {
 
     mutating func resolveWords(from catalog: WordCatalog) throws {
         for index in minigames.indices {
-            if case .spelling(var config) = minigames[index] {
+            switch minigames[index] {
+            case .spelling(var config):
                 try config.resolveWords(from: catalog)
                 minigames[index] = .spelling(config)
+            case .bridge(var config):
+                try config.resolveWords(from: catalog)
+                minigames[index] = .bridge(config)
             }
         }
     }

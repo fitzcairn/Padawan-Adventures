@@ -6,7 +6,6 @@ nonisolated enum GateWordPlugEngineEvent: Equatable, Sendable {
     case playLetterSound(trackID: String)
     case correctPlug(slotID: UUID, letterID: UUID)
     case playCorrect
-    case speakPhrase(String)
     case incorrectPlug(letterID: UUID)
     case won
 }
@@ -180,8 +179,8 @@ nonisolated struct GateWordPlugMinigameEngine {
         plugged[slot.id] = token.id
         var events: [GateWordPlugEngineEvent] = [
             .correctPlug(slotID: slot.id, letterID: token.id),
+            .playWordSound(trackID: slot.wordTrackID),
             .playCorrect,
-            .speakPhrase("\(slot.word.capitalized) starts with \(slot.letter.uppercased())"),
         ]
         if plugged.count >= slots.count {
             isFrozen = true

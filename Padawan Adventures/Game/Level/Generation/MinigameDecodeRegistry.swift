@@ -134,8 +134,10 @@ nonisolated enum MinigameDecodeRegistry {
                 weight: entry.weight ?? 1,
                 minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
                 maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
-                words: entry.words ?? PitBridgeConfig.defaultWords
+                wordIDs: entry.words?.map { $0.lowercased() } ?? PitBridgeConfig.defaultWordIDs,
+                words: []
             ))
+
         default:
             throw WorldSeedError.decodeFailed("Unknown pit minigame type: '\(entry.type)'")
         }

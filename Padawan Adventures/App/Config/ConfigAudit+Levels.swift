@@ -136,10 +136,13 @@ extension ConfigAudit {
     ) -> [String] {
         var problems: [String] = []
         for (idx, minigame) in level.pit.minigames.enumerated() {
-            if case .spelling(let c) = minigame, let ids = c.wordIDs {
-                for id in ids where words.word(named: id) == nil {
-                    problems.append("\(label).pit.minigames[\(idx)].words: unknown word id '\(id)'")
-                }
+            let ids: [String]?
+            switch minigame {
+            case .spelling(let c): ids = c.wordIDs
+            case .bridge(let c): ids = c.wordIDs
+            }
+            for id in ids ?? [] where words.word(named: id) == nil {
+                problems.append("\(label).pit.minigames[\(idx)].words: unknown word id '\(id)'")
             }
         }
         for (idx, minigame) in level.gate.minigames.enumerated() {

@@ -49,8 +49,11 @@ extension GateWordPlugScene {
             let fontSize = rectHeight * 0.42
             let longest = slots.map(\.word).max(by: { $0.count < $1.count }) ?? ""
             let textWidth = plateTextWidth(longest, fontSize: fontSize)
-            // All plates share the longest word's width (+ console chrome).
-            let rectWidth = max(diameter * 1.15, textWidth + fontSize * 1.35 + rectHeight * 0.45)
+            // Square image (side = plate height) + masked text + chrome/gap.
+            let rectWidth = max(
+                diameter * 1.15,
+                rectHeight + textWidth + fontSize * 1.35 + rectHeight * 0.35
+            )
             let socketRectGap = diameter * 0.20
             let pairWidth = diameter + socketRectGap + rectWidth
             let hGap = hGapBase
@@ -120,7 +123,11 @@ extension GateWordPlugScene {
 
             let plateSize = CGSize(width: rectWidth, height: rectHeight)
             let plateTexture = GateWordPlugImageSprites.image(named: slot.imageName).map {
-                StarWarsConsoleImageView.makeTexture(image: $0, size: plateSize)
+                StarWarsConsoleImageView.makeTexture(
+                    image: $0,
+                    maskedText: slot.maskedText,
+                    size: plateSize
+                )
             } ?? StarWarsConsoleView.makeTexture(text: slot.maskedText, size: plateSize)
             let plate = SKSpriteNode(texture: plateTexture, size: plateSize)
             plate.position = rectCenter

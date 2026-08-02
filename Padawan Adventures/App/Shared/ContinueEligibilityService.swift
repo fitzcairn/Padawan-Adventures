@@ -1,5 +1,12 @@
 import Foundation
 
+enum ContinueDestination: Equatable, Sendable {
+    /// Resume an in-progress mid-run world save.
+    case resumeSave
+    /// Return to the planet map with existing campaign progress.
+    case levelSelect
+}
+
 enum ContinueEligibilityService {
     nonisolated static func isContinueEligible(
         savedWorld: GameWorld?,
@@ -7,6 +14,37 @@ enum ContinueEligibilityService {
     ) -> Bool {
         guard let savedWorld else { return false }
         return WorldLoader.isCompatibleSave(savedWorld, with: config)
+    }
+
+    /// Campaign progress that should keep CONTINUE available after a mid-run save is cleared
+    /// (e.g. after beating a level).
+    nonisolated static func hasCampaignProgress(_ state: PlayerGameState?) -> Bool {
+        guard let state else { return false }
+        if state.lastLevelStarted != nil { return true }
+        if state.totalStars > 0 { return true }
+        if !state.inventory.artifacts.isEmpty { return true }
+        return state.levels.contains { _, progress in
+            progress.started
+                || progress.completed
+                || progress.starsEarned > 0
+                || progress.starsCurrent > 0
+        }
+    }
+
+    nonisolated static func shouldShowContinue(
+        hasCompatibleSave: Bool,
+        playerState: PlayerGameState?
+    ) -> Bool {
+        hasCompatibleSave || hasCampaignProgress(playerState)
+    }
+
+    nonisolated static func continueDestination(
+        hasCompatibleSave: Bool,
+        playerState: PlayerGameState?
+    ) -> ContinueDestination? {
+        guard shouldShowContinue(hasCompatibleSave: hasCompatibleSave, playerState: playerState)
+        else { return nil }
+        return hasCompatibleSave ? .resumeSave : .levelSelect
     }
 
     static func probeCompatibleSave(
@@ -28,6 +66,20 @@ extension AppSession {
         config: WorldGenerationConfig
     ) -> Bool {
         ContinueEligibilityService.isContinueEligible(savedWorld: savedWorld, config: config)
+    }
+
+    var shouldShowContinue: Bool {
+        ContinueEligibilityService.shouldShowContinue(
+            hasCompatibleSave: hasCompatibleSave,
+            playerState: playerState
+        )
+    }
+
+    var continueDestination: ContinueDestination? {
+        ContinueEligibilityService.continueDestination(
+            hasCompatibleSave: hasCompatibleSave,
+            playerState: playerState
+        )
     }
 
     func refreshContinueEligibility() async {

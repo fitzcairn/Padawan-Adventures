@@ -55,8 +55,8 @@ extension GameScene {
                 guard let self else { return }
                 self.renderer.fadeWorld { [weak self] in
                     guard let self else { return }
+                    // Win path deletes the mid-run save; do not schedule a racing rewrite.
                     self.onTreasureCollected?()
-                    self.scheduleSave()
                 }
             }
         }

@@ -16,6 +16,7 @@ extension PitBridgeScene {
         trayNodes = [:]
         placedTileNodes = []
         slotBoxNode = nil
+        wordPromptNode = nil
 
         let geo = geometry
         addPad(rect: geo.leftPadRect, name: "leftPad")
@@ -149,6 +150,7 @@ extension PitBridgeScene {
         if let slotBoxNode {
             slotBoxNode.position = geo.slotCenter(engine.roundIndex)
         }
+        wordPromptNode?.position = geo.wordPromptCenter
         let trayChoices = engine.choices
         for (index, choice) in trayChoices.enumerated() {
             trayNodes[choice.id]?.position = geo.trayCenter(index)

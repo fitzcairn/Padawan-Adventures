@@ -1774,7 +1774,7 @@ struct LevelConfigTests {
               weight: 1.0
               min_words: 2
               max_words: 4
-              words: [car, start, dog, trash, sun, kam]
+              words: [car, dog, trash, sun, star, book]
         """)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
@@ -1789,7 +1789,9 @@ struct LevelConfigTests {
             #expect(bridge.weight == 1)
             #expect(bridge.minWords == 2)
             #expect(bridge.maxWords == 4)
-            #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
+            #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+            #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+            #expect(bridge.words.allSatisfy { ($0.image?.isEmpty == false) })
         } else {
             Issue.record("expected bridge entry")
         }
@@ -1808,7 +1810,8 @@ struct LevelConfigTests {
         }
         #expect(bridge.minWords == PitBridgeConfig.defaultMinWords)
         #expect(bridge.maxWords == PitBridgeConfig.defaultMaxWords)
-        #expect(bridge.words == PitBridgeConfig.defaultWords)
+        #expect(bridge.wordIDs == PitBridgeConfig.defaultWordIDs)
+        #expect(Set(bridge.words.map(\.word)) == Set(PitBridgeConfig.defaultWordIDs))
     }
 
     @Test func inheritsPitBlockFromBase() throws {
@@ -1821,7 +1824,7 @@ struct LevelConfigTests {
               weight: 1
               min_words: 2
               max_words: 3
-              words: [car, start, dog, trash]
+              words: [car, dog, trash, sun]
         """
         let child = """
         inherits: base_level
@@ -1836,7 +1839,8 @@ struct LevelConfigTests {
             return
         }
         #expect(bridge.maxWords == 3)
-        #expect(bridge.words == ["car", "start", "dog", "trash"])
+        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["car", "dog", "sun", "trash"]))
     }
 
     @Test func childCanOverrideInheritedPitMinigames() throws {
@@ -1853,7 +1857,7 @@ struct LevelConfigTests {
         pit:
           minigames:
             - type: bridge
-              words: [car, start, dog, trash, sun, kam]
+              words: [car, dog, trash, sun, star, book]
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -1974,7 +1978,7 @@ struct LevelConfigTests {
                 - type: bridge
                   min_words: 5
                   max_words: 2
-                  words: [car, start, dog, trash, sun, kam]
+                  words: [car, dog, trash, sun, star, book]
             """)
         }
     }
@@ -1987,12 +1991,12 @@ struct LevelConfigTests {
                 - type: bridge
                   min_words: 2
                   max_words: 4
-                  words: [car, start]
+                  words: [car, dog]
             """)
         }
     }
 
-    @Test func rejectsPitBridgeDuplicateOrShortWords() {
+    @Test func rejectsPitBridgeDuplicateOrUnknownWords() {
         #expect(throws: WorldSeedError.invalidPitBridgeWords) {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
@@ -2015,6 +2019,19 @@ struct LevelConfigTests {
         }
     }
 
+    @Test func rejectsPitBridgeWordsWithoutImages() {
+        #expect(throws: WorldSeedError.invalidPitBridgeWords) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: bridge
+                  min_words: 1
+                  max_words: 1
+                  words: [gate]
+            """)
+        }
+    }
+
     @Test func bundleDefaultsProvideBridgePitConfig() throws {
         let tython = try LevelConfig.loadFromBundle(
             named: "1-tython",
@@ -2028,7 +2045,8 @@ struct LevelConfigTests {
         }
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.weight == 1)
-            #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
+            #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+            #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
         } else {
             Issue.record("expected bridge entry")
         }

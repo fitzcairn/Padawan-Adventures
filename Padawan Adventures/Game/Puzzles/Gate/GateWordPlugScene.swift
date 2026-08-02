@@ -83,9 +83,6 @@ final class GateWordPlugScene: MinigameScene {
     override func willMove(from view: SKView) {
         GameLogger.mark(.world, "gateWordPlug.willMove teardown")
         stopArcLoop()
-        // The speaker is a shared singleton; without this a phrase (and its music
-        // duck) keeps running after the gate overlay is dismissed.
-        SpokenPhrasePlayer.shared.cancel()
     }
     override func rebuildLayout() {
         tearDownAllCables()

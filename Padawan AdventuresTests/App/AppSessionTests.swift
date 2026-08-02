@@ -158,6 +158,7 @@ struct AppSessionTests {
         try await session.createAndBindPlayer(name: "Echo")
         await session.refreshContinueEligibility()
         #expect(session.hasCompatibleSave == false)
+        #expect(session.shouldShowContinue == false)
 
         let world = TestWorldFactory.emptyFloor(
             width: session.generationConfig.world.width,
@@ -167,6 +168,28 @@ struct AppSessionTests {
         try await session.saveService.save(world)
         await session.refreshContinueEligibility()
         #expect(session.hasCompatibleSave)
+        #expect(session.shouldShowContinue)
+        #expect(session.continueDestination == .resumeSave)
+    }
+
+    @Test func shouldShowContinueAfterBeatingLevelWithNoMidRunSave() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Aayla")
+        await session.markLevelStarted(resourceName: "1-tython")
+
+        let world = TestWorldFactory.emptyFloor(
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
+        )
+        try await session.saveService.save(world)
+        await session.markLevelCompleted(resourceName: "1-tython")
+        try await session.saveService.delete()
+        await session.refreshContinueEligibility()
+
+        #expect(session.hasCompatibleSave == false)
+        #expect(session.shouldShowContinue)
+        #expect(session.continueDestination == .levelSelect)
     }
 
     @Test func unlockDadModeRequiresBoundPlayer() async throws {

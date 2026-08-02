@@ -68,8 +68,9 @@ room:
 # `spelling`: hop the letter platforms to spell the word. Stars = letters in the word.
 #   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
 # `bridge`: drag the tile whose letter is the word's end sound into the dashed slot.
-#   Its `words:` are plain words (prompts are synthesized, no catalog sfx needed) and the
-#   pool must hold at least `max_words` entries. Stars = words placed.
+#   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
+#   shows that image and plays the word's sfx. Pool must hold at least `max_words`
+#   entries. Stars = words placed.
 pit:
   fx: { lose: pit-falling, jump: pit-jump }
   minigames:
@@ -81,7 +82,7 @@ pit:
       weight: 1.0
       min_words: 3
       max_words: 5
-      words: [car, start, dog, trash, sun, kam]
+      words: [car, dog, trash, sun, star, book]
 
 # Gate minigames (triggered on gate tile contact).
 # Host `fx.opened` plays in the world when the gate strip opens.

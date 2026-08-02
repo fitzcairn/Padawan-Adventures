@@ -2,7 +2,6 @@ import SpriteKit
 import UIKit
 
 protocol PitBridgeSceneDelegate: AnyObject {
-    func pitBridgeSceneDidUpdateWord(_ word: String)
     func pitBridgeSceneDidWin(starsAwarded: Int)
 }
 
@@ -28,6 +27,7 @@ final class PitBridgeScene: MinigameScene {
     var trayNodes: [UUID: SKNode] = [:]
     var placedTileNodes: [SKNode] = []
     var slotBoxNode: SKShapeNode?
+    var wordPromptNode: SKNode?
     var draggedNode: SKNode?
     var dragOffset: CGPoint = .zero
     var dragStartPosition: CGPoint = .zero
@@ -49,11 +49,14 @@ final class PitBridgeScene: MinigameScene {
     static let slotBoxZ: CGFloat = SceneLayer.slotBox
     static let trayTilesZ: CGFloat = SceneLayer.trayTiles
     static let draggedZ: CGFloat = SceneLayer.dragged
+    static let wordPromptZ: CGFloat = SceneLayer.overlay
     static let promptWatchdogSeconds: TimeInterval = 10
     static let promptWatchdogKey = "pitBridgePromptWatchdog"
+    static let promptSoundKey = "pitBridgePromptSound"
     static let winSoundActionKey = "pitBridgeWinSound"
     static let springBackDuration: TimeInterval = 0.18
     static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
+    static let wordPromptNodeName = "wordPrompt"
 
     init(
         size: CGSize,
@@ -91,6 +94,7 @@ final class PitBridgeScene: MinigameScene {
         GameLogger.mark(.world, "pitBridge.willMove teardown")
         speaker.cancel()
         removeAction(forKey: Self.promptWatchdogKey)
+        removeAction(forKey: Self.promptSoundKey)
     }
 
     override func rebuildLayout() {

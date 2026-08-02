@@ -7,7 +7,6 @@ struct PitBridgeMinigameView: View {
     let bridgeConfig: PitBridgeConfig
     let pitFx: SoundEffectTable
     let playerFx: SoundEffectTable
-    let hudConfig: HudConfig
     let floorTileSetLibrary: FloorTileSetLibrary
     let isoConfig: IsometricConfig
     let spriteLibrary: SpriteLibrary
@@ -20,7 +19,6 @@ struct PitBridgeMinigameView: View {
         bridgeConfig: PitBridgeConfig,
         pitFx: SoundEffectTable,
         playerFx: SoundEffectTable,
-        hudConfig: HudConfig,
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
@@ -30,7 +28,6 @@ struct PitBridgeMinigameView: View {
         self.bridgeConfig = bridgeConfig
         self.pitFx = pitFx
         self.playerFx = playerFx
-        self.hudConfig = hudConfig
         self.floorTileSetLibrary = floorTileSetLibrary
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
@@ -55,21 +52,8 @@ struct PitBridgeMinigameView: View {
             accessibilityRootID: "minigame.pit_bridge",
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
-            hud: {
-                HUDHostRepresentable(
-                    makeHUD: {
-                        SpellingProgressHUDView(
-                            config: hudConfig,
-                            word: session.word,
-                            progressCount: 0,
-                            accessibilityID: "pit.word"
-                        )
-                    },
-                    update: { hud in
-                        hud.setWord(session.word, progressCount: 0)
-                    }
-                )
-            },
+            includesHUDLayer: false,
+            hud: { EmptyView() },
             overlay: {
                 if session.showWon {
                     MinigameResultOverlay(
@@ -87,7 +71,6 @@ struct PitBridgeMinigameView: View {
 final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate {
     @Published var showWon = false
     @Published private(set) var starsAwarded = 0
-    @Published private(set) var word = ""
     @Published private(set) var scene: PitBridgeScene?
 
     private let bridgeConfig: PitBridgeConfig
@@ -154,14 +137,6 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))
-    }
-
-    func pitBridgeSceneDidUpdateWord(_ word: String) {
-        guard word != self.word else { return }
-        // SpriteKit callbacks can land during a SwiftUI view update; defer publishes.
-        Task { @MainActor in
-            self.word = word
-        }
     }
 
     func pitBridgeSceneDidWin(starsAwarded: Int) {

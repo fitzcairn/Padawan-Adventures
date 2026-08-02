@@ -50,7 +50,7 @@ extension PitBridgeScene {
                 from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
             )
             self.springBack(node, to: self.dragStartPosition) {
-                self.speakPrompt {
+                self.playWordSound {
                     self.isUserInteractionEnabled = true
                 }
             }

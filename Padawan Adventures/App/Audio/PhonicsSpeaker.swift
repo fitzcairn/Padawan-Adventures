@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 
 /// Speaks a queue of phrases via system TTS (placeholder until recorded VO).
-/// Used by the pit bridge minigame for "What sound is at the end of …?" prompts.
+/// Used by the pit bridge minigame for letter-tile name cues while dragging.
 @MainActor
 final class PhonicsSpeaker: NSObject {
     /// Gap after each phrase so a repeated letter reads as separate sounds.

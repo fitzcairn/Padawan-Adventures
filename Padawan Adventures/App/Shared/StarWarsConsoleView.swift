@@ -198,24 +198,42 @@ extension StarWarsConsoleView {
     }
 }
 
-// MARK: - Console plate (image)
+// MARK: - Console plate (image + masked word)
 
-/// CRT console plate showing a word illustration instead of text.
+/// CRT console plate: word illustration left, masked spelling right (e.g. `_og`).
+/// Image is square, sized to the plate's content height.
 struct StarWarsConsoleImageView: View {
     let image: UIImage
+    /// Lowercase masked spelling shown beside the image (`_og` for dog).
+    var maskedText: String = ""
 
     var body: some View {
         GeometryReader { geo in
-            let m = min(geo.size.width, geo.size.height)
+            let chrome = StarWarsConsoleChrome.metrics(for: geo.size)
+            let contentH = max(1, geo.size.height - chrome.contentInset * 2)
+            let imageSide = contentH
+            let fontSize = max(10, contentH * 0.42)
             StarWarsConsoleFrame {
-                Image(uiImage: image)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(StarWarsConsolePalette.crtBlue)
-                    .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, m * 0.08))
-                    .padding(m * 0.12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                HStack(spacing: contentH * 0.12) {
+                    Image(uiImage: image)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                        .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, contentH * 0.08))
+                        .frame(width: imageSide, height: imageSide)
+
+                    if !maskedText.isEmpty {
+                        Text(maskedText)
+                            .font(AppFont.swiftUI(size: fontSize, weight: .heavy))
+                            .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                            .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, fontSize * 0.12))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.35)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
         }
     }
@@ -224,9 +242,14 @@ struct StarWarsConsoleImageView: View {
 extension StarWarsConsoleImageView {
     /// Renders the illustrated plate into an `SKTexture` sized for SpriteKit scene points.
     @MainActor
-    static func makeTexture(image: UIImage, size: CGSize, scale: CGFloat = 2) -> SKTexture {
+    static func makeTexture(
+        image: UIImage,
+        maskedText: String = "",
+        size: CGSize,
+        scale: CGFloat = 2
+    ) -> SKTexture {
         renderTexture(
-            StarWarsConsoleImageView(image: image),
+            StarWarsConsoleImageView(image: image, maskedText: maskedText),
             size: size,
             scale: scale,
             placeholderSolved: false

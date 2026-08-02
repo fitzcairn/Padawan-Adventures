@@ -63,6 +63,12 @@ struct FlowRouterTests {
         #expect(router.path == [.preparing(.continueSave)])
     }
 
+    @Test func continueWithoutMidRunSaveNavigatesToLevelSelect() {
+        let router = FlowRouter(root: .menu)
+        router.navigate(to: .levelSelect)
+        #expect(router.path == [.levelSelect])
+    }
+
     @Test func popRemovesLastRoute() {
         let router = FlowRouter(root: .menu, path: [.levelSelect, .preparing(.newGame)])
         router.pop()

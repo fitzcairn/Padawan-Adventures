@@ -6,19 +6,21 @@ extension PitBridgeScene {
 
     func beginRound() {
         guard !didEnd else { return }
-        bridgeDelegate?.pitBridgeSceneDidUpdateWord(engine.currentWord)
         clearTray()
+        showWordPrompt()
         drawSlotBox(at: geometry.slotCenter(engine.roundIndex))
         isUserInteractionEnabled = false
         didRevealTrayForRound = false
-        speakPrompt { [weak self] in
+        playWordSound { [weak self] in
             self?.revealTray()
         }
     }
 
-    func speakPrompt(then continuation: @escaping () -> Void) {
+    /// Plays the current catalog word track, then continues (with a watchdog).
+    func playWordSound(then continuation: @escaping () -> Void) {
         promptContinuationArmed = true
         removeAction(forKey: Self.promptWatchdogKey)
+        removeAction(forKey: Self.promptSoundKey)
         run(
             SKAction.sequence([
                 SKAction.wait(forDuration: Self.promptWatchdogSeconds),
@@ -28,16 +30,77 @@ extension PitBridgeScene {
             ]),
             withKey: Self.promptWatchdogKey
         )
-        speaker.speak(engine.promptPhrases) { [weak self] in
-            self?.completePromptContinuation(continuation)
+
+        let trackID = engine.currentSfx
+        if !trackID.isEmpty {
+            SoundEffectsController.shared.play(trackID: trackID)
         }
+        let duration = SoundEffectsController.shared.cueDuration(of: trackID)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: duration),
+                SKAction.run { [weak self] in
+                    self?.completePromptContinuation(continuation)
+                },
+            ]),
+            withKey: Self.promptSoundKey
+        )
+    }
+
+    /// Replays the current word sound without gating the tray.
+    func replayWordSound() {
+        let trackID = engine.currentSfx
+        guard !trackID.isEmpty else { return }
+        SoundEffectsController.shared.play(trackID: trackID)
     }
 
     func completePromptContinuation(_ continuation: @escaping () -> Void) {
         guard promptContinuationArmed else { return }
         promptContinuationArmed = false
         removeAction(forKey: Self.promptWatchdogKey)
+        removeAction(forKey: Self.promptSoundKey)
         continuation()
+    }
+
+    func showWordPrompt() {
+        wordPromptNode?.removeFromParent()
+        let geo = geometry
+        let root = SKNode()
+        root.name = Self.wordPromptNodeName
+        root.position = geo.wordPromptCenter
+        root.zPosition = Self.wordPromptZ
+
+        let maxSide = max(geo.wordPromptMaxSide, 48)
+        if let image = GateWordPlugImageSprites.image(named: engine.currentImageName) {
+            let texture = SKTexture(image: image)
+            SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+            let sprite = SKSpriteNode(texture: texture)
+            let texSize = texture.size()
+            let maxDim = max(texSize.width, texSize.height)
+            let scale = maxSide / max(maxDim, 1)
+            sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
+            sprite.zPosition = 1
+            root.addChild(sprite)
+        } else {
+            let label = OutlinedLetterFactory.make(
+                text: engine.currentWord.uppercased(),
+                fontSize: max(maxSide * 0.45, 22),
+                disablesInteraction: true
+            )
+            label.zPosition = 1
+            root.addChild(label)
+        }
+
+        // Invisible hit pad so taps are reliable even on thin sprites.
+        let hit = SKShapeNode(rectOf: CGSize(width: maxSide * 1.15, height: maxSide * 1.15))
+        hit.fillColor = .clear
+        hit.strokeColor = .clear
+        hit.zPosition = 0
+        hit.name = Self.wordPromptNodeName
+        root.addChild(hit)
+
+        addChild(root)
+        wordPromptNode = root
     }
 
     func drawSlotBox(at center: CGPoint) {
@@ -134,6 +197,12 @@ extension PitBridgeScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, !isJumping, isUserInteractionEnabled, let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if wordPromptNode(at: location) != nil {
+            replayWordSound()
+            return
+        }
+
         guard let node = choiceNode(at: location) else { return }
         guard node.action(forKey: "springBack") == nil else { return }
         draggedNode = node
@@ -237,6 +306,21 @@ extension PitBridgeScene {
             withKey: Self.forceLiftSparkleCleanupKey
         )
     }
+
+    func wordPromptNode(at point: CGPoint) -> SKNode? {
+        let hits = nodes(at: point)
+        for hit in hits {
+            var current: SKNode? = hit
+            while let node = current {
+                if node.name == Self.wordPromptNodeName {
+                    return wordPromptNode ?? node
+                }
+                current = node.parent
+            }
+        }
+        return nil
+    }
+
     func choiceNode(at point: CGPoint) -> SKNode? {
         let hits = nodes(at: point)
         for hit in hits {

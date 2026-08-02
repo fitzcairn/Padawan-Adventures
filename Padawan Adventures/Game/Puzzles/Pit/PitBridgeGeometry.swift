@@ -5,6 +5,8 @@ import Foundation
 nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Tray tiles sit this fraction up the scene (inside the bottom 30%).
     static let trayCenterYFraction: CGFloat = 0.15
+    /// Word illustration sits this fraction up the scene (top middle).
+    static let wordPromptYFraction: CGFloat = 0.88
     /// Tray tile centers as fractions of scene width.
     static let trayXFractions: [CGFloat] = [0.25, 0.5, 0.75]
     /// Drop hit radius as a fraction of the tile side.
@@ -15,6 +17,19 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     var padSize: CGSize
     /// Number of bridge slots (== words this session).
     var slotCount: Int
+
+    /// Top-middle anchor for the current word illustration.
+    var wordPromptCenter: CGPoint {
+        CGPoint(
+            x: sceneSize.width * 0.5,
+            y: sceneSize.height * Self.wordPromptYFraction
+        )
+    }
+
+    /// Target max dimension for the word illustration.
+    var wordPromptMaxSide: CGFloat {
+        min(sceneSize.width * 0.28, sceneSize.height * 0.16, tileSide * 1.8)
+    }
 
     var leftPadRect: CGRect {
         let padY = (sceneSize.height - padSize.height) * 0.5

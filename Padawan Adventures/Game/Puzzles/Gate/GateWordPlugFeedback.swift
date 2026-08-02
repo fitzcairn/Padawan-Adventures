@@ -119,8 +119,6 @@ extension GateWordPlugScene {
             SoundEffectsController.shared.play(trackID: trackID)
         case .playCorrect:
             playCorrectSound()
-        case let .speakPhrase(text):
-            SpokenPhrasePlayer.shared.speak(text)
         case let .correctPlug(slotID, letterID):
             applySolvedAppearance(slotID: slotID)
             if let socket = socketNodes[slotID], let token = tokenNodes[letterID] {
@@ -158,10 +156,6 @@ extension GateWordPlugScene {
             return false
         }
         let didWin = events.contains(.won)
-        let phrase = events.compactMap { event -> String? in
-            if case let .speakPhrase(text) = event { return text }
-            return nil
-        }.first
 
         inputLocked = true
 
@@ -184,25 +178,17 @@ extension GateWordPlugScene {
                     self?.socketNodes[slotID]?.colorBlendFactor = 0
                 }
             )
-            let feedbackDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
-            var audioSteps: [SKAction] = [
+            let wordTrackID = events.compactMap { event -> String? in
+                if case let .playWordSound(trackID) = event { return trackID }
+                return nil
+            }.first
+            let chimeDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
+            var audioSteps: [SKAction] = []
+            appendTrackSteps(to: &audioSteps, trackID: wordTrackID)
+            audioSteps.append(contentsOf: [
                 SKAction.run { [weak self] in self?.playCorrectSound() },
-                SKAction.wait(forDuration: feedbackDuration),
-            ]
-            if let phrase {
-                audioSteps.append(SKAction.run { [weak self] in
-                    self?.speak(phrase) {
-                        guard let self else { return }
-                        self.applySolvedAppearance(slotID: slotID)
-                        if didWin {
-                            self.finishWon()
-                        } else {
-                            self.inputLocked = false
-                        }
-                    }
-                })
-            } else {
-                audioSteps.append(SKAction.run { [weak self] in
+                SKAction.wait(forDuration: chimeDuration),
+                SKAction.run { [weak self] in
                     guard let self else { return }
                     self.applySolvedAppearance(slotID: slotID)
                     if didWin {
@@ -210,8 +196,8 @@ extension GateWordPlugScene {
                     } else {
                         self.inputLocked = false
                     }
-                })
-            }
+                },
+            ])
             run(SKAction.group([
                 flash,
                 SKAction.sequence(audioSteps),
@@ -295,18 +281,6 @@ extension GateWordPlugScene {
             SoundEffectsController.shared.play(trackID: trackID)
         })
         steps.append(SKAction.wait(forDuration: duration))
-    }
-
-    func speak(_ text: String, then next: @escaping () -> Void) {
-        var resumed = false
-        let resume = {
-            if !resumed {
-                resumed = true
-                next()
-            }
-        }
-        SpokenPhrasePlayer.shared.speak(text) { resume() }
-        run(.sequence([.wait(forDuration: 6), .run { resume() }]))
     }
 
     func finishWon() {

@@ -9,7 +9,25 @@ import tempfile
 from pathlib import Path
 
 # Default words to generate when no CLI args are passed.
-WORDS = ["boat", "car", "cloud", "house", "pencil", "sun", "trash"]
+WORDS = [
+    "apple",
+    "bath",
+    "boat",
+    "book",
+    "car",
+    "cat",
+    "cloud",
+    "dance",
+    "dog",
+    "gate",
+    "house",
+    "lightbulb",
+    "pencil",
+    "star",
+    "sun",
+    "trash",
+    "wand",
+]
 
 
 def say_to_aiff(text: str, aiff_path: Path) -> None:

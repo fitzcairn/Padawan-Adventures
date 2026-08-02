@@ -146,7 +146,7 @@ struct GateWordPlugMinigameEngineTests {
         #expect(events == [.playWordSound(trackID: "sfx_word_\(slot.word)")])
     }
 
-    @Test func correctPlugEmitsFlashCorrectAndPhrase() {
+    @Test func correctPlugEmitsFlashAndCorrect() {
         var engine = makeEngine(
             wordCountMin: 3,
             wordCountMax: 3,
@@ -159,9 +159,11 @@ struct GateWordPlugMinigameEngineTests {
             return
         }
         let events = engine.plug(letterID: token.id, intoSlotID: slot.id)
-        #expect(events.contains(.correctPlug(slotID: slot.id, letterID: token.id)))
-        #expect(events.contains(.playCorrect))
-        #expect(events.contains(.speakPhrase("Cat starts with C")))
+        #expect(events == [
+            .correctPlug(slotID: slot.id, letterID: token.id),
+            .playWordSound(trackID: "sfx_word_cat"),
+            .playCorrect,
+        ])
         #expect(engine.isSlotFilled(slot.id))
     }
 

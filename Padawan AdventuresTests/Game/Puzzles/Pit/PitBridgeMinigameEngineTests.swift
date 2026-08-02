@@ -3,12 +3,16 @@ import Testing
 @testable import Padawan_Adventures
 
 struct PitBridgeMinigameEngineTests {
-    private let pool = ["car", "start", "dog", "trash", "sun", "kam"]
+    private let poolIDs = ["car", "dog", "trash", "sun", "star", "book"]
+
+    private var pool: [GateWord] {
+        poolIDs.map { WordCatalog.imagedFallbackEntry(word: $0) }
+    }
 
     private func makeEngine(
         minWords: Int = 2,
         maxWords: Int = 4,
-        words: [String]? = nil,
+        words: [GateWord]? = nil,
         seed: UInt64 = 42
     ) -> PitBridgeMinigameEngine {
         var engine = PitBridgeMinigameEngine(
@@ -39,9 +43,11 @@ struct PitBridgeMinigameEngineTests {
             #expect(engine.isActive)
             #expect(engine.wordCount >= 2)
             #expect(engine.wordCount <= 4)
-            #expect(Set(engine.words).count == engine.wordCount)
+            #expect(Set(engine.words.map(\.word)).count == engine.wordCount)
             for word in engine.words {
-                #expect(pool.contains(word))
+                #expect(poolIDs.contains(word.word))
+                #expect(word.image != nil)
+                #expect(!word.sfx.isEmpty)
             }
         }
     }
@@ -55,15 +61,13 @@ struct PitBridgeMinigameEngineTests {
         #expect(Set(engine.choices.map(\.letter)).count == engine.choices.count)
     }
 
-    @Test func promptPhrasesAskThenRepeatEndLetter() {
-        let engine = makeEngine(minWords: 1, maxWords: 1, words: ["sun"], seed: 1)
+    @Test func currentRoundExposesCatalogImageAndSfx() {
+        let sun = WordCatalog.imagedFallbackEntry(word: "sun")
+        let engine = makeEngine(minWords: 1, maxWords: 1, words: [sun], seed: 1)
         #expect(engine.currentWord == "sun")
-        #expect(engine.promptPhrases == [
-            "What sound is at the end of sun?",
-            "n",
-            "n",
-            "n",
-        ])
+        #expect(engine.currentImageName == "sun")
+        #expect(engine.currentSfx == "sfx_word_sun")
+        #expect(engine.currentAnswer == "n")
     }
 
     @Test func wrongAcceptLeavesStateUntouched() {
@@ -106,7 +110,11 @@ struct PitBridgeMinigameEngineTests {
 
     @Test func acceptReturnsNilBeforeBeginAfterEndAndAfterWin() {
         var engine = PitBridgeMinigameEngine(
-            config: .init(minWords: 1, maxWords: 1, words: ["sun"]),
+            config: .init(
+                minWords: 1,
+                maxWords: 1,
+                words: [WordCatalog.imagedFallbackEntry(word: "sun")]
+            ),
             rng: PitSeededGenerator(seed: 2)
         )
         #expect(engine.accept(choiceID: UUID()) == nil)

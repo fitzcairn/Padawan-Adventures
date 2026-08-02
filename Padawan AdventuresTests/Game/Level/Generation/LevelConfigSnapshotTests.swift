@@ -80,6 +80,8 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected pit bridge entry")
             return
         }
-        #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
+        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+
     }
 }

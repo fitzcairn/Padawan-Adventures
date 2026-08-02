@@ -35,7 +35,8 @@ struct MenuView: View {
             // Assets are already warm from bootstrap; only resolve continue eligibility.
             await session.refreshContinueEligibility()
             logoImage = session.spriteLibrary.uiImage(id: "logo")
-            showContinue = session.hasCompatibleSave
+            // Mid-run save *or* campaign progress (so CONTINUE survives beating a level).
+            showContinue = session.shouldShowContinue
             isContentReady = true
         }
     }
@@ -56,7 +57,12 @@ struct MenuView: View {
                     VStack(spacing: 16) {
                         if showContinue {
                             AppLargeButton(title: "CONTINUE", accessibilityID: "menu.continue") {
-                                router.navigate(to: .preparing(.continueSave))
+                                switch session.continueDestination {
+                                case .resumeSave:
+                                    router.navigate(to: .preparing(.continueSave))
+                                case .levelSelect, .none:
+                                    router.navigate(to: .levelSelect)
+                                }
                             }
                         }
 
