@@ -314,6 +314,12 @@ extension AppSession {
             gateTextures.append(switches.off)
             gateTextures.append(switches.on)
         }
+        if let sockets = GateWordPlugSocketSprites.load() {
+            gateTextures.append(contentsOf: sockets)
+        }
+        if let plugs = GateWordPlugPlugSprites.load() {
+            gateTextures.append(contentsOf: plugs)
+        }
         let preloadTextures = spriteLibrary.allTextures() + gateTextures
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             SKTexture.preload(preloadTextures) {

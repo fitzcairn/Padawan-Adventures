@@ -35,7 +35,7 @@ Usage:
   python3 scripts/bake_sprites.py --gates      # bake per-level world gate wall sprites
   python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
   python3 scripts/bake_sprites.py --cutscene   # bake cutscene UI sprites
-  python3 scripts/bake_sprites.py --gate       # bake gate letter-match UI sprites
+  python3 scripts/bake_sprites.py --gate       # bake gate letter-match / word-plug UI sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -1017,35 +1017,49 @@ def collect_cutscene(plan: BakePlan) -> None:
         )
 
 
-def collect_gate_letter_match(plan: BakePlan) -> None:
-    """Bake gate letter-match UI sheets (switch off/on). No SpriteKit prep flip."""
-    path = CONFIG / "UI" / "gate_letter_match.yaml"
+def collect_gate_ui_yaml(plan: BakePlan, *, config_name: str, category_prefix: str) -> None:
+    """Bake gate minigame UI sheets from Config/UI/{config_name}.yaml."""
+    path = CONFIG / "UI" / f"{config_name}.yaml"
     add_config_input(plan, path)
     if not path.is_file():
         plan.errors.append(
-            f"gate_letter_match: missing {path.relative_to(RESOURCES.parent)}"
+            f"{config_name}: missing {path.relative_to(RESOURCES.parent)}"
         )
         return
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         plan.errors.append(
-            "gate_letter_match: Config/UI/gate_letter_match.yaml must be a mapping"
+            f"{config_name}: Config/UI/{config_name}.yaml must be a mapping"
         )
         return
     for name, entry in data.items():
         if not isinstance(entry, dict):
-            plan.errors.append(f"gate_letter_match.{name}: expected mapping with sprite:")
+            plan.errors.append(f"{category_prefix}.{name}: expected mapping with sprite:")
             continue
         sprite = entry.get("sprite")
         if not isinstance(sprite, dict):
-            plan.errors.append(f"gate_letter_match.{name}: missing sprite:")
+            plan.errors.append(f"{category_prefix}.{name}: missing sprite:")
             continue
         collect_animation_jobs(
             plan,
-            category=f"gate_letter_match.{name}",
+            category=f"{category_prefix}.{name}",
             sprite=sprite,
             flip_vertical=False,
         )
+
+
+def collect_gate_letter_match(plan: BakePlan) -> None:
+    """Bake gate letter-match UI sheets (switch off/on). No SpriteKit prep flip."""
+    collect_gate_ui_yaml(
+        plan, config_name="gate_letter_match", category_prefix="gate_letter_match"
+    )
+
+
+def collect_gate_word_plug(plan: BakePlan) -> None:
+    """Bake gate word-plug UI sheets (socket variants). No SpriteKit prep flip."""
+    collect_gate_ui_yaml(
+        plan, config_name="gate_word_plug", category_prefix="gate_word_plug"
+    )
 
 
 def build_plan(args: argparse.Namespace) -> BakePlan:
@@ -1132,6 +1146,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_cutscene(plan)
     if bake_gate:
         collect_gate_letter_match(plan)
+        collect_gate_word_plug(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)

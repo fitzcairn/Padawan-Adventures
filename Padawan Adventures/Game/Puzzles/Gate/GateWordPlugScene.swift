@@ -14,9 +14,10 @@ final class GateWordPlugScene: MinigameScene {
 
     var engine: GateWordPlugMinigameEngine
     var plateNodes: [UUID: SKSpriteNode] = [:]
-    var socketNodes: [UUID: SKShapeNode] = [:]
+    var socketNodes: [UUID: SKSpriteNode] = [:]
+    var socketSpriteRNG = SystemRandomNumberGenerator()
     var tokenNodes: [UUID: SKNode] = [:]
-    var tokenCircles: [UUID: SKShapeNode] = [:]
+    var tokenPlugs: [UUID: SKSpriteNode] = [:]
     var tokenHome: [UUID: CGPoint] = [:]
     var laidOutDiameter: CGFloat = 0
     var laidOutRectSize: CGSize = .zero
@@ -27,6 +28,15 @@ final class GateWordPlugScene: MinigameScene {
     var dragStart: CGPoint = .zero
     var dragOffset: CGPoint = .zero
     var dragMoved = false
+    /// Active cables keyed by letter token id (kept after a correct plug).
+    var tokenCables: [UUID: DragCable] = [:]
+    var cableLastUpdateTime: TimeInterval?
+    var cableArcRefreshAccumulator: TimeInterval = 0
+    var cableArcRNG = SystemRandomNumberGenerator()
+    /// Quiet arc ambience while at least one plug is correctly connected.
+    var activeLoopTrackID: String?
+    static let arcLoopQuietScale: Float = 0.35
+    static let arcLoopFallbackTrackID = "gate-spelling-loop-arc"
 
     let trayHeightRatio: CGFloat = 0.30
     let columnCount = 2
@@ -36,13 +46,9 @@ final class GateWordPlugScene: MinigameScene {
     let rowGapRatio: CGFloat = 0.18
     let socketWidthShareMax: CGFloat = 0.45
     /// Drawn size of circles, rects, and letter sprites relative to a filled-slot layout.
-    let uiScale: CGFloat = 0.50
+    let uiScale: CGFloat = 0.75
     let tapMoveThreshold: CGFloat = 10
 
-    let socketFill = UIColor(white: 0.55, alpha: 1)
-    let socketStroke = UIColor.white
-    let tokenFill = UIColor(white: 0.28, alpha: 1)
-    let tokenStroke = UIColor(white: 0.80, alpha: 1)
     let solvedFill = UIColor(red: 0.20, green: 0.72, blue: 0.30, alpha: 1)
     let wrongFill = UIColor.systemRed
 
@@ -69,11 +75,13 @@ final class GateWordPlugScene: MinigameScene {
 
     override func willMove(from view: SKView) {
         GameLogger.mark(.world, "gateWordPlug.willMove teardown")
+        stopArcLoop()
         // The speaker is a shared singleton; without this a phrase (and its music
         // duck) keeps running after the gate overlay is dismissed.
         SpokenPhrasePlayer.shared.cancel()
     }
     override func rebuildLayout() {
+        tearDownAllCables()
         let plugged = engine.plugged
         buildPuzzle()
         for (slotID, letterID) in plugged {
@@ -83,6 +91,12 @@ final class GateWordPlugScene: MinigameScene {
                 token.zPosition = 20
             }
         }
+        restorePluggedCables()
+        syncArcLoop()
+    }
+
+    override func update(_ currentTime: TimeInterval) {
+        updateDragCables(currentTime: currentTime)
     }
 }
 extension SKAction {

@@ -278,6 +278,10 @@
     "Art/Shared/Enemies/Treant/treant-walk_up-spritesheet.png": "5973554b7f4612bddedcebe3402183f224f918565691606daf133a4c1523bb3c",
     "Art/Shared/Gate/letter_match/switch-atlas.json": "b31fcc3bfd542cb6c4b56a2b5b27a136c5d3b9fe78675d065957a2f7b49127a2",
     "Art/Shared/Gate/letter_match/switch-spritesheet.png": "7963508a6a1bccf344c00e7322eb704746a6e7b5e01225a81c483f31e20659ce",
+    "Art/Shared/Gate/word_plug/plugs-atlas.json": "854c96482f1666fd997a42717b0cd981fc5e22160c7ec434554f45c50598523e",
+    "Art/Shared/Gate/word_plug/plugs-spritesheet.png": "46fd082183fdf3b7e7ba536b5a75f177a5ed1dd6b4a0793a413ff4709c59947d",
+    "Art/Shared/Gate/word_plug/sockets-atlas.json": "7f93afc2e72aacc3c87d8997bef77559a6424b65282e92b0449d4c12159a5360",
+    "Art/Shared/Gate/word_plug/sockets-spritesheet.png": "cd43ba2b3a338c8c84efe1cdd0e42ca3b939a486daa7f482102ef8941d0c482e",
     "Art/Shared/Items/Coins/coin-atlas.json": "99f2bc52134bb98fee7ec892f8e54bf7c9abb31c47f198b215adcf174c6bd00e",
     "Art/Shared/Items/Coins/coin.png": "3759f4fac0b8f6aca68c3823ff67a2999ee6eb89ac77c529c18b7de3827d4c54",
     "Art/Shared/Items/Energy/energy-atlas.json": "efce6fcf4e7572e7b5819240eed963169ff07b17abac34e460ce8452d0235236",
@@ -318,12 +322,13 @@
     "Art/Shared/UI/Loading/logo.png": "3694957088507945b4900c79667b96c60f5a83b8776531af79975349fa09c3f7",
     "Art/Shared/UI/Loading/yoda-atlas.json": "e313a31620033586e2f823e7929d7e5387720411eeb0dcbd5d8c8331073c9c0d",
     "Art/Shared/UI/Loading/yoda-spritesheet.png": "68fa30cfae63c9be25affd1a0b9a73a1e12445d5d9f91a8de51f49110f2e26a4",
-    "Padawan Adventures/Resources/Config/Catalogs/enemies.yaml": "84e50a9f4b2cee187c9f5afa00828a744d4c1b359d53446ab5fb76ec83fd83fd",
+    "Padawan Adventures/Resources/Config/Catalogs/enemies.yaml": "e4dccd2591441c95ea2e9a76fb835ceaaefdd8bbdf37b6fe5e41aaafd870d617",
     "Padawan Adventures/Resources/Config/Catalogs/items.yaml": "52a08045016d4f0ef0dcd98eee6396f404ac4048f58a64f1681733025410c499",
     "Padawan Adventures/Resources/Config/UI/cutscene.yaml": "15f7944b85b78b8db4ba0839bd541240649fee4559a6880cbb7cb32437d684a4",
     "Padawan Adventures/Resources/Config/UI/gate_letter_match.yaml": "5b73547811cc270f1f3b434507ad5c0b05ae5eed3049a6e6fb7a8330720fb5a9",
+    "Padawan Adventures/Resources/Config/UI/gate_word_plug.yaml": "a6af9dac83b0840efa055daedebc64dee835536dfccb9c467607eaaef3a51c96",
     "Padawan Adventures/Resources/Config/UI/loading.yaml": "8eb79a2db8e81b7c7b519b9a086d8630e0651d7f6912c3e89a48f373b3f3fdcc",
-    "Padawan Adventures/Resources/Config/player.yaml": "ea121ddeff494df4cd57da7fcfbd3015beebce66d8e1545e7261a7a4e9436188",
+    "Padawan Adventures/Resources/Config/player.yaml": "87ecd347381b8ea28561c6eeafe3a743d258ff764a9f805d1c728e80d25b5c49",
     "Padawan Adventures/Resources/Levels/1-tython/level.yaml": "1d83fd25a300124c9cc010633d6642c1f8ed2a3cde5ec6ea8f3ec20108b1ea0e",
     "Padawan Adventures/Resources/Levels/2-tatooine/level.yaml": "8c5d79ca55592ce1a2f7c42003dd36897f62c0e80cc265ab3a417c214e1f2eb5",
     "Padawan Adventures/Resources/Levels/3-ilum/level.yaml": "55acb19c8a038f936c544ac143587f2b7de88625121403114de802c65461c262",
@@ -970,6 +975,10 @@
     "Padawan Adventures/Resources/Sprites/Enemies/Treant/treant-walk_up-spritesheet.png": "03f62d1c7c54a5ad0a9b9513266ace6fc64fae3db06a80bb0a7868e898bf1f29",
     "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-atlas.json": "10e98ee283ea7bd48daa4a63f20f0a7cde89ebd538cdb6b1b4ec4d4546e8b2f5",
     "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-spritesheet.png": "d429b012d9d13a9140e46bbc73d3c5bfc1baa445fde227db4a70ff6bfdf922e2",
+    "Padawan Adventures/Resources/Sprites/Gate/word_plug/plugs-atlas.json": "f9987a6680d1bfa30dbec912099385ebc4e7b555addafb3456955aee8da3a6b7",
+    "Padawan Adventures/Resources/Sprites/Gate/word_plug/plugs-spritesheet.png": "bb038687132a4e7d4ff39c0d90173774650953fb2c173cc5b93ebf24e8ce9cca",
+    "Padawan Adventures/Resources/Sprites/Gate/word_plug/sockets-atlas.json": "ff2b603995a280e7c1e16972954ab859a36f7ba8647fed6d0b88b1b29f0849e7",
+    "Padawan Adventures/Resources/Sprites/Gate/word_plug/sockets-spritesheet.png": "24db7db5e592c4e2a93322c09d3cb6ab6a873dff736439c98b3c1a7a66c25b68",
     "Padawan Adventures/Resources/Sprites/Items/Coins/coin-atlas.json": "bee479f0e90431dfb890d21a1529850103dc708d82e949ba8cba7e4aa4da1416",
     "Padawan Adventures/Resources/Sprites/Items/Coins/coin.png": "5b1705d53dd032a496daa108a4d8fb1449f3b31894fab5a97717c276ab0d9783",
     "Padawan Adventures/Resources/Sprites/Items/Energy/energy-atlas.json": "99a73dad054dfa8a165e9422a4b4055135e6ec2131665eafb80c5c9063b51e1a",
@@ -1748,17 +1757,6 @@
       "trim": true,
       "bake_scale": 1.0,
       "flip_vertical": true
-    },
-    {
-      "label": "gate_letter_match.switch.idle",
-      "category": "gate_letter_match.switch",
-      "source_sheet": "Art/Shared/Gate/letter_match/switch-spritesheet.png",
-      "source_atlas": "Art/Shared/Gate/letter_match/switch-atlas.json",
-      "baked_sheet": "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-spritesheet.png",
-      "baked_atlas": "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-atlas.json",
-      "trim": true,
-      "bake_scale": 0.5,
-      "flip_vertical": false
     },
     {
       "label": "enemy.centipede.idle_up",
@@ -2881,6 +2879,39 @@
       "trim": true,
       "bake_scale": 1.0,
       "flip_vertical": true
+    },
+    {
+      "label": "gate_letter_match.switch.idle",
+      "category": "gate_letter_match.switch",
+      "source_sheet": "Art/Shared/Gate/letter_match/switch-spritesheet.png",
+      "source_atlas": "Art/Shared/Gate/letter_match/switch-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Gate/letter_match/switch-atlas.json",
+      "trim": true,
+      "bake_scale": 0.5,
+      "flip_vertical": false
+    },
+    {
+      "label": "gate_word_plug.sockets.idle",
+      "category": "gate_word_plug.sockets",
+      "source_sheet": "Art/Shared/Gate/word_plug/sockets-spritesheet.png",
+      "source_atlas": "Art/Shared/Gate/word_plug/sockets-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Gate/word_plug/sockets-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Gate/word_plug/sockets-atlas.json",
+      "trim": true,
+      "bake_scale": 0.5,
+      "flip_vertical": false
+    },
+    {
+      "label": "gate_word_plug.plugs.idle",
+      "category": "gate_word_plug.plugs",
+      "source_sheet": "Art/Shared/Gate/word_plug/plugs-spritesheet.png",
+      "source_atlas": "Art/Shared/Gate/word_plug/plugs-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Gate/word_plug/plugs-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Gate/word_plug/plugs-atlas.json",
+      "trim": true,
+      "bake_scale": 0.5,
+      "flip_vertical": false
     }
   ]
 }

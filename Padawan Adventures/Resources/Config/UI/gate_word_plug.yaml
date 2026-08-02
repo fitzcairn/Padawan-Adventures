@@ -1,0 +1,26 @@
+# Word-plug gate minigame UI sprites (baked via scripts/bake_sprites.py --gate).
+sockets:
+  sprite:
+    root: Sprites/Gate/word_plug
+    # Exterior near-black only — keeps dark socket recesses intact.
+    background: flood_black:18
+    bake_scale: 0.5
+    # Upright SKSpriteNode display (no AnimatedSpriteNode yScale flip).
+    trim: true
+    trim_mode: shared
+    animations:
+      idle:
+        sheet: sockets-spritesheet
+        atlas: sockets-atlas
+
+plugs:
+  sprite:
+    root: Sprites/Gate/word_plug
+    background: flood_black:18
+    bake_scale: 0.5
+    trim: true
+    trim_mode: shared
+    animations:
+      idle:
+        sheet: plugs-spritesheet
+        atlas: plugs-atlas

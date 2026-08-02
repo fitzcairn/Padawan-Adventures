@@ -93,19 +93,25 @@ final class SoundEffectsController {
     }
 
     /// Starts an indefinitely looping ambience track (lightsaber hum, gate arc).
-    func startLoop(trackID: String) {
+    /// `volumeScale` multiplies the normal playback level (`1` = full mix level).
+    func startLoop(trackID: String, volumeScale: Float = 1) {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        player.startLoop(trackID: trimmed, volume: playbackVolume(for: trimmed))
+        let scale = min(1, max(0, volumeScale))
+        player.startLoop(trackID: trimmed, volume: playbackVolume(for: trimmed) * scale)
     }
 
     /// Looks up `event` in `table` and starts it as a loop. Returns the track id so
     /// the caller can stop the exact track it started.
     @discardableResult
-    func startLoop(event: String, from table: SoundEffectTable) -> String? {
+    func startLoop(
+        event: String,
+        from table: SoundEffectTable,
+        volumeScale: Float = 1
+    ) -> String? {
         guard let trackID = table.trackID(for: event) else { return nil }
-        startLoop(trackID: trackID)
+        startLoop(trackID: trackID, volumeScale: volumeScale)
         return trackID
     }
 

@@ -5,11 +5,12 @@ extension GateWordPlugScene {
     // MARK: - Layout
 
     func buildPuzzle() {
+        tearDownAllCables()
         removeAllChildren()
         plateNodes = [:]
         socketNodes = [:]
         tokenNodes = [:]
-        tokenCircles = [:]
+        tokenPlugs = [:]
         tokenHome = [:]
 
         if let background = GateMinigameBackground.wordPlug(sceneSize: size) {
@@ -76,10 +77,7 @@ extension GateWordPlugScene {
             addChild(plate)
             plateNodes[slot.id] = plate
 
-            let socket = SKShapeNode(circleOfRadius: diameter * 0.5)
-            socket.fillColor = socketFill
-            socket.strokeColor = socketStroke
-            socket.lineWidth = max(2, diameter * 0.05)
+            let socket = makeSocketSprite(side: diameter) ?? makeSocketFallback(side: diameter)
             socket.position = socketCenter
             socket.name = "socket:\(slot.id.uuidString)"
             socket.zPosition = 10
@@ -102,6 +100,13 @@ extension GateWordPlugScene {
 
         for (index, token) in tokens.enumerated() {
             let position = CGPoint(x: startX + CGFloat(index) * spacing, y: y)
+            // Home socket stays put under the letter so the empty outlet is visible while dragging.
+            let homeSocket = makeSocketSprite(side: diameter) ?? makeSocketFallback(side: diameter)
+            homeSocket.position = position
+            homeSocket.name = "homeSocket:\(token.id.uuidString)"
+            homeSocket.zPosition = 14
+            addChild(homeSocket)
+
             let node = makeTokenNode(token: token, diameter: diameter)
             node.position = position
             addChild(node)
@@ -114,33 +119,92 @@ extension GateWordPlugScene {
         let root = SKNode()
         root.name = "token:\(token.id.uuidString)"
         root.zPosition = 20
+        root.isUserInteractionEnabled = false
 
-        let circle = SKShapeNode(circleOfRadius: diameter * 0.5)
-        circle.fillColor = tokenFill
-        circle.strokeColor = tokenStroke
-        circle.lineWidth = max(2, diameter * 0.05)
-        circle.name = "tokenCircle"
-        root.addChild(circle)
-        tokenCircles[token.id] = circle
+        let plug = makePlugSprite(side: diameter) ?? makePlugFallback(side: diameter)
+        plug.name = "tokenPlug"
+        plug.zPosition = 0
+        plug.isUserInteractionEnabled = false
+        root.addChild(plug)
+        tokenPlugs[token.id] = plug
 
-        let letter = OutlinedLetterFactory.make(text: token.letter, fontSize: diameter * 0.42)
+        let letter = OutlinedLetterFactory.make(
+            text: token.letter,
+            fontSize: diameter * 0.42,
+            disablesInteraction: true
+        )
+        // Nudge into the plug face (art is biased left/up by the 3/4 perspective rim).
+        letter.position = CGPoint(x: plug.size.width * 0.08, y: -plug.size.height * 0.02)
         letter.zPosition = 1
-        letter.isUserInteractionEnabled = false
         root.addChild(letter)
 
         return root
     }
 
+    func makePlugSprite(side: CGFloat) -> SKSpriteNode? {
+        guard let texture = GateWordPlugPlugSprites.randomTexture(using: &socketSpriteRNG) else {
+            return nil
+        }
+        return GateWordPlugPlugSprites.sprite(texture: texture, side: side)
+    }
+
+    func makePlugFallback(side: CGFloat) -> SKSpriteNode {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
+            UIColor(white: 0.28, alpha: 1).setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: side, height: side)).fill()
+            UIColor(white: 0.80, alpha: 1).setStroke()
+            let ring = UIBezierPath(ovalIn: CGRect(x: 1, y: 1, width: side - 2, height: side - 2))
+            ring.lineWidth = max(2, side * 0.05)
+            ring.stroke()
+        }
+        let node = SKSpriteNode(texture: SKTexture(image: image), size: CGSize(width: side, height: side))
+        node.isUserInteractionEnabled = false
+        return node
+    }
+
+    func makeSocketSprite(side: CGFloat) -> SKSpriteNode? {
+        guard let texture = GateWordPlugSocketSprites.randomTexture(using: &socketSpriteRNG) else {
+            return nil
+        }
+        return GateWordPlugSocketSprites.sprite(texture: texture, side: side)
+    }
+
+    func makeSocketFallback(side: CGFloat) -> SKSpriteNode {
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        format.opaque = false
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { ctx in
+            let inset = side * 0.08
+            let rect = CGRect(x: inset, y: inset, width: side - inset * 2, height: side - inset * 2)
+            UIColor(white: 0.35, alpha: 1).setFill()
+            UIBezierPath(roundedRect: rect, cornerRadius: side * 0.12).fill()
+            UIColor.white.setStroke()
+            let circle = UIBezierPath(
+                ovalIn: CGRect(
+                    x: side * 0.22,
+                    y: side * 0.22,
+                    width: side * 0.56,
+                    height: side * 0.56
+                )
+            )
+            circle.lineWidth = max(2, side * 0.05)
+            circle.stroke()
+        }
+        let node = SKSpriteNode(texture: SKTexture(image: image), size: CGSize(width: side, height: side))
+        node.isUserInteractionEnabled = false
+        return node
+    }
+
     // MARK: - Hit testing
 
     func draggableToken(at point: CGPoint) -> UUID? {
-        let radius = laidOutDiameter * 0.5
-        guard radius > 0 else { return nil }
+        // Hit the full plug + letter bounds (not just a circle around the plug center).
         for (id, node) in tokenNodes {
             guard !engine.isTokenPlugged(id) else { continue }
-            let dx = node.position.x - point.x
-            let dy = node.position.y - point.y
-            if hypot(dx, dy) <= radius {
+            if node.calculateAccumulatedFrame().contains(point) {
                 return id
             }
         }

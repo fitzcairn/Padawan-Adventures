@@ -4,23 +4,26 @@ extension GateWordPlugScene {
     // MARK: - Touch
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !inputLocked, let touch = touches.first else { return }
+        guard !didEnd, let touch = touches.first else { return }
         let p = touch.location(in: self)
+        // Plugs stay draggable during feedback lock; only non-drag taps wait.
         if let id = draggableToken(at: p), let node = tokenNodes[id] {
             dragTokenID = id
             dragStart = p
             dragMoved = false
             dragOffset = CGPoint(x: node.position.x - p.x, y: node.position.y - p.y)
             node.zPosition = 100
+            beginDragCable(for: id)
             return
         }
+        guard !inputLocked else { return }
         if let slotID = plateSlot(at: p) {
             handle(engine.tapWord(slotID: slotID))
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !inputLocked, let dragTokenID, let touch = touches.first,
+        guard !didEnd, let dragTokenID, let touch = touches.first,
               let node = tokenNodes[dragTokenID] else { return }
         let p = touch.location(in: self)
         if hypot(p.x - dragStart.x, p.y - dragStart.y) > tapMoveThreshold {
@@ -35,6 +38,7 @@ extension GateWordPlugScene {
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let id = dragTokenID else { return }
+        tearDownCable(for: id)
         animateTokenHome(id: id)
         tokenNodes[id]?.zPosition = 20
         dragTokenID = nil
@@ -52,15 +56,30 @@ extension GateWordPlugScene {
         if let slotID = emptySocket(containing: node.position) {
             let events = engine.plug(letterID: id, intoSlotID: slotID)
             guard !events.isEmpty else {
+                tearDownCable(for: id)
                 animateTokenHome(id: id)
                 return
+            }
+            let isCorrect = events.contains {
+                if case .correctPlug = $0 { return true }
+                return false
+            }
+            if isCorrect {
+                // Keep tether and show power flowing through the cable.
+                energizeCable(for: id)
+            } else {
+                tearDownCable(for: id)
             }
             handlePlugEvents(events, letterID: id, slotID: slotID)
             return
         }
 
+        tearDownCable(for: id)
         if !dragMoved {
-            handle(engine.tapLetter(id: id))
+            if !inputLocked {
+                handle(engine.tapLetter(id: id))
+            }
+            return
         }
         animateTokenHome(id: id)
     }
@@ -157,11 +176,12 @@ extension GateWordPlugScene {
                     guard let self else { return }
                     self.plateNodes[slotID]?.color = self.solvedFill
                     self.plateNodes[slotID]?.colorBlendFactor = 0.55
-                    self.socketNodes[slotID]?.fillColor = self.solvedFill
+                    self.socketNodes[slotID]?.color = self.solvedFill
+                    self.socketNodes[slotID]?.colorBlendFactor = 0.45
                 },
                 clear: { [weak self] in
                     self?.plateNodes[slotID]?.colorBlendFactor = 0
-                    self?.socketNodes[slotID]?.fillColor = self?.socketFill ?? .gray
+                    self?.socketNodes[slotID]?.colorBlendFactor = 0
                 }
             )
             let feedbackDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
@@ -203,10 +223,11 @@ extension GateWordPlugScene {
             period: 0.12,
             count: 2,
             apply: { [weak self] in
-                self?.tokenCircles[letterID]?.fillColor = self?.wrongFill ?? .red
+                self?.tokenPlugs[letterID]?.color = self?.wrongFill ?? .red
+                self?.tokenPlugs[letterID]?.colorBlendFactor = 0.55
             },
             clear: { [weak self] in
-                self?.tokenCircles[letterID]?.fillColor = self?.tokenFill ?? .darkGray
+                self?.tokenPlugs[letterID]?.colorBlendFactor = 0
             }
         )
         let feedbackDuration = SoundEffectsController.shared.cueDuration(of: errorSoundTrackID)
@@ -234,7 +255,10 @@ extension GateWordPlugScene {
             )
             plate.colorBlendFactor = 0
         }
-        socketNodes[slotID]?.fillColor = solvedFill
+        if let socket = socketNodes[slotID] {
+            socket.color = solvedFill
+            socket.colorBlendFactor = 0.35
+        }
     }
 
     func animateTokenHome(id: UUID) {
@@ -289,11 +313,39 @@ extension GateWordPlugScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
+        stopArcLoop()
         SoundEffectsController.shared.playCommon(event: "win")
         if case let .won(stars) = engine.outcome {
             wordPlugDelegate?.gateWordPlugSceneDidWin(starsAwarded: stars)
         } else {
             wordPlugDelegate?.gateWordPlugSceneDidWin(starsAwarded: engine.slots.count)
         }
+    }
+
+    /// Arc loop plays quietly while any correct plug remains connected.
+    func syncArcLoop() {
+        if didEnd || engine.plugged.isEmpty {
+            stopArcLoop()
+            return
+        }
+        guard activeLoopTrackID == nil else { return }
+        if let trackID = SoundEffectsController.shared.startLoop(
+            event: "loop",
+            from: puzzleConfig.fx,
+            volumeScale: Self.arcLoopQuietScale
+        ) {
+            activeLoopTrackID = trackID
+            return
+        }
+        SoundEffectsController.shared.startLoop(
+            trackID: Self.arcLoopFallbackTrackID,
+            volumeScale: Self.arcLoopQuietScale
+        )
+        activeLoopTrackID = Self.arcLoopFallbackTrackID
+    }
+
+    func stopArcLoop() {
+        SoundEffectsController.shared.stopLoop(trackID: activeLoopTrackID)
+        activeLoopTrackID = nil
     }
 }
