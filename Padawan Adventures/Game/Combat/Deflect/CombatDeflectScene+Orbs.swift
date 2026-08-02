@@ -8,10 +8,17 @@ extension CombatDeflectScene {
     func handle(_ events: [CombatDeflectEvent]) {
         for event in events {
             switch event {
-            case let .throwOrb(id, letter, ring, travelSeconds):
-                throwOrb(id: id, letter: letter, ring: ring, travelSeconds: travelSeconds)
-            case let .speakLetter(trackID):
-                // Phonetic tracks duck music + ambience loops for the clip's duration.
+            case let .throwOrb(id, letter, word, imageName, ring, travelSeconds):
+                throwOrb(
+                    id: id,
+                    letter: letter,
+                    word: word,
+                    imageName: imageName,
+                    ring: ring,
+                    travelSeconds: travelSeconds
+                )
+            case let .speakWord(trackID):
+                // Word tracks duck music + ambience loops for the clip's duration.
                 SoundEffectsController.shared.play(trackID: trackID)
             case let .monsterHealthChanged(hp):
                 animateMonsterHPBar()
@@ -50,6 +57,8 @@ extension CombatDeflectScene {
     func throwOrb(
         id: UUID,
         letter: String,
+        word: String,
+        imageName: String?,
         ring: CombatDeflectRing,
         travelSeconds: Double
     ) {
@@ -61,7 +70,7 @@ extension CombatDeflectScene {
         let end = bodyCenter(of: playerNode, height: playerSpriteHeight)
         let control = inboundControlPoint(from: start, to: end)
 
-        let node = makeOrbNode(letter: letter)
+        let node = makeOrbNode(letter: letter, imageName: imageName)
         node.position = start
         node.setScale(0.35)
         node.zPosition = Layer.orb
@@ -71,6 +80,8 @@ extension CombatDeflectScene {
         activeOrb = OrbVisual(
             id: id,
             letter: letter,
+            word: word,
+            imageName: imageName,
             ring: ring,
             travelSeconds: travel,
             flightStartedAt: CACurrentMediaTime(),
@@ -91,22 +102,37 @@ extension CombatDeflectScene {
         }
     }
 
-    /// Grey circle with the letter on it. Placeholder art until real orb sprites land.
-    func makeOrbNode(letter: String) -> SKNode {
-        let circle = SKShapeNode(circleOfRadius: orbBaseSize * 0.5)
-        circle.fillColor = UIColor.lightGray.withAlphaComponent(0.95)
-        circle.strokeColor = .white
-        circle.lineWidth = 2
-        circle.isAntialiased = true
+    /// Word illustration on a dark disc; falls back to a lettered circle when the PNG is missing.
+    func makeOrbNode(letter: String, imageName: String?) -> SKNode {
+        let root = SKNode()
+        let backing = SKShapeNode(circleOfRadius: orbBaseSize * 0.55)
+        backing.fillColor = UIColor.black.withAlphaComponent(0.55)
+        backing.strokeColor = UIColor.white.withAlphaComponent(0.85)
+        backing.lineWidth = 2
+        backing.isAntialiased = true
+        root.addChild(backing)
 
-        let label = makeOutlinedLetter(
-            letter,
-            fontSize: orbBaseSize * 0.55,
-            outline: .darkGray
-        )
-        label.zPosition = 1
-        circle.addChild(label)
-        return circle
+        if let image = GateWordPlugImageSprites.image(named: imageName) {
+            let texture = SKTexture(image: image)
+            SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
+            let sprite = SKSpriteNode(texture: texture)
+            let texSize = texture.size()
+            let maxDim = max(texSize.width, texSize.height)
+            let scale = (orbBaseSize * 0.78) / max(maxDim, 1)
+            sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
+            sprite.zPosition = 1
+            sprite.isUserInteractionEnabled = false
+            root.addChild(sprite)
+        } else {
+            let label = makeOutlinedLetter(
+                letter,
+                fontSize: orbBaseSize * 0.55,
+                outline: .darkGray
+            )
+            label.zPosition = 1
+            root.addChild(label)
+        }
+        return root
     }
 
     func inboundControlPoint(from start: CGPoint, to end: CGPoint) -> CGPoint {

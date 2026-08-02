@@ -119,13 +119,10 @@ extension GateWordPlugScene {
             let rectCenter = CGPoint(x: cellMinX + diameter + socketRectGap + rectWidth * 0.5, y: rowCenterY)
 
             let plateSize = CGSize(width: rectWidth, height: rectHeight)
-            let plate = SKSpriteNode(
-                texture: StarWarsConsoleView.makeTexture(
-                    text: slot.maskedText,
-                    size: plateSize
-                ),
-                size: plateSize
-            )
+            let plateTexture = GateWordPlugImageSprites.image(named: slot.imageName).map {
+                StarWarsConsoleImageView.makeTexture(image: $0, size: plateSize)
+            } ?? StarWarsConsoleView.makeTexture(text: slot.maskedText, size: plateSize)
+            let plate = SKSpriteNode(texture: plateTexture, size: plateSize)
             plate.position = rectCenter
             plate.name = "rect:\(slot.id.uuidString)"
             plate.zPosition = 10

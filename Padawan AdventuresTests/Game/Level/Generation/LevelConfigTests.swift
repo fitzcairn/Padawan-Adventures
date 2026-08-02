@@ -620,14 +620,14 @@ struct LevelConfigTests {
         let catalog = try WordCatalog.decode(from: """
         words:
           moon:
-            spelling: sfx_word_moon
+            sfx: sfx_word_moon
             progressive:
               m: sfx_word_moon_m
               mo: sfx_word_moon_mo
               moo: sfx_word_moon_moo
               moon: sfx_word_moon_moon
           sun:
-            spelling: sfx_word_sun
+            sfx: sfx_word_sun
             progressive:
               s: sfx_word_sun_s
               su: sfx_word_sun_su
@@ -661,21 +661,21 @@ struct LevelConfigTests {
         let catalog = try WordCatalog.decode(from: """
         words:
           moon:
-            spelling: sfx_word_moon
+            sfx: sfx_word_moon
             progressive:
               m: sfx_word_moon_m
               mo: sfx_word_moon_mo
               moo: sfx_word_moon_moo
               moon: sfx_word_moon_moon
           nova:
-            spelling: sfx_word_nova
+            sfx: sfx_word_nova
             progressive:
               n: sfx_word_nova_n
               no: sfx_word_nova_no
               nov: sfx_word_nova_nov
               nova: sfx_word_nova_nova
           beam:
-            spelling: sfx_word_beam
+            sfx: sfx_word_beam
             progressive:
               b: sfx_word_beam_b
               be: sfx_word_beam_be
@@ -779,7 +779,7 @@ struct LevelConfigTests {
         let wordPlug = wordPlugConfigs[0]
         #expect(wordPlug.wordCountMin == 2)
         #expect(wordPlug.wordCountMax == 2)
-        #expect(wordPlug.words.map(\.word).contains("gate"))
+        #expect(wordPlug.words.map(\.word).contains("star"))
         #expect(wordPlug.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
@@ -869,11 +869,11 @@ struct LevelConfigTests {
         pit:
           minigames:
             - type: spelling
-              words: [star, open]
+              words: [star, car]
         """
         let level = try LevelConfig.decode(from: yaml)
         let spelling = try pitSpelling(level)
-        #expect(spelling.words.map(\.word) == ["open", "star"])
+        #expect(spelling.words.map(\.word) == ["car", "star"])
     }
 
     @Test func rejectsEmptyPitWords() {
@@ -1126,7 +1126,7 @@ struct LevelConfigTests {
         #expect(wp.wordCountMin == 2)
         #expect(wp.wordCountMax == 2)
         #expect(wp.words.map(\.word) == [
-            "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
+            "bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand",
         ])
         #expect(tython.artifact == "leaf.fill")
     }
@@ -1531,7 +1531,7 @@ struct LevelConfigTests {
         }
         #expect(deflect.monsterHP >= 1)
         #expect(deflect.orbTravelSeconds > 0)
-        #expect(deflect.letters.count == CombatDeflectConfig.ringCount)
+        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
     }
 
     @Test func decodesTopLevelLetterSoundRepeatSeconds() throws {
@@ -1774,7 +1774,7 @@ struct LevelConfigTests {
               weight: 1.0
               min_words: 2
               max_words: 4
-              words: [open, start, dog, man, bat, kam]
+              words: [car, start, dog, trash, sun, kam]
         """)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
@@ -1789,7 +1789,7 @@ struct LevelConfigTests {
             #expect(bridge.weight == 1)
             #expect(bridge.minWords == 2)
             #expect(bridge.maxWords == 4)
-            #expect(bridge.words == ["open", "start", "dog", "man", "bat", "kam"])
+            #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
         } else {
             Issue.record("expected bridge entry")
         }
@@ -1821,7 +1821,7 @@ struct LevelConfigTests {
               weight: 1
               min_words: 2
               max_words: 3
-              words: [open, start, dog, man]
+              words: [car, start, dog, trash]
         """
         let child = """
         inherits: base_level
@@ -1836,7 +1836,7 @@ struct LevelConfigTests {
             return
         }
         #expect(bridge.maxWords == 3)
-        #expect(bridge.words == ["open", "start", "dog", "man"])
+        #expect(bridge.words == ["car", "start", "dog", "trash"])
     }
 
     @Test func childCanOverrideInheritedPitMinigames() throws {
@@ -1853,7 +1853,7 @@ struct LevelConfigTests {
         pit:
           minigames:
             - type: bridge
-              words: [open, start, dog, man, bat, kam]
+              words: [car, start, dog, trash, sun, kam]
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -1974,7 +1974,7 @@ struct LevelConfigTests {
                 - type: bridge
                   min_words: 5
                   max_words: 2
-                  words: [open, start, dog, man, bat, kam]
+                  words: [car, start, dog, trash, sun, kam]
             """)
         }
     }
@@ -1987,7 +1987,7 @@ struct LevelConfigTests {
                 - type: bridge
                   min_words: 2
                   max_words: 4
-                  words: [open, start]
+                  words: [car, start]
             """)
         }
     }
@@ -2000,7 +2000,7 @@ struct LevelConfigTests {
                 - type: bridge
                   min_words: 2
                   max_words: 2
-                  words: [open, open]
+                  words: [car, car]
             """)
         }
         #expect(throws: WorldSeedError.invalidPitBridgeWords) {
@@ -2028,9 +2028,39 @@ struct LevelConfigTests {
         }
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.weight == 1)
-            #expect(bridge.words == ["open", "start", "dog", "man", "bat", "kam"])
+            #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
         } else {
             Issue.record("expected bridge entry")
+        }
+    }
+
+    @Test func floorCohesionDefaultsAndRejectsOutOfRange() throws {
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        #expect(tython.floor.cohesion == 0.75)
+        #expect(LevelConfig.fallbackFloor.cohesion == 0.75)
+
+        #expect(throws: WorldSeedError.invalidFloorCohesion(1.5)) {
+            try GenerationParamsValidator.validate(
+                algorithm: "rooms_doors",
+                width: 100,
+                height: 100,
+                corridorWidth: 2,
+                room: LevelConfig.RoomParams(
+                    minRoomSize: 4,
+                    maxRoomSize: 12,
+                    pitChance: 0.2,
+                    pitMeanSize: 2,
+                    pitMaxSize: 5
+                ),
+                floorSet: "1-tython",
+                decorProb: 0.06,
+                cohesion: 1.5,
+                enemies: nil,
+                pickups: nil
+            )
         }
     }
 }

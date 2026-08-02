@@ -12,6 +12,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     /// Active floor set name (persisted); full atlas is loaded into `floorSet` at runtime.
     var floorSetName: String?
     var decorProb: Double
+    var cohesion: Double
     var tileSeed: UInt64
     /// Runtime-only atlas used for re-tiling after mutations (not persisted).
     var floorSet: FloorTileSet?
@@ -27,6 +28,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         energyCount: Int = 0,
         floorSet: FloorTileSet? = nil,
         decorProb: Double = 0.06,
+        cohesion: Double = 0.75,
         tileSeed: UInt64 = 0
     ) {
         self.width = width
@@ -40,6 +42,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         self.floorSet = floorSet
         self.floorSetName = floorSet?.meta.floorSet
         self.decorProb = decorProb
+        self.cohesion = cohesion
         self.tileSeed = tileSeed
     }
 
@@ -175,7 +178,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 story: story,
                 coords: storyCoords,
                 set: floorSet,
-                options: FloorTiler.Options(decorProb: decorProb),
+                options: FloorTiler.Options(decorProb: decorProb, cohesion: cohesion),
                 rng: &rng
             )
         }
@@ -210,7 +213,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
                 tiles: &tiles[storyIndex],
                 story: storyIndex,
                 set: floorSet,
-                options: FloorTiler.Options(decorProb: decorProb),
+                options: FloorTiler.Options(decorProb: decorProb, cohesion: cohesion),
                 rng: &rng
             )
         }
@@ -434,6 +437,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         case energyCount
         case floorSetName
         case decorProb
+        case cohesion
         case tileSeed
     }
 
@@ -449,6 +453,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         energyCount = try container.decodeIfPresent(Int.self, forKey: .energyCount) ?? 0
         floorSetName = try container.decodeIfPresent(String.self, forKey: .floorSetName)
         decorProb = try container.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
+        cohesion = try container.decodeIfPresent(Double.self, forKey: .cohesion) ?? 0.75
         tileSeed = try container.decodeIfPresent(UInt64.self, forKey: .tileSeed) ?? 0
         floorSet = nil
     }
@@ -465,6 +470,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         try container.encode(energyCount, forKey: .energyCount)
         try container.encodeIfPresent(floorSetName, forKey: .floorSetName)
         try container.encode(decorProb, forKey: .decorProb)
+        try container.encode(cohesion, forKey: .cohesion)
         try container.encode(tileSeed, forKey: .tileSeed)
     }
 

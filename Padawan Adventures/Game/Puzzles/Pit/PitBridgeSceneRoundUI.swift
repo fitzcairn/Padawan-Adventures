@@ -141,6 +141,7 @@ extension PitBridgeScene {
         dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
         node.zPosition = Self.draggedZ
         startForceLiftSparkles(on: node)
+        playForceLiftAnimation(toward: node.position)
         if let letter = node.userData?["letter"] as? String {
             speaker.speak([letter], completion: {})
         }
@@ -171,17 +172,20 @@ extension PitBridgeScene {
         guard let idString = node.userData?["id"] as? String,
               let id = UUID(uuidString: idString) else {
             node.zPosition = Self.trayTilesZ
+            resumePlayerIdle()
             return
         }
 
         guard geometry.isDrop(node.position, onSlot: engine.roundIndex) else {
             node.zPosition = Self.trayTilesZ
+            resumePlayerIdle()
             springBack(node, to: dragStartPosition)
             return
         }
 
         guard let result = engine.accept(choiceID: id) else {
             node.zPosition = Self.trayTilesZ
+            resumePlayerIdle()
             springBack(node, to: dragStartPosition)
             return
         }
@@ -189,8 +193,10 @@ extension PitBridgeScene {
         isUserInteractionEnabled = false
         switch result {
         case let .correct(slotIndex, won):
+            // Jump clip replaces the Force-lift pose once the tile snaps into the slot.
             handleCorrectDrop(node: node, id: id, slotIndex: slotIndex, won: won)
         case .incorrect:
+            resumePlayerIdle()
             handleIncorrectDrop(node: node)
         }
     }

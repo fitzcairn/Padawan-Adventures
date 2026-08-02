@@ -34,9 +34,17 @@ nonisolated enum CombatDeflectTapResult: Equatable, Sendable {
 }
 
 nonisolated enum CombatDeflectEvent: Equatable, Sendable {
-    case throwOrb(id: UUID, letter: String, ring: CombatDeflectRing, travelSeconds: Double)
-    /// Phonetic letter-name track; playing it ducks music + loops automatically.
-    case speakLetter(trackID: String)
+    /// `letter` is the ring that deflects this orb; `word` / `imageName` drive the thrown sprite + SFX.
+    case throwOrb(
+        id: UUID,
+        letter: String,
+        word: String,
+        imageName: String?,
+        ring: CombatDeflectRing,
+        travelSeconds: Double
+    )
+    /// Full-word pronunciation track (`sfx_word_*`); ducks music + loops automatically.
+    case speakWord(trackID: String)
     case monsterHealthChanged(Int)
     case playerHealthChanged(Int)
     case won(starsAwarded: Int)
@@ -52,29 +60,49 @@ nonisolated struct CombatDeflectMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         /// Ring letters left to right (2…6 entries).
         var letters: [GateLetter]
+        /// Vocabulary used to pick a thrown word for each letter (typically the full catalog).
+        var words: [GateWord]
         var monsterHP: Int
         var orbTravelSeconds: Double
 
         var ringCount: Int { letters.count }
 
-        init(letters: [GateLetter], monsterHP: Int, orbTravelSeconds: Double) {
+        init(
+            letters: [GateLetter],
+            words: [GateWord] = WordCatalog.fallback.words,
+            monsterHP: Int,
+            orbTravelSeconds: Double
+        ) {
             self.letters = letters
+            self.words = words
             self.monsterHP = max(monsterHP, 1)
             self.orbTravelSeconds = max(orbTravelSeconds, 0.2)
         }
 
-        init(from deflect: CombatDeflectConfig) {
+        init(from deflect: CombatDeflectConfig, words: [GateWord] = WordCatalog.fallback.words) {
             self.init(
                 letters: deflect.letters,
+                words: words,
                 monsterHP: deflect.monsterHP,
                 orbTravelSeconds: deflect.orbTravelSeconds
             )
+        }
+
+        /// Imaged vocabulary entries that begin with `letter`.
+        func words(startingWith letter: String) -> [GateWord] {
+            let key = letter.lowercased()
+            return words.filter { entry in
+                entry.word.hasPrefix(key)
+                    && entry.image.map { !$0.isEmpty } == true
+            }
         }
     }
 
     nonisolated struct Orb: Equatable, Sendable {
         let id: UUID
         let letter: String
+        let word: String
+        let imageName: String?
         /// The ring that deflects this orb.
         let ring: CombatDeflectRing
         /// True once the player answered; the scene is animating the consequence.
@@ -123,28 +151,45 @@ nonisolated struct CombatDeflectMinigameEngine {
     }
 
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
-    /// The letter is chosen uniformly from the configured set, excluding the last letter
-    /// that was successfully deflected.
+    /// Picks a ring letter (excluding the last successful deflect), then a random imaged
+    /// word from the catalog that begins with that letter.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
         guard isActive, outcome == nil, activeOrb == nil, !config.letters.isEmpty else {
             return []
         }
-        let candidates = config.letters.indices.filter { index in
+        let withWords = config.letters.indices.filter { index in
+            !config.words(startingWith: config.letters[index].letter).isEmpty
+        }
+        // Prefer a different letter than the last deflect; if that empties the pool
+        // (only one letter has imaged words), allow a repeat.
+        let excludingLast = withWords.filter { index in
             lastDeflectedRing.map { $0.index != index } ?? true
         }
+        let candidates = excludingLast.isEmpty ? withWords : excludingLast
         guard let index = candidates.randomElement(using: &rng) else { return [] }
         let ring = CombatDeflectRing(index)
         let entry = config.letters[index]
-        let orb = Orb(id: UUID(), letter: entry.letter, ring: ring, isResolved: false)
+        let wordChoices = config.words(startingWith: entry.letter)
+        guard let word = wordChoices.randomElement(using: &rng) else { return [] }
+        let orb = Orb(
+            id: UUID(),
+            letter: entry.letter,
+            word: word.word,
+            imageName: word.image,
+            ring: ring,
+            isResolved: false
+        )
         activeOrb = orb
         return [
             .throwOrb(
                 id: orb.id,
                 letter: orb.letter,
+                word: orb.word,
+                imageName: orb.imageName,
                 ring: ring,
                 travelSeconds: config.orbTravelSeconds
             ),
-            .speakLetter(trackID: entry.name),
+            .speakWord(trackID: word.sfx),
         ]
     }
 

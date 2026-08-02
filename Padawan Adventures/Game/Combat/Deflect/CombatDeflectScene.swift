@@ -9,13 +9,15 @@ protocol CombatDeflectSceneDelegate: AnyObject {
     func combatDeflectSceneDidLose()
 }
 
-/// SpriteKit deflect arena: the monster lobs one lettered orb at a time and the player
-/// taps the matching isometric ring to send it back.
+/// SpriteKit deflect arena: the monster lobs one word-image orb at a time and the player
+/// taps the ring whose letter matches the word's first letter to send it back.
 final class CombatDeflectScene: MinigameScene {
     /// A live orb and the quadratic path it is currently following.
     struct OrbVisual {
         let id: UUID
         let letter: String
+        let word: String
+        let imageName: String?
         /// The ring that deflects this orb.
         let ring: CombatDeflectRing
         let travelSeconds: Double
@@ -93,8 +95,14 @@ final class CombatDeflectScene: MinigameScene {
         self.enemySprite = enemySprite
         self.wallHeight = max(wallHeight, 1)
         self.isoSquash = isoSquash
+        let words: [GateWord]
+        if let catalog = try? WordCatalog.loadFromBundle() {
+            words = catalog.words
+        } else {
+            words = WordCatalog.fallback.words
+        }
         self.engine = CombatDeflectMinigameEngine(
-            config: .init(from: deflectConfig),
+            config: .init(from: deflectConfig, words: words),
             startingHealth: startingHealth
         )
         super.init(size: size)

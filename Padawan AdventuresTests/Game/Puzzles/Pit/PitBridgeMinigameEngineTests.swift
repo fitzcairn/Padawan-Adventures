@@ -3,7 +3,7 @@ import Testing
 @testable import Padawan_Adventures
 
 struct PitBridgeMinigameEngineTests {
-    private let pool = ["open", "start", "dog", "man", "bat", "kam"]
+    private let pool = ["car", "start", "dog", "trash", "sun", "kam"]
 
     private func makeEngine(
         minWords: Int = 2,
@@ -56,13 +56,13 @@ struct PitBridgeMinigameEngineTests {
     }
 
     @Test func promptPhrasesAskThenRepeatEndLetter() {
-        let engine = makeEngine(minWords: 1, maxWords: 1, words: ["bat"], seed: 1)
-        #expect(engine.currentWord == "bat")
+        let engine = makeEngine(minWords: 1, maxWords: 1, words: ["sun"], seed: 1)
+        #expect(engine.currentWord == "sun")
         #expect(engine.promptPhrases == [
-            "What sound is at the end of bat?",
-            "t",
-            "t",
-            "t",
+            "What sound is at the end of sun?",
+            "n",
+            "n",
+            "n",
         ])
     }
 
@@ -106,7 +106,7 @@ struct PitBridgeMinigameEngineTests {
 
     @Test func acceptReturnsNilBeforeBeginAfterEndAndAfterWin() {
         var engine = PitBridgeMinigameEngine(
-            config: .init(minWords: 1, maxWords: 1, words: ["bat"]),
+            config: .init(minWords: 1, maxWords: 1, words: ["sun"]),
             rng: PitSeededGenerator(seed: 2)
         )
         #expect(engine.accept(choiceID: UUID()) == nil)

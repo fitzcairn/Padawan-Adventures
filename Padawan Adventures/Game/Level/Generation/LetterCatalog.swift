@@ -30,6 +30,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
         .init(letter: "o", pronunciation: "sfx_letter_o_pronunciation", name: "sfx_letter_o_name"),
         .init(letter: "p", pronunciation: "sfx_letter_p_pronunciation", name: "sfx_letter_p_name"),
         .init(letter: "s", pronunciation: "sfx_letter_s_pronunciation", name: "sfx_letter_s_name"),
+        .init(letter: "w", pronunciation: "sfx_letter_w_pronunciation", name: "sfx_letter_w_name"),
     ])
 
     nonisolated init(letters: [GateLetter]) {

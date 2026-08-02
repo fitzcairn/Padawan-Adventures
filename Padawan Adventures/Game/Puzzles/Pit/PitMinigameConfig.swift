@@ -21,7 +21,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
 
     static let defaultMinWords = 2
     static let defaultMaxWords = 4
-    static let defaultWords = ["open", "start", "dog", "man", "bat", "kam"]
+    static let defaultWords = ["car", "start", "dog", "trash", "sun", "kam"]
 
     nonisolated static let fallback = PitBridgeConfig(weight: 1)
 

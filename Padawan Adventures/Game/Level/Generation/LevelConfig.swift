@@ -312,6 +312,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             room: room,
             floorSet: floor.set,
             decorProb: floor.decorProb,
+            cohesion: floor.cohesion,
             enemies: enemies,
             pickups: pickups
         )
@@ -551,15 +552,23 @@ extension LevelConfig {
     nonisolated struct Floor: Codable, Equatable, Sendable {
         var set: String
         var decorProb: Double
+        /// 0 = legacy per-cell variety, 1 = maximal patching. Default 0.75.
+        var cohesion: Double
 
         enum CodingKeys: String, CodingKey {
             case set
             case decorProb = "decor_prob"
+            case cohesion
         }
 
-        nonisolated init(set: String = LevelConfig.offlineFallbackSet, decorProb: Double = 0.06) {
+        nonisolated init(
+            set: String = LevelConfig.offlineFallbackSet,
+            decorProb: Double = 0.06,
+            cohesion: Double = 0.75
+        ) {
             self.set = set
             self.decorProb = decorProb
+            self.cohesion = cohesion
         }
 
         /// An absent `set:` decodes empty and is filled in from the level's folder
@@ -569,6 +578,7 @@ extension LevelConfig {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             set = try c.decodeIfPresent(String.self, forKey: .set) ?? ""
             decorProb = try c.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
+            cohesion = try c.decodeIfPresent(Double.self, forKey: .cohesion) ?? 0.75
         }
     }
 

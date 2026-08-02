@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-LETTERS = list("abcdefgh") + ["l", "m", "o", "p", "s"]
+LETTERS = list("abcdefgh") + ["l", "m", "o", "p", "s", "w"]
 
 # Spoken placeholders. Use phonetic spellings for names — macOS `say "B"` speaks
 # "Capital B", which is too long/awkward for gameplay prompts.
@@ -26,6 +26,7 @@ NAME_TEXT = {
     "o": "oh",
     "p": "pee",
     "s": "ess",
+    "w": "double you",
 }
 
 PRONUNCIATION_TEXT = {
@@ -42,6 +43,7 @@ PRONUNCIATION_TEXT = {
     "o": "oh",  # long O, matching the word "open"
     "p": "puh",
     "s": "sss",
+    "w": "wuh",
 }
 
 

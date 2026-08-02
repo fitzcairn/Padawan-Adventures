@@ -11,5 +11,6 @@ pip3 install -r scripts/requirements.txt
 python3 scripts/bake_sprites.py          # player, items, floors, planets
 python3 scripts/bake_sprites.py --enemies
 python3 scripts/bake_sprites.py --verify # fail if sources drifted
-python3 scripts/bake_floor_anchors.py    # diamond anchors in Floor/atlas.json
+python3 scripts/bake_floor_sets.py       # floor tiles (also via bake_sprites.py --floors)
+python3 scripts/score_floor_sets.py      # cohesion gates + synthetic room renders
 ```

@@ -14,7 +14,7 @@ nonisolated enum CatalogValidators {
         for entry in words {
             guard !entry.word.isEmpty,
                   entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                  !entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw invalidEntryError
             }
             var prefix = ""

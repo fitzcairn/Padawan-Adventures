@@ -389,7 +389,10 @@ nonisolated extension ProceduralGenerator {
                 tiles: &state.tiles[storyIndex],
                 story: storyIndex,
                 set: floorTileSet,
-                options: FloorTiler.Options(decorProb: config.decorProb),
+                options: FloorTiler.Options(
+                    decorProb: config.decorProb,
+                    cohesion: config.cohesion
+                ),
                 rng: &floorRng
             )
         }

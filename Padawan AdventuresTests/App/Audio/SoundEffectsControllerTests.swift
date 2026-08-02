@@ -6,6 +6,11 @@ import Testing
 final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var playCalls: [(trackID: String, volume: Float)] = []
     var missingTrackIDs: Set<String> = []
+    var durations: [String: TimeInterval] = [:]
+    private(set) var loopTrackIDs: Set<String> = []
+    private(set) var prepareCalls: [[String]] = []
+    private(set) var fadeOutCalls: [(trackID: String, duration: TimeInterval)] = []
+    private(set) var loopDuckScale: Float = 1
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
@@ -14,6 +19,41 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
         }
         playCalls.append((trackID, volume))
         return true
+    }
+
+    func duration(of trackID: String) -> TimeInterval? {
+        durations[trackID]
+    }
+
+    func prepare(trackIDs: [String]) {
+        prepareCalls.append(trackIDs)
+    }
+
+    @discardableResult
+    func startLoop(trackID: String, volume: Float) -> Bool {
+        if missingTrackIDs.contains(trackID) {
+            return false
+        }
+        loopTrackIDs.insert(trackID)
+        playCalls.append((trackID, volume))
+        return true
+    }
+
+    func stopLoop(trackID: String) {
+        loopTrackIDs.remove(trackID)
+    }
+
+    func stopAllLoops() {
+        loopTrackIDs.removeAll()
+    }
+
+    func setLoopDuckScale(_ scale: Float) {
+        loopDuckScale = scale
+    }
+
+    func fadeOutAndStop(trackID: String, duration: TimeInterval) {
+        fadeOutCalls.append((trackID, duration))
+        loopTrackIDs.remove(trackID)
     }
 
     var playedTrackIDs: [String] {

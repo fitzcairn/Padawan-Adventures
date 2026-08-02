@@ -55,6 +55,18 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         var hint: String?
     }
 
+    struct Family: Codable, Equatable, Sendable {
+        var rgb: [Int]
+        var size: Int
+        var baseIDs: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case rgb
+            case size
+            case baseIDs = "base_ids"
+        }
+    }
+
     struct Meta: Codable, Equatable, Sendable {
         var version: Int
         var floorSet: String
@@ -66,6 +78,8 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         var confidentTiles: Int?
         /// `"sheet"` when roles came from `*-floor-spritesheet-pit.png`, else `"heuristic"`.
         var pitSource: String?
+        /// Visual families clustered at bake time. Optional for older atlases.
+        var families: [String: Family]?
 
         struct Size: Codable, Equatable, Sendable {
             var w: Int
@@ -82,6 +96,7 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             case edgeOrder = "edge_order"
             case confidentTiles = "confident_tiles"
             case pitSource = "pit_source"
+            case families
         }
     }
 
@@ -96,6 +111,9 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         var edges: [String: String]
         var matches: [String: [String]]
         var cell: [Int]?
+        var family: String?
+        var tier: String?
+        var busyness: Double?
 
         enum CodingKeys: String, CodingKey {
             case x, y, w, h
@@ -105,6 +123,9 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             case edges
             case matches
             case cell
+            case family
+            case tier
+            case busyness
         }
 
         init(
@@ -117,7 +138,10 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             weight: Double = 1,
             edges: [String: String] = [:],
             matches: [String: [String]] = [:],
-            cell: [Int]? = nil
+            cell: [Int]? = nil,
+            family: String? = nil,
+            tier: String? = nil,
+            busyness: Double? = nil
         ) {
             self.x = x
             self.y = y
@@ -129,6 +153,9 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             self.edges = edges
             self.matches = matches
             self.cell = cell
+            self.family = family
+            self.tier = tier
+            self.busyness = busyness
         }
 
         init(from decoder: Decoder) throws {
@@ -143,6 +170,9 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             edges = try c.decodeIfPresent([String: String].self, forKey: .edges) ?? [:]
             matches = try c.decodeIfPresent([String: [String]].self, forKey: .matches) ?? [:]
             cell = try c.decodeIfPresent([Int].self, forKey: .cell)
+            family = try c.decodeIfPresent(String.self, forKey: .family)
+            tier = try c.decodeIfPresent(String.self, forKey: .tier)
+            busyness = try c.decodeIfPresent(Double.self, forKey: .busyness)
         }
     }
 
@@ -230,6 +260,33 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
 
     var pitTileIDs: [String] {
         frames.filter { $0.value.role == .pit }.map(\.key).sorted()
+    }
+
+    /// Sorted tile ids belonging to `family` (nil → all non-pit tiles). Safe for RNG.
+    func tileIDs(family: String?) -> [String] {
+        frames
+            .filter { _, frame in
+                guard frame.role != .pit else { return false }
+                guard let family else { return true }
+                return frame.family == family
+            }
+            .map(\.key)
+            .sorted()
+    }
+
+    /// Family id + member count, sorted by id. Weights are member counts for picking.
+    var familyIDsWeighted: [(id: String, weight: Double)] {
+        if let metaFamilies = meta.families, !metaFamilies.isEmpty {
+            return metaFamilies.keys.sorted().map { id in
+                (id: id, weight: Double(metaFamilies[id]?.size ?? 1))
+            }
+        }
+        var counts: [String: Int] = [:]
+        for frame in frames.values {
+            guard frame.role != .pit, let fam = frame.family else { continue }
+            counts[fam, default: 0] += 1
+        }
+        return counts.keys.sorted().map { (id: $0, weight: Double(counts[$0] ?? 1)) }
     }
 
     /// Exact void-mask match, else best Jaccard overlap, else any pit tile.

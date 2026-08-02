@@ -1,3 +1,4 @@
+import simd
 import SpriteKit
 import UIKit
 
@@ -237,6 +238,31 @@ extension PlaceholderFactory {
         return node
     }
 
+    /// Optional ambient tint shader. Off by default — bake-time photometry +
+    /// one-way edge fade already solve seams. Enable only after verifying that
+    /// `node.alpha` still drives the room-reveal fade with the custom shader.
+    static var enableFloorAmbientShader = false
+
+    private static let floorAmbientShader: SKShader = {
+        // Subrect textures may present v_tex_coord in parent-atlas space; we ignore
+        // that here and only mix RGB with a uniform ambient (no UV sampling math).
+        let source = """
+        void main() {
+            vec4 texel = texture2D(u_texture, v_tex_coord);
+            vec3 ambient = u_ambient;
+            float strength = u_ambient_strength;
+            vec3 rgb = mix(texel.rgb, ambient, strength);
+            gl_FragColor = vec4(rgb, texel.a);
+        }
+        """
+        let shader = SKShader(source: source)
+        shader.uniforms = [
+            SKUniform(name: "u_ambient", vectorFloat3: SIMD3<Float>(0.45, 0.50, 0.40)),
+            SKUniform(name: "u_ambient_strength", float: 0.08),
+        ]
+        return shader
+    }()
+
     /// Floor tile sprite placed so the art's north corner coincides with the container origin.
     static func floorTileNode(
         tileID: String,
@@ -262,6 +288,9 @@ extension PlaceholderFactory {
         )
         sprite.position = .zero
         sprite.zPosition = 0
+        if enableFloorAmbientShader {
+            sprite.shader = floorAmbientShader
+        }
         container.addChild(sprite)
         return container
     }

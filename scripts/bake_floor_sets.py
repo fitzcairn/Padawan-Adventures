@@ -4,9 +4,10 @@
 For each sheet under Art/Levels/{set}/{set}-floor-spritesheet.png:
 
   1. Detect grid, separate black background, measure per-tile diamond geometry.
-  2. Cluster lighting-bias-normalized edge strips into material classes,
-     assign NE/SE/SW/NW labels, score pit/decor roles, build matches map.
-  3. Trim, shelf-pack into Resources/Levels/{set}/, write {set}-floor-atlas.json.
+  2. Photometric-normalize non-pit tiles; cluster into visual families;
+     assign edge materials / roles; build strict colour-matched matches map.
+  3. Dilate silhouette + one-way NE/NW alpha ramp; trim; shelf-pack (optionally
+     downscaled); write {set}-floor-atlas.json.
 
 Contact sheets land in scripts/out/ (not bundled).
 
@@ -14,6 +15,7 @@ Usage:
   python3 scripts/bake_floor_sets.py
   python3 scripts/bake_floor_sets.py --set 1-tython
   python3 scripts/bake_floor_sets.py --grid 14x8 --set 3-ilum
+  python3 scripts/bake_floor_sets.py --bake-scale 0.5
   python3 scripts/bake_floor_sets.py --contact-only
   python3 scripts/bake_floor_sets.py --verify-pits
 """
@@ -32,6 +34,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
@@ -53,14 +56,39 @@ CLUSTER_SEED = 0xF10025
 K_INIT = 6
 MERGE_DIST = 28.0
 MIN_CLUSTER_SIZE = 4
-# Max 6-D feature distance for opposite edges to count as compatible.
-MATCH_DIST = 24.0
+# Max absolute edge RGB distance for opposite edges to count as compatible.
+MATCH_DIST = 8.0
+MIN_MATCHES = 3
+# Cap so declared-match p90 stays <= gate (14). Solver can rescue if domains empty.
+MAX_MATCH_DIST = 14.0
+# Even when many tiles fall under MATCH_DIST, keep only the closest N to
+# avoid bloating match lists on small sets (gate: mean fraction <= 12%).
+MAX_MATCHES = 6
 PAD = 2
 # Fraction of the source cell's own occupancy a pit-sheet cell must reach.
 # Observed ratios are ~0 or ~1 across all sets, so this is a wide margin.
 PIT_TRUTH_MIN_RATIO = 0.25
 # Max per-channel difference before a marked cell counts as "drifted" art.
 PIT_ART_TOLERANCE = 16
+
+# Photometric normalization (Stage 1).
+SRGB_GAMMA = 2.2
+NORM_GAIN_MIN, NORM_GAIN_MAX = 0.75, 1.35
+NORM_OFFSET_MAX = 40.0
+NORM_STRENGTH = 1.0
+
+# Family clustering (Stage 2).
+FAMILY_SEED = 0xF10026
+FAMILY_K_INIT = 6
+FAMILY_MERGE_DIST = 1.8  # z-scored feature space
+MIN_FAMILY_SIZE = 6
+BUSYNESS_TAU = 0.6
+
+# Seam fix (Stage 4).
+EDGE_FADE_PX = 6
+
+# Resolution match (Stage 6).
+DEFAULT_BAKE_SCALE = 0.5
 
 # Source filename stem → canonical set name (rename illum → ilum).
 SET_ALIASES = {
@@ -122,6 +150,60 @@ def discover_source_sheets() -> list[tuple[str, Path]]:
         if candidate.is_file():
             found.append((level_id, candidate))
     return found
+
+
+def cell_to_array(img: Image.Image, geom: "TileGeom") -> np.ndarray:
+    """Cell crop as float32 RGBA array, shape (h, w, 4), values 0..255."""
+    return np.asarray(
+        img.crop((geom.x0, geom.y0, geom.x1, geom.y1)).convert("RGBA"),
+        dtype=np.float32,
+    )
+
+
+def array_to_cell(arr: np.ndarray) -> Image.Image:
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+
+
+def to_linear(a: np.ndarray) -> np.ndarray:
+    return np.power(np.clip(a, 0, 255) / 255.0, SRGB_GAMMA)
+
+
+def to_srgb(a: np.ndarray) -> np.ndarray:
+    return np.power(np.clip(a, 0.0, 1.0), 1.0 / SRGB_GAMMA) * 255.0
+
+
+def diamond_interior_mask(
+    h: int,
+    w: int,
+    cx: float,
+    ay: float,
+    diamond_w: float,
+    diamond_h: float,
+    scale: float = 0.8,
+) -> np.ndarray:
+    """Boolean (h, w) mask for the diamond interior scaled about its centre."""
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    hw = diamond_w / 2.0 * scale
+    hh = diamond_h / 2.0 * scale
+    cy = ay + diamond_h / 2.0
+    d = np.abs(xx - cx) / max(hw, 1e-6) + np.abs(yy - cy) / max(hh, 1e-6)
+    return d <= 1.0
+
+
+def diamond_edge_distance(
+    h: int,
+    w: int,
+    cx: float,
+    ay: float,
+    diamond_w: float,
+    diamond_h: float,
+) -> np.ndarray:
+    """Signed distance: negative inside diamond, positive outside (approx L1)."""
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    hw = diamond_w / 2.0
+    hh = diamond_h / 2.0
+    cy = ay + diamond_h / 2.0
+    return np.abs(xx - cx) / max(hw, 1e-6) + np.abs(yy - cy) / max(hh, 1e-6) - 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -762,45 +844,656 @@ def load_pit_truth(
     return truth
 
 
+def rgb_dist(a: list[float], b: list[float]) -> float:
+    return math.sqrt(sum((a[i] - b[i]) ** 2 for i in range(3)))
+
+
 def build_matches(
-    edges: dict[str, dict[str, str]],
-    features: dict[str, dict[str, list[float]]],
+    edge_rgb: dict[str, dict[str, list[float]]],
     roles: dict[str, str],
+    families: dict[str, str | None],
     match_dist: float = MATCH_DIST,
-) -> dict[str, dict[str, list[str]]]:
-    """Compatible neighbours, partitioned so pit and non-pit art never mix.
+) -> tuple[dict[str, dict[str, list[str]]], dict[str, float]]:
+    """Strict colour+family matches. Pit tiles accept any pit on any side.
 
-    Pit tiles accept any pit tile on any side (a hole is a hole, and
-    pits.by_mask + weights drive the actual choice). Non-pit tiles keep
-    material/feature matching, restricted to other non-pit tiles.
+    Returns (matches, relaxed_dist_by_tid) where relaxed_dist records the
+    distance used when MIN_MATCHES forced relaxation above MATCH_DIST.
     """
-    pit_ids = sorted(t for t in edges if roles.get(t) == "pit")
-    non_pit = [t for t in edges if roles.get(t) != "pit"]
-
-    by_edge: dict[str, dict[str, list[str]]] = {s: {} for s in SIDES}
-    for tid in non_pit:
-        for s in SIDES:
-            by_edge[s].setdefault(edges[tid][s], []).append(tid)
+    pit_ids = sorted(t for t in roles if roles.get(t) == "pit")
+    non_pit = sorted(t for t in roles if roles.get(t) != "pit")
 
     matches: dict[str, dict[str, list[str]]] = {}
-    for tid in edges:
+    relaxed: dict[str, float] = {}
+
+    for tid in roles:
         if roles.get(tid) == "pit":
             matches[tid] = {s: list(pit_ids) for s in SIDES}
             continue
+        fam = families.get(tid)
+        family_pool = [
+            o for o in non_pit if fam is None or families.get(o) == fam
+        ]
         matches[tid] = {}
+        worst_relax = 0.0
         for s in SIDES:
             opp = OPPOSITE[s]
-            allowed = set(by_edge[opp].get(edges[tid][s], []))
-            v = features.get(tid, {}).get(s)
+            v = edge_rgb.get(tid, {}).get(s)
+            # Self is only valid when opposite edges of this tile agree —
+            # otherwise two adjacent copies clash (SE of one vs NW of the other).
+            self_ok = False
             if v is not None:
-                for other in non_pit:
-                    ov = features.get(other, {}).get(opp)
-                    if ov is not None and dist6(v, ov) <= match_dist:
-                        allowed.add(other)
-            # Always allow self on every side (seamless repeats).
-            allowed.add(tid)
+                self_opp = edge_rgb.get(tid, {}).get(opp)
+                if self_opp is not None and rgb_dist(v, self_opp) <= match_dist:
+                    self_ok = True
+            used_dist = match_dist
+
+            def collect(dist: float) -> set[str]:
+                out: set[str] = set()
+                if self_ok and v is not None:
+                    self_opp = edge_rgb.get(tid, {}).get(opp)
+                    if self_opp is not None and rgb_dist(v, self_opp) <= dist:
+                        out.add(tid)
+                if v is None:
+                    return out
+                for other in family_pool:
+                    if other == tid:
+                        continue
+                    ov = edge_rgb.get(other, {}).get(opp)
+                    if ov is not None and rgb_dist(v, ov) <= dist:
+                        out.add(other)
+                return out
+
+            def rank_within(dist: float) -> list[tuple[float, str]]:
+                ranked: list[tuple[float, str]] = []
+                if v is None:
+                    return ranked
+                for other in family_pool:
+                    ov = edge_rgb.get(other, {}).get(opp)
+                    if ov is None:
+                        continue
+                    d_i = rgb_dist(v, ov)
+                    if d_i <= dist:
+                        ranked.append((d_i, other))
+                ranked.sort()
+                return ranked
+
+            ranked = rank_within(match_dist)
+            if len(ranked) < MIN_MATCHES:
+                d = match_dist
+                while len(ranked) < MIN_MATCHES and d < MAX_MATCH_DIST:
+                    d += 2.0
+                    ranked = rank_within(d)
+                    used_dist = d
+                if len(ranked) < MIN_MATCHES:
+                    ranked = rank_within(MAX_MATCH_DIST)[:MIN_MATCHES]
+                    if ranked:
+                        used_dist = max(used_dist, ranked[-1][0])
+            # Keep only the closest MAX_MATCHES (includes self when present).
+            allowed = {other for _, other in ranked[:MAX_MATCHES]}
+            if used_dist > match_dist:
+                worst_relax = max(worst_relax, used_dist)
             matches[tid][s] = sorted(allowed)
-    return matches
+        if worst_relax > match_dist:
+            relaxed[tid] = worst_relax
+    return matches, relaxed
+
+
+# ---------------------------------------------------------------------------
+# Photometric normalization / families / seam fix
+# ---------------------------------------------------------------------------
+
+
+def _fit_luma_ramp(
+    luma: np.ndarray, mask: np.ndarray, cx: float, cy: float, hw: float, hh: float
+) -> tuple[float, float, float]:
+    """Least-squares L ~ a + b*u + c*v over interior mask; u,v in [-1,1]."""
+    ys, xs = np.where(mask)
+    if len(xs) < 16:
+        return 0.0, 0.0, 0.0
+    u = (xs.astype(np.float64) - cx) / max(hw, 1e-6)
+    v = (ys.astype(np.float64) - cy) / max(hh, 1e-6)
+    L = luma[ys, xs].astype(np.float64)
+    A = np.column_stack([np.ones(len(u)), u, v])
+    try:
+        coef, *_ = np.linalg.lstsq(A, L, rcond=None)
+        return float(coef[0]), float(coef[1]), float(coef[2])
+    except Exception:
+        return float(L.mean()), 0.0, 0.0
+
+
+def normalize_tiles(
+    img: Image.Image,
+    tiles: list[TileGeom],
+    roles: dict[str, str],
+    diamond_w: float,
+    diamond_h: float,
+    *,
+    target_mean: list[float] | None = None,
+    target_std: list[float] | None = None,
+) -> tuple[dict[str, Image.Image], dict[str, Any]]:
+    """Photometric-normalize non-pit tiles in linear light.
+
+    Returns cell overrides (full cell RGBA images) and photometry meta.
+    Pit tiles are returned unchanged (copied cells) so callers can always
+    look up a cell image.
+    """
+    cells: dict[str, Image.Image] = {}
+    # First pass: collect per-tile mean/std/ramp over interior.
+    tile_stats: dict[str, dict[str, Any]] = {}
+    for geom in tiles:
+        arr = cell_to_array(img, geom)
+        h, w = arr.shape[:2]
+        # Provisional alpha from dark-bg flood (opaque_mask); dark interiors stay.
+        mask_bool = np.array(geom.mask, dtype=bool)
+        if mask_bool.shape != (h, w):
+            # Geometry mask is cell-sized; assert and fall back.
+            mask_bool = np.ones((h, w), dtype=bool)
+        interior = diamond_interior_mask(
+            h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
+        ) & mask_bool
+        # Prefer opaque-looking pixels (high max channel when still opaque RGB).
+        opaque = arr[..., 3] > 250 if arr.shape[2] == 4 else np.ones((h, w), dtype=bool)
+        # Source cells are typically fully opaque RGB on black; treat non-bg as opaque.
+        rgb_max = arr[..., :3].max(axis=2)
+        opaque = (rgb_max > BG_MAX) & mask_bool
+        interior = interior & opaque
+        if roles.get(geom.tid) == "pit" or interior.sum() < 16:
+            cells[geom.tid] = array_to_cell(arr)
+            continue
+        lin = to_linear(arr[..., :3])
+        luma = lin.mean(axis=2)
+        cy = geom.apex_y + diamond_h / 2.0
+        a, b, c = _fit_luma_ramp(
+            luma, interior, geom.cx, cy, diamond_w / 2.0, diamond_h / 2.0
+        )
+        mean = [float(lin[interior, ch].mean()) for ch in range(3)]
+        std = [
+            float(max(lin[interior, ch].std(), 1e-6)) for ch in range(3)
+        ]
+        tile_stats[geom.tid] = {
+            "arr": arr,
+            "lin": lin,
+            "interior": interior,
+            "opaque": opaque,
+            "mean": mean,
+            "std": std,
+            "ramp": (a, b, c),
+            "geom": geom,
+        }
+
+    if not tile_stats:
+        for geom in tiles:
+            if geom.tid not in cells:
+                cells[geom.tid] = array_to_cell(cell_to_array(img, geom))
+        return cells, {
+            "space": "linear_rgb",
+            "strength": NORM_STRENGTH,
+            "target_mean": [],
+            "target_std": [],
+            "gradient": {"b": 0.0, "c": 0.0},
+            "clamped": [],
+        }
+
+    bs = [tile_stats[t]["ramp"][1] for t in tile_stats]
+    cs = [tile_stats[t]["ramp"][2] for t in tile_stats]
+    b_med = float(statistics.median(bs))
+    c_med = float(statistics.median(cs))
+
+    if target_mean is None:
+        target_mean = [
+            float(statistics.median([tile_stats[t]["mean"][i] for t in tile_stats]))
+            for i in range(3)
+        ]
+    if target_std is None:
+        target_std = [
+            float(statistics.median([tile_stats[t]["std"][i] for t in tile_stats]))
+            for i in range(3)
+        ]
+
+    clamped: list[str] = []
+    for tid, st in tile_stats.items():
+        arr = st["arr"].copy()
+        lin = st["lin"].copy()
+        interior = st["interior"]
+        geom = st["geom"]
+        h, w = arr.shape[:2]
+        yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+        cy = geom.apex_y + diamond_h / 2.0
+        u = (xx - geom.cx) / max(diamond_w / 2.0, 1e-6)
+        v = (yy - cy) / max(diamond_h / 2.0, 1e-6)
+        _, b, c = st["ramp"]
+        # Remove own ramp, restore set-median ramp — on luminance via RGB scale.
+        luma = lin.mean(axis=2)
+        correction = (b_med - b) * u + (c_med - c) * v
+        # Apply ramp correction only where we have opaque art.
+        opaque = st["opaque"]
+        lin_adj = lin.copy()
+        for ch in range(3):
+            lin_adj[..., ch] = np.where(
+                opaque, np.clip(lin[..., ch] + correction, 0.0, 1.0), lin[..., ch]
+            )
+
+        # Affine match on interior.
+        out = lin_adj.copy()
+        for ch in range(3):
+            tile_mean = float(lin_adj[interior, ch].mean()) if interior.any() else st["mean"][ch]
+            tile_std = float(max(lin_adj[interior, ch].std(), 1e-6)) if interior.any() else st["std"][ch]
+            gain = float(
+                np.clip(target_std[ch] / tile_std, NORM_GAIN_MIN, NORM_GAIN_MAX)
+            )
+            matched = (lin_adj[..., ch] - tile_mean) * gain + target_mean[ch]
+            out[..., ch] = np.where(
+                opaque,
+                lin_adj[..., ch] * (1.0 - NORM_STRENGTH) + matched * NORM_STRENGTH,
+                lin_adj[..., ch],
+            )
+        out = np.clip(out, 0.0, 1.0)
+        srgb = to_srgb(out)
+        # Guard rail: mean shift in sRGB.
+        old_mean = arr[interior, :3].mean(axis=0) if interior.any() else arr[..., :3].mean(axis=(0, 1))
+        new_mean = srgb[interior].mean(axis=0) if interior.any() else srgb.mean(axis=(0, 1))
+        if float(np.max(np.abs(new_mean - old_mean))) > NORM_OFFSET_MAX:
+            clamped.append(tid)
+            print(
+                f"  WARNING photometry clamp {tid}: "
+                f"mean shift {float(np.max(np.abs(new_mean - old_mean))):.1f}"
+            )
+        arr[..., :3] = srgb
+        cells[tid] = array_to_cell(arr)
+
+    for geom in tiles:
+        if geom.tid not in cells:
+            cells[geom.tid] = array_to_cell(cell_to_array(img, geom))
+
+    meta = {
+        "space": "linear_rgb",
+        "strength": NORM_STRENGTH,
+        "target_mean": [round(v, 5) for v in target_mean],
+        "target_std": [round(v, 5) for v in target_std],
+        "gradient": {"b": round(b_med, 5), "c": round(c_med, 5)},
+        "clamped": sorted(clamped),
+    }
+    return cells, meta
+
+
+def _laplacian_busyness(luma: np.ndarray, mask: np.ndarray) -> float:
+    """Std of discrete Laplacian over mask."""
+    # Simple 4-neighbour Laplacian via convolution.
+    pad = np.pad(luma, 1, mode="edge")
+    lap = (
+        4 * pad[1:-1, 1:-1]
+        - pad[:-2, 1:-1]
+        - pad[2:, 1:-1]
+        - pad[1:-1, :-2]
+        - pad[1:-1, 2:]
+    )
+    vals = lap[mask]
+    if vals.size < 8:
+        return 0.0
+    return float(vals.std())
+
+
+def cluster_families(
+    cells: dict[str, Image.Image],
+    tiles: list[TileGeom],
+    roles: dict[str, str],
+    diamond_w: float,
+    diamond_h: float,
+) -> tuple[dict[str, str | None], dict[str, float], dict[str, str], dict[str, Any]]:
+    """Return families, busyness, tiers, and meta.families for non-pit tiles."""
+    features: list[list[float]] = []
+    ids: list[str] = []
+    raw_busy: dict[str, float] = {}
+    means: dict[str, list[float]] = {}
+    stds: dict[str, list[float]] = {}
+
+    for geom in tiles:
+        tid = geom.tid
+        if roles.get(tid) == "pit":
+            continue
+        arr = np.asarray(cells[tid].convert("RGBA"), dtype=np.float32)
+        h, w = arr.shape[:2]
+        mask_bool = np.array(geom.mask, dtype=bool)
+        if mask_bool.shape != (h, w):
+            mask_bool = np.ones((h, w), dtype=bool)
+        interior = diamond_interior_mask(
+            h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
+        ) & mask_bool & (arr[..., :3].max(axis=2) > BG_MAX)
+        if interior.sum() < 16:
+            continue
+        rgb = arr[..., :3]
+        mean = [float(rgb[interior, ch].mean()) for ch in range(3)]
+        std = [float(rgb[interior, ch].std()) for ch in range(3)]
+        luma = rgb.mean(axis=2)
+        busy = _laplacian_busyness(luma, interior)
+        features.append(mean + std + [busy])
+        ids.append(tid)
+        raw_busy[tid] = busy
+        means[tid] = mean
+        stds[tid] = std
+
+    families: dict[str, str | None] = {t.tid: None for t in tiles}
+    tiers: dict[str, str] = {}
+    busyness: dict[str, float] = {t.tid: 0.0 for t in tiles}
+    meta_families: dict[str, Any] = {}
+
+    if len(ids) < 3:
+        for tid in ids:
+            families[tid] = "fam0"
+            tiers[tid] = "base"
+            busyness[tid] = 0.5
+        if ids:
+            meta_families["fam0"] = {
+                "rgb": [int(round(statistics.median([means[t][i] for t in ids]))) for i in range(3)],
+                "size": len(ids),
+                "base_ids": sorted(ids),
+            }
+        return families, busyness, tiers, meta_families
+
+    # Z-score features.
+    feat = np.array(features, dtype=np.float64)
+    mu = feat.mean(axis=0)
+    sigma = feat.std(axis=0)
+    sigma[sigma < 1e-6] = 1.0
+    feat_z = (feat - mu) / sigma
+    vectors = feat_z.tolist()
+
+    rng = random.Random(FAMILY_SEED)
+    k = min(FAMILY_K_INIT, len(vectors))
+    # kmeans_plus expects 6-D via dist6; pad/truncate features to 6 for init,
+    # then run Euclidean k-means on the real 7-D vectors.
+    padded = [(v + [0.0] * 6)[:6] for v in vectors]
+    centroids6 = kmeans_plus(padded, k, rng)
+    # Lift centroids back to full feature dim by averaging assigned members later.
+    labels = [
+        min(range(len(centroids6)), key=lambda j: dist6(padded[i], centroids6[j]))
+        for i in range(len(vectors))
+    ]
+    dim = len(vectors[0])
+    centroids = []
+    for j in range(len(centroids6)):
+        members = [vectors[i] for i, lab in enumerate(labels) if lab == j]
+        if members:
+            centroids.append(
+                [sum(m[d] for m in members) / len(members) for d in range(dim)]
+            )
+        else:
+            centroids.append((vectors[0][:]))
+    for _ in range(80):
+        changed = False
+        for i, v in enumerate(vectors):
+            best = min(range(len(centroids)), key=lambda j: math.dist(v, centroids[j]))
+            if labels[i] != best:
+                labels[i] = best
+                changed = True
+        new_c = []
+        for j in range(len(centroids)):
+            members = [vectors[i] for i, lab in enumerate(labels) if lab == j]
+            if not members:
+                new_c.append(centroids[j])
+            else:
+                new_c.append(
+                    [sum(m[d] for m in members) / len(members) for d in range(dim)]
+                )
+        centroids = new_c
+        if not changed:
+            break
+
+    # Merge close / tiny clusters until 3..6 remain with min size.
+    def relabel_contiguous(labs: list[int], cents: list[list[float]]):
+        used = sorted(set(labs))
+        remap = {old: new for new, old in enumerate(used)}
+        return [remap[l] for l in labs], [cents[old] for old in used]
+
+    labels, centroids = relabel_contiguous(labels, centroids)
+
+    def merge_labels(a: int, b: int) -> None:
+        """Merge cluster b into a, then compact label ids and recompute centroids."""
+        nonlocal labels, centroids
+        if a == b:
+            return
+        labels = [a if lab == b else lab for lab in labels]
+        labels, _ = relabel_contiguous(labels, centroids)
+        n_labs = (max(labels) + 1) if labels else 0
+        centroids = []
+        for j in range(n_labs):
+            mem = [vectors[i] for i, lab in enumerate(labels) if lab == j]
+            centroids.append(
+                [sum(m[d] for m in mem) / len(mem) for d in range(dim)]
+                if mem
+                else [0.0] * dim
+            )
+
+    while True:
+        merged = False
+        for i in range(len(centroids)):
+            for j in range(i + 1, len(centroids)):
+                if math.dist(centroids[i], centroids[j]) < FAMILY_MERGE_DIST:
+                    merge_labels(i, j)
+                    merged = True
+                    break
+            if merged:
+                break
+        if not merged:
+            break
+
+    # Merge tiny until min size or <= 3 families.
+    while len(centroids) > 3:
+        counts = [0] * len(centroids)
+        for lab in labels:
+            if 0 <= lab < len(counts):
+                counts[lab] += 1
+        tiny = next((i for i, c in enumerate(counts) if c < MIN_FAMILY_SIZE), None)
+        if tiny is None:
+            break
+        target = min(
+            (j for j in range(len(centroids)) if j != tiny),
+            key=lambda j: math.dist(centroids[tiny], centroids[j]),
+        )
+        merge_labels(target, tiny)
+
+    # Cap at 6 by merging closest pairs.
+    while len(centroids) > 6:
+        best_pair = None
+        best_d = 1e18
+        for i in range(len(centroids)):
+            for j in range(i + 1, len(centroids)):
+                d = math.dist(centroids[i], centroids[j])
+                if d < best_d:
+                    best_d = d
+                    best_pair = (i, j)
+        assert best_pair is not None
+        i, j = best_pair
+        merge_labels(i, j)
+
+    # Normalize busyness so set median → 0.5
+    busy_vals = [raw_busy[t] for t in ids]
+    med_busy = statistics.median(busy_vals) or 1.0
+    for tid in ids:
+        busyness[tid] = float(raw_busy[tid] / med_busy * 0.5)
+
+    by_fam: dict[int, list[str]] = {}
+    for tid, lab in zip(ids, labels):
+        fam = f"fam{lab}"
+        families[tid] = fam
+        by_fam.setdefault(lab, []).append(tid)
+
+    for lab, members in by_fam.items():
+        members_sorted = sorted(members, key=lambda t: busyness[t])
+        n_base = max(3, int(math.ceil(0.40 * len(members_sorted))))
+        n_base = min(n_base, len(members_sorted))
+        base = set(members_sorted[:n_base])
+        for tid in members_sorted:
+            tiers[tid] = "base" if tid in base else "accent"
+        fam = f"fam{lab}"
+        meta_families[fam] = {
+            "rgb": [
+                int(round(statistics.median([means[t][i] for t in members])))
+                for i in range(3)
+            ],
+            "size": len(members),
+            "base_ids": sorted(base),
+        }
+
+    print(
+        f"  families={len(meta_families)} "
+        + " ".join(f"{k}:{v['size']}" for k, v in sorted(meta_families.items()))
+    )
+    return families, busyness, tiers, meta_families
+
+
+def absolute_edge_rgb(
+    cell: Image.Image,
+    geom: TileGeom,
+    diamond_w: float,
+    diamond_h: float,
+) -> dict[str, list[float]]:
+    """Per-side absolute mean RGB from a (possibly normalized) cell image."""
+    px = cell.load()
+    cx = geom.cx
+    ay = geom.apex_y
+    hw = diamond_w / 2.0
+    hh = diamond_h / 2.0
+    north = (cx, ay)
+    east = (cx + hw, ay + hh)
+    south = (cx, ay + diamond_h)
+    west = (cx - hw, ay + hh)
+    edges = {
+        "NE": (north, east),
+        "SE": (east, south),
+        "SW": (south, west),
+        "NW": (west, north),
+    }
+    centre = (cx, ay + hh)
+    w, h = cell.size
+    scale = max(diamond_w, 1.0) / 169.0
+    depths = [max(1, int(round(d * scale))) for d in (4, 8, 12, 16)]
+    out: dict[str, list[float]] = {}
+    for side, (p, q) in edges.items():
+        samples: list[tuple[int, int, int]] = []
+        for i in range(24):
+            t = (i + 0.5) / 24.0
+            x = p[0] + (q[0] - p[0]) * t
+            y = p[1] + (q[1] - p[1]) * t
+            dx = centre[0] - x
+            dy = centre[1] - y
+            n = math.hypot(dx, dy) or 1.0
+            for d in depths:
+                xx = int(round(x + dx / n * d))
+                yy = int(round(y + dy / n * d))
+                if 0 <= xx < w and 0 <= yy < h:
+                    r, g, b, a = px[xx, yy]
+                    # Require solid alpha so NE/NW fade fringe doesn't pollute matches.
+                    if a > 200:
+                        samples.append((r, g, b))
+        if len(samples) < 8:
+            out[side] = [0.0, 0.0, 0.0]
+        else:
+            out[side] = [sum(s[i] for s in samples) / len(samples) for i in range(3)]
+    return out
+
+
+def dilate_and_fade_cell(
+    cell: Image.Image,
+    geom: TileGeom,
+    diamond_w: float,
+    diamond_h: float,
+    *,
+    dilate_px: int,
+    edge_fade_px: int = EDGE_FADE_PX,
+) -> Image.Image:
+    """Dilate silhouette to fill diamond.w, then fade alpha on NE/NW edges only."""
+    arr = np.asarray(cell.convert("RGBA"), dtype=np.float32)
+    h, w = arr.shape[:2]
+    mask_bool = np.array(geom.mask, dtype=bool)
+    if mask_bool.shape != (h, w):
+        mask_bool = arr[..., :3].max(axis=2) > BG_MAX
+
+    # Dilate mask by dilate_px (Chebyshev) and fill RGB from nearest opaque pixel.
+    if dilate_px > 0:
+        # Distance transform via iterative dilation.
+        fg = mask_bool.copy()
+        # Brute force nearest for dilated ring (cells are ~170px; fine).
+        fg_ys, fg_xs = np.where(fg)
+        if fg_xs.size:
+            # Expand mask.
+            dilated = fg.copy()
+            for _ in range(dilate_px):
+                padded = np.pad(dilated, 1, mode="constant", constant_values=False)
+                neigh = (
+                    padded[:-2, 1:-1]
+                    | padded[2:, 1:-1]
+                    | padded[1:-1, :-2]
+                    | padded[1:-1, 2:]
+                    | padded[:-2, :-2]
+                    | padded[:-2, 2:]
+                    | padded[2:, :-2]
+                    | padded[2:, 2:]
+                )
+                # Only dilate inside the declared diamond (+1px margin).
+                inside = diamond_edge_distance(
+                    h, w, geom.cx, geom.apex_y, diamond_w, diamond_h
+                ) <= (dilate_px + 1) / max(diamond_w / 2.0, 1.0)
+                dilated = dilated | (neigh & inside)
+            new_ring = dilated & ~fg
+            if new_ring.any():
+                # Vectorized nearest: for each new pixel, closest fg.
+                nys, nxs = np.where(new_ring)
+                # Subsample if huge.
+                for ny, nx in zip(nys, nxs):
+                    d2 = (fg_ys - ny) ** 2 + (fg_xs - nx) ** 2
+                    j = int(np.argmin(d2))
+                    sy, sx = int(fg_ys[j]), int(fg_xs[j])
+                    arr[ny, nx, :3] = arr[sy, sx, :3]
+                    arr[ny, nx, 3] = 255.0
+            mask_bool = dilated
+
+    # Feather chroma using updated mask, then apply one-way NE/NW fade.
+    # Rebuild list mask for apply_feathered_chroma.
+    fg_list = mask_bool.tolist()
+    feathered = apply_feathered_chroma(array_to_cell(arr), fg_list)
+    farr = np.asarray(feathered, dtype=np.float32)
+
+    if edge_fade_px > 0:
+        # Distance from NE and NW edges toward centre.
+        # NE edge: north→east; NW edge: west→north.
+        # Approximate: points near the NE or NW diamond edges get reduced alpha.
+        cx, ay = geom.cx, geom.apex_y
+        hw, hh = diamond_w / 2.0, diamond_h / 2.0
+        cy = ay + hh
+        yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+        # Parametric distance to NE segment and NW segment.
+        def dist_to_segment(px, py, ax, ay_, bx, by):
+            abx, aby = bx - ax, by - ay_
+            apx, apy = px - ax, py - ay_
+            ab2 = abx * abx + aby * aby or 1.0
+            t = np.clip((apx * abx + apy * aby) / ab2, 0.0, 1.0)
+            qx, qy = ax + t * abx, ay_ + t * aby
+            return np.hypot(px - qx, py - qy)
+
+        d_ne = dist_to_segment(xx, yy, cx, ay, cx + hw, cy)
+        d_nw = dist_to_segment(xx, yy, cx - hw, cy, cx, ay)
+        d_edge = np.minimum(d_ne, d_nw)
+        # Only fade the "outer" half of the diamond (toward NE/NW, i.e. smaller y
+        # and/or smaller x in screen space). Restrict to pixels closer to NE/NW
+        # than to SE/SW.
+        d_se = dist_to_segment(xx, yy, cx + hw, cy, cx, ay + diamond_h)
+        d_sw = dist_to_segment(xx, yy, cx, ay + diamond_h, cx - hw, cy)
+        on_ne_nw = d_edge <= np.minimum(d_se, d_sw)
+        fade = np.clip(d_edge / float(edge_fade_px), 0.0, 1.0)
+        # Alpha ramp 0 at edge → 1 by edge_fade_px inward, NE/NW only.
+        alpha_scale = np.where(on_ne_nw, fade, 1.0)
+        # Also require inside/near diamond.
+        near = diamond_edge_distance(h, w, cx, ay, diamond_w, diamond_h) < 0.15
+        alpha_scale = np.where(near, alpha_scale, 1.0)
+        new_a = farr[..., 3] * alpha_scale
+        # Premultiply RGB toward black as alpha drops.
+        scale = np.where(farr[..., 3] > 0, new_a / np.maximum(farr[..., 3], 1e-6), 0.0)
+        for ch in range(3):
+            farr[..., ch] = farr[..., ch] * scale
+        farr[..., 3] = new_a
+
+    return array_to_cell(farr)
 
 
 def _feather_alpha(luma: float, dist_to_bg: float) -> int:
@@ -887,10 +1580,20 @@ def apply_feathered_chroma(
 # ---------------------------------------------------------------------------
 
 
-def trim_tile_rgba(img: Image.Image, geom: TileGeom) -> tuple[Image.Image, int, int]:
+def trim_tile_rgba(
+    img: Image.Image,
+    geom: TileGeom,
+    *,
+    cell_override: Image.Image | None = None,
+    already_feathered: bool = False,
+) -> tuple[Image.Image, int, int]:
     """Return trimmed RGBA tile and its top-left offset within the cell."""
-    cell = img.crop((geom.x0, geom.y0, geom.x1, geom.y1)).convert("RGBA")
-    cell = apply_feathered_chroma(cell, geom.mask)
+    if cell_override is not None:
+        cell = cell_override.convert("RGBA")
+    else:
+        cell = img.crop((geom.x0, geom.y0, geom.x1, geom.y1)).convert("RGBA")
+    if not already_feathered:
+        cell = apply_feathered_chroma(cell, geom.mask)
     px = cell.load()
     w, h = cell.size
     # Tight art bbox from non-zero alpha, expanded so the north-corner anchor
@@ -1026,6 +1729,7 @@ def bake_one(
     *,
     grid_override: tuple[int, int] | None,
     contact_only: bool,
+    bake_scale: float = DEFAULT_BAKE_SCALE,
 ) -> dict[str, Path]:
     print(f"\n=== {set_name} ===")
     set_dir = art_level_dir(set_name)
@@ -1176,28 +1880,93 @@ def bake_one(
     for key in by_mask:
         by_mask[key] = sorted(by_mask[key])
 
-    # Lighting-normalized features keyed for match building.
-    norm_by_tid: dict[str, dict[str, list[float]]] = {tid: {} for tid in raw_features}
-    for (tid, s), v in zip(feat_index, norm_features):
-        norm_by_tid[tid][s] = v
-    matches = build_matches(edges, norm_by_tid, roles)
+    # Stage 1 — photometric normalization (non-pit only).
+    cells, photometry = normalize_tiles(
+        img, tiles, roles, diamond_w, diamond_h
+    )
+    print(
+        f"  photometry strength={NORM_STRENGTH} "
+        f"clamped={len(photometry.get('clamped', []))}"
+    )
 
-    # Compatibility sanity
-    if edges:
-        n_pairs = 0
-        n_compat = 0
-        for tid, e in edges.items():
-            for s in SIDES:
-                n_pairs += len(edges)
-                n_compat += len(matches[tid][s])
-        frac = n_compat / max(1, n_pairs)
-        print(
-            f"  materials={len(materials)} pits={len(pits_tiles)} "
-            f"compat_frac={frac:.3f} match_dist={MATCH_DIST} "
-            f"roles floor={sum(1 for r in roles.values() if r=='floor')} "
-            f"pit={sum(1 for r in roles.values() if r=='pit')} "
-            f"decor={sum(1 for r in roles.values() if r=='decor')}"
-        )
+    # Photometry contact (before/after side-by-side of source vs normalized cells).
+    photo_path = OUT_DIR / f"{set_name}-photometry.png"
+    try:
+        before = img.convert("RGBA").copy()
+        after = Image.new("RGBA", img.size, (0, 0, 0, 255))
+        for geom in tiles:
+            after.paste(cells[geom.tid], (geom.x0, geom.y0))
+        # Side by side
+        combo = Image.new("RGBA", (img.size[0] * 2, img.size[1]), (0, 0, 0, 255))
+        combo.paste(before, (0, 0))
+        combo.paste(after, (img.size[0], 0))
+        photo_path.parent.mkdir(parents=True, exist_ok=True)
+        combo.save(photo_path)
+        print(f"  photometry → {photo_path.relative_to(ROOT)}")
+    except Exception as exc:
+        print(f"  WARNING photometry contact failed: {exc}")
+
+    # Stage 2 — families / busyness / tiers.
+    families, busyness, tiers, meta_families = cluster_families(
+        cells, tiles, roles, diamond_w, diamond_h
+    )
+
+    # Per-family photometric refine (pull each tile toward its family's mean/std).
+    by_family: dict[str, list[TileGeom]] = {}
+    for geom in tiles:
+        fam = families.get(geom.tid)
+        if fam and roles.get(geom.tid) != "pit":
+            by_family.setdefault(fam, []).append(geom)
+    for fam, members in by_family.items():
+        if len(members) < 2:
+            continue
+        # Build a temporary sheet-sized image from current cells for normalize_tiles.
+        # Simpler: compute family target from cell interiors and re-normalize each.
+        means = []
+        stds = []
+        for geom in members:
+            arr = np.asarray(cells[geom.tid], dtype=np.float32)
+            h, w = arr.shape[:2]
+            interior = diamond_interior_mask(
+                h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
+            ) & (arr[..., :3].max(axis=2) > BG_MAX)
+            if interior.sum() < 16:
+                continue
+            lin = to_linear(arr[..., :3])
+            means.append([float(lin[interior, ch].mean()) for ch in range(3)])
+            stds.append(
+                [float(max(lin[interior, ch].std(), 1e-6)) for ch in range(3)]
+            )
+        if len(means) < 2:
+            continue
+        t_mean = [float(statistics.median([m[i] for m in means])) for i in range(3)]
+        t_std = [float(statistics.median([s[i] for s in stds])) for i in range(3)]
+        # Re-normalize each member toward the family target in linear light.
+        for geom in members:
+            arr = np.asarray(cells[geom.tid], dtype=np.float32).copy()
+            h, w = arr.shape[:2]
+            opaque = arr[..., :3].max(axis=2) > BG_MAX
+            interior = diamond_interior_mask(
+                h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
+            ) & opaque
+            if interior.sum() < 16:
+                continue
+            lin = to_linear(arr[..., :3])
+            out = lin.copy()
+            for ch in range(3):
+                tile_mean = float(lin[interior, ch].mean())
+                tile_std = float(max(lin[interior, ch].std(), 1e-6))
+                gain = float(
+                    np.clip(t_std[ch] / tile_std, NORM_GAIN_MIN, NORM_GAIN_MAX)
+                )
+                matched = (lin[..., ch] - tile_mean) * gain + t_mean[ch]
+                out[..., ch] = np.where(
+                    opaque,
+                    lin[..., ch] * (1.0 - NORM_STRENGTH) + matched * NORM_STRENGTH,
+                    lin[..., ch],
+                )
+            arr[..., :3] = to_srgb(np.clip(out, 0.0, 1.0))
+            cells[geom.tid] = array_to_cell(arr)
 
     contact_path = OUT_DIR / f"{set_name}-contact.png"
     draw_contact_sheet(
@@ -1207,13 +1976,197 @@ def bake_one(
     if contact_only:
         return {"contact": contact_path, "sheet": sheet_path}
 
-    # Pack
+    # Stage 4 — dilate silhouette + one-way NE/NW alpha ramp.
+    # Measure mid-row opaque width vs diamond_w to choose dilate_px.
+    measured_widths: list[int] = []
+    for geom in tiles:
+        if roles.get(geom.tid) == "pit":
+            continue
+        arr = np.asarray(cells[geom.tid], dtype=np.float32)
+        midy = int(round(geom.apex_y + diamond_h / 2.0))
+        if 0 <= midy < arr.shape[0]:
+            row = arr[midy, :, :3].max(axis=1)
+            xs = np.where(row > BG_MAX)[0]
+            if xs.size:
+                measured_widths.append(int(xs[-1] - xs[0] + 1))
+    med_w = float(statistics.median(measured_widths)) if measured_widths else diamond_w
+    dilate_px = max(0, int(math.ceil((diamond_w - med_w) / 2.0)) + 1)
+    print(f"  seam fix: measured_w={med_w:.1f} diamond_w={diamond_w:.1f} dilate_px={dilate_px}")
+
+    processed_cells: dict[str, Image.Image] = {}
+    for geom in tiles:
+        if roles.get(geom.tid) == "pit":
+            # Pits: feather only, no dilate/fade.
+            processed_cells[geom.tid] = apply_feathered_chroma(
+                cells[geom.tid], geom.mask
+            )
+        else:
+            processed_cells[geom.tid] = dilate_and_fade_cell(
+                cells[geom.tid],
+                geom,
+                diamond_w,
+                diamond_h,
+                dilate_px=dilate_px,
+                edge_fade_px=EDGE_FADE_PX,
+            )
+
+    # Re-measure after dilate.
+    post_widths: list[int] = []
+    for geom in tiles:
+        if roles.get(geom.tid) == "pit":
+            continue
+        arr = np.asarray(processed_cells[geom.tid], dtype=np.float32)
+        midy = int(round(geom.apex_y + diamond_h / 2.0))
+        if 0 <= midy < arr.shape[0]:
+            row = arr[midy, :, 3]
+            xs = np.where(row > 16)[0]
+            if xs.size:
+                post_widths.append(int(xs[-1] - xs[0] + 1))
+    if post_widths:
+        post_med = float(statistics.median(post_widths))
+        print(f"  post-dilate mid-row width median={post_med:.1f}")
+        if post_med < diamond_w - 1:
+            print(
+                f"  WARNING post-dilate width {post_med:.1f} < diamond_w-1 "
+                f"({diamond_w - 1:.1f})"
+            )
+
+    # Stage 3 — strict matches from post-processed cells (what actually ships).
+    edge_rgb: dict[str, dict[str, list[float]]] = {}
+    for geom in tiles:
+        edge_rgb[geom.tid] = absolute_edge_rgb(
+            processed_cells[geom.tid], geom, diamond_w, diamond_h
+        )
+
+    matches, relaxed = build_matches(edge_rgb, roles, families, MATCH_DIST)
+    if relaxed:
+        print(f"  match relaxation: {len(relaxed)} tiles (max dist exceeded MATCH_DIST)")
+
+    # Compatibility sanity + edge-delta report.
+    n_pairs = 0
+    n_compat = 0
+    for tid in roles:
+        for s in SIDES:
+            n_pairs += len(roles)
+            n_compat += len(matches[tid][s])
+    frac = n_compat / max(1, n_pairs)
+    deltas: list[float] = []
+    for tid, role in roles.items():
+        if role != "floor":
+            continue
+        for s in SIDES:
+            v = edge_rgb.get(tid, {}).get(s)
+            if not v:
+                continue
+            opp = OPPOSITE[s]
+            for other in matches[tid][s]:
+                if roles.get(other) != "floor":
+                    continue
+                ov = edge_rgb.get(other, {}).get(opp)
+                if ov:
+                    deltas.append(rgb_dist(v, ov))
+    deltas_sorted = sorted(deltas)
+    med = deltas_sorted[len(deltas_sorted) // 2] if deltas_sorted else 0.0
+    p90 = (
+        deltas_sorted[int(0.9 * (len(deltas_sorted) - 1))]
+        if deltas_sorted
+        else 0.0
+    )
+    print(
+        f"  materials={len(materials)} pits={len(pits_tiles)} "
+        f"compat_frac={frac:.3f} match_dist={MATCH_DIST} "
+        f"edge_delta median={med:.1f} p90={p90:.1f} "
+        f"roles floor={sum(1 for r in roles.values() if r=='floor')} "
+        f"pit={sum(1 for r in roles.values() if r=='pit')} "
+        f"decor={sum(1 for r in roles.values() if r=='decor')}"
+    )
+    if med > 8.0:
+        print(f"  WARNING declared-match edge median {med:.1f} > 8")
+
+    # Pack (Stage 6 — optional downscale).
     frame_images: list[tuple[str, Image.Image]] = []
     trim_offsets: dict[str, tuple[int, int]] = {}
+    # Anchors in trimmed (possibly scaled) frame space.
+    trim_anchors: dict[str, tuple[float, float]] = {}
+    scale = float(bake_scale) if bake_scale and bake_scale > 0 else 1.0
     for geom in tiles:
-        trimmed, ox, oy = trim_tile_rgba(img, geom)
+        trimmed, ox, oy = trim_tile_rgba(
+            img,
+            geom,
+            cell_override=processed_cells[geom.tid],
+            already_feathered=True,
+        )
+        ax = geom.cx - ox
+        ay = geom.apex_y - oy
+        if scale != 1.0:
+            nw = max(1, int(round(trimmed.size[0] * scale)))
+            nh = max(1, int(round(trimmed.size[1] * scale)))
+            trimmed = trimmed.resize((nw, nh), Image.Resampling.LANCZOS)
+            ox = ox * scale
+            oy = oy * scale
+            ax *= scale
+            ay *= scale
         frame_images.append((geom.tid, trimmed))
         trim_offsets[geom.tid] = (ox, oy)
+        trim_anchors[geom.tid] = (ax, ay)
+
+    out_diamond_w = diamond_w * scale
+    out_diamond_h = diamond_h * scale
+    out_wall = gmeta["wall_depth"] * scale
+
+    # Rebuild matches from the exact scaled trimmed frames that ship in the atlas.
+    edge_rgb_scaled: dict[str, dict[str, list[float]]] = {}
+    for tid, trimmed in frame_images:
+        ax, ay = trim_anchors[tid]
+        # absolute_edge_rgb expects geom-relative coords; synthesize a shim geom.
+        shim = TileGeom(
+            row=0,
+            col=0,
+            tid=tid,
+            x0=0,
+            y0=0,
+            x1=trimmed.size[0],
+            y1=trimmed.size[1],
+            mask=[[True]],
+            minx=0,
+            maxx=trimmed.size[0] - 1,
+            art_top=0,
+            art_bot=trimmed.size[1] - 1,
+            w_max=trimmed.size[0],
+            y_side=ay + out_diamond_h / 2.0,
+            cx=ax,
+            apex_y=ay,
+            confident=True,
+        )
+        edge_rgb_scaled[tid] = absolute_edge_rgb(
+            trimmed, shim, out_diamond_w, out_diamond_h
+        )
+    matches, relaxed = build_matches(edge_rgb_scaled, roles, families, MATCH_DIST)
+    if relaxed:
+        print(f"  match relaxation (scaled): {len(relaxed)} tiles")
+
+    # Final edge-delta report on scaled frames (matches score_floor_sets.py).
+    deltas = []
+    for tid, role in roles.items():
+        if role != "floor":
+            continue
+        for s in SIDES:
+            v = edge_rgb_scaled.get(tid, {}).get(s)
+            if not v:
+                continue
+            opp = OPPOSITE[s]
+            for other in matches[tid][s]:
+                if roles.get(other) != "floor":
+                    continue
+                ov = edge_rgb_scaled.get(other, {}).get(opp)
+                if ov:
+                    deltas.append(rgb_dist(v, ov))
+    deltas_sorted = sorted(deltas)
+    med = deltas_sorted[len(deltas_sorted) // 2] if deltas_sorted else 0.0
+    p90 = (
+        deltas_sorted[int(0.9 * (len(deltas_sorted) - 1))] if deltas_sorted else 0.0
+    )
+    print(f"  scaled edge_delta median={med:.1f} p90={p90:.1f}")
 
     packed_img, packed_frames = shelf_pack_frames(frame_images, padding=PAD)
     packed_img.save(baked_sheet)
@@ -1222,11 +2175,13 @@ def bake_one(
     for geom in tiles:
         tid = geom.tid
         pf = packed_frames[tid]
-        ox, oy = trim_offsets[tid]
-        # Anchor = north corner relative to trimmed frame
-        ax = geom.cx - ox
-        ay = geom.apex_y - oy
-        frames_out[tid] = {
+        ax, ay = trim_anchors[tid]
+        weight = max(
+            0.05, min(1.0, math.exp(-busyness.get(tid, 0.5) / BUSYNESS_TAU))
+        )
+        if roles[tid] == "pit":
+            weight = 1.0
+        frame_entry: dict[str, Any] = {
             "x": pf["x"],
             "y": pf["y"],
             "w": pf["w"],
@@ -1235,7 +2190,10 @@ def bake_one(
             "cell": [geom.row, geom.col],
             "role": roles[tid],
             "role_confidence": round(confidences[tid], 3),
-            "weight": 1.0,
+            "weight": round(weight, 4),
+            "family": families.get(tid),
+            "tier": tiers.get(tid),
+            "busyness": round(busyness.get(tid, 0.0), 4),
             "cues": {
                 "lum_delta": round(cues_map[tid]["lum_delta"], 2),
                 "sat_delta": round(cues_map[tid]["sat_delta"], 2),
@@ -1245,6 +2203,9 @@ def bake_one(
             "edges": edges[tid],
             "matches": matches[tid],
         }
+        if tid in relaxed:
+            frame_entry["relaxed"] = round(relaxed[tid], 2)
+        frames_out[tid] = frame_entry
 
     atlas = {
         "meta": {
@@ -1258,9 +2219,9 @@ def bake_one(
                 "cell_h": round(gmeta["cell_h"], 3),
             },
             "diamond": {
-                "w": round(diamond_w, 2),
-                "h": round(diamond_h, 2),
-                "wall_depth": round(gmeta["wall_depth"], 2),
+                "w": round(out_diamond_w, 2),
+                "h": round(out_diamond_h, 2),
+                "wall_depth": round(out_wall, 2),
             },
             "y_side_fit": {
                 "a": round(gmeta["y_side_a"], 3),
@@ -1270,13 +2231,18 @@ def bake_one(
             "edge_order": list(SIDES),
             "confident_tiles": int(gmeta["confident_tiles"]),
             "pit_source": "heuristic" if pit_truth is None else "sheet",
+            "photometry": photometry,
+            "families": meta_families,
+            "edge_fade_px": EDGE_FADE_PX if scale == 1.0 else round(EDGE_FADE_PX * scale, 2),
+            "dilate_px": dilate_px,
+            "bake_scale": scale,
         },
         "frames": frames_out,
         "pits": {"tiles": pits_tiles, "by_mask": by_mask},
         "overrides": overrides,
     }
     atlas_path.write_text(json.dumps(atlas, indent=2) + "\n")
-    print(f"  baked → {baked_sheet.relative_to(ROOT)}")
+    print(f"  baked → {baked_sheet.relative_to(ROOT)} (scale={scale})")
     print(f"  atlas → {atlas_path.relative_to(ROOT)}")
     return {
         "contact": contact_path,
@@ -1338,6 +2304,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--grid", help="Override grid as COLSxROWS (e.g. 14x8)")
     p.add_argument("--contact-only", action="store_true", help="Emit contact sheets only")
     p.add_argument(
+        "--bake-scale",
+        type=float,
+        default=DEFAULT_BAKE_SCALE,
+        help=f"Downscale trimmed frames before packing (default {DEFAULT_BAKE_SCALE})",
+    )
+    p.add_argument(
         "--verify-pits",
         action="store_true",
         help="Re-derive pit truth and exit 1 if any baked atlas disagrees",
@@ -1369,6 +2341,7 @@ def main(argv: list[str] | None = None) -> int:
             source,
             grid_override=grid,
             contact_only=args.contact_only,
+            bake_scale=args.bake_scale,
         )
     return 0
 

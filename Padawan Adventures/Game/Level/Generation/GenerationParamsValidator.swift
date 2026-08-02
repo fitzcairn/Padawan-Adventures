@@ -10,6 +10,7 @@ nonisolated enum GenerationParamsValidator {
         room: LevelConfig.RoomParams,
         floorSet: String,
         decorProb: Double,
+        cohesion: Double = 0.75,
         enemies: LevelConfig.EnemiesSpawnConfig?,
         pickups: LevelConfig.PickupsSpawnConfig?
     ) throws {
@@ -45,6 +46,9 @@ nonisolated enum GenerationParamsValidator {
         }
         guard decorProb >= 0, decorProb <= 1 else {
             throw WorldSeedError.invalidDecorProb(decorProb)
+        }
+        guard cohesion >= 0, cohesion <= 1 else {
+            throw WorldSeedError.invalidFloorCohesion(cohesion)
         }
         if let enemies {
             guard !enemies.types.isEmpty, enemies.types.allSatisfy({ !$0.isEmpty }) else {

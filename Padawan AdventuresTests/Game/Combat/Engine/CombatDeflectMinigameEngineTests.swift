@@ -12,16 +12,35 @@ struct CombatDeflectMinigameEngineTests {
         }
     }
 
+    /// Imaged words covering a…f so configured ring letters always have a throw candidate.
+    private func words(for letters: [String]) -> [GateWord] {
+        let samples: [String: [String]] = [
+            "a": ["apple"],
+            "b": ["bath", "boat", "book"],
+            "c": ["car", "cat", "cloud"],
+            "d": ["dance", "dog"],
+            "e": ["egg"],
+            "f": ["fish"],
+        ]
+        return letters.flatMap { letter in
+            (samples[letter] ?? ["\(letter)at"]).map {
+                WordCatalog.imagedFallbackEntry(word: $0)
+            }
+        }
+    }
+
     private func makeEngine(
         monsterHP: Int = 3,
         startingHealth: Int = 3,
         orbTravelSeconds: Double = 3,
         pool: [String] = ["a", "b", "c"],
+        wordPool: [GateWord]? = nil,
         seed: UInt64 = 42
     ) -> CombatDeflectMinigameEngine {
         var engine = CombatDeflectMinigameEngine(
             config: .init(
                 letters: letters(pool),
+                words: wordPool ?? words(for: pool),
                 monsterHP: monsterHP,
                 orbTravelSeconds: orbTravelSeconds
             ),
@@ -35,7 +54,7 @@ struct CombatDeflectMinigameEngineTests {
     /// Pulls the orb's ring out of the throw event so tests can answer correctly.
     private func ring(in events: [CombatDeflectEvent]) -> CombatDeflectRing? {
         for event in events {
-            if case .throwOrb(_, _, let ring, _) = event { return ring }
+            if case .throwOrb(_, _, _, _, let ring, _) = event { return ring }
         }
         return nil
     }
@@ -50,12 +69,13 @@ struct CombatDeflectMinigameEngineTests {
         #expect(!engine.hasLost)
     }
 
-    @Test func throwEmitsOrbAndSpokenLetterName() {
+    @Test func throwEmitsOrbAndSpokenWord() {
         var engine = makeEngine()
         let events = engine.throwNextOrb()
         #expect(events.count == 2)
 
-        guard case .throwOrb(_, let letter, let ring, let travel) = events[0] else {
+        guard case .throwOrb(_, let letter, let word, let imageName, let ring, let travel) = events[0]
+        else {
             Issue.record("expected a throwOrb event first")
             return
         }
@@ -63,9 +83,52 @@ struct CombatDeflectMinigameEngineTests {
         #expect(["a", "b", "c"].contains(letter))
         // The orb's letter must be the letter on the ring that deflects it.
         #expect(engine.config.letters[ring.rawValue].letter == letter)
-        #expect(events[1] == .speakLetter(trackID: "sfx_letter_\(letter)_name"))
+        #expect(word.hasPrefix(letter))
+        #expect(imageName != nil)
+        #expect(events[1] == .speakWord(trackID: "sfx_word_\(word)"))
         #expect(engine.activeOrb?.letter == letter)
+        #expect(engine.activeOrb?.word == word)
         #expect(engine.activeOrb?.isResolved == false)
+    }
+
+    @Test func throwPicksAWordStartingWithTheRingLetter() {
+        let wordPool = [
+            WordCatalog.imagedFallbackEntry(word: "bath"),
+            WordCatalog.imagedFallbackEntry(word: "boat"),
+            WordCatalog.imagedFallbackEntry(word: "book"),
+        ]
+        var seen: Set<String> = []
+        for seed in UInt64(1)...40 {
+            var engine = makeEngine(pool: ["b"], wordPool: wordPool, seed: seed)
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, let word, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(letter == "b")
+            #expect(word.hasPrefix("b"))
+            seen.insert(word)
+        }
+        #expect(seen.count > 1)
+        #expect(seen.isSubset(of: ["bath", "boat", "book"]))
+    }
+
+    @Test func throwSkipsLettersWithNoImagedWord() {
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["a", "g"],
+            wordPool: [WordCatalog.imagedFallbackEntry(word: "apple")],
+            seed: 1
+        )
+        for _ in 0..<20 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, _, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(letter == "a")
+            _ = engine.registerOrbReachedMonster()
+        }
     }
 
     @Test func onlyOneOrbCanBeLiveAtATime() {
@@ -76,7 +139,12 @@ struct CombatDeflectMinigameEngineTests {
 
     @Test func throwDoesNothingBeforeBeginOrAfterEnd() {
         var engine = CombatDeflectMinigameEngine(
-            config: .init(letters: letters(["a", "b", "c"]), monsterHP: 2, orbTravelSeconds: 1),
+            config: .init(
+                letters: letters(["a", "b", "c"]),
+                words: words(for: ["a", "b", "c"]),
+                monsterHP: 2,
+                orbTravelSeconds: 1
+            ),
             startingHealth: 3,
             rng: CombatSeededGenerator(seed: 7)
         )
@@ -187,6 +255,7 @@ struct CombatDeflectMinigameEngineTests {
     @Test func configClampsDegenerateValues() {
         let config = CombatDeflectMinigameEngine.Config(
             letters: letters(["a", "b", "c"]),
+            words: words(for: ["a", "b", "c"]),
             monsterHP: 0,
             orbTravelSeconds: 0
         )

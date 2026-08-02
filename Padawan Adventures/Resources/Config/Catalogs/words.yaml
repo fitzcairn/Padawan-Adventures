@@ -1,19 +1,63 @@
-# Shared vocabulary + word FX for minigames (gate, pit, etc.).
-# Tracks follow Resources/Audio/FX/<fx_prefix><word>.m4a and
-# <fx_prefix><word>_<prefix>.m4a for each growing prefix (s, st, sta, star).
-# Empty entries derive everything; a body overrides only the keys it names.
+# Shared vocabulary for minigames (gate, pit, etc.).
+#
+# Per word:
+#   image: optional sprite basename under Resources/Sprites/Words/ (no extension)
+#   sfx:   pronunciation track basename under Resources/Audio/FX/Words/
+#
+# Progressive prefix tracks still derive as <fx_prefix><word>_<prefix>
+# (e.g. sfx_word_star_st) unless overridden via progressive:.
+# Empty / omitted image or sfx fields derive image=null and sfx=<fx_prefix><word>.
 
 version: 1
 fx_prefix: sfx_word_
 words:
-  bat:
+  apple:
+    image: apple
+    sfx: sfx_word_apple
+  bath:
+    image: bath
+    sfx: sfx_word_bath
+  boat:
+    image: boat
+    sfx: sfx_word_boat
+  book:
+    image: book
+    sfx: sfx_word_book
+  car:
+    image: car
+    sfx: sfx_word_car
   cat:
+    image: cat
+    sfx: sfx_word_cat
+  cloud:
+    image: cloud
+    sfx: sfx_word_cloud
+  dance:
+    image: dance
+    sfx: sfx_word_dance
   dog:
+    image: dog
+    sfx: sfx_word_dog
   gate:
-  lightsaber:
-  man:
-  mom:
-  open:
-  poo:
-  slice:
+    sfx: sfx_word_gate
+  house:
+    image: house
+    sfx: sfx_word_house
+  lightbulb:
+    image: lightbulb
+    sfx: sfx_word_lightbulb
+  pencil:
+    image: pencil
+    sfx: sfx_word_pencil
   star:
+    image: star
+    sfx: sfx_word_star
+  sun:
+    image: sun
+    sfx: sfx_word_sun
+  trash:
+    image: trash
+    sfx: sfx_word_trash
+  wand:
+    image: wand
+    sfx: sfx_word_wand

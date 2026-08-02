@@ -5,6 +5,11 @@ import Foundation
 /// paths in the bundle and `Bundle.url(forResource:subdirectory:)` — which is not
 /// recursive — must be given each one explicitly.
 nonisolated enum AudioBundleLayout {
-    static let fxSubdirectories = ["Audio/FX", "Audio/FX/Phonetics", "Audio/FX/UI"]
+    static let fxSubdirectories = [
+        "Audio/FX",
+        "Audio/FX/Phonetics",
+        "Audio/FX/Words",
+        "Audio/FX/UI",
+    ]
     static let musicSubdirectories = ["Audio/Music"]
 }

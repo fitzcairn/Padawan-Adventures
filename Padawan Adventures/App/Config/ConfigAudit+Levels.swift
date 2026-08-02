@@ -22,6 +22,9 @@ extension ConfigAudit {
         if level.floor.decorProb < 0 || level.floor.decorProb > 1 {
             return ["\(label).floor.decor_prob: \(level.floor.decorProb) out of 0...1"]
         }
+        if level.floor.cohesion < 0 || level.floor.cohesion > 1 {
+            return ["\(label).floor.cohesion: \(level.floor.cohesion) out of 0...1"]
+        }
         return []
     }
 

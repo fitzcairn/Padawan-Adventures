@@ -26,7 +26,8 @@ nonisolated struct PitMinigameEngine {
             self.words = words.map {
                 GateWord(
                     word: $0.word.lowercased(),
-                    spelling: $0.spelling,
+                    image: $0.image,
+                    sfx: $0.sfx,
                     progressive: $0.progressive
                 )
             }

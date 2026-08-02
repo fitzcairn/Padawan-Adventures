@@ -214,7 +214,7 @@ struct AppSessionTests {
         }
         for treasureID in levels.compactMap(\.treasure) {
             #expect(
-                session.treasureIcons.uiImage(id: treasureID) != nil,
+                session.spriteLibrary.uiImage(id: treasureID) != nil,
                 "Missing treasure icon for \(treasureID)"
             )
             #expect(

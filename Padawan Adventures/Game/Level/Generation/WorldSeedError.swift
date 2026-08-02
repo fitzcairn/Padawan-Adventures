@@ -42,6 +42,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case emptyFloorSet
     case emptyLetterSet
     case invalidDecorProb(Double)
+    case invalidFloorCohesion(Double)
     /// Only `rooms_doors` is implemented; other values are rejected at validate time.
     case unsupportedGenerationAlgorithm(String)
 }

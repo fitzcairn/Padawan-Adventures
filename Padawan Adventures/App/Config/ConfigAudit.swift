@@ -139,8 +139,14 @@ nonisolated enum ConfigAudit {
 
         for word in words.words {
             problems.append(contentsOf: requireFX(
-                word.spelling, kind: "words.\(word.word).spelling", bundle: bundle
+                word.sfx, kind: "words.\(word.word).sfx", bundle: bundle
             ))
+            if let image = word.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !image.isEmpty {
+                problems.append(contentsOf: requireWordImage(
+                    image, kind: "words.\(word.word).image", bundle: bundle
+                ))
+            }
             for (prefix, track) in word.progressive.sorted(by: { $0.key < $1.key }) {
                 problems.append(contentsOf: requireFX(
                     track, kind: "words.\(word.word).progressive.\(prefix)", bundle: bundle

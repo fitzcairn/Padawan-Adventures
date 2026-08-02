@@ -24,8 +24,9 @@ combat_letter_case: lower
 
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # `slash` is the swipe arena (knobs live in enemies.yaml + combat_letter_* above).
-# `deflect`: tap the ring whose letter matches the incoming orb. Letters map
-# left -> right onto evenly spaced rings (2–6 letters) and must resolve in letters.yaml.
+# `deflect`: monster throws a word image; tap the ring for that word's first letter.
+# Letters map left -> right onto evenly spaced rings (2–6) and must resolve in
+# letters.yaml; each letter needs ≥1 imaged word in words.yaml.
 combat:
   minigames:
     - type: slash
@@ -43,6 +44,8 @@ height: 20
 # (Levels/<id>/<id>-floor-*), so levels only set `floor.set` to borrow other art.
 floor:
   decor_prob: 0.06
+  # 0 = legacy per-cell variety (noisy), 1 = maximal patching (calm).
+  cohesion: 0.75
 
 algorithm: rooms_doors
 # How many rooms to place on the map.
@@ -63,9 +66,9 @@ room:
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Host `fx` is shared: `jump` fires on every hop, `lose` / `win` override audio.yaml.
 # `spelling`: hop the letter platforms to spell the word. Stars = letters in the word.
-#   Its `words:` are ids that must resolve in words.yaml.
+#   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
 # `bridge`: drag the tile whose letter is the word's end sound into the dashed slot.
-#   Its `words:` are plain words (prompts are synthesized, no sfx_word_* needed) and the
+#   Its `words:` are plain words (prompts are synthesized, no catalog sfx needed) and the
 #   pool must hold at least `max_words` entries. Stars = words placed.
 pit:
   fx: { lose: pit-falling, jump: pit-jump }
@@ -78,7 +81,7 @@ pit:
       weight: 1.0
       min_words: 3
       max_words: 5
-      words: [open, start, dog, man, bat, kam]
+      words: [car, start, dog, trash, sun, kam]
 
 # Gate minigames (triggered on gate tile contact).
 # Host `fx.opened` plays in the world when the gate strip opens.
@@ -92,12 +95,12 @@ gate:
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       word_count_min: 2
       word_count_max: 2
-      words: [cat, dog, star, gate, open, bat, man, mom, poo, slice, lightsaber]
+      words: [cat, dog, star, bath, dance, book, lightbulb, wand]
       music: gate
       fx: { loop: gate-spelling-loop-arc }
   # - type: spelling
   #   num_padding_letters: 6
-  #   words: [cat, dog, star, gate, open]
+  #   words: [cat, dog, star, gate, car]
   #   music: gate
   #   fx: { loop: gate-spelling-loop-arc }
   # - type: letter_match

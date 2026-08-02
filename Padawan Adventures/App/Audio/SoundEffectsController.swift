@@ -172,7 +172,8 @@ final class SoundEffectsController {
         return soundEffectsVolume * scale
     }
 
-    /// Phonetic clips use `sfx_letter_*` / `sfx_word_*` basenames under `Audio/FX/Phonetics/`.
+    /// Phonetic clips use `sfx_letter_*` (under `Audio/FX/Phonetics/`) and
+    /// `sfx_word_*` (under `Audio/FX/Words/`) basenames.
     static func isPhoneticTrack(_ trackID: String) -> Bool {
         trackID.hasPrefix("sfx_letter_") || trackID.hasPrefix("sfx_word_")
     }

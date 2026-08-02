@@ -258,6 +258,111 @@ struct FloorTilerTests {
         }
     }
 
+    @Test func cohesionReducesDistinctTileIDs() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "1-tython")
+        #expect(!set.familyIDsWeighted.isEmpty)
+
+        func distinctCount(cohesion: Double) -> Int {
+            var tiles = makeFloorGrid(width: 10, height: 10, pitBlob: [])
+            var rng = SeededGenerator(seed: 42)
+            FloorTiler.tile(
+                tiles: &tiles,
+                story: 0,
+                set: set,
+                options: .init(decorProb: 0, cohesion: cohesion),
+                rng: &rng
+            )
+            let ids = tiles.flatMap { $0.compactMap(\.floorTileID) }
+            return Set(ids).count
+        }
+
+        let noisy = distinctCount(cohesion: 0)
+        let calm = distinctCount(cohesion: 1)
+        #expect(calm < noisy, "cohesion=1 should use fewer distinct tiles than cohesion=0 (\(calm) vs \(noisy))")
+
+        // Determinism at both extremes.
+        #expect(distinctCount(cohesion: 0) == noisy)
+        #expect(distinctCount(cohesion: 1) == calm)
+    }
+
+    @Test func regionTilesShareOneFamilyWhenPresent() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "2-tatooine")
+        #expect(!set.familyIDsWeighted.isEmpty)
+        var tiles = makeFloorGrid(width: 8, height: 8, pitBlob: [])
+        var rng = SeededGenerator(seed: 7)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0, cohesion: 1),
+            rng: &rng
+        )
+        let families = Set(
+            tiles.flatMap { row in
+                row.compactMap { tile -> String? in
+                    guard let id = tile.floorTileID else { return nil }
+                    return set.frames[id]?.family
+                }
+            }
+        )
+        // Single connected region → one family (accents disabled at cohesion=1).
+        #expect(families.count == 1, "expected one family, got \(families)")
+    }
+
+    @Test func familylessAtlasStillTilesCompletely() throws {
+        let full = try FloorTileSet.loadFromBundle(set: "8-geonosis")
+        let oneID = try #require(full.floorTileIDs.first)
+        let frame = try #require(full.frames[oneID])
+        var solo = frame
+        solo.family = nil
+        solo.matches = Dictionary(
+            uniqueKeysWithValues: FloorTileSet.Side.allCases.map { ($0.rawValue, [oneID]) }
+        )
+        var meta = full.meta
+        meta.families = nil
+        let tiny = FloorTileSet(meta: meta, frames: [oneID: solo], pits: .init())
+        var tiles = makeFloorGrid(width: 4, height: 4, pitBlob: [])
+        var rng = SeededGenerator(seed: 1)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: tiny,
+            options: .init(decorProb: 0, cohesion: 0.75),
+            rng: &rng
+        )
+        #expect(tiles.allSatisfy { row in row.allSatisfy { $0.floorTileID == oneID } })
+    }
+
+    @Test func retileInheritsNeighbouringFamily() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "1-tython")
+        #expect(!set.familyIDsWeighted.isEmpty)
+        var tiles = makeFloorGrid(width: 6, height: 6, pitBlob: [])
+        var rng = SeededGenerator(seed: 11)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0, cohesion: 1),
+            rng: &rng
+        )
+        let neighbourFamily = set.frames[tiles[1][0].floorTileID ?? ""]?.family
+            ?? set.frames[tiles[0][1].floorTileID ?? ""]?.family
+        #expect(neighbourFamily != nil)
+
+        tiles[1][1] = Tile(kind: .floor(isPit: false))
+        var rng2 = SeededGenerator(seed: 99)
+        FloorTiler.retile(
+            tiles: &tiles,
+            story: 0,
+            coords: [GridCoord(x: 1, y: 1, story: 0)],
+            set: set,
+            options: .init(decorProb: 0, cohesion: 1),
+            rng: &rng2
+        )
+        let retiledID = try #require(tiles[1][1].floorTileID)
+        #expect(set.frames[retiledID]?.family == neighbourFamily)
+    }
+
     // MARK: - Helpers
 
     private func assign(set: FloorTileSet, seed: UInt64) -> [[String?]] {

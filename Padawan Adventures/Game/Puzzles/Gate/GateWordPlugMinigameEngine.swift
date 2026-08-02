@@ -43,6 +43,8 @@ nonisolated struct GateWordPlugMinigameEngine {
     nonisolated struct WordSlot: Equatable, Sendable, Identifiable {
         let id: UUID
         let word: String
+        /// Optional sprite basename under `Sprites/Words/`.
+        let imageName: String?
         let maskedText: String
         let wordTrackID: String
         let letter: String
@@ -94,25 +96,18 @@ nonisolated struct GateWordPlugMinigameEngine {
         outcome = nil
         plugged = [:]
 
-        var byFirst: [String: GateWord] = [:]
-        for word in config.words {
-            guard let first = word.word.first else { continue }
-            let key = String(first).lowercased()
-            if byFirst[key] == nil {
-                byFirst[key] = word
-            }
-        }
-        var uniquePool = Array(byFirst.values)
-        uniquePool.sort { $0.word < $1.word }
+        // Every word is eligible; the round size comes from the configured min/max.
+        var pool = config.words
+        pool.sort { $0.word < $1.word }
 
         let count = Self.sampleWordCount(
             minimum: config.wordCountMin,
             maximum: config.wordCountMax,
-            poolSize: uniquePool.count,
+            poolSize: pool.count,
             rng: &rng
         )
-        uniquePool.shuffle(using: &rng)
-        let chosen = Array(uniquePool.prefix(count))
+        pool.shuffle(using: &rng)
+        let chosen = Array(pool.prefix(count))
 
         slots = chosen.map { entry in
             let letter = String(entry.word.prefix(1)).lowercased()
@@ -120,8 +115,9 @@ nonisolated struct GateWordPlugMinigameEngine {
             return WordSlot(
                 id: UUID(),
                 word: entry.word,
+                imageName: entry.image,
                 maskedText: "_\(rest)",
-                wordTrackID: entry.spelling,
+                wordTrackID: entry.sfx,
                 letter: letter
             )
         }

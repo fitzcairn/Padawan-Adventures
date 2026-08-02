@@ -10,6 +10,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var pickups: LevelConfig.PickupsSpawnConfig?
     var floorSet: String
     var decorProb: Double
+    var cohesion: Double
     /// Distinct gate minigame kinds available for this level (first-seen order).
     var gateMinigameKinds: [GateMinigameKind]
 
@@ -27,6 +28,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         pickups: LevelConfig.PickupsSpawnConfig? = nil,
         floorSet: String = LevelConfig.fallbackFloor.set,
         decorProb: Double = LevelConfig.fallbackFloor.decorProb,
+        cohesion: Double = LevelConfig.fallbackFloor.cohesion,
         gateMinigameKinds: [GateMinigameKind] = GateConfig.fallback.distinctMinigameKinds
     ) {
         self.seed = seed
@@ -36,6 +38,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.pickups = pickups
         self.floorSet = floorSet
         self.decorProb = decorProb
+        self.cohesion = cohesion
         let kinds = gateMinigameKinds
         self.gateMinigameKinds = kinds.isEmpty ? [.spelling] : kinds
     }
@@ -54,6 +57,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             pickups: level.pickups,
             floorSet: level.floor.set,
             decorProb: level.floor.decorProb,
+            cohesion: level.floor.cohesion,
             gateMinigameKinds: kinds.isEmpty ? [.spelling] : kinds
         )
     }
@@ -77,6 +81,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             room: generation.room,
             floorSet: floorSet,
             decorProb: decorProb,
+            cohesion: cohesion,
             enemies: enemies,
             pickups: pickups
         )

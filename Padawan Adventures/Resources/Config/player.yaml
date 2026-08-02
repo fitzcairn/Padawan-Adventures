@@ -47,6 +47,8 @@ sprite:
     jump_right: { sheet: jump_right-spritesheet, atlas: jump_right-atlas }
     jump_left: { flip_of: jump_right }
     celebrate_down: { sheet: celebrate_down-spritesheet, atlas: celebrate_down-atlas }
+    lifting_with_the_force_right: { sheet: lifting_with_the_force_right-spritesheet, atlas: lifting_with_the_force_right-atlas }
+    lifting_with_the_force_left: { flip_of: lifting_with_the_force_right }
 
 # Combat arena swing sheet under Resources/Sprites/Combat/.
 combat_sprite:

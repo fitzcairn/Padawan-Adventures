@@ -56,9 +56,12 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
                 for (key, value) in entry.progressive {
                     progressive[key.lowercased()] = value.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
+                let image = entry.image?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 return GateWord(
                     word: entry.word.lowercased(),
-                    spelling: entry.spelling.trimmingCharacters(in: .whitespacesAndNewlines),
+                    image: (image?.isEmpty == false) ? image : nil,
+                    sfx: entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines),
                     progressive: progressive
                 )
             }

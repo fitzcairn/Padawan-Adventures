@@ -164,6 +164,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             energyCount: playerConfig.startingEnergy,
             floorSet: floorTileSet,
             decorProb: config.decorProb,
+            cohesion: config.cohesion,
             tileSeed: seed ^ FloorTiler.seedSalt
         )
 

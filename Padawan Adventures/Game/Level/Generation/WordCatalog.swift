@@ -2,9 +2,10 @@ import Foundation
 import Yams
 
 /// YAML shape for one shared vocabulary entry under `words.<word>:`.
-/// Absent fields are derived from `fx_prefix` + the word id.
+/// Absent fields are derived from `fx_prefix` + the word id (`image` stays nil).
 nonisolated struct WordSpec: Decodable, Equatable, Sendable {
-    var spelling: String?
+    var image: String?
+    var sfx: String?
     var progressive: [String: String]?
 }
 
@@ -12,23 +13,42 @@ nonisolated struct WordSpec: Decodable, Equatable, Sendable {
 nonisolated struct WordCatalog: Equatable, Sendable {
     static let subdirectory = ConfigPath.catalogRoot
     static let defaultFxPrefix = "sfx_word_"
+    static let imageRoot = "Sprites/Words"
 
     /// Sorted by word for deterministic iteration / RNG.
     private(set) var words: [GateWord]
 
+    /// Mirrors `words.yaml`: most entries ship a `Sprites/Words/<word>.png`; `gate` is audio-only.
     nonisolated static let fallback = WordCatalog(words: [
-        .fallbackEntry(word: "bat"),
-        .fallbackEntry(word: "cat"),
-        .fallbackEntry(word: "dog"),
+        imagedFallbackEntry(word: "apple"),
+        imagedFallbackEntry(word: "bath"),
+        imagedFallbackEntry(word: "boat"),
+        imagedFallbackEntry(word: "book"),
+        imagedFallbackEntry(word: "car"),
+        imagedFallbackEntry(word: "cat"),
+        imagedFallbackEntry(word: "cloud"),
+        imagedFallbackEntry(word: "dance"),
+        imagedFallbackEntry(word: "dog"),
         .fallbackEntry(word: "gate"),
-        .fallbackEntry(word: "lightsaber"),
-        .fallbackEntry(word: "man"),
-        .fallbackEntry(word: "mom"),
-        .fallbackEntry(word: "open"),
-        .fallbackEntry(word: "poo"),
-        .fallbackEntry(word: "slice"),
-        .fallbackEntry(word: "star"),
+        imagedFallbackEntry(word: "house"),
+        imagedFallbackEntry(word: "lightbulb"),
+        imagedFallbackEntry(word: "pencil"),
+        imagedFallbackEntry(word: "star"),
+        imagedFallbackEntry(word: "sun"),
+        imagedFallbackEntry(word: "trash"),
+        imagedFallbackEntry(word: "wand"),
     ])
+
+    /// Derived tracks plus a sprite basename matching the word id.
+    nonisolated static func imagedFallbackEntry(word: String, fxPrefix: String = defaultFxPrefix) -> GateWord {
+        let derived = GateWord.fallbackEntry(word: word, fxPrefix: fxPrefix)
+        return GateWord(
+            word: derived.word,
+            image: derived.word,
+            sfx: derived.sfx,
+            progressive: derived.progressive
+        )
+    }
 
     nonisolated init(words: [GateWord]) {
         self.words = GateSpellingConfig.normalizedWords(words)
@@ -37,6 +57,20 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     func word(named id: String) -> GateWord? {
         let key = id.lowercased()
         return words.first { $0.word == key }
+    }
+
+    /// Words whose spelling begins with `letter`. When `requiringImage` is true, only
+    /// entries with a non-empty `image` basename are returned (usable as throw sprites).
+    func words(startingWith letter: String, requiringImage: Bool = false) -> [GateWord] {
+        let key = letter.lowercased()
+        guard !key.isEmpty else { return [] }
+        return words.filter { entry in
+            guard entry.word.hasPrefix(key) else { return false }
+            if requiringImage {
+                guard let image = entry.image, !image.isEmpty else { return false }
+            }
+            return true
+        }
     }
 
     /// Resolves `ids` against the catalog. `nil` means the full catalog; `[]` is invalid.
@@ -101,17 +135,25 @@ nonisolated struct WordCatalog: Equatable, Sendable {
         try decode(from: Data(yaml.utf8))
     }
 
-    /// Derives tracks from convention; explicit `spelling` / `progressive` keys override.
+    /// Derives tracks from convention; explicit `sfx` / `progressive` / `image` keys override.
     nonisolated static func resolveEntry(id: String, spec: WordSpec?, fxPrefix: String) -> GateWord {
         let derived = GateWord.fallbackEntry(word: id, fxPrefix: fxPrefix)
         guard let spec else { return derived }
 
-        let spelling: String
-        if let override = spec.spelling?.trimmingCharacters(in: .whitespacesAndNewlines),
+        let sfx: String
+        if let override = spec.sfx?.trimmingCharacters(in: .whitespacesAndNewlines),
            !override.isEmpty {
-            spelling = override
+            sfx = override
         } else {
-            spelling = derived.spelling
+            sfx = derived.sfx
+        }
+
+        let image: String?
+        if let override = spec.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !override.isEmpty {
+            image = override
+        } else {
+            image = nil
         }
 
         var progressive = derived.progressive
@@ -123,7 +165,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
             }
         }
 
-        return GateWord(word: id, spelling: spelling, progressive: progressive)
+        return GateWord(word: id, image: image, sfx: sfx, progressive: progressive)
     }
 }
 

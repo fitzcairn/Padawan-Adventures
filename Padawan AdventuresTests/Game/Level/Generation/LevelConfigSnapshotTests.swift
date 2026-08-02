@@ -54,7 +54,7 @@ struct LevelConfigSnapshotTests {
         }
         #expect(deflect.monsterHP == 5)
         #expect(deflect.orbTravelSeconds == 3)
-        #expect(deflect.letters.map(\.letter) == ["a", "b", "c"])
+        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
@@ -66,7 +66,7 @@ struct LevelConfigSnapshotTests {
         #expect(wordPlug.wordCountMin == 2)
         #expect(wordPlug.wordCountMax == 2)
         #expect(wordPlug.words.map(\.word) == [
-            "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
+            "bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand",
         ])
 
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
@@ -80,6 +80,6 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected pit bridge entry")
             return
         }
-        #expect(bridge.words == ["open", "start", "dog", "man", "bat", "kam"])
+        #expect(bridge.words == ["car", "start", "dog", "trash", "sun", "kam"])
     }
 }

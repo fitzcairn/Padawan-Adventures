@@ -115,6 +115,24 @@ extension PitBridgeScene {
         playerSprite.playOnce(name: name, library: spriteLibrary, libraryID: Self.playerLibraryID)
         playerSprite.fitHeight(playerDisplayHeight)
     }
+
+    /// Loop Kam's Force-lift clip while a tray tile is held.
+    func playForceLiftAnimation(toward target: CGPoint) {
+        guard let playerSprite, let playerNode else { return }
+        playerFacingLeft = target.x < playerNode.position.x - 0.5
+        let preferred = playerFacingLeft
+            ? "lifting_with_the_force_left"
+            : "lifting_with_the_force_right"
+        let name: String
+        if spriteLibrary.animation(id: Self.playerLibraryID, named: preferred) != nil {
+            name = preferred
+        } else if spriteLibrary.animation(id: Self.playerLibraryID, named: "lifting_with_the_force_right") != nil {
+            name = "lifting_with_the_force_right"
+        } else {
+            return
+        }
+        playPlayerLoop(name)
+    }
     // MARK: - Resize
 
     func repositionForNewSize() {

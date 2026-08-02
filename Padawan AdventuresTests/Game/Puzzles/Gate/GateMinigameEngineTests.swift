@@ -53,8 +53,8 @@ struct GateMinigameEngineTests {
     }
 
     @Test func beginIsDeterministicForSeed() {
-        let a = makeEngine(words: ["star", "gate", "open"], seed: 99)
-        let b = makeEngine(words: ["star", "gate", "open"], seed: 99)
+        let a = makeEngine(words: ["star", "gate", "car"], seed: 99)
+        let b = makeEngine(words: ["star", "gate", "car"], seed: 99)
         #expect(a.targetWord == b.targetWord)
         #expect(a.targetSoundTrackID == b.targetSoundTrackID)
         #expect(a.letters.map(\.letter) == b.letters.map(\.letter))

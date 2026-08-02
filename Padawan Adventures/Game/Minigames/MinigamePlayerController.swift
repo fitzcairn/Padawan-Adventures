@@ -10,6 +10,7 @@ enum MinigamePlayerController {
         let missingNewClip =
             library.animation(id: "player", named: "jump_right") == nil
             || library.animation(id: "player", named: "celebrate_down") == nil
+            || library.animation(id: "player", named: "lifting_with_the_force_right") == nil
         if missingNewClip,
            library.animation(id: "player", named: "idle_right") != nil {
             library.invalidate(id: "player")

@@ -109,6 +109,26 @@ extension ConfigAudit {
         return []
     }
 
+    static func requireWordImage(
+        _ basename: String,
+        kind: String,
+        bundle: Bundle
+    ) -> [String] {
+        let trimmed = basename.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return ["\(kind): image basename must be non-empty"]
+        }
+        if !resourceExists(
+            named: trimmed,
+            extensions: imageExtensions,
+            root: WordCatalog.imageRoot,
+            bundle: bundle
+        ) {
+            return ["\(kind): missing word image '\(WordCatalog.imageRoot)/\(trimmed)'"]
+        }
+        return []
+    }
+
     /// Structural layout invariants for bundled audio (folder scoping + no flat collisions).
     static func checkAudioLayout(bundle: Bundle = .main) -> [String] {
         var problems: [String] = []
@@ -138,7 +158,7 @@ extension ConfigAudit {
         }
 
         // 3) No basename collisions between searchable Music and FX trees
-        // (includes nested Phonetics/ and UI/ under FX).
+        // (includes nested Phonetics/, Words/, and UI/ under FX).
         var locationsByBasename: [String: Set<String>] = [:]
         for subdirectory in ["Audio/Music", "Audio/FX"] {
             for url in audioFiles(under: subdirectory, in: resourceURL) {

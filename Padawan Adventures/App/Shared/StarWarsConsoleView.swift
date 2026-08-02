@@ -198,6 +198,42 @@ extension StarWarsConsoleView {
     }
 }
 
+// MARK: - Console plate (image)
+
+/// CRT console plate showing a word illustration instead of text.
+struct StarWarsConsoleImageView: View {
+    let image: UIImage
+
+    var body: some View {
+        GeometryReader { geo in
+            let m = min(geo.size.width, geo.size.height)
+            StarWarsConsoleFrame {
+                Image(uiImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                    .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, m * 0.08))
+                    .padding(m * 0.12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+}
+
+extension StarWarsConsoleImageView {
+    /// Renders the illustrated plate into an `SKTexture` sized for SpriteKit scene points.
+    @MainActor
+    static func makeTexture(image: UIImage, size: CGSize, scale: CGFloat = 2) -> SKTexture {
+        renderTexture(
+            StarWarsConsoleImageView(image: image),
+            size: size,
+            scale: scale,
+            placeholderSolved: false
+        )
+    }
+}
+
 extension StarWarsConsoleProgressBar {
     /// Renders a console progress bar into an `SKTexture` sized for SpriteKit scene points.
     @MainActor
