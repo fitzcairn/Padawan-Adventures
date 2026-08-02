@@ -39,13 +39,16 @@ final class GateWordPlugScene: MinigameScene {
     static let arcLoopFallbackTrackID = "gate-spelling-loop-arc"
 
     let trayHeightRatio: CGFloat = 0.30
-    let columnCount = 2
+    /// Preferred column count; becomes 3 when 2 columns can't balance or the board is too wide.
+    var boardColumnCount = 2
+    let preferredColumnCount = 2
+    let expandedColumnCount = 3
     let gridInsetXRatio: CGFloat = 0.04
     let gridInsetYRatio: CGFloat = 0.06
     let columnGapRatio: CGFloat = 0.06
     let rowGapRatio: CGFloat = 0.18
     let socketWidthShareMax: CGFloat = 0.45
-    /// Drawn size of circles, rects, and letter sprites relative to a filled-slot layout.
+    /// Drawn size of plugs/sockets relative to a filled-slot layout.
     let uiScale: CGFloat = 0.75
     let tapMoveThreshold: CGFloat = 10
 

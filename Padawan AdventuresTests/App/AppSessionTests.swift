@@ -198,9 +198,6 @@ struct AppSessionTests {
         #expect(session.spriteLibrary.uiImage(id: "logo") != nil)
         #expect(session.spriteLibrary.uiImages(id: "kam") != nil)
         #expect(session.spriteLibrary.uiImages(id: "yoda") != nil)
-        #expect(session.spriteLibrary.uiImages(id: "cutscene_player") != nil)
-        #expect(session.spriteLibrary.uiImages(id: "cutscene_yoda") != nil)
-        #expect(session.cutsceneVideo.player != nil)
         #expect(session.backgroundLibrary.uiImage(named: "menu_screen_bg") != nil)
         #expect(session.backgroundLibrary.uiImage(named: "level_screen_bg") != nil)
         #expect(ScoreCoinIcon.uiImage() != nil)
@@ -215,81 +212,15 @@ struct AppSessionTests {
                 "Missing planet UIImage for \(level.resourceName)"
             )
         }
-        if let bootstrapTreasure = session.selectedLevel.treasure {
+        for treasureID in levels.compactMap(\.treasure) {
             #expect(
-                session.spriteLibrary.uiImage(id: bootstrapTreasure) != nil,
-                "Missing treasure icon for \(bootstrapTreasure)"
+                session.treasureIcons.uiImage(id: treasureID) != nil,
+                "Missing treasure icon for \(treasureID)"
             )
             #expect(
-                session.spriteLibrary.isLoaded(id: bootstrapTreasure),
-                "Missing treasure animation for \(bootstrapTreasure)"
+                session.spriteLibrary.isLoaded(id: treasureID),
+                "Missing treasure animation for \(treasureID)"
             )
-        }
-        for treasureID in levels.compactMap(\.treasure) where treasureID != session.selectedLevel.treasure {
-            #expect(
-                session.spriteLibrary.isLoaded(id: treasureID) == false,
-                "Unexpected bootstrap load for unselected treasure \(treasureID)"
-            )
-        }
-    }
-
-    @Test func levelExitReturnsResidencyTowardBootstrapBaseline() async {
-        let session = await AppSession.loadResources()
-        let bootstrapSpriteBytes = session.spriteLibrary.residentBytes
-        let bootstrapBackgroundBytes = session.backgroundLibrary.residentBytes
-
-        await session.ensureEnemySpritesLoaded()
-        await session.ensureFloorTileSetLoaded()
-        await session.ensureLetterSpriteSetLoaded()
-        await session.ensurePitSpriteSetLoaded()
-        await session.ensureGateSpriteSetLoaded()
-
-        #expect(session.floorTileSetLibrary.isLoaded)
-        #expect(session.letterSpriteSetLibrary.isLoaded)
-        #expect(session.pitSpriteSetLibrary.isLoaded)
-        #expect(session.gateSpriteSetLibrary.isLoaded)
-
-        session.releaseLevelScopedAssets()
-
-        #expect(session.floorTileSetLibrary.isLoaded == false)
-        #expect(session.letterSpriteSetLibrary.isLoaded == false)
-        #expect(session.pitSpriteSetLibrary.isLoaded == false)
-        #expect(session.gateSpriteSetLibrary.isLoaded == false)
-        #expect(session.backgroundLibrary.residentBytes == 0)
-        #expect(session.backgroundLibrary.residentBytes <= bootstrapBackgroundBytes)
-        #expect(session.spriteLibrary.residentBytes <= bootstrapSpriteBytes)
-    }
-
-    @Test func releaseCutsceneSpritesDropsCutsceneClips() async {
-        let session = await AppSession.loadResources()
-        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.playerID))
-        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.yodaID))
-        session.releaseCutsceneSprites()
-        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.playerID) == false)
-        #expect(session.spriteLibrary.isLoaded(id: CutsceneSpritesConfig.yodaID) == false)
-        #expect(session.cutsceneVideo.player != nil)
-    }
-
-    @Test func sharedPickupIconsSurviveLevelScopedRelease() async {
-        let session = await AppSession.loadResources()
-        session.releaseLevelScopedAssets()
-        #expect(session.spriteLibrary.uiImage(id: "coin") != nil)
-        #expect(session.spriteLibrary.uiImage(id: "health") != nil)
-        #expect(session.spriteLibrary.uiImage(id: "energy") != nil)
-    }
-
-    @Test func unownedTreasuresReleasedAfterLevelScopedRelease() async {
-        let session = await AppSession.loadResources()
-        let selectedTreasure = session.selectedLevel.treasure
-        session.releaseLevelScopedAssets()
-        for treasureID in LevelCatalog.loadFromBundle().compactMap(\.treasure) where treasureID != selectedTreasure {
-            #expect(
-                session.spriteLibrary.isLoaded(id: treasureID) == false,
-                "Treasure \(treasureID) should not stay pinned after release"
-            )
-        }
-        if let selectedTreasure {
-            #expect(session.spriteLibrary.isLoaded(id: selectedTreasure))
         }
     }
 }

@@ -6,25 +6,6 @@ import Yams
 @testable import Padawan_Adventures
 
 struct SpriteSystemTests {
-    /// Unbaked source art lives in the repo's `Art/` tree, not the app bundle, so the
-    /// raw pixel-pipeline regressions below read it from disk. `Art/` mirrors what the
-    /// bakers consume; `.main` only ever carries baked output.
-    private static func sourceArtBundle(_ relativePath: String) throws -> Bundle {
-        let directory = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // Sprites
-            .deletingLastPathComponent() // Game
-            .deletingLastPathComponent() // Padawan AdventuresTests
-            .deletingLastPathComponent() // repo root
-            .appendingPathComponent("Art")
-            .appendingPathComponent(relativePath)
-        return try #require(Bundle(url: directory), "missing source art at \(directory.path)")
-    }
-
-    /// Player `idle_northeast` source sheet + atlas: a regular 5×5 grid of 256×256 cells.
-    private static func playerIdleNortheastSource() throws -> Bundle {
-        try sourceArtBundle("Shared/Player")
-    }
-
     @Test func atlasDecodesOrderedFramesAndDurations() throws {
         let json = """
         {
@@ -208,12 +189,8 @@ struct SpriteSystemTests {
 
     @Test func chromaKeyPreservesSpritesheetTopLeftOrigin() throws {
         // Regression: a Y-flip inside chroma-key makes atlas (0,0) read the bottom row.
-        // Use the unbaked source sheet — baked art already had chroma applied offline.
-        let sheetURL = try SpriteSheetLoader.resourceURL(
-            named: "idle_northeast-spritesheet",
-            extensions: ["png"],
-            root: "",
-            bundle: Self.playerIdleNortheastSource()
+        let sheetURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
         )
         let original = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(to: original, key: (0, 0, 0))
@@ -366,15 +343,15 @@ struct SpriteSystemTests {
             subdirectory: LevelCatalog.subdirectory
         )
         let sprite = try #require(level.sprite)
-        #expect(sprite.root == "Levels/1-tython")
+        #expect(sprite.root == "Sprites/UI/Levels")
         #expect(sprite.chromaKey == "#000000")
         #expect(sprite.chromaKeyTolerance == 2)
         guard case .sheet(let sheet, let atlas) = sprite.animations["idle"] else {
             Issue.record("Expected tython idle sheet animation")
             return
         }
-        #expect(sheet == "1-tython-planet-spritesheet")
-        #expect(atlas == "1-tython-planet-atlas")
+        #expect(sheet == "1-tython")
+        #expect(atlas == "1-tython-atlas")
         let library = SpriteLibrary()
         await library.ensureLoaded(sprite, id: "1-tython")
         let idle = try #require(library.animation(id: "1-tython", named: "idle"))
@@ -464,13 +441,8 @@ struct SpriteSystemTests {
     }
 
     @Test @MainActor func idleNortheastPlaysSpritesheetTopLeftToBottomRight() throws {
-        // Source (unbaked) atlas is a regular 5×5 grid of 256×256 cells.
-        let source = try Self.playerIdleNortheastSource()
-        let atlasURL = try SpriteSheetLoader.resourceURL(
-            named: "idle_northeast-atlas",
-            extensions: ["json"],
-            root: "",
-            bundle: source
+        let atlasURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let ordered = atlas.orderedFrames
@@ -488,11 +460,8 @@ struct SpriteSystemTests {
             #expect(entry.frame.h == frameH)
         }
 
-        let sheetURL = try SpriteSheetLoader.resourceURL(
-            named: "idle_northeast-spritesheet",
-            extensions: ["png"],
-            root: "",
-            bundle: source
+        let sheetURL = try #require(
+            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
         )
         let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(
@@ -513,14 +482,12 @@ struct SpriteSystemTests {
         let expectedTrimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(atlasCrops)
             .map(SpriteSheetLoader.flipAroundXAxis)
 
-        // Unbaked load path: chroma + shared trim + X-flip (matches expectedTrimmed).
+        // Production load path (same as SpriteLibrary / AnimatedSpriteNode).
         let idle = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
-            root: "",
-            chromaKey: "#000000",
-            bundle: source,
-            isBaked: false
+            root: "Sprites/Player",
+            chromaKey: "#000000"
         )
         #expect(idle.frames.count == expectedTrimmed.count)
 
@@ -553,13 +520,12 @@ struct SpriteSystemTests {
     }
 
     @Test func loadAnimationTrimFalseKeepsAtlasRectSize() throws {
-        // Trim only applies on the unbaked path; baked sheets are already trimmed.
-        let source = try Self.playerIdleNortheastSource()
-        let atlasURL = try SpriteSheetLoader.resourceURL(
-            named: "idle_northeast-atlas",
-            extensions: ["json"],
-            root: "",
-            bundle: source
+        let atlasURL = try #require(
+            Bundle.main.url(
+                forResource: "idle_northeast-atlas",
+                withExtension: "json",
+                subdirectory: "Sprites/Player"
+            ) ?? Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let frame = try #require(atlas.orderedFrames.first?.frame)
@@ -567,20 +533,16 @@ struct SpriteSystemTests {
         let trimmed = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
-            root: "",
+            root: "Sprites/Player",
             chromaKey: "#000000",
-            bundle: source,
-            trim: true,
-            isBaked: false
+            trim: true
         )
         let untrimmed = try SpriteSheetLoader.loadAnimation(
             sheet: "idle_northeast-spritesheet",
             atlas: "idle_northeast-atlas",
-            root: "",
+            root: "Sprites/Player",
             chromaKey: "#000000",
-            bundle: source,
-            trim: false,
-            isBaked: false
+            trim: false
         )
 
         let untrimmedSize = untrimmed.frames[0].texture.size()
@@ -636,7 +598,7 @@ struct SpriteSystemTests {
         let soft = try YAMLDecoder().decode(
             SpriteConfig.self,
             from: Data("""
-            root: Levels/1-tython
+            root: Sprites/UI/Levels
             chroma: black_soft
             """.utf8)
         )

@@ -157,9 +157,9 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
 /// Per-entry gate word-plug config: match each word's missing first letter.
 /// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/letters.yaml`.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
-    /// Inclusive lower bound for words per round. Must be even and >= 2.
+    /// Inclusive lower bound for words per round. Must be a multiple of 3 and >= 3.
     var wordCountMin: Int
-    /// Inclusive upper bound for words per round. Must be even and <= `maxWordsPerRound`.
+    /// Inclusive upper bound for words per round. Must be a multiple of 3 and <= `maxWordsPerRound`.
     var wordCountMax: Int
     var fx: SoundEffectTable
     /// Optional subset of shared word-catalog ids (`nil` = full catalog).
@@ -171,11 +171,11 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Per-entry music override; `nil` → use `game_music.gate`.
     var music: String?
 
-    /// 2 columns x 3 rows of word plates.
-    nonisolated static let maxWordsPerRound = 6
+    /// Up to 3 columns x 3 rows of word plates.
+    nonisolated static let maxWordsPerRound = 9
 
     nonisolated static let fallback = GateWordPlugConfig(
-        wordCountMin: 2,
+        wordCountMin: 3,
         wordCountMax: 6,
         words: WordCatalog.fallback.words,
         letters: LetterCatalog.fallback.letters,
@@ -183,7 +183,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     )
 
     nonisolated init(
-        wordCountMin: Int = 2,
+        wordCountMin: Int = 3,
         wordCountMax: Int = 6,
         fx: SoundEffectTable = SoundEffectTable(),
         wordIDs: [String]? = nil,
@@ -209,9 +209,9 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard wordCountMin >= 2, wordCountMin.isMultiple(of: 2),
+        guard wordCountMin >= 3, wordCountMin.isMultiple(of: 3),
               wordCountMax >= wordCountMin,
-              wordCountMax.isMultiple(of: 2),
+              wordCountMax.isMultiple(of: 3),
               wordCountMax <= Self.maxWordsPerRound else {
             throw WorldSeedError.invalidGateWordPlugWordCountRange(
                 min: wordCountMin,

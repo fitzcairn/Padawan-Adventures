@@ -15,7 +15,7 @@ Processing per sheet (mirrors SpriteSheetLoader / FloorSpriteLoader):
   1. Chroma key (hex, tolerance, feather smoothstep t*t*(3-2*t), optional
      smoothPremultipliedAlphaEdge).
   2. Floors: keepPrimaryOpaqueComponent per named frame (score: dist - count*0.01).
-  3. Shared opaque trim when trim is true (enemies use trim:false).
+  3. Shared opaque trim when trim is true (player, enemies, items).
   4. Vertical flip (FLIP_TOP_BOTTOM) for character/item/enemy/planet sheets so
      runtime need not call flipAroundXAxis. Floors are NOT flipped (they use
      node xScale mirroring only).

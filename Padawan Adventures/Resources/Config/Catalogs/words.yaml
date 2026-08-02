@@ -6,8 +6,14 @@
 version: 1
 fx_prefix: sfx_word_
 words:
+  bat:
   cat:
   dog:
-  star:
   gate:
+  lightsaber:
+  man:
+  mom:
   open:
+  poo:
+  slice:
+  star:

@@ -18,7 +18,7 @@ struct GateWordPlugMinigameEngineTests {
     }
 
     private func makeEngine(
-        wordCountMin: Int = 2,
+        wordCountMin: Int = 3,
         wordCountMax: Int = 6,
         pool: [String] = ["cat", "dog", "star", "gate", "open"],
         letterPool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"],
@@ -46,16 +46,16 @@ struct GateWordPlugMinigameEngineTests {
         #expect(engine.tray.isEmpty)
     }
 
-    @Test func beginPicksEvenCountWithinRangeAndPool() {
+    @Test func beginPicksMultipleOfThreeWithinRangeAndPool() {
         for seed in UInt64(1)...40 {
             let engine = makeEngine(
-                wordCountMin: 2,
+                wordCountMin: 3,
                 wordCountMax: 6,
                 pool: ["cat", "dog", "star", "gate", "open"],
                 seed: seed
             )
-            #expect(engine.slots.count == 2 || engine.slots.count == 4)
-            #expect(engine.slots.count.isMultiple(of: 2))
+            #expect(engine.slots.count == 3)
+            #expect(engine.slots.count.isMultiple(of: 3))
         }
     }
 
@@ -107,9 +107,9 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func correctPlugEmitsFlashCorrectAndPhrase() {
         var engine = makeEngine(
-            wordCountMin: 2,
-            wordCountMax: 2,
-            pool: ["cat", "dog"],
+            wordCountMin: 3,
+            wordCountMax: 3,
+            pool: ["cat", "dog", "star"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
@@ -126,9 +126,9 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func incorrectPlugEmitsOnlyIncorrect() {
         var engine = makeEngine(
-            wordCountMin: 2,
-            wordCountMax: 2,
-            pool: ["cat", "dog"],
+            wordCountMin: 3,
+            wordCountMax: 3,
+            pool: ["cat", "dog", "star"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
@@ -143,8 +143,8 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func pluggingEverySlotWinsAndAwardsStars() {
         for (minCount, maxCount, pool) in [
-            (2, 2, ["cat", "dog"]),
-            (4, 4, ["cat", "dog", "star", "gate"]),
+            (3, 3, ["cat", "dog", "star"]),
+            (6, 6, ["cat", "dog", "star", "gate", "open", "bat"]),
         ] as [(Int, Int, [String])] {
             var engine = makeEngine(
                 wordCountMin: minCount,
@@ -169,9 +169,9 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func plugIsIgnoredAfterWin() {
         var engine = makeEngine(
-            wordCountMin: 2,
-            wordCountMax: 2,
-            pool: ["cat", "dog"],
+            wordCountMin: 3,
+            wordCountMax: 3,
+            pool: ["cat", "dog", "star"],
             seed: 5
         )
         for slot in engine.slots {
@@ -190,9 +190,9 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func plugIsIgnoredForFilledSocket() {
         var engine = makeEngine(
-            wordCountMin: 2,
-            wordCountMax: 2,
-            pool: ["cat", "dog"],
+            wordCountMin: 3,
+            wordCountMax: 3,
+            pool: ["cat", "dog", "star"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
@@ -206,19 +206,19 @@ struct GateWordPlugMinigameEngineTests {
         #expect(events.isEmpty)
     }
 
-    @Test func sampleWordCountClampsToPoolAndSix() {
+    @Test func sampleWordCountClampsToPoolAndNine() {
         var rng = SeededGenerator(seed: 1)
         #expect(
             GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 2,
+                minimum: 3,
                 maximum: 6,
                 poolSize: 3,
                 rng: &rng
-            ) == 2
+            ) == 3
         )
         #expect(
             GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 2,
+                minimum: 3,
                 maximum: 6,
                 poolSize: 1,
                 rng: &rng
@@ -226,13 +226,13 @@ struct GateWordPlugMinigameEngineTests {
         )
         for _ in 0..<20 {
             let count = GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 2,
-                maximum: 10,
+                minimum: 3,
+                maximum: 12,
                 poolSize: 20,
                 rng: &rng
             )
-            #expect(count <= 6)
-            #expect(count.isMultiple(of: 2))
+            #expect(count <= 9)
+            #expect(count.isMultiple(of: 3))
         }
     }
 }

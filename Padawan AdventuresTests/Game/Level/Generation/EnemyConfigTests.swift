@@ -236,7 +236,7 @@ struct EnemyConfigTests {
         for id in expectedIDs {
             let sprite = try #require(config.sprites[id])
             #expect(sprite.root.hasPrefix("Sprites/Enemies/"))
-            #expect(sprite.trim == false)
+            #expect(sprite.trim == true)
             #expect(sprite.chromaKey == nil)
             for locomotion in [SpriteLocomotion.idle, .walk] {
                 for direction in CompassDirection.allCases {

@@ -777,7 +777,7 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wordPlug = wordPlugConfigs[0]
-        #expect(wordPlug.wordCountMin == 2)
+        #expect(wordPlug.wordCountMin == 6)
         #expect(wordPlug.wordCountMax == 6)
         #expect(wordPlug.words.map(\.word).contains("gate"))
         #expect(wordPlug.words.contains {
@@ -1123,9 +1123,11 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wp = wordPlugConfigs[0]
-        #expect(wp.wordCountMin == 2)
+        #expect(wp.wordCountMin == 6)
         #expect(wp.wordCountMax == 6)
-        #expect(wp.words.map(\.word) == ["cat", "dog", "gate", "open", "star"])
+        #expect(wp.words.map(\.word) == [
+            "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
+        ])
         #expect(tython.artifact == "leaf.fill")
     }
 
@@ -1146,8 +1148,8 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 2
-              word_count_max: 4
+              word_count_min: 3
+              word_count_max: 6
               words: [cat, dog]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -1155,13 +1157,13 @@ struct LevelConfigTests {
             Issue.record("expected word_plug minigame")
             return
         }
-        #expect(wp.wordCountMin == 2)
-        #expect(wp.wordCountMax == 4)
+        #expect(wp.wordCountMin == 3)
+        #expect(wp.wordCountMax == 6)
         #expect(wp.words.map(\.word) == ["cat", "dog"])
         #expect(!wp.letters.isEmpty)
     }
 
-    @Test func rejectsOddGateWordPlugWordCount() {
+    @Test func rejectsNonMultipleOfThreeGateWordPlugWordCount() {
         let yaml = """
         name: Level 1
         width: 20
@@ -1178,11 +1180,11 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 3
+              word_count_min: 4
               word_count_max: 6
               words: [cat, dog]
         """
-        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 3, max: 6)) {
+        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 4, max: 6)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1204,11 +1206,11 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 2
-              word_count_max: 8
+              word_count_min: 3
+              word_count_max: 12
               words: [cat, dog]
         """
-        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 2, max: 8)) {
+        #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 3, max: 12)) {
             try LevelConfig.decode(from: yaml)
         }
     }

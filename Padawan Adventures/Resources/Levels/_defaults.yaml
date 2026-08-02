@@ -89,11 +89,12 @@ gate:
   minigame_chance: 1.0
   minigames:
     - type: word_plug
-      # Words per round: even, 2...6 (2 columns x 3 rows), clamped to the pool.
-      word_count_min: 4
+      # Words per round: multiples of 3, 3...9 (2 cols, or 3 equal cols if needed).
+      word_count_min: 6
       word_count_max: 6
-      words: [cat, dog, star, gate, open]
+      words: [cat, dog, star, gate, open, bat, man, mom, poo, slice, lightsaber]
       music: gate
+      fx: { loop: gate-spelling-loop-arc }
   # - type: spelling
   #   num_padding_letters: 6
   #   words: [cat, dog, star, gate, open]

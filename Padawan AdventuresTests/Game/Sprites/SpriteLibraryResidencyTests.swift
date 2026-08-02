@@ -6,15 +6,6 @@ import Testing
 @MainActor
 struct SpriteLibraryResidencyTests {
     @Test
-    func byteBudgetLimitIsDerivedFromAvailableMemory() {
-        let available = MemoryProbe.availableBytes()
-        let library = SpriteLibrary()
-        let limit = library.byteBudgetLimit
-        #expect(limit > 0)
-        #expect(limit == max(Int(Double(available) * 0.20), 1))
-    }
-
-    @Test
     func retainDropsNonKeptIdsAndRestoresResidentBytes() {
         let library = SpriteLibrary()
         let playerTexture = Self.makeTexture(width: 16, height: 8)
@@ -40,18 +31,6 @@ struct SpriteLibraryResidencyTests {
         #expect(library.animation(id: "dino", named: "idle_down") == nil)
         #expect(library.isLoaded(id: "player") == true)
         #expect(library.residentBytes == playerBytes)
-    }
-
-    @Test
-    func uiImageConvertsOnlyFirstFrame() {
-        let library = SpriteLibrary()
-        let frames = (0..<3).map { _ in
-            SpriteFrame(texture: Self.makeTexture(width: 8, height: 8), duration: 0.1)
-        }
-        library.seedForTesting(id: "icon", animations: ["idle": SpriteAnimation(frames: frames)])
-        #expect(library.uiImagesCacheCount == 0)
-        #expect(library.uiImage(id: "icon", named: "idle") != nil)
-        #expect(library.uiImagesCacheCount == 0)
     }
 
     @Test

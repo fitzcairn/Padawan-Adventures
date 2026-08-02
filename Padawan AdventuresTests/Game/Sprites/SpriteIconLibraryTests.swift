@@ -1,0 +1,98 @@
+import SpriteKit
+import Testing
+import UIKit
+@testable import Padawan_Adventures
+
+struct SpriteIconLibraryTests {
+    @Test @MainActor
+    func loadsFirstFrameFromBundledTreasureItem() async throws {
+        let items = try ItemsConfig.loadFromBundle()
+        let sprite = try #require(items.spriteConfig(id: "emitter"))
+        let library = SpriteIconLibrary()
+        await library.ensureLoaded(sprite, id: "emitter")
+        let image = try #require(library.uiImage(id: "emitter"))
+        #expect(library.count == 1)
+        #expect(image.size.width > 1)
+        #expect(image.size.height > 1)
+    }
+
+    @Test @MainActor
+    func unknownAnimationLeavesCacheEmpty() async throws {
+        let items = try ItemsConfig.loadFromBundle()
+        let sprite = try #require(items.spriteConfig(id: "emitter"))
+        let library = SpriteIconLibrary()
+        await library.ensureLoaded(sprite, id: "emitter", animationName: "missing-clip")
+        #expect(library.uiImage(id: "emitter") == nil)
+        #expect(library.count == 0)
+    }
+
+    @Test @MainActor
+    func spriteLibraryLoadsEmitterForInWorldPickup() async throws {
+        let items = try ItemsConfig.loadFromBundle()
+        let sprite = try #require(items.spriteConfig(id: "emitter"))
+        #expect(sprite.chromaKey == nil)
+        let library = SpriteLibrary()
+        await library.ensureLoaded(sprite, id: "emitter")
+        let animation = try #require(library.animation(id: "emitter", named: "idle"))
+        #expect(animation.frames.count == 25)
+        #expect(animation.frames[0].texture.size().width > 1)
+        #expect(animation.frames[0].texture.size().height > 1)
+
+        let node = PlaceholderFactory.pickupNode(
+            kind: .treasure,
+            entityID: UUID(),
+            config: IsometricConfig(),
+            spriteLibrary: library,
+            itemsConfig: items,
+            treasureItemID: "emitter"
+        )
+        let animated = try #require(
+            node.children.compactMap { $0 as? AnimatedSpriteNode }.first
+        )
+        #expect(animated.currentAnimationName == "idle")
+    }
+
+    @Test @MainActor
+    func pickupNodeHeightTracksItemSpriteScale() async throws {
+        let base = try ItemsConfig.loadFromBundle()
+        let emitter = try #require(base.spriteConfig(id: "emitter"))
+        let library = SpriteLibrary()
+        await library.ensureLoaded(emitter, id: "emitter")
+
+        let iso = AppConfig.DisplayParams(tileWidth: 80, tileHeight: 49).makeIsometricConfig()
+        #expect(abs(iso.wallHeight - 80) < 0.001)
+
+        func makePickup(scale: Double) throws -> AnimatedSpriteNode {
+            var sprite = emitter
+            sprite.scale = scale
+            let items = ItemsConfig(items: ["emitter": ItemDefinition(sprite: sprite)])
+            let node = PlaceholderFactory.pickupNode(
+                kind: .treasure,
+                entityID: UUID(),
+                config: iso,
+                spriteLibrary: library,
+                itemsConfig: items,
+                treasureItemID: "emitter"
+            )
+            return try #require(node.children.compactMap { $0 as? AnimatedSpriteNode }.first)
+        }
+
+        let full = try makePickup(scale: 1.0)
+        let half = try makePickup(scale: 0.5)
+        #expect(abs(full.size.height - 80) < 0.5)
+        #expect(abs(half.size.height - 40) < 0.5)
+        #expect(abs(full.size.width - 80 * (50.0 / 125.0)) < 1.0)
+        #expect(abs(half.size.width - 40 * (50.0 / 125.0)) < 1.0)
+
+        // Live SKView: animate(resize:false) must keep the YAML-driven size.
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
+        let scene = SKScene(size: CGSize(width: 200, height: 200))
+        view.presentScene(scene)
+        scene.addChild(full)
+        let deadline = Date().addingTimeInterval(0.35)
+        while Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.016))
+        }
+        #expect(abs(full.size.height - 80) < 0.5, "after animate \(full.size)")
+    }
+}

@@ -63,9 +63,11 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected word-plug gate entry")
             return
         }
-        #expect(wordPlug.wordCountMin == 2)
+        #expect(wordPlug.wordCountMin == 6)
         #expect(wordPlug.wordCountMax == 6)
-        #expect(wordPlug.words.map(\.word) == ["cat", "dog", "gate", "open", "star"])
+        #expect(wordPlug.words.map(\.word) == [
+            "bat", "cat", "dog", "gate", "lightsaber", "man", "mom", "open", "poo", "slice", "star",
+        ])
 
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
         #expect(level.pit.minigames.map(\.weight) == [0, 1])

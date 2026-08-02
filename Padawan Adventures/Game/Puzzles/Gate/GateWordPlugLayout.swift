@@ -20,7 +20,6 @@ extension GateWordPlugScene {
         let slots = engine.slots
         guard !slots.isEmpty else { return }
 
-        let rows = max(1, Int((Double(slots.count) / 2.0).rounded(.up)))
         let playArea = CGRect(
             x: 0,
             y: size.height * trayHeightRatio,
@@ -31,32 +30,63 @@ extension GateWordPlugScene {
             dx: size.width * gridInsetXRatio,
             dy: playArea.height * gridInsetYRatio
         )
-        let rowSlotHeight = gridArea.height / CGFloat(rows)
+
+        // Prefer 2 equal columns; use 3 equal columns when 2 can't balance or the board is too wide.
+        // Word counts are multiples of 3 so a 3-column board always has equal column sizes.
+        boardColumnCount = preferredColumnCount
+        var rows = max(1, Int((Double(slots.count) / Double(boardColumnCount)).rounded(.up)))
         let columnGap = size.width * columnGapRatio
-        let cellWidth = (gridArea.width - columnGap) / CGFloat(columnCount)
-        // Reference sizes as if filling the play grid; draw at uiScale and pack tightly.
-        let layoutHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax)
-        let layoutDiameter = layoutHeight
-        let layoutRectWidth = max(1, cellWidth - layoutDiameter)
-        let diameter = layoutDiameter * uiScale
-        let rectHeight = layoutHeight * uiScale
-        let rectWidth = layoutRectWidth * uiScale
+        let hGapBase = columnGap * uiScale
+
+        func metrics(columns: Int, rows: Int) -> (diameter: CGFloat, rectHeight: CGFloat, rectWidth: CGFloat, pairWidth: CGFloat, hGap: CGFloat, vGap: CGFloat, gridWidth: CGFloat, gridHeight: CGFloat) {
+            let rowSlotHeight = gridArea.height / CGFloat(rows)
+            let cellWidth = (gridArea.width - columnGap * CGFloat(max(columns - 1, 0))) / CGFloat(columns)
+            let layoutHeight = min(rowSlotHeight * (1 - rowGapRatio), cellWidth * socketWidthShareMax)
+            let diameter = layoutHeight * uiScale
+            let rectHeight = layoutHeight * uiScale
+            let fontSize = rectHeight * 0.42
+            let longest = slots.map(\.word).max(by: { $0.count < $1.count }) ?? ""
+            let textWidth = plateTextWidth(longest, fontSize: fontSize)
+            // All plates share the longest word's width (+ console chrome).
+            let rectWidth = max(diameter * 1.15, textWidth + fontSize * 1.35 + rectHeight * 0.45)
+            let socketRectGap = diameter * 0.20
+            let pairWidth = diameter + socketRectGap + rectWidth
+            let hGap = hGapBase
+            let vGap = rectHeight * (rowGapRatio / max(1 - rowGapRatio, 0.01))
+            let gridWidth = CGFloat(columns) * pairWidth + CGFloat(max(columns - 1, 0)) * hGap
+            let gridHeight = CGFloat(rows) * rectHeight + CGFloat(max(rows - 1, 0)) * vGap
+            return (diameter, rectHeight, rectWidth, pairWidth, hGap, vGap, gridWidth, gridHeight)
+        }
+
+        var layout = metrics(columns: boardColumnCount, rows: rows)
+        let cannotBalanceTwoColumns = !slots.count.isMultiple(of: preferredColumnCount)
+        let twoColumnBoardTooWide = layout.gridWidth > gridArea.width + 0.5
+        if (cannotBalanceTwoColumns || twoColumnBoardTooWide),
+           slots.count.isMultiple(of: expandedColumnCount) {
+            boardColumnCount = expandedColumnCount
+            rows = max(1, slots.count / boardColumnCount)
+            layout = metrics(columns: boardColumnCount, rows: rows)
+        }
+
+        let diameter = layout.diameter
+        let rectHeight = layout.rectHeight
+        let rectWidth = layout.rectWidth
+        let pairWidth = layout.pairWidth
+        let hGap = layout.hGap
+        let vGap = layout.vGap
+        let socketRectGap = diameter * 0.20
         laidOutDiameter = diameter
         laidOutRectSize = CGSize(width: rectWidth, height: rectHeight)
 
-        let socketRectGap = diameter * 0.20
-        let pairWidth = diameter + socketRectGap + rectWidth
-        let hGap = columnGap * uiScale
-        let vGap = rectHeight * (rowGapRatio / max(1 - rowGapRatio, 0.01))
-        let gridWidth = CGFloat(columnCount) * pairWidth + CGFloat(max(columnCount - 1, 0)) * hGap
-        let gridHeight = CGFloat(rows) * rectHeight + CGFloat(max(rows - 1, 0)) * vGap
+        let gridWidth = layout.gridWidth
+        let gridHeight = layout.gridHeight
         // Center the board group in the middle of the screen.
         let gridMinX = size.width * 0.5 - gridWidth * 0.5
         let gridMinY = size.height * 0.5 - gridHeight * 0.5
 
         for (index, slot) in slots.enumerated() {
-            let row = index / columnCount
-            let column = index % columnCount
+            let row = index / boardColumnCount
+            let column = index % boardColumnCount
             let cellMinX = gridMinX + CGFloat(column) * (pairWidth + hGap)
             let rowCenterY = gridMinY + gridHeight - rectHeight * 0.5 - CGFloat(row) * (rectHeight + vGap)
 
@@ -86,6 +116,17 @@ extension GateWordPlugScene {
         }
 
         layoutTrayTokens(diameter: diameter)
+    }
+
+    func plateTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
+        let font = AppFont.uiKit(size: max(1, fontSize))
+        let bounds = (text as NSString).boundingRect(
+            with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: font.lineHeight * 2),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: font],
+            context: nil
+        )
+        return ceil(bounds.width)
     }
 
     func layoutTrayTokens(diameter: CGFloat) {

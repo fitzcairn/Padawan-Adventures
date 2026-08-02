@@ -17,10 +17,16 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     private(set) var words: [GateWord]
 
     nonisolated static let fallback = WordCatalog(words: [
+        .fallbackEntry(word: "bat"),
         .fallbackEntry(word: "cat"),
         .fallbackEntry(word: "dog"),
         .fallbackEntry(word: "gate"),
+        .fallbackEntry(word: "lightsaber"),
+        .fallbackEntry(word: "man"),
+        .fallbackEntry(word: "mom"),
         .fallbackEntry(word: "open"),
+        .fallbackEntry(word: "poo"),
+        .fallbackEntry(word: "slice"),
         .fallbackEntry(word: "star"),
     ])
 

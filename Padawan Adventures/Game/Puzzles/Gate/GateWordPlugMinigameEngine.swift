@@ -27,7 +27,7 @@ nonisolated struct GateWordPlugMinigameEngine {
         }
 
         init(
-            wordCountMin: Int = 2,
+            wordCountMin: Int = 3,
             wordCountMax: Int = 6,
             words: [GateWord],
             letters: [GateLetter]
@@ -195,7 +195,7 @@ nonisolated struct GateWordPlugMinigameEngine {
         return events
     }
 
-    /// Uniform over even values in range, clamped to the pool and to `maxWordsPerRound`.
+    /// Uniform over multiples of 3 in range, clamped to the pool and to `maxWordsPerRound`.
     static func sampleWordCount(
         minimum: Int,
         maximum: Int,
@@ -204,12 +204,13 @@ nonisolated struct GateWordPlugMinigameEngine {
     ) -> Int {
         let cap = min(max(poolSize, 1), GateWordPlugConfig.maxWordsPerRound)
         var hi = min(max(minimum, maximum), cap)
-        hi -= hi % 2
-        guard hi >= 2 else { return cap }
-        var lo = max(2, min(minimum, maximum))
-        if !lo.isMultiple(of: 2) { lo += 1 }
+        hi -= hi % 3
+        guard hi >= 3 else { return cap }
+        var lo = max(3, min(minimum, maximum))
+        let rem = lo % 3
+        if rem != 0 { lo += 3 - rem }
         if lo > hi { lo = hi }
-        let choices = (hi - lo) / 2 + 1
-        return lo + Int.random(in: 0..<choices, using: &rng) * 2
+        let choices = (hi - lo) / 3 + 1
+        return lo + Int.random(in: 0..<choices, using: &rng) * 3
     }
 }

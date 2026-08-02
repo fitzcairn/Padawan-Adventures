@@ -10,8 +10,9 @@ slash_max_screen_width_fraction: 0.20
 
 # Shared enemy sprite sheets, referenced by id from each type's `sprite:`.
 # Sheets already carry an alpha channel, so no `chroma:` / `chroma_key:`.
-# Atlas rects share one crop per enemy, so `trim: false` keeps the sprite from
-# changing size between facings and between idle/walk.
+# Shared opaque trim (default) crops empty cell padding so feet sit on the
+# texture edge for AnimatedSpriteNode's top anchor; display height stays
+# wall_height x scale via fitHeight.
 # `scale` is proportional to the source art (0.60 x cropHeight / 105) so relative
 # creature sizes survive height normalization. Display height = wall_height x scale.
 # Mirrored facings use flip_of (same pattern as player.yaml) so left/NW/SW sheets
@@ -19,7 +20,6 @@ slash_max_screen_width_fraction: 0.20
 sprites:
   centipede:
     root: Sprites/Enemies/Centipede
-    trim: false
     scale: 0.86
     anchor_correction: 0
     animations:
@@ -41,7 +41,6 @@ sprites:
       walk_down: { sheet: centipede-walk_down-spritesheet, atlas: centipede-walk_down-atlas }
   dino:
     root: Sprites/Enemies/Dino
-    trim: false
     scale: 1.40
     anchor_correction: 0
     animations:
@@ -63,7 +62,6 @@ sprites:
       walk_down: { sheet: dino-walk_down-spritesheet, atlas: dino-walk_down-atlas }
   drone:
     root: Sprites/Enemies/Drone
-    trim: false
     scale: 0.87
     anchor_correction: 0
     animations:
@@ -85,7 +83,6 @@ sprites:
       walk_down: { sheet: drone-walk_down-spritesheet, atlas: drone-walk_down-atlas }
   ice_monster:
     root: Sprites/Enemies/IceMonster
-    trim: false
     scale: 1.2
     anchor_correction: 0
     animations:
@@ -107,7 +104,6 @@ sprites:
       walk_down: { sheet: ice_monster-walk_down-spritesheet, atlas: ice_monster-walk_down-atlas }
   lava_lizard:
     root: Sprites/Enemies/LavaLizard
-    trim: false
     scale: 0.94
     anchor_correction: 0
     animations:
@@ -129,7 +125,6 @@ sprites:
       walk_down: { sheet: lava_lizard-walk_down-spritesheet, atlas: lava_lizard-walk_down-atlas }
   moth:
     root: Sprites/Enemies/Moth
-    trim: false
     scale: 0.96
     anchor_correction: 0
     animations:
@@ -151,7 +146,6 @@ sprites:
       walk_down: { sheet: moth-walk_down-spritesheet, atlas: moth-walk_down-atlas }
   robot:
     root: Sprites/Enemies/Robot
-    trim: false
     scale: 0.86
     anchor_correction: 0
     animations:
@@ -173,7 +167,6 @@ sprites:
       walk_down: { sheet: robot-walk_down-spritesheet, atlas: robot-walk_down-atlas }
   snake:
     root: Sprites/Enemies/Snake
-    trim: false
     scale: 1.00
     anchor_correction: 0
     animations:
@@ -195,7 +188,6 @@ sprites:
       walk_down: { sheet: snake-walk_down-spritesheet, atlas: snake-walk_down-atlas }
   spider:
     root: Sprites/Enemies/Spider
-    trim: false
     scale: 0.60
     anchor_correction: 0
     animations:
@@ -217,7 +209,6 @@ sprites:
       walk_down: { sheet: spider-walk_down-spritesheet, atlas: spider-walk_down-atlas }
   treant:
     root: Sprites/Enemies/Treant
-    trim: false
     scale: 0.91
     anchor_correction: 0
     animations:
