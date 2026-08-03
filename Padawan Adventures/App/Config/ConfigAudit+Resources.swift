@@ -40,32 +40,7 @@ extension ConfigAudit {
         return problems
     }
 
-    static func checkMusicCue(
-        _ cue: MusicCue,
-        kind: String,
-        label: String,
-        bundle: Bundle
-    ) -> [String] {
-        switch cue {
-        case .unchanged, .silence:
-            return []
-        case .track(let basename):
-            return requireMusic(basename, kind: "\(label).\(kind)", bundle: bundle)
-        }
-    }
-
-    static func checkFXTable(
-        _ table: SoundEffectTable,
-        kind: String,
-        label: String,
-        bundle: Bundle
-    ) -> [String] {
-        table.events.sorted(by: { $0.key < $1.key }).flatMap { event, basename in
-            requireFX(basename, kind: "\(label).\(kind).\(event)", bundle: bundle)
-        }
-    }
-
-    private static func requireMusic(
+    static func requireMusic(
         _ basename: String,
         kind: String,
         bundle: Bundle
@@ -254,7 +229,7 @@ extension ConfigAudit {
     }
 
     /// Recursively lists audio files under `subdirectory` of the bundle resource root.
-    private static func audioFiles(under subdirectory: String, in resourceURL: URL) -> [URL] {
+    static func audioFiles(under subdirectory: String, in resourceURL: URL) -> [URL] {
         let root = resourceURL.appendingPathComponent(subdirectory)
         guard let enumerator = FileManager.default.enumerator(
             at: root,

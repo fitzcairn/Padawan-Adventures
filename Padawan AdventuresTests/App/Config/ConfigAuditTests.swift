@@ -80,6 +80,41 @@ struct ConfigAuditTests {
         )
     }
 
+    /// Reverse of the audit's existence checks: nothing ships that config cannot reach.
+    /// Orphans are silent — they only cost bundle size — so nothing else would catch them.
+    @Test func everyBundledAudioFileIsReferencedByConfig() throws {
+        let words = try WordCatalog.loadFromBundle()
+        let letters = try LetterCatalog.loadFromBundle()
+        let levels = try LevelCatalog.loadFromBundle().map { descriptor in
+            try LevelConfig.loadFromBundle(
+                named: descriptor.resourceName,
+                subdirectory: LevelCatalog.subdirectory,
+                wordCatalog: words,
+                letterCatalog: letters
+            )
+        }
+        let defaults = try LevelConfig.loadFromBundle(
+            named: "_defaults",
+            subdirectory: LevelCatalog.subdirectory,
+            wordCatalog: words,
+            letterCatalog: letters
+        )
+
+        // Must be the complete bundled config: a missing level makes its music look orphaned.
+        let references = ConfigAudit.audioReferences(
+            levels: levels + [defaults],
+            enemies: try EnemyConfig.loadFromBundle(),
+            words: words,
+            letters: letters,
+            audio: try SoundSettings.loadFromBundle(),
+            screens: try ScreensConfig.loadFromBundle(),
+            player: try PlayerConfig.loadFromBundle()
+        )
+        #expect(!references.isEmpty)
+        let orphans = ConfigAudit.checkOrphanAudio(references: references)
+        #expect(orphans.isEmpty, "\(orphans.joined(separator: "; "))")
+    }
+
     @Test func badFloorSetFailsAudit() throws {
         let app = try WorldLoader.loadConfigFromBundle()
         let words = try WordCatalog.loadFromBundle()

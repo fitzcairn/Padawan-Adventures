@@ -17,7 +17,8 @@ screens:
   settings:
     music: title_menu
   level_select:
-    music: title_menu
+    # Own track, so this screen crossfades away from title_menu rather than holding it.
+    music: level_screen
     background: level_screen_bg
   player_select:
     music: title_menu

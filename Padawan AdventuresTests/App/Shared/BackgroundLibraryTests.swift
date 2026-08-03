@@ -7,7 +7,6 @@ struct BackgroundLibraryTests {
         let library = BackgroundLibrary()
         await library.ensureLoaded(named: "level_screen_bg")
         #expect(library.uiImage(named: "level_screen_bg") != nil)
-        #expect(library.texture(named: "level_screen_bg") != nil)
         #expect(library.count == 1)
     }
 

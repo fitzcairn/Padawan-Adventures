@@ -1,5 +1,4 @@
 import Foundation
-import SpriteKit
 import UIKit
 
 /// Session-scoped cache of still background images under `Resources/Backgrounds/`.
@@ -36,11 +35,6 @@ final class BackgroundLibrary {
 
     func uiImage(named name: String) -> UIImage? {
         images[name]
-    }
-
-    func texture(named name: String) -> SKTexture? {
-        guard let image = images[name] else { return nil }
-        return SKTexture(image: image)
     }
 
     /// Loads `name` from the bundle into the cache when missing.
