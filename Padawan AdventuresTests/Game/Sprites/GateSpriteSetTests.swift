@@ -31,12 +31,32 @@ struct GateSpriteSetTests {
         #expect((set.meta.frameCount ?? set.frames.count) == 2)
     }
 
-    /// 6-coruscant's blast door is drawn oversized for its canvas, so it bakes at a
-    /// reduced footprint width to stand as tall as the rest of the pack.
-    @Test func onlyCoruscantNarrowsItsFootprint() throws {
+    /// The 6-coruscant and 7-mustafar blast doors are drawn oversized for their canvases,
+    /// so they bake at a reduced footprint width to stand as tall as the rest of the pack.
+    @Test func onlyOversizedSetsNarrowTheirFootprint() throws {
+        let narrowed: Set<String> = ["6-coruscant", "7-mustafar"]
         for name in Self.allSets {
             let set = try GateSpriteSet.loadFromBundle(set: name)
-            #expect(set.footprintScreenWidths == (name == "6-coruscant" ? 1.2 : 1.5), "\(name)")
+            #expect(set.footprintScreenWidths == (narrowed.contains(name) ? 1.2 : 1.5), "\(name)")
+        }
+    }
+
+    /// A 2-tile strip's floor diamonds meet at a south tip two thirds across their bounding
+    /// box, so a gate anchored at bottom-center slides up the strip and off the floor.
+    @Test func framesAnchorOnTheirGroundTipNotTheirCenter() throws {
+        for name in Self.allSets {
+            let set = try GateSpriteSet.loadFromBundle(set: name)
+            for axis in GateSpriteSet.Axis.allCases {
+                guard let frame = set.frame(for: axis), let anchor = frame.anchor else {
+                    continue
+                }
+                let fraction = anchor.x / CGFloat(frame.w)
+                #expect(anchor.y == CGFloat(frame.h), "\(name) \(axis.rawValue) anchor.y")
+                #expect(
+                    axis == .alongX ? fraction > 0.55 : fraction < 0.45,
+                    "\(name) \(axis.rawValue) anchor at \(fraction) of the frame"
+                )
+            }
         }
     }
 }

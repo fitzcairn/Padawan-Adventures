@@ -37,6 +37,7 @@ combat:
       orb_travel_seconds: 3.0
       letters: [a, b, c, d]
 
+# Width and height of the level, in floor tiles.
 width: 20
 height: 20
 
@@ -50,11 +51,11 @@ floor:
 algorithm: rooms_doors
 # How many rooms to place on the map.
 room_count: 5
-# Legacy config key (validated >= 2). Packed joins use fixed 2-tile gate strips to match gate sprites.
-corridor_width: 2
 room:
+  # L-shaped rooms stretch one arm to 2x max_room_size, so the widest room a level
+  # can produce is roughly double this (capped by width/height above).
   min_room_size: 4
-  max_room_size: 12
+  max_room_size: 6
   # Probability that a room contains a pit (at most one pit area per room).
   pit_chance: 1.0
   # Pit area size: mean tile count, capped at max.

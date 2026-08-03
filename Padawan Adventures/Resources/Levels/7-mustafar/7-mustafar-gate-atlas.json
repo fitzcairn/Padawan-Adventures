@@ -8,7 +8,7 @@
     },
     "frame_count": 2,
     "footprint_tiles": 2,
-    "footprint_screen_widths": 1.5
+    "footprint_screen_widths": 1.2
   },
   "frames": {
     "along_x": {
@@ -17,7 +17,7 @@
       "w": 644,
       "h": 1127,
       "anchor": {
-        "x": 322.0,
+        "x": 573.0,
         "y": 1127.0
       },
       "base_w": 644
@@ -28,7 +28,7 @@
       "w": 667,
       "h": 1109,
       "anchor": {
-        "x": 333.5,
+        "x": 64.0,
         "y": 1109.0
       },
       "base_w": 667

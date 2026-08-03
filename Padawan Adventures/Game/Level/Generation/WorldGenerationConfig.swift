@@ -77,7 +77,6 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             algorithm: generation.algorithm,
             width: world.width,
             height: world.height,
-            corridorWidth: generation.corridorWidth,
             room: generation.room,
             floorSet: floorSet,
             decorProb: decorProb,

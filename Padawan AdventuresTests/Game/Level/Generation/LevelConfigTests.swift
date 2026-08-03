@@ -13,7 +13,6 @@ struct LevelConfigTests {
         height: 100
         algorithm: rooms_doors
         room_count: 100
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -51,7 +50,6 @@ struct LevelConfigTests {
         height: 100
         algorithm: rooms_doors
         room_count: 100
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -75,7 +73,6 @@ struct LevelConfigTests {
         height: 100
         algorithm: rooms_doors
         room_count: 100
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -98,7 +95,6 @@ struct LevelConfigTests {
         #expect(level.height == 100)
         #expect(level.algorithm == "rooms_doors")
         #expect(level.roomCount == 100)
-        #expect(level.corridorWidth == 2)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
         #expect(level.room.pitChance == 0.2)
@@ -124,7 +120,6 @@ struct LevelConfigTests {
             height: 20
             algorithm: cellular_automata
             room_count: 5
-            corridor_width: 2
             room:
               min_room_size: 4
               max_room_size: 8
@@ -147,7 +142,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 5
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -270,7 +264,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -318,7 +311,6 @@ struct LevelConfigTests {
         #expect(level.width == 100)
         #expect(level.height == 100)
         #expect(level.roomCount == 50)
-        #expect(level.corridorWidth == 2)
         #expect(level.room.pitChance == 0.9)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
@@ -525,7 +517,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -542,7 +533,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -573,7 +563,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -597,7 +586,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -722,7 +710,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -746,7 +733,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -821,7 +807,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -861,7 +846,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -883,7 +867,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -905,7 +888,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -927,7 +909,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -944,7 +925,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1045,7 +1025,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1071,7 +1050,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1095,7 +1073,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1138,7 +1115,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1170,7 +1146,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1200,7 +1175,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1226,7 +1200,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8
@@ -1252,7 +1225,6 @@ struct LevelConfigTests {
     height: 20
     algorithm: rooms_doors
     room_count: 4
-    corridor_width: 2
     room:
       min_room_size: 4
       max_room_size: 8
@@ -1541,7 +1513,6 @@ struct LevelConfigTests {
         height: 20
         algorithm: rooms_doors
         room_count: 4
-        corridor_width: 2
         letter_sound_repeat_seconds: 3
         room:
           min_room_size: 4
@@ -1587,7 +1558,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1611,7 +1581,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1633,7 +1602,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1658,7 +1626,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1680,7 +1647,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1701,7 +1667,6 @@ struct LevelConfigTests {
         height: 10
         algorithm: rooms_doors
         room_count: 2
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 12
@@ -1710,25 +1675,6 @@ struct LevelConfigTests {
         """
 
         #expect(throws: WorldSeedError.invalidRoomPartitionGateChance(1.5)) {
-            try LevelConfig.decode(from: yaml)
-        }
-    }
-
-    @Test func rejectsCorridorNarrowerThanTwo() throws {
-        let yaml = """
-        name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        corridor_width: 1
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-        """
-
-        #expect(throws: WorldSeedError.corridorTooNarrow(1)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1742,7 +1688,6 @@ struct LevelConfigTests {
     height: 20
     algorithm: rooms_doors
     room_count: 4
-    corridor_width: 2
     room:
       min_room_size: 4
       max_room_size: 8
@@ -2065,7 +2010,6 @@ struct LevelConfigTests {
                 algorithm: "rooms_doors",
                 width: 100,
                 height: 100,
-                corridorWidth: 2,
                 room: LevelConfig.RoomParams(
                     minRoomSize: 4,
                     maxRoomSize: 12,

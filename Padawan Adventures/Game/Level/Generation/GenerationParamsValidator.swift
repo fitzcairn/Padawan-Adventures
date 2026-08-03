@@ -6,7 +6,6 @@ nonisolated enum GenerationParamsValidator {
         algorithm: String,
         width: Int,
         height: Int,
-        corridorWidth: Int,
         room: LevelConfig.RoomParams,
         floorSet: String,
         decorProb: Double,
@@ -19,9 +18,6 @@ nonisolated enum GenerationParamsValidator {
         }
         guard width > 4, height > 4 else {
             throw WorldSeedError.worldTooSmall
-        }
-        guard corridorWidth >= 2 else {
-            throw WorldSeedError.corridorTooNarrow(corridorWidth)
         }
         guard room.minRoomSize >= 2 else {
             throw WorldSeedError.roomTooNarrow(room.minRoomSize)

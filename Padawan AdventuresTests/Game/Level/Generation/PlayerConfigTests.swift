@@ -65,7 +65,6 @@ struct PlayerConfigTests {
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: 4,
-                corridorWidth: 2,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 8,

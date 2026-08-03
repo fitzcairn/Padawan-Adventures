@@ -6,7 +6,6 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidStoryCount(Int)
     case worldTooSmall
     case invalidTileSize
-    case corridorTooNarrow(Int)
     case roomTooNarrow(Int)
     case invalidRoomSizeRange
     case invalidRoomPitChance(Double)

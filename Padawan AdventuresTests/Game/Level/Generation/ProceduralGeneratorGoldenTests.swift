@@ -12,7 +12,6 @@ struct ProceduralGeneratorGoldenTests {
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: roomCount,
-                corridorWidth: 2,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 10,

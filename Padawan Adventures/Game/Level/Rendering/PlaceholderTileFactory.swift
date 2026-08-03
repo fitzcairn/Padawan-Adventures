@@ -159,27 +159,25 @@ extension PlaceholderFactory {
     /// Fraction of one tile step to push gate sprites further southwest (+Y / down-left).
     static let gateSpriteSouthwestNudge: CGFloat = 0.02
 
-    /// Tile heights from the midpoint of a strip's two north corners down to its south tip.
-    ///
-    /// `gridToScreen` returns a tile's *north* corner, so the front tile's south tip lies
-    /// 1.5 tile heights below it. Averaging the two north corners already covers 0.25 of
-    /// that, leaving 1.25 to drop.
-    static let gateStripSouthTipDrop: CGFloat = 1.25
-
     /// South tip of the combined floor diamonds for a 2-tile gate strip.
+    ///
+    /// The two diamonds merge into a parallelogram whose lowest point is the south corner
+    /// of the front cell, a quarter tile southeast of where the strip's two north corners
+    /// average out. Anchoring at that average instead leaves the gate hanging off the
+    /// floor towards the back of the room.
     static func gateStripSouthTip(
         coord: GridCoord,
         partner: GridCoord,
         config: IsometricConfig
     ) -> CGPoint {
-        let p0 = IsometricMath.gridToScreen(coord, config: config)
-        let p1 = IsometricMath.gridToScreen(partner, config: config)
+        let front = coord.x + coord.y >= partner.x + partner.y ? coord : partner
+        // `gridToScreen` gives a tile's north corner; its south corner is a tile below.
+        let north = IsometricMath.gridToScreen(front, config: config)
         // One tile southwest (+Y) maps to (-tileW/2, -tileH/2) in screen space.
         let nudge = gateSpriteSouthwestNudge
         return CGPoint(
-            x: (p0.x + p1.x) / 2 - config.tileWidth * 0.5 * nudge,
-            y: (p0.y + p1.y) / 2 - config.tileHeight * gateStripSouthTipDrop
-                - config.tileHeight * 0.5 * nudge
+            x: north.x - config.tileWidth * 0.5 * nudge,
+            y: north.y - config.tileHeight - config.tileHeight * 0.5 * nudge
         )
     }
 

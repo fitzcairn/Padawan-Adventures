@@ -146,7 +146,6 @@ struct AppConfigTests {
         height: 40
         algorithm: rooms_doors
         room_count: 3
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 8

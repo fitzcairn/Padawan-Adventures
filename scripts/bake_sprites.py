@@ -481,14 +481,57 @@ def flip_around_x_axis(image: Image.Image) -> Image.Image:
     return image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
 
-# Default UnsharpMask when upscaling (radius in upscaled pixels).
-# RGB gets the full percent; alpha gets a milder pass so silhouettes firm up
-# without ringing. Override per sprite via `bake_sharpen: {radius, percent, threshold}`.
+# Default UnsharpMask when upscaling (radius in upscaled pixels). Applied to
+# premultiplied RGB only. Override per sprite via
+# `bake_sharpen: {radius, percent, threshold}`.
 DEFAULT_UPSCALE_SHARPEN: dict[str, float] = {
     "radius": 1.2,
     "percent": 70,
     "threshold": 2,
 }
+
+
+def _dilate_rgb_under_alpha(image: Image.Image, *, passes: int = 2) -> Image.Image:
+    """Copy opaque RGB into neighbouring transparent pixels.
+
+    Lets a straight Lanczos resize interpolate real edge colours instead of the
+    keyed-out background (usually black) that lives under alpha=0.
+    """
+    arr = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    opaque = arr[..., 3] > 0
+    if not opaque.any() or opaque.all():
+        return image
+    rgb = arr[..., :3].astype(np.float32)
+    for _ in range(max(1, passes)):
+        # Average RGB of 3x3 neighbourhood, ignoring fully transparent donors.
+        weight = opaque.astype(np.float32)
+        # Pad so edge pixels still get neighbours.
+        wpad = np.pad(weight, 1, mode="constant")
+        rpad = np.pad(rgb[..., 0], 1, mode="edge")
+        gpad = np.pad(rgb[..., 1], 1, mode="edge")
+        bpad = np.pad(rgb[..., 2], 1, mode="edge")
+        wsum = np.zeros_like(weight)
+        rsum = np.zeros_like(weight)
+        gsum = np.zeros_like(weight)
+        bsum = np.zeros_like(weight)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                ys = slice(1 + dy, 1 + dy + weight.shape[0])
+                xs = slice(1 + dx, 1 + dx + weight.shape[1])
+                w = wpad[ys, xs]
+                wsum += w
+                rsum += rpad[ys, xs] * w
+                gsum += gpad[ys, xs] * w
+                bsum += bpad[ys, xs] * w
+        fill = (~opaque) & (wsum > 0)
+        if not fill.any():
+            break
+        rgb[fill, 0] = rsum[fill] / wsum[fill]
+        rgb[fill, 1] = gsum[fill] / wsum[fill]
+        rgb[fill, 2] = bsum[fill] / wsum[fill]
+        opaque = opaque | fill
+    arr[..., :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr)
 
 
 def scale_image(
@@ -497,12 +540,13 @@ def scale_image(
     *,
     sharpen: dict[str, float] | None = None,
 ) -> Image.Image:
-    """Scale an RGBA image with premultiplied Lanczos.
+    """Scale an RGBA image without dark edge halos.
 
-    Straight RGBA resize bleeds keyed-out RGB (usually black) into silhouette
-    edges when upscaling. Premultiply → resize → clamp RGB ≤ A → unpremultiply
-    keeps edges clean. When ``scale > 1``, an optional UnsharpMask recovers
-    perceived detail lost to the upsample.
+    Transparent pixels usually carry keyed-out RGB (black). A straight resize
+    bleeds that into the silhouette. Before up/down-scaling we dilate opaque
+    RGB under the alpha matte, resize with Lanczos, then clear RGB where
+    alpha is 0. When ``scale > 1``, an UnsharpMask on RGB recovers detail
+    lost to the upsample (alpha left untouched).
     """
     if abs(scale - 1.0) < 1e-9:
         return image
@@ -511,23 +555,10 @@ def scale_image(
     nw = max(1, int(round(w * scale)))
     nh = max(1, int(round(h * scale)))
 
-    arr = np.asarray(rgba, dtype=np.float32)
-    a = arr[..., 3:4] / 255.0
-    premul = arr.copy()
-    premul[..., :3] = arr[..., :3] * a
-    premul_img = Image.fromarray(np.clip(premul, 0, 255).astype(np.uint8), mode="RGBA")
-    resized = premul_img.resize((nw, nh), Image.Resampling.LANCZOS)
-
-    out = np.asarray(resized, dtype=np.float32)
-    # Lanczos can overshoot; clamp RGB into [0, A] before unpremultiply.
-    out[..., :3] = np.minimum(out[..., :3], out[..., 3:4])
-    a_out = out[..., 3:4]
-    # Avoid divide-by-zero; leave RGB at 0 where fully transparent.
-    with np.errstate(divide="ignore", invalid="ignore"):
-        rgb = np.where(a_out > 0, out[..., :3] * 255.0 / a_out, 0.0)
-    rgb = np.clip(rgb, 0, 255)
-    unpremul = np.concatenate([rgb, a_out], axis=-1).astype(np.uint8)
-    result = Image.fromarray(unpremul, mode="RGBA")
+    # Dilate further when upscaling so Lanczos's wide kernel still sees colour.
+    dilate_passes = 4 if scale > 1.0 else 2
+    prepared = _dilate_rgb_under_alpha(rgba, passes=dilate_passes)
+    resized = prepared.resize((nw, nh), Image.Resampling.LANCZOS)
 
     if scale > 1.0:
         params = dict(DEFAULT_UPSCALE_SHARPEN)
@@ -537,20 +568,15 @@ def scale_image(
         percent = int(round(params["percent"]))
         threshold = int(round(params["threshold"]))
         if percent > 0 and radius > 0:
-            r, g, b, a_ch = result.split()
-            rgb_img = Image.merge("RGB", (r, g, b)).filter(
+            r, g, b, a_ch = resized.split()
+            rgb_sharp = Image.merge("RGB", (r, g, b)).filter(
                 ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=threshold)
             )
-            # Milder alpha pass firms the silhouette without inventing outline jaggies.
-            alpha_percent = max(1, percent // 2)
-            a_sharp = a_ch.filter(
-                ImageFilter.UnsharpMask(
-                    radius=radius, percent=alpha_percent, threshold=threshold
-                )
-            )
-            result = Image.merge("RGBA", (*rgb_img.split(), a_sharp))
+            resized = Image.merge("RGBA", (*rgb_sharp.split(), a_ch))
 
-    return result
+    result = np.asarray(resized).copy()
+    result[result[..., 3] == 0, :3] = 0
+    return Image.fromarray(result)
 
 
 # ---------------------------------------------------------------------------

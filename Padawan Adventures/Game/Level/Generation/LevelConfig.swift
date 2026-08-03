@@ -83,7 +83,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var height: Int
     var algorithm: String
     var roomCount: Int
-    var corridorWidth: Int
     var room: RoomParams
     var enemies: EnemiesSpawnConfig?
     var pickups: PickupsSpawnConfig?
@@ -113,7 +112,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case height
         case algorithm
         case roomCount = "room_count"
-        case corridorWidth = "corridor_width"
         case room
         case enemies
         case pickups
@@ -172,7 +170,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         height: 100,
         algorithm: "rooms_doors",
         roomCount: 100,
-        corridorWidth: 2,
         room: .init(
             minRoomSize: 4,
             maxRoomSize: 12,
@@ -218,7 +215,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         height: Int,
         algorithm: String,
         roomCount: Int,
-        corridorWidth: Int,
         room: RoomParams,
         enemies: EnemiesSpawnConfig? = nil,
         pickups: PickupsSpawnConfig? = nil,
@@ -243,7 +239,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.height = height
         self.algorithm = algorithm
         self.roomCount = roomCount
-        self.corridorWidth = corridorWidth
         self.room = room
         self.enemies = enemies
         self.pickups = pickups
@@ -289,7 +284,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         height = try container.decode(Int.self, forKey: .height)
         algorithm = try container.decode(String.self, forKey: .algorithm)
         roomCount = try container.decode(Int.self, forKey: .roomCount)
-        corridorWidth = try container.decode(Int.self, forKey: .corridorWidth)
         room = try container.decode(RoomParams.self, forKey: .room)
         enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
         pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
@@ -308,7 +302,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             algorithm: algorithm,
             width: width,
             height: height,
-            corridorWidth: corridorWidth,
             room: room,
             floorSet: floor.set,
             decorProb: floor.decorProb,
@@ -346,7 +339,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         .init(
             algorithm: algorithm,
             roomCount: roomCount,
-            corridorWidth: corridorWidth,
             room: room
         )
     }
@@ -604,25 +596,21 @@ extension LevelConfig {
     nonisolated struct GenerationParams: Codable, Equatable, Sendable {
         var algorithm: String
         var roomCount: Int
-        var corridorWidth: Int
         var room: RoomParams
 
         enum CodingKeys: String, CodingKey {
             case algorithm
             case roomCount = "room_count"
-            case corridorWidth = "corridor_width"
             case room
         }
 
         nonisolated init(
             algorithm: String,
             roomCount: Int,
-            corridorWidth: Int,
             room: RoomParams
         ) {
             self.algorithm = algorithm
             self.roomCount = roomCount
-            self.corridorWidth = corridorWidth
             self.room = room
         }
 
@@ -630,7 +618,6 @@ extension LevelConfig {
         nonisolated init(
             algorithm: String,
             roomCount: Int,
-            corridorWidth: Int,
             minRoomSize: Int = 4,
             maxRoomSize: Int = 12,
             pitChance: Double,
@@ -641,7 +628,6 @@ extension LevelConfig {
             self.init(
                 algorithm: algorithm,
                 roomCount: roomCount,
-                corridorWidth: corridorWidth,
                 room: RoomParams(
                     minRoomSize: minRoomSize,
                     maxRoomSize: maxRoomSize,

@@ -329,23 +329,18 @@ struct PlaceholderFactoryTests {
         )
         let expected = PlaceholderFactory.gateStripSouthTip(coord: a, partner: b, config: config)
         #expect(pos == expected)
-        let northMid =
-            CGPoint(
-                x: (IsometricMath.gridToScreen(a, config: config).x
-                    + IsometricMath.gridToScreen(b, config: config).x) / 2,
-                y: (IsometricMath.gridToScreen(a, config: config).y
-                    + IsometricMath.gridToScreen(b, config: config).y) / 2
-            )
+        // `gridToScreen` gives a tile's north corner, so the strip's south tip is one tile
+        // height below the north corner of its front cell (`b` here) -- a quarter tile
+        // southeast of the two north corners' midpoint, which would leave the gate
+        // hanging off the back of the floor it stands on.
+        let southTip = IsometricMath.gridToScreen(b, config: config)
         let nudge = PlaceholderFactory.gateSpriteSouthwestNudge
         #expect(
-            abs((pos?.x ?? 0) - (northMid.x - config.tileWidth * 0.5 * nudge)) < 0.001
+            abs((pos?.x ?? 0) - (southTip.x - config.tileWidth * 0.5 * nudge)) < 0.001
         )
-        // `gridToScreen` gives a tile's north corner, so the strip's south tip sits one
-        // tile height below the north corner of its front cell (`b` here). Landing short
-        // of that leaves the gate floating up-left of the floor it stands on.
-        let southTipY = IsometricMath.gridToScreen(b, config: config).y - config.tileHeight
         #expect(
-            abs((pos?.y ?? 0) - (southTipY - config.tileHeight * 0.5 * nudge)) < 0.001
+            abs((pos?.y ?? 0)
+                - (southTip.y - config.tileHeight - config.tileHeight * 0.5 * nudge)) < 0.001
         )
     }
 

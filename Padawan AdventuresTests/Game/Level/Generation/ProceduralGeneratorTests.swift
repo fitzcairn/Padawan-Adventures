@@ -9,7 +9,6 @@ struct ProceduralGeneratorTests {
             generation: .init(
                 algorithm: "rooms_doors",
                 roomCount: roomCount,
-                corridorWidth: 2,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 10,
@@ -672,7 +671,6 @@ struct ProceduralGeneratorTests {
         height: 24
         algorithm: rooms_doors
         room_count: 6
-        corridor_width: 2
         room:
           min_room_size: 4
           max_room_size: 6

@@ -9,7 +9,8 @@ For each sheet under Art/Levels/{set}/{set}-gate-spritesheet.png
   3. Keep large opaque components in each half, trim, pack.
   4. Label frames along_x / along_y from the silhouette shear
      (leans down-right → along_x; down-left → along_y).
-  5. Write Resources/Levels/{set}/ sheet + atlas.
+  5. Anchor each frame at its ground tip so it seats on the strip's south corner.
+  6. Write Resources/Levels/{set}/ sheet + atlas.
 
 Source filename alias: 8-genosis → 8-geonosis (matches level floor.set).
 
@@ -31,6 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
@@ -64,6 +66,8 @@ ALPHA_FG = 8
 MIN_ROW_FRACTION = 0.05
 # Observed |shear| is >= 0.13 for well-formed art; below this the axis is a coin flip.
 MIN_AXIS_SHEAR = 0.05
+# Rows within this fraction of the sprite height count as touching the ground.
+TIP_BAND_FRACTION = 0.01
 PACK_PADDING = 4
 
 # A gate strip covers 2 tiles, whose combined floor diamonds are 1.5 tileWidths wide.
@@ -73,8 +77,10 @@ FOOTPRINT_SCREEN_WIDTHS = 1.5
 # the factor that brings them back in line. 6-coruscant's blast door is drawn oversized
 # for its canvas -- its base runs off the bottom edge -- so at the shared scale it stands
 # 4.0 tile heights tall against the 2.9-3.5 every other gate keeps.
+# 7-mustafar's blast wall does the same, standing 4.3-4.5 tile heights tall.
 FOOTPRINT_SCALE_OVERRIDES = {
     "6-coruscant": 0.8,
+    "7-mustafar": 0.8,
 }
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -242,6 +248,24 @@ def classify_axis(sprite: Image.Image) -> str:
     return "along_x" if shear > 0 else "along_y"
 
 
+def ground_tip_x(sprite: Image.Image) -> float:
+    """Where the gate touches the ground: center of its lowest opaque rows.
+
+    A 2-tile strip's floor diamonds meet at a south tip two thirds across their
+    bounding box (one third for along_y), never at its center, so anchoring the
+    sprite at bottom-center slides it up the strip and off the floor. Measuring
+    the tip from the art keeps sets whose base sits at a canvas corner
+    (7-mustafar) seated too.
+    """
+    alpha = np.array(sprite.convert("RGBA"))[:, :, 3] >= ALPHA_FG
+    rows = np.flatnonzero(alpha.any(axis=1))
+    if rows.size == 0:
+        raise RuntimeError("empty sprite while measuring ground tip")
+    band = alpha[max(0, rows[-1] - int(round(alpha.shape[0] * TIP_BAND_FRACTION))) : rows[-1] + 1]
+    cols = np.flatnonzero(band.any(axis=0))
+    return float(cols[0] + cols[-1]) / 2.0
+
+
 def extract_pieces(keyed: Image.Image) -> list[GatePiece]:
     pieces: list[GatePiece] = []
     seen_keys: set[str] = set()
@@ -319,9 +343,9 @@ def bake_one(
     frame_images: list[tuple[str, Image.Image, dict[str, Any]]] = []
     for piece in pieces:
         w, h = piece.image.size
-        # Bottom-center anchor in top-left image coordinates (SpriteKit y flips later).
+        # Ground-tip anchor in top-left image coordinates (SpriteKit y flips later).
         extras = {
-            "anchor": {"x": w / 2.0, "y": float(h)},
+            "anchor": {"x": round(ground_tip_x(piece.image), 1), "y": float(h)},
             "base_w": w,
         }
         frame_images.append((piece.key, piece.image, extras))
