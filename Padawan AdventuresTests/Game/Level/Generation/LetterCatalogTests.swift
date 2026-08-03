@@ -2,14 +2,14 @@ import Testing
 @testable import Padawan_Adventures
 
 struct LetterCatalogTests {
-    @Test func decodesSharedLettersYAML() throws {
+    @Test func decodesSharedPhonicsYAML() throws {
         let catalog = try LetterCatalog.decode(from: """
-        letters:
+        phonics:
           B:
-            pronunciation: sfx_letter_b_pronunciation
+            sfx: sfx_letter_b_pronunciation
             name: sfx_letter_b_name
           a:
-            pronunciation: sfx_letter_a_pronunciation
+            sfx: sfx_letter_a_pronunciation
             name: sfx_letter_a_name
         """)
         #expect(catalog.letters.map(\.letter) == ["a", "b"])
@@ -38,32 +38,37 @@ struct LetterCatalogTests {
     @Test func rejectsInvalidLetterEntry() {
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.decode(from: """
-            letters:
+            phonics:
               ab:
-                pronunciation: sfx_letter_ab_pronunciation
+                sfx: sfx_letter_ab_pronunciation
                 name: sfx_letter_ab_name
             """)
         }
     }
 
-    @Test func derivesEmptyEntriesAndHonorsOverrides() throws {
-        let catalog = try LetterCatalog.decode(from: """
-        letters:
-          a:
-          b:
-            name: custom_b_name
-        """)
-        #expect(catalog.letter(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
-        #expect(catalog.letter(named: "a")?.name == "sfx_letter_a_name")
-        #expect(catalog.letter(named: "b")?.pronunciation == "sfx_letter_b_pronunciation")
-        #expect(catalog.letter(named: "b")?.name == "custom_b_name")
+    @Test func rejectsMissingSfxOrName() {
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
+            try LetterCatalog.decode(from: """
+            phonics:
+              a:
+                name: sfx_letter_a_name
+            """)
+        }
+        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
+            try LetterCatalog.decode(from: """
+            phonics:
+              a:
+                sfx: sfx_letter_a_pronunciation
+            """)
+        }
     }
 
-    @Test func bundleLettersProvidesWallVocabulary() throws {
+    @Test func bundlePhonicsProvidesWallVocabulary() throws {
         let catalog = try LetterCatalog.loadFromBundle()
         #expect(catalog.letters.map(\.letter) == [
             "a", "b", "c", "d", "e", "f", "g", "h", "l", "m", "o", "p", "s", "w",
         ])
         #expect(catalog.letter(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
+        #expect(catalog.letter(named: "a")?.name == "sfx_letter_a_name")
     }
 }

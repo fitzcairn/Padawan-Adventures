@@ -105,6 +105,8 @@ struct SoundEffectsControllerTests {
     @Test func phoneticCuesOutrankBackgroundAndLightsaberFX() {
         let mock = MockSoundEffectPlayer()
         let controller = SoundEffectsController(player: mock)
+        // Phonetic playback ducks BGM; absorb it so the shared controller is untouched.
+        controller.phoneticCueDuckHandler = { _ in }
         controller.play(trackID: "sfx_letter_a_name")
         controller.play(trackID: "sfx_boom")
         controller.play(trackID: "lightsaber-hum")
@@ -119,6 +121,7 @@ struct SoundEffectsControllerTests {
         func volumes(combat: Bool) -> (phonetic: Float, fx: Float) {
             let mock = MockSoundEffectPlayer()
             let controller = SoundEffectsController(player: mock)
+            controller.phoneticCueDuckHandler = { _ in }
             controller.setSoundEffectsVolume(0.5)
             controller.setCombatMixActive(combat)
             controller.play(trackID: "sfx_word_bat")

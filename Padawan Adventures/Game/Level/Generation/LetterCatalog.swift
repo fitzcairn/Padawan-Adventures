@@ -1,17 +1,16 @@
 import Foundation
 import Yams
 
-/// YAML shape for one shared letter entry under `letters.<letter>:`.
-/// Absent fields are derived via `LetterSoundCatalog`.
+/// YAML shape for one shared phonics entry under `phonics.<letter>:`.
+/// `sfx` is the pronunciation track; `name` is the letter-name track.
 nonisolated struct LetterSpec: Decodable, Equatable, Sendable {
-    var pronunciation: String?
+    var sfx: String?
     var name: String?
 }
 
-/// Shared letter FX loaded from `Resources/Config/Catalogs/letters.yaml` for reuse across minigames.
+/// Shared phonics FX loaded from `Resources/Config/Catalogs/phonics.yaml` for reuse across minigames.
 nonisolated struct LetterCatalog: Equatable, Sendable {
     static let subdirectory = ConfigPath.catalogRoot
-    static let defaultFxPrefix = "sfx_letter_"
 
     /// Sorted by letter for deterministic iteration / RNG.
     private(set) var letters: [GateLetter]
@@ -72,7 +71,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     }
 
     static func loadFromBundle(
-        named name: String = "letters",
+        named name: String = "phonics",
         withExtension ext: String = "yaml",
         subdirectory: String? = subdirectory
     ) throws -> LetterCatalog {
@@ -85,11 +84,15 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     static func decode(from data: Data) throws -> LetterCatalog {
         do {
             let decoded = try YAMLDecoder().decode(LetterCatalogDTO.self, from: data)
-            let catalog = LetterCatalog(
-                letters: decoded.letters.map { key, spec in
-                    resolveEntry(id: key, spec: spec)
+            var resolved: [GateLetter] = []
+            resolved.reserveCapacity(decoded.phonics.count)
+            for (key, spec) in decoded.phonics {
+                guard let entry = resolveEntry(id: key, spec: spec) else {
+                    throw WorldSeedError.invalidGateLetterMatchLetters
                 }
-            )
+                resolved.append(entry)
+            }
+            let catalog = LetterCatalog(letters: resolved)
             try catalog.validate()
             return catalog
         } catch let error as WorldSeedError {
@@ -103,26 +106,12 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
         try decode(from: Data(yaml.utf8))
     }
 
-    /// Derives tracks via `LetterSoundCatalog`; explicit keys override.
-    nonisolated static func resolveEntry(id: String, spec: LetterSpec?) -> GateLetter {
-        let derivedName = LetterSoundCatalog.nameTrackID(for: id) ?? "sfx_letter_\(id.lowercased())_name"
-        let derivedPronunciation = LetterSoundCatalog.pronunciationTrackID(for: id)
-            ?? "sfx_letter_\(id.lowercased())_pronunciation"
-
-        let pronunciation: String
-        if let override = spec?.pronunciation?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
-            pronunciation = override
-        } else {
-            pronunciation = derivedPronunciation
-        }
-
-        let name: String
-        if let override = spec?.name?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
-            name = override
-        } else {
-            name = derivedName
+    /// Requires explicit `sfx` (pronunciation) and `name` track basenames in YAML.
+    nonisolated static func resolveEntry(id: String, spec: LetterSpec?) -> GateLetter? {
+        guard let spec,
+              let pronunciation = trimmedNonEmpty(spec.sfx),
+              let name = trimmedNonEmpty(spec.name) else {
+            return nil
         }
 
         return GateLetter(
@@ -131,14 +120,14 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
             name: name
         )
     }
+
+    private nonisolated static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 
 private nonisolated struct LetterCatalogDTO: Decodable {
-    var fxPrefix: String?
-    var letters: [String: LetterSpec?]
-
-    enum CodingKeys: String, CodingKey {
-        case fxPrefix = "fx_prefix"
-        case letters
-    }
+    var phonics: [String: LetterSpec?]
 }

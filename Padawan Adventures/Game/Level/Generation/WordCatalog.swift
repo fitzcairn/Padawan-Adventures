@@ -2,7 +2,7 @@ import Foundation
 import Yams
 
 /// YAML shape for one shared vocabulary entry under `words.<word>:`.
-/// Absent fields are derived from `fx_prefix` + the word id (`image` stays nil).
+/// `sfx` is required; progressive prefixes default to `<sfx>_<prefix>` when omitted.
 nonisolated struct WordSpec: Decodable, Equatable, Sendable {
     var image: String?
     var sfx: String?
@@ -12,7 +12,6 @@ nonisolated struct WordSpec: Decodable, Equatable, Sendable {
 /// Shared vocabulary + word FX loaded from `Resources/Config/Catalogs/words.yaml` for reuse across minigames.
 nonisolated struct WordCatalog: Equatable, Sendable {
     static let subdirectory = ConfigPath.catalogRoot
-    static let defaultFxPrefix = "sfx_word_"
     static let imageRoot = "Sprites/Words"
 
     /// Sorted by word for deterministic iteration / RNG.
@@ -40,8 +39,8 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     ])
 
     /// Derived tracks plus a sprite basename matching the word id.
-    nonisolated static func imagedFallbackEntry(word: String, fxPrefix: String = defaultFxPrefix) -> GateWord {
-        let derived = GateWord.fallbackEntry(word: word, fxPrefix: fxPrefix)
+    nonisolated static func imagedFallbackEntry(word: String) -> GateWord {
+        let derived = GateWord.fallbackEntry(word: word)
         return GateWord(
             word: derived.word,
             image: derived.word,
@@ -115,13 +114,15 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     static func decode(from data: Data) throws -> WordCatalog {
         do {
             let decoded = try YAMLDecoder().decode(WordCatalogDTO.self, from: data)
-            let fxPrefix = decoded.fxPrefix?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let prefix = (fxPrefix?.isEmpty == false) ? fxPrefix! : defaultFxPrefix
-            let catalog = WordCatalog(
-                words: decoded.words.map { key, spec in
-                    resolveEntry(id: key, spec: spec, fxPrefix: prefix)
+            var resolved: [GateWord] = []
+            resolved.reserveCapacity(decoded.words.count)
+            for (key, spec) in decoded.words {
+                guard let entry = resolveEntry(id: key, spec: spec) else {
+                    throw WorldSeedError.invalidGateWords
                 }
-            )
+                resolved.append(entry)
+            }
+            let catalog = WordCatalog(words: resolved)
             try catalog.validate()
             return catalog
         } catch let error as WorldSeedError {
@@ -135,46 +136,35 @@ nonisolated struct WordCatalog: Equatable, Sendable {
         try decode(from: Data(yaml.utf8))
     }
 
-    /// Derives tracks from convention; explicit `sfx` / `progressive` / `image` keys override.
-    nonisolated static func resolveEntry(id: String, spec: WordSpec?, fxPrefix: String) -> GateWord {
-        let derived = GateWord.fallbackEntry(word: id, fxPrefix: fxPrefix)
-        guard let spec else { return derived }
-
-        let sfx: String
-        if let override = spec.sfx?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
-            sfx = override
-        } else {
-            sfx = derived.sfx
+    /// Requires explicit `sfx`. Progressive prefixes default to `<sfx>_<prefix>`;
+    /// explicit `progressive` / `image` keys override.
+    nonisolated static func resolveEntry(id: String, spec: WordSpec?) -> GateWord? {
+        guard let spec,
+              let sfx = trimmedNonEmpty(spec.sfx) else {
+            return nil
         }
 
-        let image: String?
-        if let override = spec.image?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
-            image = override
-        } else {
-            image = nil
-        }
+        let derived = GateWord.fallbackEntry(word: id, sfx: sfx)
+        let image = trimmedNonEmpty(spec.image)
 
         var progressive = derived.progressive
         if let overrides = spec.progressive {
             for (key, value) in overrides {
-                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { continue }
+                guard let trimmed = trimmedNonEmpty(value) else { continue }
                 progressive[key.lowercased()] = trimmed
             }
         }
 
         return GateWord(word: id, image: image, sfx: sfx, progressive: progressive)
     }
+
+    private nonisolated static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 
 private nonisolated struct WordCatalogDTO: Decodable {
-    var fxPrefix: String?
     var words: [String: WordSpec?]
-
-    enum CodingKeys: String, CodingKey {
-        case fxPrefix = "fx_prefix"
-        case words
-    }
 }

@@ -189,8 +189,9 @@ struct SpriteSystemTests {
 
     @Test func chromaKeyPreservesSpritesheetTopLeftOrigin() throws {
         // Regression: a Y-flip inside chroma-key makes atlas (0,0) read the bottom row.
-        let sheetURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        let sheetURL = try Self.playerResourceURL(
+            named: "idle_northeast-spritesheet",
+            extension: "png"
         )
         let original = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(to: original, key: (0, 0, 0))
@@ -379,15 +380,16 @@ struct SpriteSystemTests {
             subdirectory: LevelCatalog.subdirectory
         )
         let sprite = try #require(level.sprite)
-        #expect(sprite.root == "Sprites/UI/Levels")
+        // Planet art lives in the level's own folder, prefixed like its other assets.
+        #expect(sprite.root == "Levels/1-tython")
         #expect(sprite.chromaKey == "#000000")
         #expect(sprite.chromaKeyTolerance == 2)
         guard case .sheet(let sheet, let atlas) = sprite.animations["idle"] else {
             Issue.record("Expected tython idle sheet animation")
             return
         }
-        #expect(sheet == "1-tython")
-        #expect(atlas == "1-tython-atlas")
+        #expect(sheet == "1-tython-planet-spritesheet")
+        #expect(atlas == "1-tython-planet-atlas")
         let library = SpriteLibrary()
         await library.ensureLoaded(sprite, id: "1-tython")
         let idle = try #require(library.animation(id: "1-tython", named: "idle"))
@@ -477,8 +479,9 @@ struct SpriteSystemTests {
     }
 
     @Test @MainActor func idleNortheastPlaysSpritesheetTopLeftToBottomRight() throws {
-        let atlasURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        let atlasURL = try Self.playerResourceURL(
+            named: "idle_northeast-atlas",
+            extension: "json"
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let ordered = atlas.orderedFrames
@@ -496,8 +499,9 @@ struct SpriteSystemTests {
             #expect(entry.frame.h == frameH)
         }
 
-        let sheetURL = try #require(
-            Bundle.main.url(forResource: "idle_northeast-spritesheet", withExtension: "png")
+        let sheetURL = try Self.playerResourceURL(
+            named: "idle_northeast-spritesheet",
+            extension: "png"
         )
         let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
         let keyed = SpriteSheetLoader.applyChromaKey(
@@ -556,12 +560,9 @@ struct SpriteSystemTests {
     }
 
     @Test func loadAnimationTrimFalseKeepsAtlasRectSize() throws {
-        let atlasURL = try #require(
-            Bundle.main.url(
-                forResource: "idle_northeast-atlas",
-                withExtension: "json",
-                subdirectory: "Sprites/Player"
-            ) ?? Bundle.main.url(forResource: "idle_northeast-atlas", withExtension: "json")
+        let atlasURL = try Self.playerResourceURL(
+            named: "idle_northeast-atlas",
+            extension: "json"
         )
         let atlas = try SpriteAtlas.decode(from: Data(contentsOf: atlasURL))
         let frame = try #require(atlas.orderedFrames.first?.frame)
@@ -588,7 +589,9 @@ struct SpriteSystemTests {
         let trimmedSize = trimmed.frames[0].texture.size()
         #expect(trimmedSize.width <= untrimmedSize.width)
         #expect(trimmedSize.height <= untrimmedSize.height)
-        #expect(trimmedSize != untrimmedSize)
+        // The offline bake already repacks frames tightly, so trim finds no transparent
+        // slack to remove here; it must not crop into real pixels either.
+        #expect(trimmedSize == untrimmedSize)
     }
 
     @Test func playerConfigDecodesSpriteSection() throws {
@@ -663,6 +666,20 @@ struct SpriteSystemTests {
         )
         #expect(overridden.chromaKey == "#000000")
         #expect(overridden.chromaKeyTolerance == 5)
+    }
+
+    /// Resolves a player sheet the same way the loader does, so these tests cannot
+    /// drift from it when sprite folders move.
+    private static func playerResourceURL(
+        named name: String,
+        extension ext: String
+    ) throws -> URL {
+        try SpriteSheetLoader.resourceURL(
+            named: name,
+            extensions: [ext],
+            root: "Sprites/Player",
+            bundle: .main
+        )
     }
 
     /// Normalized RGBA8 top-left pixel buffer for exact image comparisons.

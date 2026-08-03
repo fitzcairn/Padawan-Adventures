@@ -55,10 +55,10 @@ if [ "$status" -eq 0 ]; then
 fi
 
 # Assertion messages live in the result bundle, not the log.
+details=""
 if [ -d "$resultBundle" ]; then
-  echo
-  echo "--- failures ---"
-  xcrun xcresulttool get test-results tests --path "$resultBundle" --format json \
+  # Never let a parse hiccup mask the underlying test failure.
+  details="$( { xcrun xcresulttool get test-results tests --path "$resultBundle" --format json \
     2>/dev/null | python3 -c '
 import json, sys
 
@@ -96,7 +96,22 @@ for case in failed:
         print("    " + text)
     if len(messages) > 5:
         print("    ... and %d more" % (len(messages) - 5))
-'
+'; } || true)"
+fi
+
+if [ -n "$details" ]; then
+  echo
+  echo "--- failures ---"
+  echo "$details"
+else
+  # A test that failed and then passed on a retry leaves no failure in the result
+  # bundle, so fall back to the names xcodebuild logged. These are usually flaky.
+  names="$(sed -n '/^Failing tests:/,/^$/p' "$log" | grep -v '^Failing tests:' | sort -u)"
+  if [ -n "$names" ]; then
+    echo
+    echo "--- failed, but passed on retry (flaky) ---"
+    echo "$names"
+  fi
 fi
 
 echo

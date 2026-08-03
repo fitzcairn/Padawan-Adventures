@@ -149,7 +149,7 @@ extension AppSession {
             return loaded
         }
 
-        let letterCatalog = ConfigStore.loadOrFallback("letters", fallback: LetterCatalog.fallback) {
+        let letterCatalog = ConfigStore.loadOrFallback("phonics", fallback: LetterCatalog.fallback) {
             let loaded = try LetterCatalog.loadFromBundle()
             try loaded.validate()
             return loaded

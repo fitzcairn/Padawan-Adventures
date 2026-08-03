@@ -1,5 +1,5 @@
 # Enemy type definitions. Level YAML spawn config references keys under `enemies:`.
-# Empty entries inherit `defaults:`. `shot_letters` resolve through Catalogs/letters.yaml:
+# Empty entries inherit `defaults:`. `shot_letters` resolve through Catalogs/phonics.yaml:
 # each id's uppercased form becomes the shotTypes key, and that letter's `name` track
 # becomes the shoot FX (e.g. a → shotTypes["A"].fx.shoot == sfx_letter_a_name).
 

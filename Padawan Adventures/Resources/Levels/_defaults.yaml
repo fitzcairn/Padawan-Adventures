@@ -26,7 +26,7 @@ combat_letter_case: lower
 # `slash` is the swipe arena (knobs live in enemies.yaml + combat_letter_* above).
 # `deflect`: monster throws a word image; tap the ring for that word's first letter.
 # Letters map left -> right onto evenly spaced rings (2–6) and must resolve in
-# letters.yaml; each letter needs ≥1 imaged word in words.yaml.
+# phonics.yaml; each letter needs ≥1 imaged word in words.yaml.
 combat:
   minigames:
     - type: slash

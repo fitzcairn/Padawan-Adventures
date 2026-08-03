@@ -121,7 +121,7 @@ struct BundleAudioLayoutTests {
             subdirectories: AudioBundleLayout.fxSubdirectories
         )
         #expect(phonetic != nil)
-        #expect(phonetic?.path.contains("/Audio/FX/Phonetics/") == true)
+        #expect(phonetic?.path.contains("/Audio/FX/Phonics/") == true)
 
         let ui = BundleMusicAudioPlayer.audioURL(
             for: "level-screen-artifact-appear",

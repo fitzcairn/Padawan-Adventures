@@ -25,19 +25,21 @@ nonisolated struct GateWord: Equatable, Sendable {
         return track
     }
 
-    static func fallbackEntry(word: String, fxPrefix: String = "sfx_word_") -> GateWord {
+    /// Builds progressive prefix tracks as `<sfx>_<prefix>` (e.g. `sfx_word_star_st`).
+    static func fallbackEntry(word: String, sfx: String? = nil) -> GateWord {
         let w = word.lowercased()
-        let prefixBase = fxPrefix.isEmpty ? "sfx_word_" : fxPrefix
+        let trimmedSfx = sfx?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let track = trimmedSfx.isEmpty ? "sfx_word_\(w)" : trimmedSfx
         var progressive: [String: String] = [:]
         var prefix = ""
         for character in w {
             prefix.append(character)
-            progressive[prefix] = "\(prefixBase)\(w)_\(prefix)"
+            progressive[prefix] = "\(track)_\(prefix)"
         }
         return GateWord(
             word: w,
             image: nil,
-            sfx: "\(prefixBase)\(w)",
+            sfx: track,
             progressive: progressive
         )
     }

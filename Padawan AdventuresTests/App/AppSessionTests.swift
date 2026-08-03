@@ -235,14 +235,29 @@ struct AppSessionTests {
                 "Missing planet UIImage for \(level.resourceName)"
             )
         }
+        // Level treasures are deliberately not warmed at bootstrap; the level-select and
+        // inventory screens load each one on demand. See ensureTreasureIconsLoaded.
         for treasureID in levels.compactMap(\.treasure) {
             #expect(
-                session.spriteLibrary.uiImage(id: treasureID) != nil,
-                "Missing treasure icon for \(treasureID)"
+                !session.spriteLibrary.isLoaded(id: treasureID),
+                "Bootstrap should not warm level treasure \(treasureID)"
             )
+        }
+    }
+
+    @Test func ensureTreasureIconsLoadedWarmsRequestedIDsOnly() async {
+        let session = await AppSession.loadResources()
+        let treasures = LevelCatalog.loadFromBundle().compactMap(\.treasure)
+        guard let first = treasures.first else { return }
+
+        await session.ensureTreasureIconsLoaded(ids: [first])
+        #expect(session.spriteLibrary.isLoaded(id: first))
+        #expect(session.spriteLibrary.uiImage(id: first) != nil)
+
+        for other in treasures.dropFirst() where other != first {
             #expect(
-                session.spriteLibrary.isLoaded(id: treasureID),
-                "Missing treasure animation for \(treasureID)"
+                !session.spriteLibrary.isLoaded(id: other),
+                "Unrequested treasure \(other) should stay unloaded"
             )
         }
     }

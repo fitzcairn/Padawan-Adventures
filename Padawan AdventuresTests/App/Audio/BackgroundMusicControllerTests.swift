@@ -212,8 +212,10 @@ struct BackgroundMusicControllerTests {
         #expect(mock.volume == base)
     }
 
+    /// Polls until `condition` holds. The timeout only bounds genuine failures, so it is
+    /// generous: these transitions are timer-driven and parallel test clones add jitter.
     private func waitFor(
-        timeoutNanoseconds: UInt64 = 200_000_000,
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
         _ condition: @MainActor () -> Bool
     ) async {
         let start = DispatchTime.now().uptimeNanoseconds

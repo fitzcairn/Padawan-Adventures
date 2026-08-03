@@ -1,0 +1,51 @@
+# Shared phonics FX for minigames (gate letter-match, combat cues, etc.).
+# Tracks live under Resources/Audio/FX/Phonics/.
+#
+# Per entry:
+#   sfx:  pronunciation track basename (required)
+#   name: letter-name track basename (required)
+
+version: 1
+phonics:
+  a:
+    sfx: sfx_letter_a_pronunciation
+    name: sfx_letter_a_name
+  b:
+    sfx: sfx_letter_b_pronunciation
+    name: sfx_letter_b_name
+  c:
+    sfx: sfx_letter_c_pronunciation
+    name: sfx_letter_c_name
+  d:
+    sfx: sfx_letter_d_pronunciation
+    name: sfx_letter_d_name
+  e:
+    sfx: sfx_letter_e_pronunciation
+    name: sfx_letter_e_name
+  f:
+    sfx: sfx_letter_f_pronunciation
+    name: sfx_letter_f_name
+  g:
+    sfx: sfx_letter_g_pronunciation
+    name: sfx_letter_g_name
+  h:
+    sfx: sfx_letter_h_pronunciation
+    name: sfx_letter_h_name
+  l:
+    sfx: sfx_letter_l_pronunciation
+    name: sfx_letter_l_name
+  m:
+    sfx: sfx_letter_m_pronunciation
+    name: sfx_letter_m_name
+  o:
+    sfx: sfx_letter_o_pronunciation
+    name: sfx_letter_o_name
+  p:
+    sfx: sfx_letter_p_pronunciation
+    name: sfx_letter_p_name
+  s:
+    sfx: sfx_letter_s_pronunciation
+    name: sfx_letter_s_name
+  w:
+    sfx: sfx_letter_w_pronunciation
+    name: sfx_letter_w_name

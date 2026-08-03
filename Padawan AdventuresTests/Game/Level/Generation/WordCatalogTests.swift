@@ -44,11 +44,21 @@ struct WordCatalogTests {
         }
     }
 
-    @Test func derivesEmptyEntriesAndMergesPartialOverrides() throws {
+    @Test func rejectsMissingSfx() {
+        #expect(throws: WorldSeedError.invalidGateWords) {
+            try WordCatalog.decode(from: """
+            words:
+              cat:
+                image: cat
+            """)
+        }
+    }
+
+    @Test func derivesProgressiveFromExplicitSfxAndMergesOverrides() throws {
         let catalog = try WordCatalog.decode(from: """
-        fx_prefix: sfx_word_
         words:
           cat:
+            sfx: sfx_word_cat
           dog:
             sfx: custom_dog
             progressive:
@@ -59,7 +69,7 @@ struct WordCatalogTests {
         #expect(catalog.word(named: "cat")?.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
         #expect(catalog.word(named: "dog")?.sfx == "custom_dog")
         #expect(catalog.word(named: "dog")?.progressiveTrack(forPrefix: "d") == "custom_dog_d")
-        #expect(catalog.word(named: "dog")?.progressiveTrack(forPrefix: "do") == "sfx_word_dog_do")
+        #expect(catalog.word(named: "dog")?.progressiveTrack(forPrefix: "do") == "custom_dog_do")
     }
 
     @Test func bundleWordsProvidesGateVocabulary() throws {

@@ -76,7 +76,7 @@ nonisolated struct GateLetter: Equatable, Sendable {
 }
 
 /// Per-entry gate letter-matching config.
-/// Letter FX lives in shared `Resources/Config/Catalogs/letters.yaml`; levels may optionally subset via `letters: [id, …]`.
+/// Letter FX lives in shared `Resources/Config/Catalogs/phonics.yaml`; levels may optionally subset via `letters: [id, …]`.
 nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     /// Seconds after an incorrect tap before replaying the target pronunciation.
     var incorrectReplayDelaySeconds: Double
@@ -158,7 +158,7 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
 }
 
 /// Per-entry gate word-plug config: match each word's missing first letter.
-/// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/letters.yaml`.
+/// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/phonics.yaml`.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Inclusive lower bound for words per round (>= 1).
     var wordCountMin: Int
