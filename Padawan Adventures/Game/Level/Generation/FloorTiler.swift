@@ -20,11 +20,16 @@ nonisolated struct FloorTiler: Sendable {
     static let seedSalt: UInt64 = 0xF1005E7
 
     /// Assigns `floorTileID` to every `.floor` tile on `story`.
+    ///
+    /// Supplying `rooms` makes each room draw from a single palette, which is
+    /// what keeps a floor visually seamless. Rooms are separated by walls and
+    /// joined by gates, so a palette change always lands in a doorway.
     static func tile(
         tiles: inout [[Tile]],
         story: Int,
         set: FloorTileSet,
         options: Options,
+        rooms: [GeneratedRoom] = [],
         rng: inout SeededGenerator
     ) {
         let height = tiles.count
@@ -45,6 +50,7 @@ nonisolated struct FloorTiler: Sendable {
             coords: coords,
             set: set,
             options: options,
+            rooms: rooms,
             rng: &rng
         )
     }
@@ -84,6 +90,8 @@ nonisolated struct FloorTiler: Sendable {
                 if a.y != b.y { return a.y < b.y }
                 return a.x < b.x
             }
+        // No rooms at runtime; retiled cells inherit their palette from the
+        // art already around them.
         solve(
             tiles: &tiles,
             width: width,
@@ -91,8 +99,86 @@ nonisolated struct FloorTiler: Sendable {
             coords: floorCoords,
             set: set,
             options: options,
+            rooms: [],
             rng: &rng
         )
+    }
+
+    /// Units that each receive one palette: rooms when supplied, else
+    /// 4-connected floor components.
+    ///
+    /// Cells belonging to no room — gate strips converted to floor by
+    /// `GameWorld.openGate`, say — fall back to components so they are still
+    /// grouped rather than left palette-less.
+    static func groups(
+        coords: [GridCoord],
+        rooms: [GeneratedRoom],
+        tiles: [[Tile]],
+        width: Int,
+        height: Int
+    ) -> [[GridCoord]] {
+        guard !rooms.isEmpty else {
+            return regions(coords: coords, tiles: tiles, width: width, height: height)
+        }
+        let coordSet = Set(coords)
+        var result: [[GridCoord]] = []
+        var claimed = Set<GridCoord>()
+        for room in rooms.sorted(by: { $0.id < $1.id }) {
+            // Subtract `claimed` so a cell shared by two rooms lands in exactly
+            // one group and cannot have its palette overwritten.
+            let cells = room.cells
+                .intersection(coordSet)
+                .subtracting(claimed)
+                .sorted { a, b in
+                    if a.y != b.y { return a.y < b.y }
+                    return a.x < b.x
+                }
+            guard !cells.isEmpty else { continue }
+            result.append(cells)
+            claimed.formUnion(cells)
+        }
+        let leftover = coords.filter { !claimed.contains($0) }
+        if !leftover.isEmpty {
+            result.append(
+                contentsOf: regions(
+                    coords: leftover,
+                    tiles: tiles,
+                    width: width,
+                    height: height
+                )
+            )
+        }
+        return result
+    }
+
+    /// Group indices whose cells come within `radius` of one another. Rooms are
+    /// separated by exactly one wall, so radius 2 finds true neighbours.
+    static func adjacentGroups(
+        _ groups: [[GridCoord]],
+        radius: Int = 2
+    ) -> [Int: Set<Int>] {
+        var owner: [GridCoord: Int] = [:]
+        for (index, group) in groups.enumerated() {
+            for coord in group { owner[coord] = index }
+        }
+        var result: [Int: Set<Int>] = [:]
+        for (index, group) in groups.enumerated() {
+            for coord in group {
+                for dy in -radius...radius {
+                    for dx in -radius...radius {
+                        let probe = GridCoord(
+                            x: coord.x + dx,
+                            y: coord.y + dy,
+                            story: coord.story
+                        )
+                        if let other = owner[probe], other != index {
+                            result[index, default: []].insert(other)
+                        }
+                    }
+                }
+            }
+        }
+        return result
     }
 
     /// 4-connected components of `.floor` cells among `coords`, in deterministic (y, x) order.

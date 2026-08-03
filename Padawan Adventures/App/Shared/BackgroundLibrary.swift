@@ -5,7 +5,7 @@ import UIKit
 /// Session-scoped cache of still background images under `Resources/Backgrounds/`.
 @MainActor
 final class BackgroundLibrary {
-    static let subdirectory = "Backgrounds"
+    nonisolated static let subdirectory = "Backgrounds"
 
     private var images: [String: UIImage] = [:]
     private let bundle: Bundle
@@ -50,9 +50,13 @@ final class BackgroundLibrary {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, images[trimmed] == nil else { return }
 
-        guard let image = Self.loadImage(named: trimmed, bundle: bundle) else { return }
-        images[trimmed] = image.preparedForScreen()
-        await Task.yield()
+        // Backgrounds are multi-megapixel; decoding on the main actor stalls bootstrap.
+        let bundle = self.bundle
+        let prepared = await Task.detached(priority: .userInitiated) {
+            Self.loadImage(named: trimmed, bundle: bundle)?.preparedForScreen()
+        }.value
+        guard let prepared else { return }
+        images[trimmed] = prepared
     }
 
     /// Ensures each unique name is loaded; reports 0...1 progress across the set.
@@ -103,7 +107,7 @@ final class BackgroundLibrary {
         return trimmed
     }
 
-    private static func loadImage(named name: String, bundle: Bundle) -> UIImage? {
+    nonisolated private static func loadImage(named name: String, bundle: Bundle) -> UIImage? {
         let extensions = ["png", "jpg", "jpeg"]
         for ext in extensions {
             if let url = bundle.url(

@@ -2,11 +2,13 @@
 fade_seconds: 1.0
 
 # Common event → track basename (Resources/Audio/FX/<name>.m4a).
-# Used for cross-game feedback (puzzle win/lose, correct match, input error)
-# and the level-select artifact reveal (Resources/Audio/FX/UI/).
+# Used for cross-game feedback (puzzle win/lose, correct match, input error),
+# menu UI clicks / takeoff, and the level-select artifact reveal (Audio/FX/UI/).
 fx:
   win: win
   lose: lose
   error: error
   correct: correct
   artifact_appear: level-screen-artifact-appear
+  button_click: button-click
+  takeoff: takeoff

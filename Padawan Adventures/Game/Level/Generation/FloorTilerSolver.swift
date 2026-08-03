@@ -12,6 +12,7 @@ nonisolated extension FloorTiler {
         coords: [GridCoord],
         set: FloorTileSet,
         options: Options,
+        rooms: [GeneratedRoom],
         rng: inout SeededGenerator
     ) {
         guard !coords.isEmpty else { return }
@@ -26,33 +27,57 @@ nonisolated extension FloorTiler {
             ?? set.frames.keys.sorted().first { set.frames[$0]?.role != .pit }
         let fallbackPit = pitIDs.sorted().first
 
-        // Per-region dominant family (absent = unrestricted / familyless atlas).
-        let regionList = regions(coords: coords, tiles: tiles, width: width, height: height)
+        // One palette per group (a room when the caller supplied rooms). Falls
+        // back to per-region families for atlases baked before palettes.
+        let groupList = groups(
+            coords: coords, rooms: rooms, tiles: tiles, width: width, height: height
+        )
+        let hasPalettes = !set.paletteIDsWeighted.isEmpty
+        let adjacency = hasPalettes ? adjacentGroups(groupList) : [:]
+        var paletteByKey: [Int: String] = [:]
+        var paletteByGroup: [Int: String] = [:]
         var familyByKey: [Int: String] = [:]
         var usedFamilies = Set<String>()
 
-        for region in regionList {
+        for (index, group) in groupList.enumerated() {
+            let undecided = Set(group.map { $0.y * width + $0.x })
+            if hasPalettes {
+                let inherited = inheritPalette(
+                    region: group,
+                    tiles: tiles,
+                    width: width,
+                    height: height,
+                    undecided: undecided,
+                    set: set
+                )
+                // Only neighbouring groups are penalised, so distant rooms may
+                // reuse a palette while adjacent ones stay distinct.
+                let penalize = Set(
+                    (adjacency[index] ?? []).compactMap { paletteByGroup[$0] }
+                )
+                let chosen = inherited
+                    ?? pickPalette(set: set, penalize: penalize, rng: &rng)
+                if let chosen {
+                    paletteByGroup[index] = chosen
+                    for coord in group {
+                        paletteByKey[coord.y * width + coord.x] = chosen
+                    }
+                }
+                continue
+            }
             let inherited = inheritFamily(
-                region: region,
+                region: group,
                 tiles: tiles,
                 width: width,
                 height: height,
-                undecided: Set(region.map { $0.y * width + $0.x }),
+                undecided: undecided,
                 set: set
             )
-            let chosen: String?
-            if let inherited {
-                chosen = inherited
-            } else {
-                chosen = pickDominantFamily(
-                    set: set,
-                    penalize: usedFamilies,
-                    rng: &rng
-                )
-            }
+            let chosen = inherited
+                ?? pickDominantFamily(set: set, penalize: usedFamilies, rng: &rng)
             if let chosen {
                 usedFamilies.insert(chosen)
-                for coord in region {
+                for coord in group {
                     familyByKey[coord.y * width + coord.x] = chosen
                 }
             }
@@ -74,20 +99,34 @@ nonisolated extension FloorTiler {
                 }
                 domains[key] = candidates
             } else {
-                let dominant = familyByKey[key]
                 var candidates: Set<String>
-                if let dominant, !set.tileIDs(family: dominant).isEmpty {
+                if let palette = paletteByKey[key],
+                   !set.tileIDs(palette: palette).isEmpty {
+                    candidates = Set(set.tileIDs(palette: palette)).subtracting(pitIDs)
+                    // A palette already carries its own decor, so gate that
+                    // decor down to decorProb rather than unioning outside art
+                    // in — off-palette decor is exactly what breaks a floor.
+                    let paletteDecor = Set(decorIDs).intersection(candidates)
+                    if !paletteDecor.isEmpty,
+                       !rng.nextBool(probability: options.decorProb) {
+                        candidates.subtract(paletteDecor)
+                    }
+                } else if let dominant = familyByKey[key],
+                          !set.tileIDs(family: dominant).isEmpty {
                     candidates = Set(set.tileIDs(family: dominant)).subtracting(pitIDs)
-                    // Occasionally admit an off-family accent.
+                    // Off-family accents apply only to palette-less atlases.
                     if options.accentProb > 0,
                        rng.nextBool(probability: options.accentProb) {
                         candidates = Set(floorIDs).subtracting(pitIDs)
                     }
+                    if !decorIDs.isEmpty, rng.nextBool(probability: options.decorProb) {
+                        candidates.formUnion(Set(decorIDs).subtracting(pitIDs))
+                    }
                 } else {
                     candidates = Set(floorIDs).subtracting(pitIDs)
-                }
-                if !decorIDs.isEmpty, rng.nextBool(probability: options.decorProb) {
-                    candidates.formUnion(Set(decorIDs).subtracting(pitIDs))
+                    if !decorIDs.isEmpty, rng.nextBool(probability: options.decorProb) {
+                        candidates.formUnion(Set(decorIDs).subtracting(pitIDs))
+                    }
                 }
                 if candidates.isEmpty {
                     candidates = nonPitIDs
@@ -450,6 +489,68 @@ nonisolated extension FloorTiler {
             if ca != cb { return ca > cb }
             return a < b
         }.first
+    }
+
+    /// Modal palette among already-assigned neighbours outside `undecided`.
+    /// Palettes overlap, so every palette a neighbour belongs to gets a vote.
+    static func inheritPalette(
+        region: [GridCoord],
+        tiles: [[Tile]],
+        width: Int,
+        height: Int,
+        undecided: Set<Int>,
+        set: FloorTileSet
+    ) -> String? {
+        var counts: [String: Int] = [:]
+        for coord in region {
+            for side in FloorTileSet.Side.allCases {
+                let d = FloorTileSet.delta(side)
+                let nx = coord.x + d.dx
+                let ny = coord.y + d.dy
+                guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+                let nKey = ny * width + nx
+                guard !undecided.contains(nKey),
+                      case .floor = tiles[ny][nx].kind,
+                      let nid = tiles[ny][nx].floorTileID else { continue }
+                for palette in set.paletteIDs(containing: nid) {
+                    counts[palette, default: 0] += 1
+                }
+            }
+        }
+        guard !counts.isEmpty else { return nil }
+        // Deterministic: highest count, then lexicographically smallest id.
+        return counts.keys.sorted { a, b in
+            let ca = counts[a] ?? 0
+            let cb = counts[b] ?? 0
+            if ca != cb { return ca > cb }
+            return a < b
+        }.first
+    }
+
+    /// Weighted palette pick. The penalty applies to adjacent groups only and
+    /// is heavy, so neighbouring rooms rarely share a palette.
+    static func pickPalette(
+        set: FloorTileSet,
+        penalize: Set<String>,
+        rng: inout SeededGenerator
+    ) -> String? {
+        let weighted = set.paletteIDsWeighted
+        guard !weighted.isEmpty else { return nil }
+        let sorted = weighted.sorted { $0.id < $1.id }
+        var total = 0.0
+        var weights: [Double] = []
+        weights.reserveCapacity(sorted.count)
+        for entry in sorted {
+            let w = entry.weight * (penalize.contains(entry.id) ? 0.05 : 1.0)
+            weights.append(max(w, 0.0001))
+            total += max(w, 0.0001)
+        }
+        var roll = Double(rng.next() % 10_000) / 10_000.0 * total
+        for (index, entry) in sorted.enumerated() {
+            roll -= weights[index]
+            if roll <= 0 { return entry.id }
+        }
+        return sorted.last?.id
     }
 
     /// Weighted family pick with a 0.25× penalty on already-used families.

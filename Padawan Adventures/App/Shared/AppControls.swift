@@ -60,10 +60,15 @@ struct AppLargeButton: View {
     var accessibilityID: String? = nil
     var backgroundColor: Color = AppChrome.buttonBackgroundColor
     var opacity: Double = 1
+    /// Shared `audio.yaml` FX event played on tap (`nil` = silent).
+    var soundEvent: String? = "button_click"
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            playMenuSound(soundEvent)
+            action()
+        } label: {
             Text(title)
                 .font(AppFont.swiftUI(size: 22, weight: .semibold))
                 .foregroundStyle(AppChrome.buttonForegroundColor)
@@ -85,10 +90,15 @@ struct AppCircularIconButton: View {
     var size: CGFloat = 52
     var accessibilityID: String? = nil
     var accessibilityLabel: String? = nil
+    /// Shared `audio.yaml` FX event played on tap (`nil` = silent).
+    var soundEvent: String? = "button_click"
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            playMenuSound(soundEvent)
+            action()
+        } label: {
             Image(systemName: systemName)
                 .font(.system(size: size * 0.42, weight: .semibold))
                 .foregroundStyle(AppChrome.buttonForegroundColor)
@@ -117,6 +127,7 @@ struct AppCheckbox: View {
     var body: some View {
         Button {
             guard isEnabled else { return }
+            playMenuSound("button_click")
             isOn.toggle()
         } label: {
             HStack(spacing: 12) {
@@ -213,6 +224,12 @@ struct AppSlider: View {
         let half = thumbSize / 2
         return min(width - half, max(half, x))
     }
+}
+
+/// Plays a shared menu UI FX event from `audio.yaml` (missing events/assets are ignored).
+func playMenuSound(_ event: String?) {
+    guard let event, !event.isEmpty else { return }
+    SoundEffectsController.shared.playCommon(event: event)
 }
 
 /// Non-interactive left-to-right fill bar for bootstrap / takeoff loading.

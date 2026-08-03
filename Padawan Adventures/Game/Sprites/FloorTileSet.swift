@@ -67,6 +67,14 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         }
     }
 
+    /// Colour-cohesive tile set. Palettes overlap, so a tile can belong to
+    /// several; a room draws from exactly one so its floor never clashes.
+    struct Palette: Codable, Equatable, Sendable {
+        var rgb: [Int]
+        var size: Int
+        var tiles: [String]
+    }
+
     struct Meta: Codable, Equatable, Sendable {
         var version: Int
         var floorSet: String
@@ -80,6 +88,8 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
         var pitSource: String?
         /// Visual families clustered at bake time. Optional for older atlases.
         var families: [String: Family]?
+        /// Colour-cohesive tile sets. Optional for older atlases.
+        var palettes: [String: Palette]?
 
         struct Size: Codable, Equatable, Sendable {
             var w: Int
@@ -97,6 +107,7 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             case confidentTiles = "confident_tiles"
             case pitSource = "pit_source"
             case families
+            case palettes
         }
     }
 
@@ -287,6 +298,36 @@ nonisolated struct FloorTileSet: Codable, Equatable, Sendable {
             counts[fam, default: 0] += 1
         }
         return counts.keys.sorted().map { (id: $0, weight: Double(counts[$0] ?? 1)) }
+    }
+
+    /// Sorted non-pit tile ids in `palette` (nil or unknown → all non-pit tiles).
+    func tileIDs(palette: String?) -> [String] {
+        guard let palette, let members = meta.palettes?[palette]?.tiles else {
+            return tileIDs(family: nil)
+        }
+        // Membership lists can name frames this set does not carry, so require
+        // the frame to exist rather than testing its role optionally.
+        return members.filter { id in
+            guard let role = frames[id]?.role else { return false }
+            return role != .pit
+        }.sorted()
+    }
+
+    /// Palette id + member count, sorted by id. Empty when the atlas has none.
+    var paletteIDsWeighted: [(id: String, weight: Double)] {
+        guard let palettes = meta.palettes, !palettes.isEmpty else { return [] }
+        return palettes.keys.sorted().map { id in
+            (id: id, weight: Double(palettes[id]?.size ?? 1))
+        }
+    }
+
+    /// Sorted palettes containing `tileID`. Palettes overlap, so this can
+    /// return several.
+    func paletteIDs(containing tileID: String) -> [String] {
+        (meta.palettes ?? [:])
+            .filter { $0.value.tiles.contains(tileID) }
+            .keys
+            .sorted()
     }
 
     /// Exact void-mask match, else best Jaccard overlap, else any pit tile.

@@ -76,6 +76,7 @@ struct DadModePasswordView: View {
                 .frame(height: 52)
         } else {
             Button {
+                playMenuSound("button_click")
                 handlePadTap(label)
             } label: {
                 Text(label)

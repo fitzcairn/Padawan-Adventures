@@ -35,6 +35,7 @@ struct LevelDetailOverlay: View {
                     AppLargeButton(
                         title: "Try again?",
                         accessibilityID: "levelSelect.detail.tryAgain",
+                        soundEvent: "takeoff",
                         action: onStart
                     )
                     .frame(maxWidth: 280)
@@ -42,6 +43,7 @@ struct LevelDetailOverlay: View {
                     AppLargeButton(
                         title: "Take off!",
                         accessibilityID: "levelSelect.detail.takeOff",
+                        soundEvent: "takeoff",
                         action: onStart
                     )
                     .frame(maxWidth: 280)

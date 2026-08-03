@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.app
+
+      - name: Show available simulators
+        run: xcrun simctl list devices available
+
+      - name: Run unit tests
+        env:
+          SIMULATOR_NAME: iPhone 17
+          SIMULATOR_OS: "26.5"
+        run: ./scripts/run_tests.sh

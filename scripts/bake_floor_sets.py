@@ -4,10 +4,14 @@
 For each sheet under Art/Levels/{set}/{set}-floor-spritesheet.png:
 
   1. Detect grid, separate black background, measure per-tile diamond geometry.
-  2. Photometric-normalize non-pit tiles; cluster into visual families;
-     assign edge materials / roles; build strict colour-matched matches map.
-  3. Dilate silhouette + one-way NE/NW alpha ramp; trim; shelf-pack (optionally
-     downscaled); write {set}-floor-atlas.json.
+  2. Cluster into visual families; assign edge materials / roles.
+  3. Dilate silhouette out to diamond.w so neighbours meet without a gap.
+  4. Group tiles into colour-cohesive palettes; build a matches map scoped to
+     palette co-membership; trim; shelf-pack (optionally downscaled); write
+     {set}-floor-atlas.json.
+
+Tile pixels are never recoloured. Visual cohesion comes from placing only
+same-palette tiles within a room, which the runtime FloorTiler enforces.
 
 Contact sheets land in scripts/out/ (not bundled).
 
@@ -78,8 +82,13 @@ FAMILY_MERGE_DIST = 1.8  # z-scored feature space
 MIN_FAMILY_SIZE = 6
 BUSYNESS_TAU = 0.6
 
-# Seam fix (Stage 4).
-EDGE_FADE_PX = 6
+# Palettes: colour-cohesive tile sets, one per room at runtime. Radius is in
+# top-surface mean RGB distance; 12 keeps within-palette spread near the source
+# art's own side uniformity (~6) on every set, while 8 starves the smaller sets.
+PALETTE_RADIUS = 12.0
+PALETTE_SUPPRESS = 12.0
+MIN_PALETTE_SIZE = 8
+MAX_PALETTES = 8
 
 # Resolution match (Stage 6).
 DEFAULT_BAKE_SCALE = 0.5
@@ -837,16 +846,26 @@ def rgb_dist(a: list[float], b: list[float]) -> float:
 def build_matches(
     edge_rgb: dict[str, dict[str, list[float]]],
     roles: dict[str, str],
-    families: dict[str, str | None],
+    palettes: dict[str, Any],
     match_dist: float = MATCH_DIST,
 ) -> tuple[dict[str, dict[str, list[str]]], dict[str, float]]:
-    """Strict colour+family matches. Pit tiles accept any pit on any side.
+    """Strict colour matches, scoped to palette co-membership.
+
+    Scoping must agree with what the runtime places together. Palettes overlap,
+    so restricting the pool by any single-label partition would leave same-room
+    tiles unable to match, emptying solver domains and forcing the rescue path
+    to re-admit off-palette art.
 
     Returns (matches, relaxed_dist_by_tid) where relaxed_dist records the
     distance used when MIN_MATCHES forced relaxation above MATCH_DIST.
     """
     pit_ids = sorted(t for t in roles if roles.get(t) == "pit")
     non_pit = sorted(t for t in roles if roles.get(t) != "pit")
+
+    palettes_of: dict[str, set[str]] = {t: set() for t in roles}
+    for pid, entry in palettes.items():
+        for t in entry["tiles"]:
+            palettes_of.setdefault(t, set()).add(pid)
 
     matches: dict[str, dict[str, list[str]]] = {}
     relaxed: dict[str, float] = {}
@@ -855,9 +874,11 @@ def build_matches(
         if roles.get(tid) == "pit":
             matches[tid] = {s: list(pit_ids) for s in SIDES}
             continue
-        fam = families.get(tid)
+        shared = palettes_of.get(tid) or set()
+        # Unpaletted tiles keep the global pool so fallback paths still work.
         family_pool = [
-            o for o in non_pit if fam is None or families.get(o) == fam
+            o for o in non_pit
+            if not shared or (palettes_of.get(o) or set()) & shared
         ]
         matches[tid] = {}
         worst_relax = 0.0
@@ -921,6 +942,22 @@ def build_matches(
             matches[tid][s] = sorted(allowed)
         if worst_relax > match_dist:
             relaxed[tid] = worst_relax
+
+    # Per-tile relaxation distance and the MAX_MATCHES cap both make the
+    # relation one-sided. The solver reads A.matches[side] going forwards and
+    # B.matches[opposite] coming back, so a one-sided entry empties a domain
+    # and falls through to the rescue pool, which re-admits off-palette art.
+    # Close the relation symmetrically.
+    snapshot = {t: {s: list(v) for s, v in by_side.items()} for t, by_side in matches.items()}
+    for tid, by_side in snapshot.items():
+        for s, allowed in by_side.items():
+            opp = OPPOSITE[s]
+            for other in allowed:
+                if other in matches and tid not in matches[other][opp]:
+                    matches[other][opp].append(tid)
+    for tid in matches:
+        for s in SIDES:
+            matches[tid][s] = sorted(set(matches[tid][s]))
     return matches, relaxed
 
 
@@ -1155,6 +1192,116 @@ def cluster_families(
     return families, busyness, tiers, meta_families
 
 
+def top_mean_rgb(
+    cells: dict[str, Image.Image],
+    tiles: list[TileGeom],
+    roles: dict[str, str],
+    diamond_w: float,
+    diamond_h: float,
+) -> dict[str, np.ndarray]:
+    """Mean RGB of each non-pit tile's top surface, keyed by tile id."""
+    out: dict[str, np.ndarray] = {}
+    for geom in tiles:
+        if roles.get(geom.tid) == "pit":
+            continue
+        arr = np.asarray(cells[geom.tid].convert("RGBA"), dtype=np.float32)
+        h, w = arr.shape[:2]
+        interior = diamond_interior_mask(
+            h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
+        ) & (arr[..., :3].max(axis=2) > BG_MAX)
+        if interior.sum() < 16:
+            continue
+        out[geom.tid] = np.array(
+            [float(arr[interior, ch].mean()) for ch in range(3)], dtype=np.float64
+        )
+    return out
+
+
+def build_palettes(
+    cells: dict[str, Image.Image],
+    tiles: list[TileGeom],
+    roles: dict[str, str],
+    diamond_w: float,
+    diamond_h: float,
+) -> tuple[dict[str, Any], dict[str, str | None]]:
+    """Overlapping colour-cohesive tile sets, one of which a room draws from.
+
+    Greedy separated ball cover over top-surface mean RGB: repeatedly take the
+    densest ball of radius PALETTE_RADIUS whose centre is at least
+    PALETTE_SUPPRESS from every accepted centre. Separation (rather than plain
+    maximum coverage) is what keeps palettes visually distinct from each other.
+
+    Returns (palettes, primary_by_tid). Tiles outside every ball map to None and
+    are simply never placed — they are the colour outliers.
+    """
+    mu = top_mean_rgb(cells, tiles, roles, diamond_w, diamond_h)
+    palettes: dict[str, Any] = {}
+    primary: dict[str, str | None] = {geom.tid: None for geom in tiles}
+    if not mu:
+        return palettes, primary
+
+    ids = sorted(mu)
+    vectors = np.array([mu[t] for t in ids])
+    dist = np.sqrt(((vectors[:, None, :] - vectors[None, :, :]) ** 2).sum(axis=-1))
+    within = dist <= PALETTE_RADIUS
+
+    centres: list[np.ndarray] = []
+    members_by_palette: list[list[str]] = []
+    while len(centres) < MAX_PALETTES:
+        best_index = None
+        best_count = -1
+        for i in range(len(ids)):
+            if centres and min(
+                float(np.linalg.norm(vectors[i] - c)) for c in centres
+            ) < PALETTE_SUPPRESS:
+                continue
+            count = int(within[i].sum())
+            # Ties break toward the lower index, i.e. the lexicographically
+            # smaller tile id, so the bake stays deterministic.
+            if count > best_count:
+                best_count = count
+                best_index = i
+        if best_index is None or best_count < MIN_PALETTE_SIZE:
+            break
+        members = [ids[j] for j in range(len(ids)) if within[best_index][j]]
+        members_by_palette.append(members)
+        centres.append(vectors[best_index])
+
+    for index, members in enumerate(members_by_palette):
+        member_rgb = np.array([mu[t] for t in members])
+        palettes[f"pal{index}"] = {
+            "rgb": [int(round(v)) for v in member_rgb.mean(axis=0)],
+            "size": len(members),
+            "tiles": sorted(members),
+        }
+
+    covered: set[str] = set()
+    for members in members_by_palette:
+        covered.update(members)
+    for tid in ids:
+        if tid not in covered:
+            continue
+        nearest = min(
+            range(len(centres)),
+            key=lambda index: float(np.linalg.norm(mu[tid] - centres[index])),
+        )
+        primary[tid] = f"pal{nearest}"
+
+    if palettes:
+        worst = max(
+            float(np.max(np.array([mu[t] for t in p["tiles"]]).std(axis=0)))
+            for p in palettes.values()
+        )
+        print(
+            f"  palettes={len(palettes)} "
+            f"sizes={[p['size'] for p in palettes.values()]} "
+            f"covered={len(covered)}/{len(ids)} worst_std={worst:.1f}"
+        )
+    else:
+        print(f"  WARNING no palettes met MIN_PALETTE_SIZE={MIN_PALETTE_SIZE}")
+    return palettes, primary
+
+
 def absolute_edge_rgb(
     cell: Image.Image,
     geom: TileGeom,
@@ -1196,7 +1343,7 @@ def absolute_edge_rgb(
                 yy = int(round(y + dy / n * d))
                 if 0 <= xx < w and 0 <= yy < h:
                     r, g, b, a = px[xx, yy]
-                    # Require solid alpha so NE/NW fade fringe doesn't pollute matches.
+                    # Require solid alpha so the chroma feather doesn't pollute matches.
                     if a > 200:
                         samples.append((r, g, b))
         if len(samples) < 8:
@@ -1206,16 +1353,19 @@ def absolute_edge_rgb(
     return out
 
 
-def dilate_and_fade_cell(
+def dilate_cell(
     cell: Image.Image,
     geom: TileGeom,
     diamond_w: float,
     diamond_h: float,
     *,
     dilate_px: int,
-    edge_fade_px: int = EDGE_FADE_PX,
 ) -> Image.Image:
-    """Dilate silhouette to fill diamond.w, then fade alpha on NE/NW edges only."""
+    """Dilate the silhouette out to diamond.w by copying nearest opaque pixels.
+
+    Purely geometric: no pixel's colour changes, so adjacent tiles meet without
+    a gap and without the dark rim a directional alpha ramp would leave.
+    """
     arr = np.asarray(cell.convert("RGBA"), dtype=np.float32)
     h, w = arr.shape[:2]
     mask_bool = np.array(geom.mask, dtype=bool)
@@ -1261,52 +1411,8 @@ def dilate_and_fade_cell(
                     arr[ny, nx, 3] = 255.0
             mask_bool = dilated
 
-    # Feather chroma using updated mask, then apply one-way NE/NW fade.
-    # Rebuild list mask for apply_feathered_chroma.
-    fg_list = mask_bool.tolist()
-    feathered = apply_feathered_chroma(array_to_cell(arr), fg_list)
-    farr = np.asarray(feathered, dtype=np.float32)
-
-    if edge_fade_px > 0:
-        # Distance from NE and NW edges toward centre.
-        # NE edge: north→east; NW edge: west→north.
-        # Approximate: points near the NE or NW diamond edges get reduced alpha.
-        cx, ay = geom.cx, geom.apex_y
-        hw, hh = diamond_w / 2.0, diamond_h / 2.0
-        cy = ay + hh
-        yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-        # Parametric distance to NE segment and NW segment.
-        def dist_to_segment(px, py, ax, ay_, bx, by):
-            abx, aby = bx - ax, by - ay_
-            apx, apy = px - ax, py - ay_
-            ab2 = abx * abx + aby * aby or 1.0
-            t = np.clip((apx * abx + apy * aby) / ab2, 0.0, 1.0)
-            qx, qy = ax + t * abx, ay_ + t * aby
-            return np.hypot(px - qx, py - qy)
-
-        d_ne = dist_to_segment(xx, yy, cx, ay, cx + hw, cy)
-        d_nw = dist_to_segment(xx, yy, cx - hw, cy, cx, ay)
-        d_edge = np.minimum(d_ne, d_nw)
-        # Only fade the "outer" half of the diamond (toward NE/NW, i.e. smaller y
-        # and/or smaller x in screen space). Restrict to pixels closer to NE/NW
-        # than to SE/SW.
-        d_se = dist_to_segment(xx, yy, cx + hw, cy, cx, ay + diamond_h)
-        d_sw = dist_to_segment(xx, yy, cx, ay + diamond_h, cx - hw, cy)
-        on_ne_nw = d_edge <= np.minimum(d_se, d_sw)
-        fade = np.clip(d_edge / float(edge_fade_px), 0.0, 1.0)
-        # Alpha ramp 0 at edge → 1 by edge_fade_px inward, NE/NW only.
-        alpha_scale = np.where(on_ne_nw, fade, 1.0)
-        # Also require inside/near diamond.
-        near = diamond_edge_distance(h, w, cx, ay, diamond_w, diamond_h) < 0.15
-        alpha_scale = np.where(near, alpha_scale, 1.0)
-        new_a = farr[..., 3] * alpha_scale
-        # Premultiply RGB toward black as alpha drops.
-        scale = np.where(farr[..., 3] > 0, new_a / np.maximum(farr[..., 3], 1e-6), 0.0)
-        for ch in range(3):
-            farr[..., ch] = farr[..., ch] * scale
-        farr[..., 3] = new_a
-
-    return array_to_cell(farr)
+    # Feather chroma using the updated mask.
+    return apply_feathered_chroma(array_to_cell(arr), mask_bool.tolist())
 
 
 def _feather_alpha(luma: float, dist_to_bg: float) -> int:
@@ -1693,93 +1799,15 @@ def bake_one(
     for key in by_mask:
         by_mask[key] = sorted(by_mask[key])
 
-    # Stage 1 — photometric normalization (non-pit only).
-    cells, photometry = normalize_tiles(
-        img, tiles, roles, diamond_w, diamond_h
-    )
-    print(
-        f"  photometry strength={NORM_STRENGTH} "
-        f"clamped={len(photometry.get('clamped', []))}"
-    )
-
-    # Photometry contact (before/after side-by-side of source vs normalized cells).
-    photo_path = OUT_DIR / f"{set_name}-photometry.png"
-    try:
-        before = img.convert("RGBA").copy()
-        after = Image.new("RGBA", img.size, (0, 0, 0, 255))
-        for geom in tiles:
-            after.paste(cells[geom.tid], (geom.x0, geom.y0))
-        # Side by side
-        combo = Image.new("RGBA", (img.size[0] * 2, img.size[1]), (0, 0, 0, 255))
-        combo.paste(before, (0, 0))
-        combo.paste(after, (img.size[0], 0))
-        photo_path.parent.mkdir(parents=True, exist_ok=True)
-        combo.save(photo_path)
-        print(f"  photometry → {photo_path.relative_to(ROOT)}")
-    except Exception as exc:
-        print(f"  WARNING photometry contact failed: {exc}")
+    # Stage 1 — cells are used exactly as authored. Any photometric correction
+    # fitted to the top diamond extrapolates badly onto the cliff faces, which is
+    # what produced the discoloured sides; cohesion comes from palettes instead.
+    cells = {geom.tid: array_to_cell(cell_to_array(img, geom)) for geom in tiles}
 
     # Stage 2 — families / busyness / tiers.
     families, busyness, tiers, meta_families = cluster_families(
         cells, tiles, roles, diamond_w, diamond_h
     )
-
-    # Per-family photometric refine (pull each tile toward its family's mean/std).
-    by_family: dict[str, list[TileGeom]] = {}
-    for geom in tiles:
-        fam = families.get(geom.tid)
-        if fam and roles.get(geom.tid) != "pit":
-            by_family.setdefault(fam, []).append(geom)
-    for fam, members in by_family.items():
-        if len(members) < 2:
-            continue
-        # Build a temporary sheet-sized image from current cells for normalize_tiles.
-        # Simpler: compute family target from cell interiors and re-normalize each.
-        means = []
-        stds = []
-        for geom in members:
-            arr = np.asarray(cells[geom.tid], dtype=np.float32)
-            h, w = arr.shape[:2]
-            interior = diamond_interior_mask(
-                h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
-            ) & (arr[..., :3].max(axis=2) > BG_MAX)
-            if interior.sum() < 16:
-                continue
-            lin = to_linear(arr[..., :3])
-            means.append([float(lin[interior, ch].mean()) for ch in range(3)])
-            stds.append(
-                [float(max(lin[interior, ch].std(), 1e-6)) for ch in range(3)]
-            )
-        if len(means) < 2:
-            continue
-        t_mean = [float(statistics.median([m[i] for m in means])) for i in range(3)]
-        t_std = [float(statistics.median([s[i] for s in stds])) for i in range(3)]
-        # Re-normalize each member toward the family target in linear light.
-        for geom in members:
-            arr = np.asarray(cells[geom.tid], dtype=np.float32).copy()
-            h, w = arr.shape[:2]
-            opaque = arr[..., :3].max(axis=2) > BG_MAX
-            interior = diamond_interior_mask(
-                h, w, geom.cx, geom.apex_y, diamond_w, diamond_h, scale=0.8
-            ) & opaque
-            if interior.sum() < 16:
-                continue
-            lin = to_linear(arr[..., :3])
-            out = lin.copy()
-            for ch in range(3):
-                tile_mean = float(lin[interior, ch].mean())
-                tile_std = float(max(lin[interior, ch].std(), 1e-6))
-                gain = float(
-                    np.clip(t_std[ch] / tile_std, NORM_GAIN_MIN, NORM_GAIN_MAX)
-                )
-                matched = (lin[..., ch] - tile_mean) * gain + t_mean[ch]
-                out[..., ch] = np.where(
-                    opaque,
-                    lin[..., ch] * (1.0 - NORM_STRENGTH) + matched * NORM_STRENGTH,
-                    lin[..., ch],
-                )
-            arr[..., :3] = to_srgb(np.clip(out, 0.0, 1.0))
-            cells[geom.tid] = array_to_cell(arr)
 
     contact_path = OUT_DIR / f"{set_name}-contact.png"
     draw_contact_sheet(
@@ -1789,7 +1817,7 @@ def bake_one(
     if contact_only:
         return {"contact": contact_path, "sheet": sheet_path}
 
-    # Stage 4 — dilate silhouette + one-way NE/NW alpha ramp.
+    # Stage 4 — dilate silhouette out to diamond.w (no colour or alpha ramp).
     # Measure mid-row opaque width vs diamond_w to choose dilate_px.
     measured_widths: list[int] = []
     for geom in tiles:
@@ -1809,18 +1837,17 @@ def bake_one(
     processed_cells: dict[str, Image.Image] = {}
     for geom in tiles:
         if roles.get(geom.tid) == "pit":
-            # Pits: feather only, no dilate/fade.
+            # Pits: feather only, no dilate.
             processed_cells[geom.tid] = apply_feathered_chroma(
                 cells[geom.tid], geom.mask
             )
         else:
-            processed_cells[geom.tid] = dilate_and_fade_cell(
+            processed_cells[geom.tid] = dilate_cell(
                 cells[geom.tid],
                 geom,
                 diamond_w,
                 diamond_h,
                 dilate_px=dilate_px,
-                edge_fade_px=EDGE_FADE_PX,
             )
 
     # Re-measure after dilate.
@@ -1844,6 +1871,11 @@ def bake_one(
                 f"({diamond_w - 1:.1f})"
             )
 
+    # Stage 5 — palettes from the cells that actually ship.
+    palettes, palette_primary = build_palettes(
+        processed_cells, tiles, roles, diamond_w, diamond_h
+    )
+
     # Stage 3 — strict matches from post-processed cells (what actually ships).
     edge_rgb: dict[str, dict[str, list[float]]] = {}
     for geom in tiles:
@@ -1851,7 +1883,7 @@ def bake_one(
             processed_cells[geom.tid], geom, diamond_w, diamond_h
         )
 
-    matches, relaxed = build_matches(edge_rgb, roles, families, MATCH_DIST)
+    matches, relaxed = build_matches(edge_rgb, roles, palettes, MATCH_DIST)
     if relaxed:
         print(f"  match relaxation: {len(relaxed)} tiles (max dist exceeded MATCH_DIST)")
 
@@ -1954,7 +1986,7 @@ def bake_one(
         edge_rgb_scaled[tid] = absolute_edge_rgb(
             trimmed, shim, out_diamond_w, out_diamond_h
         )
-    matches, relaxed = build_matches(edge_rgb_scaled, roles, families, MATCH_DIST)
+    matches, relaxed = build_matches(edge_rgb_scaled, roles, palettes, MATCH_DIST)
     if relaxed:
         print(f"  match relaxation (scaled): {len(relaxed)} tiles")
 
@@ -1984,6 +2016,24 @@ def bake_one(
     packed_img, packed_frames = shelf_pack_frames(frame_images, padding=PAD)
     packed_img.save(baked_sheet)
 
+    # `frame.family` is the tile's primary palette, so meta.families must be
+    # keyed the same way or family lookups in Swift resolve to nothing. Falls
+    # back to the raw clustering only when no palette met MIN_PALETTE_SIZE.
+    meta_families_out: dict[str, Any] = {}
+    for pid, entry in palettes.items():
+        primary_members = sorted(
+            t for t in entry["tiles"] if palette_primary.get(t) == pid
+        )
+        if not primary_members:
+            continue
+        meta_families_out[pid] = {
+            "rgb": entry["rgb"],
+            "size": len(primary_members),
+            "base_ids": primary_members,
+        }
+    if not meta_families_out:
+        meta_families_out = meta_families
+
     frames_out: dict[str, Any] = {}
     for geom in tiles:
         tid = geom.tid
@@ -2004,7 +2054,9 @@ def bake_one(
             "role": roles[tid],
             "role_confidence": round(confidences[tid], 3),
             "weight": round(weight, 4),
-            "family": families.get(tid),
+            # Primary palette when palettes exist (null = colour outlier, never
+            # placed); the raw clustering only when none met MIN_PALETTE_SIZE.
+            "family": palette_primary.get(tid) if palettes else families.get(tid),
             "tier": tiers.get(tid),
             "busyness": round(busyness.get(tid, 0.0), 4),
             "cues": {
@@ -2044,9 +2096,8 @@ def bake_one(
             "edge_order": list(SIDES),
             "confident_tiles": int(gmeta["confident_tiles"]),
             "pit_source": "heuristic" if pit_truth is None else "sheet",
-            "photometry": photometry,
-            "families": meta_families,
-            "edge_fade_px": EDGE_FADE_PX if scale == 1.0 else round(EDGE_FADE_PX * scale, 2),
+            "families": meta_families_out,
+            "palettes": palettes,
             "dilate_px": dilate_px,
             "bake_scale": scale,
         },

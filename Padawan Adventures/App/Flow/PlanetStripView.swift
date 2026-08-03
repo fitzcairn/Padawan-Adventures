@@ -79,6 +79,7 @@ struct PlanetStripView: View {
         let completedStroke = max(2, diameter * 0.027)
 
         return Button {
+            playMenuSound("button_click")
             onLevelTap(level)
         } label: {
             ZStack {

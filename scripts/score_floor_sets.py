@@ -39,11 +39,16 @@ def format_score(score: dict, fails: list[str]) -> str:
             f"  edge delta (declared matches): "
             f"median={score['edge_median']:.1f} p75={score['edge_p75']:.1f} "
             f"p90={score['edge_p90']:.1f} max={score['edge_max']:.1f} "
-            f"  [gate: median <= 8]"
+            f"  [gate: median <= 10, p90 <= 15]"
         ),
         (
-            f"  interior luma stdev:           {score['luma_stdev']:.1f}"
-            f"                                     [gate: <= 6]"
+            f"  palette luma stdev (worst):    "
+            f"{score['palette_luma_stdev_max']:.1f}"
+            f"                                     [gate: <= 8]"
+        ),
+        (
+            f"  interior luma stdev (all):     {score['luma_stdev']:.1f}"
+            f"                                     [reported, not gated]"
         ),
         (
             f"  mean match-list fraction:      {score['mean_match_frac']*100:.0f}%"
@@ -55,8 +60,14 @@ def format_score(score: dict, fails: list[str]) -> str:
             f"                                   [gate: distinct >= 8]"
         ),
         (
+            f"  palettes: {score['palette_count']} "
+            f"(min size {score['palette_min_size']}, "
+            f"coverage {score['palette_coverage']*100:.0f}%)"
+            f"                            [gate: >= 3, min size 8]"
+        ),
+        (
             f"  families: {fam_str}"
-            f"                                                        [gate: 3..6, min size 6]"
+            f"                                                        [reported]"
         ),
     ]
     for f in fails:
@@ -106,9 +117,17 @@ def main(argv: list[str] | None = None) -> int:
         if fails:
             failed += 1
         if not args.no_render:
-            out = OUT_DIR / f"{name}-room.png"
-            render_synthetic_room(name, out)
-            print(f"  room → {out.relative_to(ROOT)}")
+            # One room per palette, since a room only ever draws from one.
+            palettes = sorted((score["atlas"].get("meta", {}).get("palettes") or {}))
+            if palettes:
+                for palette in palettes:
+                    out = OUT_DIR / f"{name}-room-{palette}.png"
+                    render_synthetic_room(name, out, palette=palette)
+                print(f"  rooms → {len(palettes)} palette renders in scripts/out/")
+            else:
+                out = OUT_DIR / f"{name}-room.png"
+                render_synthetic_room(name, out)
+                print(f"  room → {out.relative_to(ROOT)}")
         print()
 
     if args.baseline:

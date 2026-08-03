@@ -20,6 +20,8 @@ nonisolated struct SoundSettings: Decodable, Equatable, Sendable {
             "error": "error",
             "correct": "correct",
             "artifact_appear": "level-screen-artifact-appear",
+            "button_click": "button-click",
+            "takeoff": "takeoff",
         ])
     )
 

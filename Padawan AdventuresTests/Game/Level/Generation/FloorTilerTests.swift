@@ -258,11 +258,14 @@ struct FloorTilerTests {
         }
     }
 
-    @Test func cohesionReducesDistinctTileIDs() throws {
+    /// The palette now caps how much variety a room can draw on, so cohesion's
+    /// remaining job is clumping like art together rather than shrinking the
+    /// pool. Measure adjacent repeats, and only require that variety not grow.
+    @Test func cohesionClumpsRepeatedTileIDs() throws {
         let set = try FloorTileSet.loadFromBundle(set: "1-tython")
-        #expect(!set.familyIDsWeighted.isEmpty)
+        #expect(!set.paletteIDsWeighted.isEmpty)
 
-        func distinctCount(cohesion: Double) -> Int {
+        func measure(cohesion: Double) -> (distinct: Int, repeats: Int) {
             var tiles = makeFloorGrid(width: 10, height: 10, pitBlob: [])
             var rng = SeededGenerator(seed: 42)
             FloorTiler.tile(
@@ -272,22 +275,40 @@ struct FloorTilerTests {
                 options: .init(decorProb: 0, cohesion: cohesion),
                 rng: &rng
             )
-            let ids = tiles.flatMap { $0.compactMap(\.floorTileID) }
-            return Set(ids).count
+            var repeats = 0
+            for y in tiles.indices {
+                for x in tiles[y].indices {
+                    guard let id = tiles[y][x].floorTileID else { continue }
+                    if x + 1 < tiles[y].count, tiles[y][x + 1].floorTileID == id {
+                        repeats += 1
+                    }
+                    if y + 1 < tiles.count, tiles[y + 1][x].floorTileID == id {
+                        repeats += 1
+                    }
+                }
+            }
+            return (Set(tiles.flatMap { $0.compactMap(\.floorTileID) }).count, repeats)
         }
 
-        let noisy = distinctCount(cohesion: 0)
-        let calm = distinctCount(cohesion: 1)
-        #expect(calm < noisy, "cohesion=1 should use fewer distinct tiles than cohesion=0 (\(calm) vs \(noisy))")
+        let noisy = measure(cohesion: 0)
+        let calm = measure(cohesion: 1)
+        #expect(
+            calm.repeats > noisy.repeats,
+            "cohesion=1 should clump more than cohesion=0 (\(calm.repeats) vs \(noisy.repeats))"
+        )
+        #expect(
+            calm.distinct <= noisy.distinct,
+            "cohesion=1 should not add variety (\(calm.distinct) vs \(noisy.distinct))"
+        )
 
         // Determinism at both extremes.
-        #expect(distinctCount(cohesion: 0) == noisy)
-        #expect(distinctCount(cohesion: 1) == calm)
+        #expect(measure(cohesion: 0) == noisy)
+        #expect(measure(cohesion: 1) == calm)
     }
 
-    @Test func regionTilesShareOneFamilyWhenPresent() throws {
+    @Test func regionTilesShareOnePaletteWhenPresent() throws {
         let set = try FloorTileSet.loadFromBundle(set: "2-tatooine")
-        #expect(!set.familyIDsWeighted.isEmpty)
+        #expect(!set.paletteIDsWeighted.isEmpty)
         var tiles = makeFloorGrid(width: 8, height: 8, pitBlob: [])
         var rng = SeededGenerator(seed: 7)
         FloorTiler.tile(
@@ -297,16 +318,60 @@ struct FloorTilerTests {
             options: .init(decorProb: 0, cohesion: 1),
             rng: &rng
         )
-        let families = Set(
-            tiles.flatMap { row in
-                row.compactMap { tile -> String? in
-                    guard let id = tile.floorTileID else { return nil }
-                    return set.frames[id]?.family
-                }
+        let placed = Set(tiles.flatMap { $0.compactMap(\.floorTileID) })
+        // Single connected region → every tile drawn from one palette. Palettes
+        // overlap, so assert containment rather than a single `family` label.
+        let cohesive = set.paletteIDsWeighted.contains { entry in
+            placed.isSubset(of: Set(set.tileIDs(palette: entry.id)))
+        }
+        #expect(cohesive, "expected one palette to cover \(placed.sorted())")
+    }
+
+    @Test func roomsKeepPalettesSeparate() throws {
+        let set = try FloorTileSet.loadFromBundle(set: "1-tython")
+        #expect(!set.paletteIDsWeighted.isEmpty)
+        // Two 3x5 floor blocks split by a wall column, as packed rooms are.
+        var tiles = (0..<5).map { _ in
+            (0..<7).map { x -> Tile in
+                x == 3 ? Tile(kind: .wall) : Tile(kind: .floor(isPit: false))
             }
+        }
+        func cells(_ xs: Range<Int>) -> Set<GridCoord> {
+            Set(xs.flatMap { x in (0..<5).map { GridCoord(x: x, y: $0, story: 0) } })
+        }
+        let rooms = [
+            GeneratedRoom(
+                id: 0,
+                cells: cells(0..<3),
+                center: GridCoord(x: 1, y: 2, story: 0),
+                latticeX: 0,
+                latticeY: 0
+            ),
+            GeneratedRoom(
+                id: 1,
+                cells: cells(4..<7),
+                center: GridCoord(x: 5, y: 2, story: 0),
+                latticeX: 0,
+                latticeY: 0
+            ),
+        ]
+        var rng = SeededGenerator(seed: 5)
+        FloorTiler.tile(
+            tiles: &tiles,
+            story: 0,
+            set: set,
+            options: .init(decorProb: 0, cohesion: 1),
+            rooms: rooms,
+            rng: &rng
         )
-        // Single connected region → one family (accents disabled at cohesion=1).
-        #expect(families.count == 1, "expected one family, got \(families)")
+        for room in rooms {
+            let placed = Set(room.cells.compactMap { tiles[$0.y][$0.x].floorTileID })
+            #expect(!placed.isEmpty)
+            let cohesive = set.paletteIDsWeighted.contains { entry in
+                placed.isSubset(of: Set(set.tileIDs(palette: entry.id)))
+            }
+            #expect(cohesive, "room \(room.id) spans palettes: \(placed.sorted())")
+        }
     }
 
     @Test func familylessAtlasStillTilesCompletely() throws {
@@ -320,6 +385,7 @@ struct FloorTilerTests {
         )
         var meta = full.meta
         meta.families = nil
+        meta.palettes = nil
         let tiny = FloorTileSet(meta: meta, frames: [oneID: solo], pits: .init())
         var tiles = makeFloorGrid(width: 4, height: 4, pitBlob: [])
         var rng = SeededGenerator(seed: 1)
@@ -333,9 +399,9 @@ struct FloorTilerTests {
         #expect(tiles.allSatisfy { row in row.allSatisfy { $0.floorTileID == oneID } })
     }
 
-    @Test func retileInheritsNeighbouringFamily() throws {
+    @Test func retileInheritsNeighbouringPalette() throws {
         let set = try FloorTileSet.loadFromBundle(set: "1-tython")
-        #expect(!set.familyIDsWeighted.isEmpty)
+        #expect(!set.paletteIDsWeighted.isEmpty)
         var tiles = makeFloorGrid(width: 6, height: 6, pitBlob: [])
         var rng = SeededGenerator(seed: 11)
         FloorTiler.tile(
@@ -345,9 +411,9 @@ struct FloorTilerTests {
             options: .init(decorProb: 0, cohesion: 1),
             rng: &rng
         )
-        let neighbourFamily = set.frames[tiles[1][0].floorTileID ?? ""]?.family
-            ?? set.frames[tiles[0][1].floorTileID ?? ""]?.family
-        #expect(neighbourFamily != nil)
+        let neighbourID = try #require(tiles[1][0].floorTileID)
+        let neighbourPalettes = Set(set.paletteIDs(containing: neighbourID))
+        #expect(!neighbourPalettes.isEmpty)
 
         tiles[1][1] = Tile(kind: .floor(isPit: false))
         var rng2 = SeededGenerator(seed: 99)
@@ -360,7 +426,10 @@ struct FloorTilerTests {
             rng: &rng2
         )
         let retiledID = try #require(tiles[1][1].floorTileID)
-        #expect(set.frames[retiledID]?.family == neighbourFamily)
+        #expect(
+            !Set(set.paletteIDs(containing: retiledID)).isDisjoint(with: neighbourPalettes),
+            "retiled \(retiledID) shares no palette with neighbour \(neighbourID)"
+        )
     }
 
     // MARK: - Helpers

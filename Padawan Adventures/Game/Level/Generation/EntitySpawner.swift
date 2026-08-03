@@ -393,6 +393,7 @@ nonisolated extension ProceduralGenerator {
                     decorProb: config.decorProb,
                     cohesion: config.cohesion
                 ),
+                rooms: state.rooms,
                 rng: &floorRng
             )
         }

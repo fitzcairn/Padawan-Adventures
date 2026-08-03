@@ -170,8 +170,11 @@ struct PlayerSelectView: View {
         .alert("New Player", isPresented: $model.isShowingNewPlayerAlert) {
             TextField("Player name", text: $model.newPlayerName)
                 .textInputAutocapitalization(.words)
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                playMenuSound("button_click")
+            }
             Button("OK") {
+                playMenuSound("button_click")
                 Task {
                     switch await model.createPlayer() {
                     case .failed:
@@ -188,9 +191,11 @@ struct PlayerSelectView: View {
         }
         .alert("Delete Player", isPresented: $model.isShowingDeleteConfirm) {
             Button("Cancel", role: .cancel) {
+                playMenuSound("button_click")
                 model.playerPendingDelete = nil
             }
             Button("Delete", role: .destructive) {
+                playMenuSound("button_click")
                 Task { await model.deletePendingPlayer() }
             }
         } message: {
@@ -200,6 +205,7 @@ struct PlayerSelectView: View {
         }
         .alert("Name Already Taken", isPresented: $model.isShowingDuplicateNameAlert) {
             Button("OK") {
+                playMenuSound("button_click")
                 model.retryAfterDuplicate()
             }
         } message: {
@@ -212,6 +218,7 @@ struct PlayerSelectView: View {
             avatarView(for: name)
 
             Button {
+                playMenuSound("button_click")
                 Task {
                     if await model.selectPlayer(named: name) {
                         router.showMenu()
@@ -230,6 +237,7 @@ struct PlayerSelectView: View {
             .accessibilityIdentifier("playerSelect.player.\(name)")
 
             Button {
+                playMenuSound("button_click")
                 model.confirmDelete(playerName: name)
             } label: {
                 Image(systemName: "trash")

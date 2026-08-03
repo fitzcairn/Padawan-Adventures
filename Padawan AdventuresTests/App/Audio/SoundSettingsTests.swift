@@ -24,6 +24,8 @@ struct SoundSettingsTests {
         #expect(settings.fx.trackID(for: "error") == "error")
         #expect(settings.fx.trackID(for: "correct") == "correct")
         #expect(settings.fx.trackID(for: "artifact_appear") == "level-screen-artifact-appear")
+        #expect(settings.fx.trackID(for: "button_click") == "button-click")
+        #expect(settings.fx.trackID(for: "takeoff") == "takeoff")
     }
 
     @Test func validateRejectsNegativeFade() {
@@ -42,5 +44,7 @@ struct SoundSettingsTests {
         #expect(settings.fx.trackID(for: "error") == "error")
         #expect(settings.fx.trackID(for: "correct") == "correct")
         #expect(settings.fx.trackID(for: "artifact_appear") == "level-screen-artifact-appear")
+        #expect(settings.fx.trackID(for: "button_click") == "button-click")
+        #expect(settings.fx.trackID(for: "takeoff") == "takeoff")
     }
 }

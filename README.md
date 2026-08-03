@@ -1,6 +1,18 @@
 # Padawan-Adventures
 An iOS game for learning to read, for my son Galen
 
+## Tests
+
+```bash
+./scripts/run_tests.sh                                 # full suite
+./scripts/run_tests.sh SpriteSystemTests               # one suite
+./scripts/run_tests.sh SpriteSystemTests/loadsIdleClip # one test
+```
+
+The script wraps `xcodebuild test` and prints compile errors and the failing-test
+list, which the raw log buries. Override the simulator with `SIMULATOR_NAME` and
+`SIMULATOR_OS`. CI runs the same script on every push and pull request.
+
 ## Sprite baking
 
 Runtime prefers pre-processed sheets under each sprite folder’s `Baked/` directory
