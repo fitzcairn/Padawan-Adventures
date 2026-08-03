@@ -118,6 +118,24 @@ nonisolated struct CombatDeflectGeometry: Equatable, Sendable {
         Self.rect(center: ringCenter(ring), radii: ringRadii)
     }
 
+    /// Point on `ring`'s elliptical border nearest `point` (ray from ring center through `point`).
+    func borderPoint(on ring: CombatDeflectRing, nearestTo point: CGPoint) -> CGPoint {
+        let c = ringCenter(ring)
+        let rx = max(ringRadii.width, 1)
+        let ry = max(ringRadii.height, 1)
+        let dx = point.x - c.x
+        let dy = point.y - c.y
+        // Unit-circle space, then snap to the ellipse rim.
+        let nx = dx / rx
+        let ny = dy / ry
+        let length = (nx * nx + ny * ny).squareRoot()
+        guard length > 0.000_1 else {
+            // Degenerate: projectile on the center — pick the outward (toward top) rim.
+            return CGPoint(x: c.x, y: c.y + ry)
+        }
+        return CGPoint(x: c.x + (nx / length) * rx, y: c.y + (ny / length) * ry)
+    }
+
     var outerRect: CGRect { Self.rect(center: center, radii: outerRadii) }
 
     private static func rect(center: CGPoint, radii: CGSize) -> CGRect {

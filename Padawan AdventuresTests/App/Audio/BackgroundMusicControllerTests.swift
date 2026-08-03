@@ -188,7 +188,7 @@ struct BackgroundMusicControllerTests {
         #expect(controller.isPhoneticDucked)
         #expect(mock.volume == base * SoundEffectsController.phoneticCueDuckScale)
 
-        await waitFor(timeoutNanoseconds: 500_000_000) {
+        await waitFor(timeoutNanoseconds: 5_000_000_000) {
             !controller.isPhoneticDucked && mock.volume == base
         }
         #expect(!controller.isPhoneticDucked)
@@ -221,7 +221,10 @@ struct BackgroundMusicControllerTests {
             if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
                 break
             }
-            await Task.yield()
+            // Yielding alone spins the main actor and can starve the timer-driven
+            // duck/fade tasks when parallel test clones load the machine; a short
+            // sleep hands them real time.
+            try? await Task.sleep(nanoseconds: 1_000_000)
         }
         #expect(condition())
     }

@@ -36,18 +36,12 @@ extension CombatDeflectScene {
         return animation.frames.reduce(0) { $0 + $1.duration }
     }
 
-    /// Quickly expanding radial flash halfway between the player and the letter orb (0.3s).
-    func playLightsaberDeflectFlash(letterPosition: CGPoint) {
-        guard let playerNode else { return }
-
+    /// Quickly expanding radial flash on the tapped ring's rim nearest the projectile (0.3s).
+    func playLightsaberDeflectFlash(ring: CombatDeflectRing, projectilePosition: CGPoint) {
         let flash = SKSpriteNode(texture: Self.lightsaberFlashTexture())
         let base = max(playerSpriteHeight * 0.4, 48)
         flash.size = CGSize(width: base, height: base)
-        let origin = playerNode.position
-        flash.position = CGPoint(
-            x: (origin.x + letterPosition.x) * 0.5,
-            y: (origin.y + letterPosition.y) * 0.5
-        )
+        flash.position = geometry.borderPoint(on: ring, nearestTo: projectilePosition)
         flash.zPosition = Layer.vfx
         // Additive so the blue-white core reads as a bright saber bloom.
         flash.blendMode = .add

@@ -218,4 +218,24 @@ struct CombatDeflectGeometryTests {
         #expect(makeGeometry(ringCount: 1).ringCount == 2)
         #expect(makeGeometry(ringCount: 9).ringCount == 6)
     }
+
+    @Test func borderPointNearestProjectileLiesOnTheRingRim() {
+        let geo = makeGeometry()
+        let ring = CombatDeflectRing(1)
+        let center = geo.ringCenter(ring)
+        let projectile = CGPoint(x: center.x + 200, y: center.y + 80)
+        let border = geo.borderPoint(on: ring, nearestTo: projectile)
+
+        let nx = (border.x - center.x) / geo.ringRadii.width
+        let ny = (border.y - center.y) / geo.ringRadii.height
+        #expect(abs(nx * nx + ny * ny - 1) < 0.001)
+
+        // Same direction from the ring center as the projectile.
+        let bdx = border.x - center.x
+        let bdy = border.y - center.y
+        let pdx = projectile.x - center.x
+        let pdy = projectile.y - center.y
+        #expect(bdx * pdx + bdy * pdy > 0)
+        #expect(abs(bdx * pdy - bdy * pdx) < 0.01)
+    }
 }

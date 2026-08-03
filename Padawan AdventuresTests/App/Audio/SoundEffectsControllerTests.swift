@@ -68,7 +68,10 @@ struct SoundEffectsControllerTests {
         let controller = SoundEffectsController(player: mock)
         controller.play(trackID: "sfx_boom")
         #expect(mock.playedTrackIDs == ["sfx_boom"])
-        #expect(mock.playCalls.first?.volume == 1)
+        // Non-phonetic FX sit below phonetic cues in the mix.
+        #expect(
+            mock.playCalls.first?.volume == SoundEffectsController.backgroundSFXVolumeScale
+        )
     }
 
     @Test func playTrackIDIgnoresBlank() {
@@ -91,7 +94,43 @@ struct SoundEffectsControllerTests {
         let controller = SoundEffectsController(player: mock)
         controller.setSoundEffectsVolume(0.4)
         controller.play(trackID: "sfx_boom")
-        #expect(mock.playCalls.map(\.volume) == [0.4])
+        #expect(
+            mock.playCalls.map(\.volume)
+                == [0.4 * SoundEffectsController.backgroundSFXVolumeScale]
+        )
+    }
+
+    /// The mix hierarchy the scale constants exist to produce: phonetic cues are the
+    /// loudest, ambience/action FX sit below them, and saber clips below that.
+    @Test func phoneticCuesOutrankBackgroundAndLightsaberFX() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.play(trackID: "sfx_letter_a_name")
+        controller.play(trackID: "sfx_boom")
+        controller.play(trackID: "lightsaber-hum")
+        let volumes = mock.playCalls.map(\.volume)
+        #expect(volumes.count == 3)
+        #expect(volumes[0] > volumes[1])
+        #expect(volumes[1] > volumes[2])
+    }
+
+    /// Combat widens the phonetic-vs-FX gap without changing the ordering.
+    @Test func combatMixWidensPhoneticSeparation() {
+        func volumes(combat: Bool) -> (phonetic: Float, fx: Float) {
+            let mock = MockSoundEffectPlayer()
+            let controller = SoundEffectsController(player: mock)
+            controller.setSoundEffectsVolume(0.5)
+            controller.setCombatMixActive(combat)
+            controller.play(trackID: "sfx_word_bat")
+            controller.play(trackID: "sfx_boom")
+            return (mock.playCalls[0].volume, mock.playCalls[1].volume)
+        }
+
+        let calm = volumes(combat: false)
+        let combat = volumes(combat: true)
+        #expect(combat.phonetic > calm.phonetic)
+        #expect(combat.fx < calm.fx)
+        #expect(combat.phonetic / combat.fx > calm.phonetic / calm.fx)
     }
 
     @Test func playEventResolvesFromTable() {

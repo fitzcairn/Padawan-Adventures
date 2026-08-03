@@ -208,7 +208,7 @@ extension CombatDeflectScene {
             setPlayerFacingLeft(cos(geometry.angle(for: ring)) < 0)
         }
         let progress = inboundProgress(of: orb)
-        let letterPosition = orb.node.position
+        let projectilePosition = orb.node.position
         // Flash + deflect cue land at 20% of the swing clip.
         let flashDelay = swingAnimationDurationSeconds() * 0.2
         run(
@@ -217,14 +217,17 @@ extension CombatDeflectScene {
                 .run { [weak self] in
                     guard let self else { return }
                     SoundEffectsController.shared.play(event: "deflect", from: self.playerFx)
-                    self.playLightsaberDeflectFlash(letterPosition: letterPosition)
+                    self.playLightsaberDeflectFlash(
+                        ring: ring,
+                        projectilePosition: projectilePosition
+                    )
                 },
             ]),
             withKey: deflectFlashActionKey
         )
         orb.node.removeAction(forKey: orbFlightActionKey)
 
-        let start = letterPosition
+        let start = projectilePosition
         let end = bodyCenter(of: enemyNode, height: enemySpriteHeight)
         let mid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
         // Bend away from the ring the player tapped so the return reads as a deflection.
