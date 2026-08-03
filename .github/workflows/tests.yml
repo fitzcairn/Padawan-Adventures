@@ -11,14 +11,26 @@ concurrency:
 
 jobs:
   unit-tests:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_26.app
+        # Runner images install every Xcode under a fully versioned path, and
+        # only keep the newest few. Our 26.5 deployment target needs Xcode 26.5+.
+        run: |
+          app="$(ls -d /Applications/Xcode_26*.app 2>/dev/null \
+            | grep -E '^/Applications/Xcode_26(\.[0-9]+)+\.app$' \
+            | sort -V | tail -1)"
+          if [ -z "$app" ]; then
+            echo "No Xcode 26.x on this runner:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -switch "$app"
+          xcodebuild -version
 
       - name: Show available simulators
         run: xcrun simctl list devices available
@@ -26,5 +38,5 @@ jobs:
       - name: Run unit tests
         env:
           SIMULATOR_NAME: iPhone 17
-          SIMULATOR_OS: "26.5"
+          SIMULATOR_OS: latest
         run: ./scripts/run_tests.sh
