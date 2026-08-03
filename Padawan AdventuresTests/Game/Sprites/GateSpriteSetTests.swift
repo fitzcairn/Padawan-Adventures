@@ -30,4 +30,13 @@ struct GateSpriteSetTests {
         #expect(set.footprintScreenWidths == 1.5)
         #expect((set.meta.frameCount ?? set.frames.count) == 2)
     }
+
+    /// 6-coruscant's blast door is drawn oversized for its canvas, so it bakes at a
+    /// reduced footprint width to stand as tall as the rest of the pack.
+    @Test func onlyCoruscantNarrowsItsFootprint() throws {
+        for name in Self.allSets {
+            let set = try GateSpriteSet.loadFromBundle(set: name)
+            #expect(set.footprintScreenWidths == (name == "6-coruscant" ? 1.2 : 1.5), "\(name)")
+        }
+    }
 }

@@ -4,11 +4,11 @@
 For each sheet under Art/Levels/{set}/{set}-gate-spritesheet.png
 (or Gate/Floor/{set}/{set}-gate-spritesheet.png after first move):
 
-  1. Tight chroma key on pure blue background (6, 1, 255).
+  1. Chroma key the pure blue background (6, 1, 255), then de-spill the edge.
   2. Split into two layout halves (stacked when tall, side-by-side when wide).
   3. Keep large opaque components in each half, trim, pack.
-  4. Label frames along_x / along_y from the south tip of the iso base
-     (tip right of center → along_x; tip left → along_y).
+  4. Label frames along_x / along_y from the silhouette shear
+     (leans down-right → along_x; down-left → along_y).
   5. Write Resources/Levels/{set}/ sheet + atlas.
 
 Source filename alias: 8-genosis → 8-geonosis (matches level floor.set).
@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from paths import ART_LEVELS, ROOT, art_level_dir, baked_level_dir, level_ids
 
@@ -45,15 +45,37 @@ SET_ALIASES = {
 
 # Source sheets use a pure blue matte (not black) so dark door/shadow stays opaque.
 CHROMA_KEY = (6, 1, 255)
-CHROMA_TOLERANCE = 0
+# The matte itself is exact, but antialiased edges leave a wide blue blend band.
+# Interior art stays clear of the key until distance 112, where 3-ilum's blue ice
+# starts (0.1% of interior lost at 104, 1.9% at 112, 10.4% at 120).
+CHROMA_TOLERANCE = 104
+# No feather: a soft ramp past the hard cut would reach into that same ice.
 CHROMA_FEATHER = 0
+# Blend pixels further from the key survive the cut still tinted by the matte.
+# Cap blue against the other channels within this band of the silhouette edge;
+# the margin leaves genuinely blue art (3-ilum's ice) alone.
+SPILL_RADIUS = 2
+SPILL_MARGIN = 40
 # Keep foliage / debris that belongs to a gate; drop dust speckles.
 MIN_COMPONENT_AREA = 5000
 MIN_FRAME = 24
 ALPHA_FG = 8
-# Ignore thin bottom drips/cables when locating the iso base tip.
-MIN_TIP_OPAQUE = 100
+# Ignore thin drips/cables when measuring silhouette lean.
+MIN_ROW_FRACTION = 0.05
+# Observed |shear| is >= 0.13 for well-formed art; below this the axis is a coin flip.
+MIN_AXIS_SHEAR = 0.05
 PACK_PADDING = 4
+
+# A gate strip covers 2 tiles, whose combined floor diamonds are 1.5 tileWidths wide.
+FOOTPRINT_TILES = 2
+FOOTPRINT_SCREEN_WIDTHS = 1.5
+# Sets drawn at a different apparent camera scale than the rest of the pack, keyed to
+# the factor that brings them back in line. 6-coruscant's blast door is drawn oversized
+# for its canvas -- its base runs off the bottom edge -- so at the shared scale it stands
+# 4.0 tile heights tall against the 2.9-3.5 every other gate keeps.
+FOOTPRINT_SCALE_OVERRIDES = {
+    "6-coruscant": 0.8,
+}
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bake_sprites as bs  # noqa: E402
@@ -94,14 +116,35 @@ def discover_source_sheets() -> list[tuple[str, Path]]:
 # ---------------------------------------------------------------------------
 
 
+def suppress_blue_spill(img: Image.Image) -> Image.Image:
+    """Clamp matte-tinted blue on pixels bordering the keyed-out background."""
+    out = img.copy()
+    px = out.load()
+    assert px is not None
+    w, h = out.size
+    transparent = out.split()[3].point(lambda v: 255 if v < ALPHA_FG else 0)
+    border = transparent.filter(ImageFilter.MaxFilter(2 * SPILL_RADIUS + 1)).load()
+    assert border is not None
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a < ALPHA_FG or border[x, y] == 0:
+                continue
+            cap = max(r, g) + SPILL_MARGIN
+            if b > cap:
+                px[x, y] = (r, g, cap, a)
+    return out
+
+
 def key_background(img: Image.Image) -> Image.Image:
-    return bs.apply_chroma_key(
+    keyed = bs.apply_chroma_key(
         img.convert("RGBA"),
         key=CHROMA_KEY,
         tolerance=CHROMA_TOLERANCE,
         feather=CHROMA_FEATHER,
         smooth_radius=0,
     )
+    return suppress_blue_spill(keyed)
 
 
 def layout_halves(size: tuple[int, int]) -> list[tuple[int, int, int, int]]:
@@ -161,25 +204,42 @@ def merge_large_components(region: Image.Image) -> Image.Image:
     return out
 
 
-def classify_axis(sprite: Image.Image) -> str:
-    """Map iso base south-tip position to strip axis.
+def silhouette_shear(sprite: Image.Image) -> float:
+    """Least-squares slope of the per-row opaque centroid against row index.
 
-    Strip along +X elongates down-right → tip right of center.
-    Strip along +Y elongates down-left → tip left of center.
+    A strip along +X elongates down-right, so its centroid drifts right as y
+    grows (positive slope); a strip along +Y elongates down-left (negative).
+    Using every row instead of the base tip alone keeps the signal strong for
+    blocky gates whose base is nearly symmetric.
 
-    Skip sparse bottom rows so hanging drips/cables do not steal the tip.
+    Skip sparse rows so hanging drips/cables do not drag the centroid.
     """
     px = sprite.load()
     assert px is not None
     w, h = sprite.size
-    for y in range(h - 1, -1, -1):
-        bottom_xs = [x for x in range(w) if px[x, y][3] >= ALPHA_FG]
-        if len(bottom_xs) < MIN_TIP_OPAQUE:
+    min_row = max(1, int(w * MIN_ROW_FRACTION))
+    rows: list[tuple[int, float]] = []
+    for y in range(h):
+        xs = [x for x in range(w) if px[x, y][3] >= ALPHA_FG]
+        if len(xs) < min_row:
             continue
-        tip_x = sum(bottom_xs) / len(bottom_xs)
-        mid = (w - 1) / 2
-        return "along_x" if tip_x >= mid else "along_y"
-    raise RuntimeError("empty sprite during axis classify")
+        rows.append((y, sum(xs) / len(xs)))
+    if len(rows) < 2:
+        raise RuntimeError("empty sprite during axis classify")
+    mean_y = sum(r[0] for r in rows) / len(rows)
+    mean_x = sum(r[1] for r in rows) / len(rows)
+    covariance = sum((y - mean_y) * (cx - mean_x) for y, cx in rows)
+    variance = sum((y - mean_y) ** 2 for y, _ in rows)
+    if variance == 0:
+        raise RuntimeError("degenerate sprite during axis classify")
+    return covariance / variance
+
+
+def classify_axis(sprite: Image.Image) -> str:
+    shear = silhouette_shear(sprite)
+    if abs(shear) < MIN_AXIS_SHEAR:
+        raise RuntimeError(f"ambiguous gate axis: shear {shear:+.3f}")
+    return "along_x" if shear > 0 else "along_y"
 
 
 def extract_pieces(keyed: Image.Image) -> list[GatePiece]:
@@ -276,9 +336,10 @@ def bake_one(
             "gate_set": set_name,
             "size": packed.meta["size"],
             "frame_count": len(packed.frames),
-            # Screen-space width of a 2-tile iso strip bounding box = 1.5 × tileWidth.
-            "footprint_tiles": 2,
-            "footprint_screen_widths": 1.5,
+            "footprint_tiles": FOOTPRINT_TILES,
+            "footprint_screen_widths": round(
+                FOOTPRINT_SCREEN_WIDTHS * FOOTPRINT_SCALE_OVERRIDES.get(set_name, 1.0), 4
+            ),
         },
         "frames": packed.frames,
     }

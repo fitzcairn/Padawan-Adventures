@@ -90,8 +90,9 @@ PALETTE_SUPPRESS = 12.0
 MIN_PALETTE_SIZE = 8
 MAX_PALETTES = 8
 
-# Resolution match (Stage 6).
-DEFAULT_BAKE_SCALE = 0.5
+# Resolution match (Stage 6). Ship at native source resolution so tiles stay
+# sharp under the ~2.3–2.7x scene-point → retina-pixel magnification on iPad.
+DEFAULT_BAKE_SCALE = 1.0
 
 # Source filename stem → canonical set name (rename illum → ilum).
 SET_ALIASES = {

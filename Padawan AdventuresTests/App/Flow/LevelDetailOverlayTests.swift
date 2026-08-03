@@ -2,7 +2,7 @@ import Testing
 @testable import Padawan_Adventures
 
 struct LevelDetailOverlayTests {
-    @Test func neverPlayedUsesTakeOffPath() {
+    @Test func neverPlayedStartsImmediatelyWithoutRetryModal() {
         let progress: LevelProgress? = nil
         let hasBeenPlayed = progress?.started == true
         #expect(hasBeenPlayed == false)

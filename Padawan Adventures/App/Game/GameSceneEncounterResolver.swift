@@ -14,6 +14,7 @@ extension GameScene {
         // Detach before sync so the sprite stays on screen for the defeat fade.
         let defeatNode = renderer.detachEntityNode(id: enemyID)
         renderer.syncEntities(world.entities)
+        resumeWorldPlayerIdle()
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             guard let self else { return }
@@ -38,6 +39,7 @@ extension GameScene {
         pendingInput = PendingInput()
         renderer.render(world: world, focus: viewportFocus)
         showFixedZoomView()
+        resumeWorldPlayerIdle()
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
@@ -52,6 +54,7 @@ extension GameScene {
         renderer.syncEntities(world.entities)
         renderer.render(world: world, focus: viewportFocus)
         showFixedZoomView()
+        resumeWorldPlayerIdle()
         // Do not overwrite Continue — the last safe world remains before the failed attempt.
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
@@ -70,6 +73,7 @@ extension GameScene {
         renderer.armRevealFade()
         renderer.render(world: world, focus: viewportFocus)
         renderer.setFloorNodesAlpha(0, at: openedCoords)
+        resumeWorldPlayerIdle()
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in
             guard let self else { return }
@@ -92,6 +96,7 @@ extension GameScene {
         pendingInput = PendingInput()
         renderer.syncEntities(world.entities)
         renderer.render(world: world, focus: viewportFocus)
+        resumeWorldPlayerIdle()
         // Do not overwrite Continue — the last safe world remains before the failed attempt.
         renderer.fadeWorldIn { [weak self] in
             self?.isPausedForEncounter = false
@@ -125,6 +130,7 @@ extension GameScene {
         pendingInput = PendingInput()
         simulationLoop = SimulationLoop(isoConfig: isoConfig, enemyConfig: enemyConfig)
         showFixedZoomView()
+        resumeWorldPlayerIdle()
         onVitalsRestored?(world.healthCount, world.energyCount)
         captureContinueAndSave()
         renderer.fadeWorldIn { [weak self] in

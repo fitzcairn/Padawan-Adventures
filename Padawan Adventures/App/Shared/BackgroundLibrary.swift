@@ -37,6 +37,15 @@ final class BackgroundLibrary {
         images[name]
     }
 
+    /// True when `name` is nil/blank or already decoded.
+    ///
+    /// Screens use this on their first frame to decide whether they can paint
+    /// immediately or must wait for the backdrop.
+    func isReady(named name: String?) -> Bool {
+        guard let normalized = Self.normalizedName(name) else { return true }
+        return images[normalized] != nil
+    }
+
     /// Loads `name` from the bundle into the cache when missing.
     ///
     /// Missing resources are skipped so bootstrap / level prepare still complete.

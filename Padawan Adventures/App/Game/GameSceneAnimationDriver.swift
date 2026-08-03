@@ -108,6 +108,15 @@ extension GameScene {
         }
     }
 
+    /// Stops world locomotion and force-restarts the facing idle clip after a minigame.
+    func resumeWorldPlayerIdle() {
+        movement.reset()
+        guard let library = spriteLibrary,
+              let sprite = renderer.playerAnimatedSprite() else { return }
+        let idleName = playerFacing.animationName(locomotion: .idle)
+        sprite.restart(name: idleName, library: library)
+    }
+
     func updateEnemySpriteAnimations(poses: [EntityDisplayPose]) {
         guard let library = spriteLibrary else { return }
 

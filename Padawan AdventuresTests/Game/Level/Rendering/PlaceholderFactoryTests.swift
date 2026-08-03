@@ -340,11 +340,12 @@ struct PlaceholderFactoryTests {
         #expect(
             abs((pos?.x ?? 0) - (northMid.x - config.tileWidth * 0.5 * nudge)) < 0.001
         )
+        // `gridToScreen` gives a tile's north corner, so the strip's south tip sits one
+        // tile height below the north corner of its front cell (`b` here). Landing short
+        // of that leaves the gate floating up-left of the floor it stands on.
+        let southTipY = IsometricMath.gridToScreen(b, config: config).y - config.tileHeight
         #expect(
-            abs(
-                (pos?.y ?? 0)
-                    - (northMid.y - config.tileHeight - config.tileHeight * 0.5 * nudge)
-            ) < 0.001
+            abs((pos?.y ?? 0) - (southTipY - config.tileHeight * 0.5 * nudge)) < 0.001
         )
     }
 

@@ -53,8 +53,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import yaml
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from paths import (
     ART,
@@ -480,13 +481,76 @@ def flip_around_x_axis(image: Image.Image) -> Image.Image:
     return image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
 
-def scale_image(image: Image.Image, scale: float) -> Image.Image:
+# Default UnsharpMask when upscaling (radius in upscaled pixels).
+# RGB gets the full percent; alpha gets a milder pass so silhouettes firm up
+# without ringing. Override per sprite via `bake_sharpen: {radius, percent, threshold}`.
+DEFAULT_UPSCALE_SHARPEN: dict[str, float] = {
+    "radius": 1.2,
+    "percent": 70,
+    "threshold": 2,
+}
+
+
+def scale_image(
+    image: Image.Image,
+    scale: float,
+    *,
+    sharpen: dict[str, float] | None = None,
+) -> Image.Image:
+    """Scale an RGBA image with premultiplied Lanczos.
+
+    Straight RGBA resize bleeds keyed-out RGB (usually black) into silhouette
+    edges when upscaling. Premultiply → resize → clamp RGB ≤ A → unpremultiply
+    keeps edges clean. When ``scale > 1``, an optional UnsharpMask recovers
+    perceived detail lost to the upsample.
+    """
     if abs(scale - 1.0) < 1e-9:
         return image
-    w, h = image.size
+    rgba = image.convert("RGBA")
+    w, h = rgba.size
     nw = max(1, int(round(w * scale)))
     nh = max(1, int(round(h * scale)))
-    return image.resize((nw, nh), Image.Resampling.LANCZOS)
+
+    arr = np.asarray(rgba, dtype=np.float32)
+    a = arr[..., 3:4] / 255.0
+    premul = arr.copy()
+    premul[..., :3] = arr[..., :3] * a
+    premul_img = Image.fromarray(np.clip(premul, 0, 255).astype(np.uint8), mode="RGBA")
+    resized = premul_img.resize((nw, nh), Image.Resampling.LANCZOS)
+
+    out = np.asarray(resized, dtype=np.float32)
+    # Lanczos can overshoot; clamp RGB into [0, A] before unpremultiply.
+    out[..., :3] = np.minimum(out[..., :3], out[..., 3:4])
+    a_out = out[..., 3:4]
+    # Avoid divide-by-zero; leave RGB at 0 where fully transparent.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rgb = np.where(a_out > 0, out[..., :3] * 255.0 / a_out, 0.0)
+    rgb = np.clip(rgb, 0, 255)
+    unpremul = np.concatenate([rgb, a_out], axis=-1).astype(np.uint8)
+    result = Image.fromarray(unpremul, mode="RGBA")
+
+    if scale > 1.0:
+        params = dict(DEFAULT_UPSCALE_SHARPEN)
+        if sharpen:
+            params.update({k: float(v) for k, v in sharpen.items() if k in params})
+        radius = float(params["radius"])
+        percent = int(round(params["percent"]))
+        threshold = int(round(params["threshold"]))
+        if percent > 0 and radius > 0:
+            r, g, b, a_ch = result.split()
+            rgb_img = Image.merge("RGB", (r, g, b)).filter(
+                ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=threshold)
+            )
+            # Milder alpha pass firms the silhouette without inventing outline jaggies.
+            alpha_percent = max(1, percent // 2)
+            a_sharp = a_ch.filter(
+                ImageFilter.UnsharpMask(
+                    radius=radius, percent=alpha_percent, threshold=threshold
+                )
+            )
+            result = Image.merge("RGBA", (*rgb_img.split(), a_sharp))
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -602,6 +666,8 @@ class BakeJob:
     # "shared" = cell-space union crop; "bottom_edges" = content-relative L/R/bottom align.
     trim_mode: str = "shared"
     bake_scale: float = 1.0
+    # Optional UnsharpMask override when bake_scale > 1 (keys: radius, percent, threshold).
+    bake_sharpen: dict[str, float] | None = None
     flip_vertical: bool = True
     isolate_primary: bool = False
     preserve_anchors: bool = False
@@ -655,6 +721,14 @@ def bake_scale_from_sprite(sprite: dict[str, Any], *, item_default: bool = False
     return 1.0
 
 
+def bake_sharpen_from_sprite(sprite: dict[str, Any]) -> dict[str, float] | None:
+    """Optional UnsharpMask override from YAML (`bake_sharpen: {radius, percent, threshold}`)."""
+    raw = sprite.get("bake_sharpen")
+    if not isinstance(raw, dict):
+        return None
+    return {str(k): float(v) for k, v in raw.items()}
+
+
 def add_config_input(plan: BakePlan, path: Path) -> None:
     if path.is_file() and path not in plan.input_paths:
         plan.input_paths.append(path)
@@ -684,6 +758,7 @@ def collect_animation_jobs(
         )
         return
     scale = bake_scale_from_sprite(sprite, item_default=item_default_scale)
+    bake_sharpen = bake_sharpen_from_sprite(sprite)
     animations = sprite.get("animations") or {}
     if not isinstance(animations, dict):
         plan.errors.append(f"{category}: animations must be a mapping")
@@ -705,6 +780,9 @@ def collect_animation_jobs(
         anim_scale = scale
         if source.get("bake_scale") is not None:
             anim_scale = float(source["bake_scale"])
+        anim_sharpen = bake_sharpen
+        if isinstance(source.get("bake_sharpen"), dict):
+            anim_sharpen = {k: float(v) for k, v in source["bake_sharpen"].items()}
         sheet_name = source.get("sheet")
         atlas_name = source.get("atlas") or sheet_name
         if not sheet_name or not atlas_name:
@@ -733,6 +811,7 @@ def collect_animation_jobs(
                 trim=trim,
                 trim_mode=trim_mode,
                 bake_scale=anim_scale,
+                bake_sharpen=anim_sharpen,
                 flip_vertical=flip_vertical,
                 isolate_primary=isolate_primary,
                 preserve_anchors=preserve_anchors,
@@ -1288,7 +1367,7 @@ def bake_job(job: BakeJob) -> tuple[Path, Path]:
     if abs(job.bake_scale - 1.0) > 1e-9:
         scaled: list[tuple[str, Image.Image, dict[str, Any]]] = []
         for key, im, extra in prepared:
-            sim = scale_image(im, job.bake_scale)
+            sim = scale_image(im, job.bake_scale, sharpen=job.bake_sharpen)
             extra = dict(extra)
             if job.preserve_anchors and "anchor" in extra and isinstance(extra["anchor"], dict):
                 anchor = dict(extra["anchor"])

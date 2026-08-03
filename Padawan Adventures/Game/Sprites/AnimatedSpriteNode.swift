@@ -57,6 +57,13 @@ final class AnimatedSpriteNode: SKSpriteNode {
         }
     }
 
+    /// Plays `name` from the start even if that clip is already the current animation.
+    @MainActor
+    func restart(name: String, library: SpriteLibrary, libraryID: String = "player") {
+        currentAnimationName = nil
+        play(name: name, library: library, libraryID: libraryID)
+    }
+
     /// Shows frame 0 of `name` with correct scale/anchor; does not start a looping action.
     @MainActor
     func show(name: String, library: SpriteLibrary, libraryID: String = "player") {

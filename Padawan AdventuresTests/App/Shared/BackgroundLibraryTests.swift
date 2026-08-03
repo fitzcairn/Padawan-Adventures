@@ -24,6 +24,19 @@ struct BackgroundLibraryTests {
         #expect(library.count == 0)
     }
 
+    @Test func isReadyTracksCacheAndTreatsNoBackgroundAsReady() async {
+        let library = BackgroundLibrary()
+        #expect(library.isReady(named: nil))
+        #expect(library.isReady(named: "   "))
+        #expect(!library.isReady(named: "level_screen_bg"))
+
+        await library.ensureLoaded(named: "level_screen_bg")
+        #expect(library.isReady(named: " level_screen_bg "))
+
+        library.retain(names: [])
+        #expect(!library.isReady(named: "level_screen_bg"))
+    }
+
     @Test func screenBackgroundNamesIncludeLevelSelect() {
         let names = BackgroundLibrary.screenBackgroundNames()
         #expect(names.contains("level_screen_bg"))

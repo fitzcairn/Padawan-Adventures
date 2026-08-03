@@ -54,30 +54,34 @@ struct InventoryRackView: View {
         let gleamEnabled = sprite != nil && opacity > 0 && !(isCelebrating && inventorySparklesActive)
 
         ZStack {
-            if let id = level.treasure, let image = sprite {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: inventoryIconSide, height: inventoryIconSide)
-                    // Parts stand upright in the sheets; lay them flat along the rack.
-                    .rotationEffect(.degrees(90))
-                    .accessibilityIdentifier("levelSelect.inventory.\(id)")
-                    .accessibilityLabel(level.displayName)
-            } else {
-                Image(systemName: level.artifact)
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(AppChrome.primaryTextColor)
-                    .frame(width: inventoryIconSide, height: inventoryIconSide)
-                    .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
-            }
+            Group {
+                if let id = level.treasure, let image = sprite {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: inventoryIconSide, height: inventoryIconSide)
+                        // Parts stand upright in the sheets; lay them flat along the rack.
+                        .rotationEffect(.degrees(90))
+                        .accessibilityIdentifier("levelSelect.inventory.\(id)")
+                        .accessibilityLabel(level.displayName)
+                } else {
+                    Image(systemName: level.artifact)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(AppChrome.primaryTextColor)
+                        .frame(width: inventoryIconSide, height: inventoryIconSide)
+                        .accessibilityIdentifier("levelSelect.inventory.\(level.artifact)")
+                }
 
-            SpiralGleamView(
-                isEnabled: gleamEnabled,
-                diameter: inventoryIconSide,
-                image: sprite
-            )
-            .frame(width: inventoryIconSide, height: inventoryIconSide)
-            .allowsHitTesting(false)
+                SpiralGleamView(
+                    isEnabled: gleamEnabled,
+                    diameter: inventoryIconSide,
+                    image: sprite
+                )
+                .frame(width: inventoryIconSide, height: inventoryIconSide)
+                .allowsHitTesting(false)
+            }
+            // Fade only the icon; keep the burst fully visible around it (same as planet unlock).
+            .opacity(opacity)
 
             if isCelebrating {
                 SparkleBurstView(isActive: inventorySparklesActive, diameter: inventoryIconSide)
@@ -85,6 +89,5 @@ struct InventoryRackView: View {
                     .allowsHitTesting(false)
             }
         }
-        .opacity(opacity)
     }
 }

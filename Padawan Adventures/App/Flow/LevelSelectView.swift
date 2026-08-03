@@ -18,6 +18,8 @@ struct LevelSelectView: View {
     @State private var inventoryIcons: [String: UIImage] = [:]
     /// False until planets, inventory icons, and coin art are warm — content stays hidden.
     @State private var isContentReady = false
+    /// False until `AppScreen` has painted the backdrop, so planets never land on bare colour.
+    @State private var isBackgroundReady = false
     /// Resource whose treasure should fade in (first completion this session).
     @State private var celebratingInventoryResource: String?
     /// Planet that should animate from locked → unlocked.
@@ -28,6 +30,7 @@ struct LevelSelectView: View {
     @State private var planetSparklesActive = false
 
     private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
+    private static let contentFadeSeconds: Double = 0.35
 
     init(
         session: AppSession,
@@ -38,7 +41,8 @@ struct LevelSelectView: View {
         self.router = router
         let resolvedLevels = levels ?? LevelCatalog.loadFromBundle()
         self.viewModel = LevelSelectViewModel(session: session, levels: resolvedLevels)
-        self.screenBackground = (try? ScreenConfig.loadFromBundle(named: "level_select"))?.background
+        let background = (try? ScreenConfig.loadFromBundle(named: "level_select"))?.background
+        self.screenBackground = background
 
         // Seed celebration from session so the first frame already hides the new item / lock.
         let pending = session.pendingLevelSelectCelebration
@@ -61,75 +65,38 @@ struct LevelSelectView: View {
         // Bootstrap warms planets / icons / coin; show content on first frame when present.
         let planetsReady = LevelSelectViewModel.planetsReady(session: session, levels: resolvedLevels)
         _isContentReady = State(initialValue: planetsReady && ScoreCoinIcon.uiImage() != nil)
+        _isBackgroundReady = State(
+            initialValue: session.backgroundLibrary.isReady(named: background)
+        )
+    }
+
+    /// Planets wait on the backdrop; the background is dropped on level exit, so arriving
+    /// here usually means a fresh multi-megapixel decode.
+    private var showsContent: Bool {
+        isContentReady && isBackgroundReady
     }
 
     var body: some View {
         ZStack {
             AppScreen(
                 backgroundNamed: screenBackground,
-                backgroundLibrary: session.backgroundLibrary
+                backgroundLibrary: session.backgroundLibrary,
+                isBackgroundReady: $isBackgroundReady
             ) {
-                if isContentReady {
-                    VStack(spacing: 0) {
-                        starCountHeader
-                            .padding(.bottom, 8)
-
-                        PlanetStripView(
-                            levels: viewModel.levels,
-                            session: session,
-                            orderedResourceNames: viewModel.orderedResourceNames,
-                            completedLevels: viewModel.completedLevels,
-                            dadModeUnlocked: viewModel.dadModeUnlocked(progressionEpoch: progressionEpoch),
-                            celebratingUnlockResource: celebratingUnlockResource,
-                            celebrationRevealed: celebrationRevealed,
-                            planetSparklesActive: planetSparklesActive,
-                            onLevelTap: handleLevelTap,
-                            canScrollLeft: $canScrollLeft,
-                            canScrollRight: $canScrollRight
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.vertical, 12)
-
-                        // Inventory + chrome buttons share one bottom band (bottoms aligned).
-                        HStack(alignment: .bottom, spacing: 16) {
-                            AppCircularIconButton(
-                                systemName: "chevron.backward",
-                                accessibilityID: "levelSelect.back",
-                                accessibilityLabel: "Back"
-                            ) {
-                                router.popOrShowMenu()
-                            }
-
-                            InventoryRackView(
-                                session: session,
-                                inventoryLevels: viewModel.inventoryLevels(progressionEpoch: progressionEpoch),
-                                inventoryTreasureIDs: viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch),
-                                isContentReady: isContentReady,
-                                celebratingInventoryResource: celebratingInventoryResource,
-                                celebrationRevealed: celebrationRevealed,
-                                inventorySparklesActive: inventorySparklesActive,
-                                inventoryIcons: $inventoryIcons
-                            )
-                            .frame(maxWidth: AppChrome.maxContentWidth)
-                            .frame(maxWidth: .infinity)
-
-                            AppCircularIconButton(
-                                systemName: "lock.fill",
-                                accessibilityID: "levelSelect.dadModeLock",
-                                accessibilityLabel: "Dad mode"
-                            ) {
-                                showPassword = true
-                            }
-                        }
+                Group {
+                    if showsContent {
+                        readyContent
+                            .transition(.opacity)
+                    } else {
+                        Color.clear
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .accessibilityIdentifier("levelSelect.loading")
                     }
-                } else {
-                    Color.clear
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .accessibilityIdentifier("levelSelect.loading")
                 }
+                .animation(.easeIn(duration: Self.contentFadeSeconds), value: showsContent)
             }
 
-            if isContentReady {
+            if showsContent {
                 PlanetStripScrollHints(
                     canScrollLeft: canScrollLeft,
                     canScrollRight: canScrollRight
@@ -154,7 +121,6 @@ struct LevelSelectView: View {
                 let progress = session.playerState?.levels[selectedLevel.resourceName]
                 LevelDetailOverlay(
                     levelName: selectedLevel.displayName,
-                    hasBeenPlayed: progress?.started == true,
                     highestStars: progress?.starsEarned ?? 0,
                     onStart: {
                         startLevel(selectedLevel)
@@ -172,6 +138,10 @@ struct LevelSelectView: View {
             let ids = viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch)
             inventoryIcons = viewModel.refreshInventoryIcons(ids: ids)
             isContentReady = true
+        }
+        .task(id: showsContent) {
+            // Held back until the strip is on screen, or the reveal plays behind a blank screen.
+            guard showsContent else { return }
             await runPendingCelebrationIfNeeded()
         }
         .fullScreenCover(isPresented: $showPassword) {
@@ -232,6 +202,61 @@ struct LevelSelectView: View {
         planetSparklesActive = false
     }
 
+    private var readyContent: some View {
+        VStack(spacing: 0) {
+            starCountHeader
+                .padding(.bottom, 8)
+
+            PlanetStripView(
+                levels: viewModel.levels,
+                session: session,
+                orderedResourceNames: viewModel.orderedResourceNames,
+                completedLevels: viewModel.completedLevels,
+                dadModeUnlocked: viewModel.dadModeUnlocked(progressionEpoch: progressionEpoch),
+                celebratingUnlockResource: celebratingUnlockResource,
+                celebrationRevealed: celebrationRevealed,
+                planetSparklesActive: planetSparklesActive,
+                onLevelTap: handleLevelTap,
+                canScrollLeft: $canScrollLeft,
+                canScrollRight: $canScrollRight
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 12)
+
+            // Inventory + chrome buttons share one bottom band (bottoms aligned).
+            HStack(alignment: .bottom, spacing: 16) {
+                AppCircularIconButton(
+                    systemName: "chevron.backward",
+                    accessibilityID: "levelSelect.back",
+                    accessibilityLabel: "Back"
+                ) {
+                    router.popOrShowMenu()
+                }
+
+                InventoryRackView(
+                    session: session,
+                    inventoryLevels: viewModel.inventoryLevels(progressionEpoch: progressionEpoch),
+                    inventoryTreasureIDs: viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch),
+                    isContentReady: showsContent,
+                    celebratingInventoryResource: celebratingInventoryResource,
+                    celebrationRevealed: celebrationRevealed,
+                    inventorySparklesActive: inventorySparklesActive,
+                    inventoryIcons: $inventoryIcons
+                )
+                .frame(maxWidth: AppChrome.maxContentWidth)
+                .frame(maxWidth: .infinity)
+
+                AppCircularIconButton(
+                    systemName: "lock.fill",
+                    accessibilityID: "levelSelect.dadModeLock",
+                    accessibilityLabel: "Dad mode"
+                ) {
+                    showPassword = true
+                }
+            }
+        }
+    }
+
     private var starCountHeader: some View {
         HStack(spacing: 8) {
             ScoreCoinIcon.Image(side: 22)
@@ -251,10 +276,20 @@ struct LevelSelectView: View {
             progressionEpoch: progressionEpoch,
             nameSpeaker: nameSpeaker
         ) {
+            playMenuSound("button_click")
             messageOverlay = message
             return
         }
-        selectedLevel = level
+
+        let hasBeenPlayed = session.playerState?.levels[level.resourceName]?.started == true
+        if hasBeenPlayed {
+            playMenuSound("button_click")
+            selectedLevel = level
+        } else {
+            // First visit: takeoff on planet tap and start immediately (no confirm modal).
+            playMenuSound("takeoff")
+            startLevel(level)
+        }
     }
 
     private func startLevel(_ level: LevelDescriptor) {

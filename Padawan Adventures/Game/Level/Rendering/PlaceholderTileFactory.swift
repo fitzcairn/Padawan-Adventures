@@ -159,6 +159,13 @@ extension PlaceholderFactory {
     /// Fraction of one tile step to push gate sprites further southwest (+Y / down-left).
     static let gateSpriteSouthwestNudge: CGFloat = 0.02
 
+    /// Tile heights from the midpoint of a strip's two north corners down to its south tip.
+    ///
+    /// `gridToScreen` returns a tile's *north* corner, so the front tile's south tip lies
+    /// 1.5 tile heights below it. Averaging the two north corners already covers 0.25 of
+    /// that, leaving 1.25 to drop.
+    static let gateStripSouthTipDrop: CGFloat = 1.25
+
     /// South tip of the combined floor diamonds for a 2-tile gate strip.
     static func gateStripSouthTip(
         coord: GridCoord,
@@ -171,7 +178,8 @@ extension PlaceholderFactory {
         let nudge = gateSpriteSouthwestNudge
         return CGPoint(
             x: (p0.x + p1.x) / 2 - config.tileWidth * 0.5 * nudge,
-            y: (p0.y + p1.y) / 2 - config.tileHeight - config.tileHeight * 0.5 * nudge
+            y: (p0.y + p1.y) / 2 - config.tileHeight * gateStripSouthTipDrop
+                - config.tileHeight * 0.5 * nudge
         )
     }
 

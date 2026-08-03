@@ -15,12 +15,15 @@ slash_max_screen_width_fraction: 0.20
 # wall_height x scale via fitHeight.
 # `scale` is proportional to the source art (0.60 x cropHeight / 105) so relative
 # creature sizes survive height normalization. Display height = wall_height x scale.
+# `bake_scale: 2.0` upsamples at bake time (Lanczos + unsharp) so enemies stay
+# sharp under iPad retina magnification; runtime display size is unchanged.
 # Mirrored facings use flip_of (same pattern as player.yaml) so left/NW/SW sheets
 # are not loaded — PNGs may remain on disk unused.
 sprites:
   centipede:
     root: Sprites/Enemies/Centipede
     scale: 0.86
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: centipede-idle_up-spritesheet, atlas: centipede-idle_up-atlas }
@@ -42,6 +45,7 @@ sprites:
   dino:
     root: Sprites/Enemies/Dino
     scale: 1.40
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: dino-idle_up-spritesheet, atlas: dino-idle_up-atlas }
@@ -63,6 +67,7 @@ sprites:
   drone:
     root: Sprites/Enemies/Drone
     scale: 0.87
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: drone-idle_up-spritesheet, atlas: drone-idle_up-atlas }
@@ -84,6 +89,7 @@ sprites:
   ice_monster:
     root: Sprites/Enemies/IceMonster
     scale: 1.2
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: ice_monster-idle_up-spritesheet, atlas: ice_monster-idle_up-atlas }
@@ -105,6 +111,7 @@ sprites:
   lava_lizard:
     root: Sprites/Enemies/LavaLizard
     scale: 0.94
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: lava_lizard-idle_up-spritesheet, atlas: lava_lizard-idle_up-atlas }
@@ -126,6 +133,7 @@ sprites:
   moth:
     root: Sprites/Enemies/Moth
     scale: 0.96
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: moth-idle_up-spritesheet, atlas: moth-idle_up-atlas }
@@ -147,6 +155,7 @@ sprites:
   robot:
     root: Sprites/Enemies/Robot
     scale: 0.86
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: robot-idle_up-spritesheet, atlas: robot-idle_up-atlas }
@@ -168,6 +177,7 @@ sprites:
   snake:
     root: Sprites/Enemies/Snake
     scale: 1.00
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: snake-idle_up-spritesheet, atlas: snake-idle_up-atlas }
@@ -189,6 +199,7 @@ sprites:
   spider:
     root: Sprites/Enemies/Spider
     scale: 0.60
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: spider-idle_up-spritesheet, atlas: spider-idle_up-atlas }
@@ -210,6 +221,7 @@ sprites:
   treant:
     root: Sprites/Enemies/Treant
     scale: 0.91
+    bake_scale: 2.0
     anchor_correction: 0
     animations:
       idle_up: { sheet: treant-idle_up-spritesheet, atlas: treant-idle_up-atlas }

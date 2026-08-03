@@ -35,16 +35,26 @@ enum ScreenLayout {
 struct AppScreen<Content: View>: View {
     private let backgroundNamed: String?
     private let backgroundLibrary: BackgroundLibrary?
+    private let isBackgroundReady: Binding<Bool>?
     @ViewBuilder private let content: () -> Content
+
+    /// Held in state rather than read from the library on each pass: the library is a
+    /// plain cache, so nothing else would redraw the screen once the decode lands.
+    @State private var backgroundImage: UIImage?
 
     init(
         backgroundNamed: String? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
+        isBackgroundReady: Binding<Bool>? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.backgroundNamed = backgroundNamed
         self.backgroundLibrary = backgroundLibrary
+        self.isBackgroundReady = isBackgroundReady
         self.content = content
+        _backgroundImage = State(
+            initialValue: backgroundNamed.flatMap { backgroundLibrary?.uiImage(named: $0) }
+        )
     }
 
     var body: some View {
@@ -56,17 +66,22 @@ struct AppScreen<Content: View>: View {
         }
         .ignoresSafeArea()
         .background {
-            if let backgroundNamed,
-               let image = backgroundLibrary?.uiImage(named: backgroundNamed) {
-                ScreenBackgroundView(image: image)
+            if let backgroundImage {
+                ScreenBackgroundView(image: backgroundImage)
             } else {
                 AppChrome.backgroundColor.ignoresSafeArea()
             }
         }
         .task(id: backgroundNamed) {
-            guard let backgroundNamed, let backgroundLibrary else { return }
+            guard let backgroundNamed, let backgroundLibrary else {
+                isBackgroundReady?.wrappedValue = true
+                return
+            }
             await backgroundLibrary.ensureLoaded(named: backgroundNamed)
             backgroundLibrary.retain(names: [backgroundNamed])
+            backgroundImage = backgroundLibrary.uiImage(named: backgroundNamed)
+            // Signalled even when the resource is missing, so content is never stranded.
+            isBackgroundReady?.wrappedValue = true
         }
     }
 }
