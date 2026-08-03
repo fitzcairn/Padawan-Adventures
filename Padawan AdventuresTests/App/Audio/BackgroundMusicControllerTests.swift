@@ -188,9 +188,7 @@ struct BackgroundMusicControllerTests {
         #expect(controller.isPhoneticDucked)
         #expect(mock.volume == base * SoundEffectsController.phoneticCueDuckScale)
 
-        await waitFor(timeoutNanoseconds: 5_000_000_000) {
-            !controller.isPhoneticDucked && mock.volume == base
-        }
+        await controller.awaitPhoneticDuckForTesting()
         #expect(!controller.isPhoneticDucked)
         #expect(mock.volume == base)
     }

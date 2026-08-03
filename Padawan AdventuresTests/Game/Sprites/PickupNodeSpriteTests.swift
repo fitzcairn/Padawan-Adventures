@@ -55,12 +55,16 @@ struct PickupNodeSpriteTests {
             return try #require(node.children.compactMap { $0 as? AnimatedSpriteNode }.first)
         }
 
+        // Display height = wall_height × items.yaml `sprite.scale` × the world-entity multiplier.
+        let fullHeight = 80 * PlaceholderFactory.spriteDisplayScaleMultiplier
+        let halfHeight = fullHeight / 2
+
         let full = try makePickup(scale: 1.0)
         let half = try makePickup(scale: 0.5)
-        #expect(abs(full.size.height - 80) < 0.5)
-        #expect(abs(half.size.height - 40) < 0.5)
-        #expect(abs(full.size.width - 80 * (50.0 / 125.0)) < 1.0)
-        #expect(abs(half.size.width - 40 * (50.0 / 125.0)) < 1.0)
+        #expect(abs(full.size.height - fullHeight) < 0.5)
+        #expect(abs(half.size.height - halfHeight) < 0.5)
+        #expect(abs(full.size.width - fullHeight * (50.0 / 125.0)) < 1.0)
+        #expect(abs(half.size.width - halfHeight * (50.0 / 125.0)) < 1.0)
 
         // Live SKView: animate(resize:false) must keep the YAML-driven size.
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
@@ -71,6 +75,6 @@ struct PickupNodeSpriteTests {
         while Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.016))
         }
-        #expect(abs(full.size.height - 80) < 0.5, "after animate \(full.size)")
+        #expect(abs(full.size.height - fullHeight) < 0.5, "after animate \(full.size)")
     }
 }

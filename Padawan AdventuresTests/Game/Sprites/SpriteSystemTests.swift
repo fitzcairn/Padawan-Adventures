@@ -487,16 +487,18 @@ struct SpriteSystemTests {
         let ordered = atlas.orderedFrames
         #expect(ordered.map(\.key) == (0..<25).map(String.init))
 
-        let frameW = 256
-        let frameH = 256
-        let columns = 5
-        for (index, entry) in ordered.enumerated() {
-            let expectedX = (index % columns) * frameW
-            let expectedY = (index / columns) * frameH
-            #expect(entry.frame.x == expectedX)
-            #expect(entry.frame.y == expectedY)
-            #expect(entry.frame.w == frameW)
-            #expect(entry.frame.h == frameH)
+        // The bake repacks frames tightly, so cells are neither uniform nor grid-aligned.
+        // What must hold is reading order: rows run top to bottom, and within a row
+        // frames run left to right. A Y-flip in the packer would reverse the rows.
+        for entry in ordered {
+            #expect(entry.frame.w > 0)
+            #expect(entry.frame.h > 0)
+        }
+        for (previous, entry) in zip(ordered, ordered.dropFirst()) {
+            #expect(entry.frame.y >= previous.frame.y)
+            if entry.frame.y == previous.frame.y {
+                #expect(entry.frame.x > previous.frame.x)
+            }
         }
 
         let sheetURL = try Self.playerResourceURL(
@@ -504,11 +506,9 @@ struct SpriteSystemTests {
             extension: "png"
         )
         let sheetImage = try #require(UIImage(contentsOfFile: sheetURL.path)?.cgImage)
-        let keyed = SpriteSheetLoader.applyChromaKey(
-            to: sheetImage,
-            key: (r: 0, g: 0, b: 0)
-        )
 
+        // Baked sheets arrive already keyed, trimmed and SpriteKit-oriented, so the expected
+        // frame is the atlas rect cropped straight out of the sheet with no pixel processing.
         var atlasCrops: [CGImage] = []
         for entry in ordered {
             let crop = CGRect(
@@ -517,10 +517,8 @@ struct SpriteSystemTests {
                 width: entry.frame.w,
                 height: entry.frame.h
             )
-            atlasCrops.append(try #require(keyed.cropping(to: crop)))
+            atlasCrops.append(try #require(sheetImage.cropping(to: crop)))
         }
-        let expectedTrimmed = SpriteSheetLoader.trimToSharedOpaqueBounds(atlasCrops)
-            .map(SpriteSheetLoader.flipAroundXAxis)
 
         // Production load path (same as SpriteLibrary / AnimatedSpriteNode).
         let idle = try SpriteSheetLoader.loadAnimation(
@@ -529,11 +527,11 @@ struct SpriteSystemTests {
             root: "Sprites/Player",
             chromaKey: "#000000"
         )
-        #expect(idle.frames.count == expectedTrimmed.count)
+        #expect(idle.frames.count == atlasCrops.count)
 
-        // Each playable frame must be the trimmed+X-flipped atlas crop at that index.
+        // Each playable frame must be the atlas crop at that index.
         // SKTexture.cgImage() may V-invert relative to the source crop — accept either.
-        for (index, expectedCrop) in expectedTrimmed.enumerated() {
+        for (index, expectedCrop) in atlasCrops.enumerated() {
             let expected = try #require(rgbaBytes(of: expectedCrop))
             let expectedFlipped = try #require(rgbaBytes(of: expectedCrop, flipVertically: true))
 
@@ -541,8 +539,8 @@ struct SpriteSystemTests {
             let actual = try #require(rgbaBytes(of: textureImage))
             #expect(actual == expected || actual == expectedFlipped)
 
-            if index + 1 < expectedTrimmed.count {
-                let nextPixels = try #require(rgbaBytes(of: expectedTrimmed[index + 1]))
+            if index + 1 < atlasCrops.count {
+                let nextPixels = try #require(rgbaBytes(of: atlasCrops[index + 1]))
                 #expect(actual != nextPixels)
             }
         }

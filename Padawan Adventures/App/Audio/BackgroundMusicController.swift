@@ -123,6 +123,11 @@ final class BackgroundMusicController {
         }
     }
 
+    /// Awaits the in-flight duck release so tests observe the restore without polling a timer.
+    func awaitPhoneticDuckForTesting() async {
+        await phoneticDuckTask?.value
+    }
+
     // MARK: - Transitions
 
     private func beginTransition(_ work: @escaping @MainActor () async -> Void) {
