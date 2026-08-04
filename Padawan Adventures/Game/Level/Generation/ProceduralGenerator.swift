@@ -91,9 +91,10 @@ nonisolated struct ProceduralGenerator: Sendable {
             )
             let storyTiles = result.world.tiles.first ?? []
             let missing = Self.missingRequiredInteractables(in: result.world)
-            let passagesGated = Self.roomsAreSeparatedByGates(
+            let passagesGated = Self.roomPassagesAreIntentional(
                 rooms: result.rooms,
-                tiles: storyTiles
+                tiles: storyTiles,
+                doorways: result.doorwayCells
             )
             let gateConnected = Self.allRoomsGateConnected(
                 rooms: result.rooms,
@@ -135,6 +136,7 @@ nonisolated struct ProceduralGenerator: Sendable {
             spawn: GridCoord(x: 0, y: 0, story: 0),
             topRight: GeneratedRoom(id: 0, cells: [], center: GridCoord(x: 0, y: 0, story: 0), latticeX: 0, latticeY: 0),
             joinEdges: [],
+            doorwayCells: [],
             width: config.world.width,
             height: config.world.height,
             stories: config.world.stories
@@ -172,7 +174,8 @@ nonisolated struct ProceduralGenerator: Sendable {
             world: world,
             rooms: state.rooms,
             topRightRoomID: state.topRight.id,
-            joinPairs: state.joinEdges
+            joinPairs: state.joinEdges,
+            doorwayCells: state.doorwayCells
         )
     }
 }

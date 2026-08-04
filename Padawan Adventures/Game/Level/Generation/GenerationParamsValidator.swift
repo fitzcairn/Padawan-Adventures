@@ -3,7 +3,6 @@ import Foundation
 /// Shared generation-parameter checks used by `LevelConfig` and `WorldGenerationConfig`.
 nonisolated enum GenerationParamsValidator {
     static func validate(
-        algorithm: String,
         width: Int,
         height: Int,
         room: LevelConfig.RoomParams,
@@ -13,9 +12,6 @@ nonisolated enum GenerationParamsValidator {
         enemies: LevelConfig.EnemiesSpawnConfig?,
         pickups: LevelConfig.PickupsSpawnConfig?
     ) throws {
-        guard algorithm == "rooms_doors" else {
-            throw WorldSeedError.unsupportedGenerationAlgorithm(algorithm)
-        }
         guard width > 4, height > 4 else {
             throw WorldSeedError.worldTooSmall
         }
@@ -34,8 +30,8 @@ nonisolated enum GenerationParamsValidator {
         guard room.pitMeanSize >= 1, room.pitMeanSize <= Double(room.pitMaxSize) else {
             throw WorldSeedError.invalidRoomPitSize(mean: room.pitMeanSize, max: room.pitMaxSize)
         }
-        guard room.partitionGateChance >= 0, room.partitionGateChance <= 1 else {
-            throw WorldSeedError.invalidRoomPartitionGateChance(room.partitionGateChance)
+        guard room.gateProbability >= 0, room.gateProbability <= 1 else {
+            throw WorldSeedError.invalidGateProbability(room.gateProbability)
         }
         guard !floorSet.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WorldSeedError.emptyFloorSet

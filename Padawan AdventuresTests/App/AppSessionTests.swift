@@ -29,7 +29,7 @@ struct AppSessionTests {
     @Test func fallbackConfigIsSingleStory() {
         let app = AppSession.fallbackAppConfig()
         let level = LevelConfig.fallback
-        #expect(app.world.stories == 1)
+        #expect(WorldGenerationConfig.compose(app: app, level: level).world.stories == 1)
         #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
     }

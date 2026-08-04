@@ -164,7 +164,7 @@ struct EnemyConfigTests {
           spider:
             root: Enemies/Spider
             trim: false
-            scale: 0.60
+            height_fraction: 0.60
             animations:
               idle_down: { sheet: spider-idle_down-spritesheet, atlas: spider-idle_down-atlas }
         defaults:
@@ -199,7 +199,7 @@ struct EnemyConfigTests {
           dino:
             root: Enemies/Dino
             trim: false
-            scale: 1.10
+            height_fraction: 1.10
             animations:
               idle_down: { sheet: dino-idle_down-spritesheet, atlas: dino-idle_down-atlas }
         defaults:

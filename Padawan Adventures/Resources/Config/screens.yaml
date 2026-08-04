@@ -1,5 +1,4 @@
 # Per-screen music cues and optional still backgrounds.
-version: 1
 screens:
   menu:
     # Same track as loading — no-op while already playing; restores after gameplay.

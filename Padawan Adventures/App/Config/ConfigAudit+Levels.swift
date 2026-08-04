@@ -20,10 +20,10 @@ extension ConfigAudit {
             return ["\(label).floor.set: missing or invalid atlas for '\(setName)' (\(error))"]
         }
         if level.floor.decorProb < 0 || level.floor.decorProb > 1 {
-            return ["\(label).floor.decor_prob: \(level.floor.decorProb) out of 0...1"]
+            return ["\(label).world.floor.decor_probability: \(level.floor.decorProb) out of 0...1"]
         }
         if level.floor.cohesion < 0 || level.floor.cohesion > 1 {
-            return ["\(label).floor.cohesion: \(level.floor.cohesion) out of 0...1"]
+            return ["\(label).world.floor.cohesion_fraction: \(level.floor.cohesion) out of 0...1"]
         }
         return []
     }
@@ -110,7 +110,7 @@ extension ConfigAudit {
         guard let spawn = level.enemies else { return [] }
         return spawn.types.compactMap { typeID in
             guard enemies.type(named: typeID) != nil else {
-                return "\(label).enemies.types: unknown enemy id '\(typeID)'"
+                return "\(label).world.enemies.types: unknown enemy id '\(typeID)'"
             }
             return nil
         }

@@ -43,11 +43,16 @@ struct LevelConfigSnapshotTests {
         #expect(level.width == 20)
         #expect(level.roomCount == 5)
         #expect(level.enemies?.types == ["dino", "treant"])
-        #expect(level.combatLetterSpawnRate == 0.7)
-        #expect(level.combatLetterCase == .lower)
 
         #expect(level.combat.minigames.map(\.kind) == [.slash, .deflect])
-        #expect(level.combat.minigames.map(\.weight) == [0, 1])
+        #expect(level.combat.minigames.map(\.weight) == [0.5, 0.5])
+        guard case .slash(let slash) = level.combat.minigames[0] else {
+            Issue.record("expected slash combat entry")
+            return
+        }
+        #expect(slash.letterSpawnMultiplier == 0.7)
+        #expect(slash.letterCase == .lower)
+        #expect(slash.letterSoundRepeatSeconds == 3)
         guard case .deflect(let deflect) = level.combat.minigames[1] else {
             Issue.record("expected deflect combat entry")
             return
@@ -58,7 +63,8 @@ struct LevelConfigSnapshotTests {
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
-        #expect(level.gate.minigames.map(\.kind) == [.wordPlug])
+        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .spelling, .letterMatch])
+        #expect(level.gate.minigames.map(\.weight) == [1, 0, 0])
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")
             return
@@ -70,7 +76,7 @@ struct LevelConfigSnapshotTests {
         ])
 
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
-        #expect(level.pit.minigames.map(\.weight) == [0, 1])
+        #expect(level.pit.minigames.map(\.weight) == [0.5, 0.5])
         guard case .spelling(let spelling) = level.pit.minigames[0] else {
             Issue.record("expected pit spelling entry")
             return

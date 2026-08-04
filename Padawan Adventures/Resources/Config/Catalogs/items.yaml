@@ -1,12 +1,12 @@
 # Item sprite definitions. Top-level keys match pickup ids in level YAML (`pickups:`).
-# `sprite.scale` is display height as a fraction of app.yaml `display.wall_height`
-# (defaults to max(tile_width, tile_height) when omitted). Rebuild to pick up changes.
+# `sprite.height_fraction` is display height as a fraction of app.yaml `display.wall_height_points`
+# (defaults to max(tile_width_points, tile_height_points) when omitted). Rebuild to pick up changes.
 
 energy:
   sprite:
     root: Sprites/Items/Energy
     chroma: black
-    scale: 0.6
+    height_fraction: 0.6
     animations:
       idle:
         sheet: energy-spritesheet
@@ -16,7 +16,7 @@ health:
   sprite:
     root: Sprites/Items/Health
     chroma: black
-    scale: 0.4
+    height_fraction: 0.4
     animations:
       idle:
         sheet: health-spritesheet
@@ -28,7 +28,7 @@ coin:
   sprite:
     root: Sprites/Items/Coins
     bake_scale: 0.25
-    scale: 0.45
+    height_fraction: 0.45
     animations:
       idle:
         sheet: coin
@@ -40,7 +40,7 @@ coin:
 emitter:
   sprite:
     root: Levels/1-tython
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 1-emitter-spritesheet
@@ -50,7 +50,7 @@ emitter:
 control-ring:
   sprite:
     root: Levels/2-tatooine
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 2-control-ring-spritesheet
@@ -60,7 +60,7 @@ control-ring:
 central-grip:
   sprite:
     root: Levels/3-ilum
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 3-central-grip-spritesheet
@@ -70,7 +70,7 @@ central-grip:
 activation-switch:
   sprite:
     root: Levels/4-kashyyyk
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 4-activation-switch-spritesheet
@@ -80,7 +80,7 @@ activation-switch:
 lower-grip:
   sprite:
     root: Levels/5-dagobah
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 5-lower-grip-spritesheet
@@ -90,7 +90,7 @@ lower-grip:
 power-cell:
   sprite:
     root: Levels/6-coruscant
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 6-power-cell-spritesheet
@@ -100,7 +100,7 @@ power-cell:
 connector:
   sprite:
     root: Levels/7-mustafar
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 7-connector-spritesheet
@@ -110,7 +110,7 @@ connector:
 pommel:
   sprite:
     root: Levels/8-geonosis
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: 8-pommel-spritesheet

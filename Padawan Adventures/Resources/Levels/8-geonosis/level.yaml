@@ -8,6 +8,7 @@ order: 8
 color: "#A1887F"
 artifact: circle.hexagongrid.fill
 treasure: pommel
-enemies:
-  types: [centipede, snake]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [centipede, snake]
+    spawn_probability_per_room: 0.8

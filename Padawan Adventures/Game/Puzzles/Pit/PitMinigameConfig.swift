@@ -106,19 +106,22 @@ nonisolated enum PitMinigameConfig: Equatable, Sendable {
 nonisolated struct PitConfig: Equatable, Sendable {
     /// Shared pit FX: `jump` fires on every hop, `lose` / `win` override `audio.yaml`.
     var fx: SoundEffectTable
+    /// Music track basename for pit minigames; `nil` → inherit from audio.yaml.
+    var music: String?
     var minigames: [PitMinigameConfig]
 
     /// Used when a level omits `pit:` entirely — spelling only, preserving old behaviour.
     nonisolated static let fallback = PitConfig(
         fx: SoundEffectTable(events: [
-            "lose": "pit-falling",
             "jump": "pit-jump",
         ]),
+        music: "pit",
         minigames: [.spelling(.fallback)]
     )
 
-    nonisolated init(fx: SoundEffectTable, minigames: [PitMinigameConfig]) {
+    nonisolated init(fx: SoundEffectTable, music: String? = nil, minigames: [PitMinigameConfig]) {
         self.fx = fx
+        self.music = music
         self.minigames = minigames
     }
 

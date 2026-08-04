@@ -8,15 +8,14 @@ struct ProceduralGeneratorGoldenTests {
     private func roomsDoorsConfig(seed: UInt64 = 99, roomCount: Int = 6) -> WorldGenerationConfig {
         WorldGenerationConfig(
             seed: seed,
-            world: .init(width: 30, height: 30, stories: 1),
+            world: .init(width: 30, height: 30),
             generation: .init(
-                algorithm: "rooms_doors",
                 roomCount: roomCount,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 10,
                     pitChance: 0.2,
-                    partitionGateChance: 0.5
+                    gateProbability: 0.5
                 )
             )
         )
@@ -49,11 +48,11 @@ struct ProceduralGeneratorGoldenTests {
     /// Full unhashed signature for seed 42 lives beside this file as
     /// `ProceduralGeneratorGolden_seed42.txt` for offline diffing when a hash fails.
     private static let goldenHashes: [UInt64: String] = [
-        11: "d8010fcb324465873cb6aca74c3763a66776e41a6d83f89efffa163994fd1c1d",
-        42: "a177911a4748686572ce83117a50b50b98e069db2ed8e5cbc8f989b7ef8714ab",
-        99: "7b9641d34e9ea4d6838f18009c62144f5cd5e0aa301eb788c1ea727c1569f784",
-        123: "9a4761c03816f62b3977db31c89f2e93fc6dfacc14eba27b330163791eede944",
-        777: "9435739ad4a8896d4eed3e9a5da4694042766f7b85be6784a7cc21e48ea9e634",
+        11: "7243d239bc288cdc349d35b3dcc02025861ee94d706406e1f556873c2c2075c2",
+        42: "a582017d14f1debf1b52c1b7e1c288c7b01fe054777ac113e39f13fcff4396bf",
+        99: "b32f4d82df433c46dd29bf0ddec7a791f0f52ba5389b893b6030e442087d03af",
+        123: "572d1c5ddfd21db0c543bc85104b1f927249c37d0d1302098d9f7201152d1433",
+        777: "e9b74c264feb4422db4280e5d3a1e8b1e621d088943403c7ae9fe5e1a846ae4f",
     ]
 
     private static let seeds: [UInt64] = [11, 42, 99, 123, 777]

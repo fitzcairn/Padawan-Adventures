@@ -75,7 +75,6 @@ struct ScreenConfigTests {
 
     @Test func loadsBundledScreensYAML() throws {
         let all = try ScreensConfig.loadFromBundle()
-        #expect(all.version == 1)
         #expect(all.screens["menu"]?.musicCue == .track("title_menu"))
         #expect(all.screens["loading"]?.musicCue == .track("title_menu"))
         #expect(all.screens["preparing"]?.musicCue == .unchanged)

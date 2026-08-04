@@ -8,15 +8,37 @@ nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseI
     case deflect
 }
 
-/// Per-entry config for the slash arena. Its gameplay knobs still come from
-/// `enemies.yaml` + the level's `combat_letter_*` keys; only the pick weight lives here.
+/// Per-entry config for the slash arena.
 nonisolated struct CombatSlashConfig: Equatable, Sendable {
     var weight: Double
+    /// Multiplier on combat letter spawn frequency vs derived baseline (`1.0` = unchanged).
+    var letterSpawnMultiplier: Double
+    /// Casing for combat projectile / cue letters.
+    var letterCase: CombatLetterCase
+    /// Letter-name prompt replay interval in seconds.
+    var letterSoundRepeatSeconds: Double
 
     nonisolated static let fallback = CombatSlashConfig(weight: 1)
 
-    nonisolated init(weight: Double = 1) {
+    nonisolated init(
+        weight: Double = 1,
+        letterSpawnMultiplier: Double = 1.0,
+        letterCase: CombatLetterCase = .upper,
+        letterSoundRepeatSeconds: Double = 3
+    ) {
         self.weight = weight
+        self.letterSpawnMultiplier = letterSpawnMultiplier
+        self.letterCase = letterCase
+        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+    }
+
+    func validate() throws {
+        guard letterSpawnMultiplier > 0 else {
+            throw WorldSeedError.invalidCombatLetterSpawnRate(letterSpawnMultiplier)
+        }
+        guard letterSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
+        }
     }
 }
 
@@ -120,12 +142,15 @@ nonisolated enum CombatMinigameConfig: Equatable, Sendable {
 
 /// Resolved combat host config from level YAML `combat:`.
 nonisolated struct CombatConfig: Equatable, Sendable {
+    /// Music track basename for combat minigames; `nil` → inherit from audio.yaml.
+    var music: String?
     var minigames: [CombatMinigameConfig]
 
     /// Used when a level omits `combat:` entirely — slash only, preserving old behaviour.
-    nonisolated static let fallback = CombatConfig(minigames: [.slash(.fallback)])
+    nonisolated static let fallback = CombatConfig(music: "combat", minigames: [.slash(.fallback)])
 
-    nonisolated init(minigames: [CombatMinigameConfig]) {
+    nonisolated init(music: String? = nil, minigames: [CombatMinigameConfig]) {
+        self.music = music
         self.minigames = minigames
     }
 
@@ -168,7 +193,10 @@ nonisolated struct CombatConfig: Equatable, Sendable {
                     "combat.minigames has duplicate type '\(entry.kind.rawValue)'"
                 )
             }
-            if case .deflect(let config) = entry { try config.validate() }
+            switch entry {
+            case .slash(let config): try config.validate()
+            case .deflect(let config): try config.validate()
+            }
         }
     }
 }

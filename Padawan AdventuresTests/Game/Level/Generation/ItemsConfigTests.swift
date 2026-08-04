@@ -8,7 +8,7 @@ struct ItemsConfigTests {
           sprite:
             root: Sprites/Items/Energy
             chroma_key: "#000000"
-            scale: 0.6
+            height_fraction: 0.6
             animations:
               idle:
                 sheet: energy-spritesheet
@@ -17,7 +17,7 @@ struct ItemsConfigTests {
           sprite:
             root: Sprites/Items/Health
             chroma_key: "#000000"
-            scale: 0.6
+            height_fraction: 0.6
             animations:
               idle:
                 sheet: health-spritesheet
@@ -58,7 +58,7 @@ struct ItemsConfigTests {
         emitter:
           sprite:
             root: Levels/1-tython
-            scale: 0.4
+            height_fraction: 0.4
             animations:
               idle:
                 sheet: 1-emitter-spritesheet
@@ -78,19 +78,19 @@ struct ItemsConfigTests {
         emitter:
           sprite:
             root: Levels/1-tython
-            scale: 1.0
+            height_fraction: 1.0
             animations:
               idle:
                 sheet: 1-emitter-spritesheet
                 atlas: 1-emitter-atlas
           highlight:
             color: "#FFD54F"
-            birth_rate: 22
-            lifetime: 1.1
-            radius: 0.45
-            particle_size: 0.12
+            birth_rate_per_second: 22
+            lifetime_seconds: 1.1
+            radius_fraction: 0.45
+            particle_size_fraction: 0.12
             alpha: 0.85
-            y_offset: 0.45
+            y_offset_fraction: 0.45
         """
         let config = try ItemsConfig.decode(from: yaml)
         let highlight = try #require(config.highlight(id: "emitter"))

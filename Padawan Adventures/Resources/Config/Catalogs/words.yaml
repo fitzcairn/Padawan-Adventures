@@ -5,7 +5,6 @@
 #   sfx:   pronunciation track basename under Resources/Audio/FX/Words/ (required)
 #   progressive: optional prefix → track map; omitted prefixes derive as <sfx>_<prefix>
 
-version: 1
 words:
   apple:
     image: apple

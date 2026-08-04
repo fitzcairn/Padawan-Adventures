@@ -27,13 +27,9 @@ extension AppSession {
         selectedLevelResourceName = resourceName
         selectedLevelArtifact = level.artifact
         selectedLevelMusic = level.music
-        selectedGameMusic = level.gameMusic
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
         selectedCombatConfig = level.combat
-        selectedLetterSoundRepeatSeconds = level.letterSoundRepeatSeconds
-        selectedCombatLetterSpawnRate = level.combatLetterSpawnRate
-        selectedCombatLetterCase = level.combatLetterCase
     }
 
     func markLevelStarted(resourceName: String) async {

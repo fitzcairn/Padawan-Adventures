@@ -8,6 +8,7 @@ order: 4
 color: "#1B5E20"
 artifact: tree.fill
 treasure: activation-switch
-enemies:
-  types: [spider, moth]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [spider, moth]
+    spawn_probability_per_room: 0.8

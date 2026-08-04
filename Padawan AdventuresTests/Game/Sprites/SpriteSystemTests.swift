@@ -600,8 +600,8 @@ struct SpriteSystemTests {
         sprite:
           root: Sprites/Player
           chroma_key: "#000000"
-          scale: 1.2
-          anchor_correction: 2
+          height_fraction: 1.2
+          anchor_correction_percent: 2
           animations:
             idle_down:
               sheet: idle_down

@@ -9,11 +9,8 @@ seed: time
 # 4-digit Dad mode unlock on the level select screen.
 dad_mode_password: "1234"
 
-world:
-  stories: 1
-
 display:
-  tile_width: 80
-  tile_height: 49
+  tile_width_points: 80
+  tile_height_points: 49
   # Auto-dismiss delay for overlays (tap also dismisses).
   overlay_dismiss_seconds: 6

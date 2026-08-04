@@ -7,6 +7,7 @@ order: 3
 color: "#81D4FA"
 artifact: snowflake
 treasure: central-grip
-enemies:
-  types: [ice_monster]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [ice_monster]
+    spawn_probability_per_room: 0.8

@@ -5,7 +5,6 @@
 #   sfx:  pronunciation track basename (required)
 #   name: letter-name track basename (required)
 
-version: 1
 phonics:
   a:
     sfx: sfx_letter_a_pronunciation

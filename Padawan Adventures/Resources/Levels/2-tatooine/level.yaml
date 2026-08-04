@@ -7,6 +7,7 @@ order: 2
 color: "#D4A017"
 artifact: sun.max.fill
 treasure: control-ring
-enemies:
-  types: [centipede]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [centipede]
+    spawn_probability_per_room: 0.8

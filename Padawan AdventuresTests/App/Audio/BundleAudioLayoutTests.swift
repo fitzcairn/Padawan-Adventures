@@ -64,9 +64,9 @@ struct BundleAudioLayoutTests {
         }
         for level in levels {
             assertMusicCue(level.musicCue)
-            assertMusicCue(level.gameMusic.combatCue)
-            assertMusicCue(level.gameMusic.pitCue)
-            assertMusicCue(level.gameMusic.gateCue)
+            assertMusicCue(MusicCue.parse(level.combat.music))
+            assertMusicCue(MusicCue.parse(level.pit.music))
+            assertMusicCue(MusicCue.parse(level.gate.music))
             for (_, trackID) in level.pit.fx.events {
                 assertFX(trackID)
             }

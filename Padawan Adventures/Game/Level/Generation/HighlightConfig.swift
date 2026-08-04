@@ -25,12 +25,12 @@ nonisolated struct HighlightConfig: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case color
-        case birthRate = "birth_rate"
-        case lifetime
-        case radius
-        case particleSize = "particle_size"
+        case birthRate = "birth_rate_per_second"
+        case lifetime = "lifetime_seconds"
+        case radius = "radius_fraction"
+        case particleSize = "particle_size_fraction"
         case alpha
-        case yOffset = "y_offset"
+        case yOffset = "y_offset_fraction"
     }
 
     init(

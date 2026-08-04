@@ -27,11 +27,11 @@ nonisolated enum WeightedPicker {
 
 nonisolated struct GateMinigameDTO: Decodable {
     var type: String
+    var weight: Double?
     var fx: SoundEffectTable?
     var music: String?
     var numPaddingLetters: Int?
     var words: [String]?
-    var incorrectReplayDelaySeconds: Double?
     var letterCountMin: Int?
     var letterCountMax: Int?
     var letters: [String]?
@@ -40,16 +40,16 @@ nonisolated struct GateMinigameDTO: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case type
+        case weight
         case fx
         case music
-        case numPaddingLetters = "num_padding_letters"
+        case numPaddingLetters = "padding_letter_count"
         case words
-        case incorrectReplayDelaySeconds = "incorrect_replay_delay_seconds"
-        case letterCountMin = "letter_count_min"
-        case letterCountMax = "letter_count_max"
+        case letterCountMin = "min_letter_count"
+        case letterCountMax = "max_letter_count"
         case letters
-        case wordCountMin = "word_count_min"
-        case wordCountMax = "word_count_max"
+        case wordCountMin = "min_word_count"
+        case wordCountMax = "max_word_count"
     }
 }
 
@@ -58,6 +58,7 @@ nonisolated enum MinigameDecodeRegistry {
         switch entry.type {
         case "spelling":
             return .spelling(GateSpellingConfig(
+                weight: entry.weight ?? 1,
                 fx: entry.fx ?? SoundEffectTable(),
                 numPaddingLetters: entry.numPaddingLetters
                     ?? GateSpellingConfig.fallback.numPaddingLetters,
@@ -67,8 +68,7 @@ nonisolated enum MinigameDecodeRegistry {
             ))
         case "letter_match":
             return .letterMatch(GateLetterMatchConfig(
-                incorrectReplayDelaySeconds: entry.incorrectReplayDelaySeconds
-                    ?? GateLetterMatchConfig.fallback.incorrectReplayDelaySeconds,
+                weight: entry.weight ?? 1,
                 letterCountMin: entry.letterCountMin
                     ?? GateLetterMatchConfig.fallback.letterCountMin,
                 letterCountMax: entry.letterCountMax
@@ -80,6 +80,7 @@ nonisolated enum MinigameDecodeRegistry {
             ))
         case "word_plug":
             return .wordPlug(GateWordPlugConfig(
+                weight: entry.weight ?? 1,
                 wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,
                 wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
                 fx: entry.fx ?? SoundEffectTable(),
@@ -100,7 +101,20 @@ nonisolated enum MinigameDecodeRegistry {
     static func decodeCombatMinigame(from entry: CombatMinigameDTO) throws -> CombatMinigameConfig {
         switch entry.type {
         case CombatMinigameKind.slash.rawValue:
-            return .slash(CombatSlashConfig(weight: entry.weight ?? 1))
+            var letterCase: CombatLetterCase = .upper
+            if let rawCase = entry.letterCase {
+                let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                guard let parsed = CombatLetterCase(rawValue: trimmed) else {
+                    throw WorldSeedError.invalidCombatLetterCase(rawCase)
+                }
+                letterCase = parsed
+            }
+            return .slash(CombatSlashConfig(
+                weight: entry.weight ?? 1,
+                letterSpawnMultiplier: entry.letterSpawnMultiplier ?? 1.0,
+                letterCase: letterCase,
+                letterSoundRepeatSeconds: entry.letterSoundRepeatSeconds ?? 3
+            ))
         case CombatMinigameKind.deflect.rawValue:
             return .deflect(CombatDeflectConfig(
                 weight: entry.weight ?? 1,
@@ -150,13 +164,19 @@ nonisolated struct CombatMinigameDTO: Decodable {
     var monsterHP: Int?
     var orbTravelSeconds: Double?
     var letters: [String]?
+    var letterSpawnMultiplier: Double?
+    var letterCase: String?
+    var letterSoundRepeatSeconds: Double?
 
     enum CodingKeys: String, CodingKey {
         case type
         case weight
-        case monsterHP = "monster_hp"
+        case monsterHP = "monster_hit_points"
         case orbTravelSeconds = "orb_travel_seconds"
         case letters
+        case letterSpawnMultiplier = "letter_spawn_multiplier"
+        case letterCase = "letter_case"
+        case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
     }
 }
 
@@ -172,9 +192,9 @@ nonisolated struct PitMinigameDTO: Decodable {
     enum CodingKeys: String, CodingKey {
         case type
         case weight
-        case numPaddingLetters = "num_padding_letters"
+        case numPaddingLetters = "padding_letter_count"
         case words
-        case minWords = "min_words"
-        case maxWords = "max_words"
+        case minWords = "min_word_count"
+        case maxWords = "max_word_count"
     }
 }

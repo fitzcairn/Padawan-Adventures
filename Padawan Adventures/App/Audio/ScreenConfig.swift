@@ -3,10 +3,9 @@ import Yams
 
 /// All screens from `Resources/Config/screens.yaml`.
 nonisolated struct ScreensConfig: Codable, Equatable, Sendable {
-    var version: Int
     var screens: [String: ScreenConfig]
 
-    static let fallback = ScreensConfig(version: 1, screens: [:])
+    static let fallback = ScreensConfig(screens: [:])
 
     static func loadFromBundle(bundle: Bundle = .main) throws -> ScreensConfig {
         try ConfigStore.load(ScreensConfig.self, from: .screens, bundle: bundle)

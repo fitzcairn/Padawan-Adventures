@@ -14,6 +14,7 @@ extension GateConfig {
         }
         let dto = try container.decode(GateConfigDTO.self, forKey: .gate)
         fx = dto.fx ?? SoundEffectTable(events: ["opened": "gate-open"])
+        music = dto.music
         minigameChance = dto.minigameChance ?? 0.6
         guard let entries = dto.minigames, !entries.isEmpty else {
             throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
@@ -24,12 +25,14 @@ extension GateConfig {
 
 private nonisolated struct GateConfigDTO: Decodable {
     var fx: SoundEffectTable?
+    var music: String?
     var minigameChance: Double?
     var minigames: [GateMinigameDTO]?
 
     enum CodingKeys: String, CodingKey {
         case fx
-        case minigameChance = "minigame_chance"
+        case music
+        case minigameChance = "minigame_probability"
         case minigames
     }
 }
@@ -47,6 +50,7 @@ extension CombatConfig {
             return
         }
         let dto = try container.decode(CombatConfigDTO.self, forKey: .combat)
+        music = dto.music
         guard let entries = dto.minigames, !entries.isEmpty else {
             throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
         }
@@ -55,6 +59,7 @@ extension CombatConfig {
 }
 
 private nonisolated struct CombatConfigDTO: Decodable {
+    var music: String?
     var minigames: [CombatMinigameDTO]?
 }
 
@@ -72,6 +77,7 @@ extension PitConfig {
         }
         let dto = try container.decode(PitConfigDTO.self, forKey: .pit)
         fx = dto.fx ?? Self.fallback.fx
+        music = dto.music
         guard let entries = dto.minigames, !entries.isEmpty else {
             throw WorldSeedError.decodeFailed("pit.minigames must not be empty")
         }
@@ -81,5 +87,6 @@ extension PitConfig {
 
 private nonisolated struct PitConfigDTO: Decodable {
     var fx: SoundEffectTable?
+    var music: String?
     var minigames: [PitMinigameDTO]?
 }

@@ -8,6 +8,7 @@ order: 1
 color: "#2E7D32"
 artifact: leaf.fill
 treasure: emitter
-enemies:
-  types: [dino, treant]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [dino, treant]
+    spawn_probability_per_room: 0.8

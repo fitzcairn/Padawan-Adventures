@@ -65,16 +65,17 @@ order: {order}
 color: "{color}"
 artifact: {artifact}
 treasure: {treasure}
-enemies:
-  types: [{enemy}]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [{enemy}]
+    spawn_probability_per_room: 0.8
 """
 
 ITEMS_ENTRY = """
 {treasure}:
   sprite:
     root: Levels/{level_id}
-    scale: 1.0
+    height_fraction: 1.0
     animations:
       idle:
         sheet: {ordinal}-{treasure}-spritesheet

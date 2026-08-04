@@ -15,7 +15,7 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
     var chromaKeyFeather: UInt8
     /// Box-blur radius (pixels) applied to the alpha matte after feathering.
     var chromaKeySmooth: Int
-    /// Display height as a fraction of wall height (`wall_height` × `scale`); width follows texture aspect.
+    /// Display height as a fraction of wall height (`wall_height` × `height_fraction`); width follows texture aspect.
     var scale: Double
     /// Percent of scaled sprite height; shifts the sprite toward the bottom of the screen.
     var anchorCorrection: Double
@@ -31,8 +31,8 @@ nonisolated struct SpriteConfig: Codable, Equatable, Sendable {
         case chromaKeyTolerance = "chroma_key_tolerance"
         case chromaKeyFeather = "chroma_key_feather"
         case chromaKeySmooth = "chroma_key_smooth"
-        case scale
-        case anchorCorrection = "anchor_correction"
+        case scale = "height_fraction"
+        case anchorCorrection = "anchor_correction_percent"
         case animations
         case trim
     }

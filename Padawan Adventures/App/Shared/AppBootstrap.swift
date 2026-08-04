@@ -7,7 +7,6 @@ extension AppSession {
         AppConfig(
             version: 1,
             seed: nil,
-            world: AppConfig.WorldSize(stories: 1),
             display: AppConfig.DisplayParams(tileWidth: 40, tileHeight: 40)
         )
     }

@@ -11,16 +11,18 @@ nonisolated extension ProceduralGenerator {
         occupied: inout Set<GridCoord>,
         config: WorldGenerationConfig,
         enemyConfig: EnemyConfig,
+        doorways: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) {
         let missing = Self.missingRequiredInteractables(tiles: tiles, entities: entities)
         guard !missing.isEmpty else { return }
 
         if missing.contains(.gate) {
-            forceOnePartitionGate(
+            forceOneGate(
                 rooms: rooms,
                 in: &tiles[0],
-                gateMinigameKinds: config.gateMinigameKinds,
+                gateMinigames: config.gateMinigames,
+                doorways: &doorways,
                 rng: &rng
             )
         }
@@ -380,6 +382,7 @@ nonisolated extension ProceduralGenerator {
             occupied: &state.occupied,
             config: config,
             enemyConfig: enemyConfig,
+            doorways: &state.doorwayCells,
             rng: &state.rng
         )
 

@@ -11,13 +11,19 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var floorSet: String
     var decorProb: Double
     var cohesion: Double
-    /// Distinct gate minigame kinds available for this level (first-seen order).
-    var gateMinigameKinds: [GateMinigameKind]
+    /// Gate minigame kinds + pick weights for this level, in declaration order.
+    var gateMinigames: [WeightedGateKind]
 
     nonisolated struct MapSize: Equatable, Sendable {
         var width: Int
         var height: Int
-        var stories: Int
+        /// Single-story worlds only; multi-story generation is not implemented.
+        let stories: Int = 1
+
+        nonisolated init(width: Int, height: Int) {
+            self.width = width
+            self.height = height
+        }
     }
 
     nonisolated init(
@@ -29,7 +35,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         floorSet: String = LevelConfig.fallbackFloor.set,
         decorProb: Double = LevelConfig.fallbackFloor.decorProb,
         cohesion: Double = LevelConfig.fallbackFloor.cohesion,
-        gateMinigameKinds: [GateMinigameKind] = GateConfig.fallback.distinctMinigameKinds
+        gateMinigames: [WeightedGateKind] = GateConfig.fallback.weightedMinigameKinds
     ) {
         self.seed = seed
         self.world = world
@@ -39,18 +45,19 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.floorSet = floorSet
         self.decorProb = decorProb
         self.cohesion = cohesion
-        let kinds = gateMinigameKinds
-        self.gateMinigameKinds = kinds.isEmpty ? [.spelling] : kinds
+        let kinds = gateMinigames
+        self.gateMinigames = kinds.isEmpty
+            ? [WeightedGateKind(kind: .spelling, weight: 1)]
+            : kinds
     }
 
     static func compose(app: AppConfig, level: LevelConfig) -> WorldGenerationConfig {
-        let kinds = level.gate.distinctMinigameKinds
+        let kinds = level.gate.weightedMinigameKinds
         return WorldGenerationConfig(
             seed: app.seed,
             world: MapSize(
                 width: level.width,
-                height: level.height,
-                stories: app.world.stories
+                height: level.height
             ),
             generation: level.generation,
             enemies: level.enemies,
@@ -58,7 +65,9 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             floorSet: level.floor.set,
             decorProb: level.floor.decorProb,
             cohesion: level.floor.cohesion,
-            gateMinigameKinds: kinds.isEmpty ? [.spelling] : kinds
+            gateMinigames: kinds.isEmpty
+                ? [WeightedGateKind(kind: .spelling, weight: 1)]
+                : kinds
         )
     }
 
@@ -70,11 +79,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard world.stories == 1 else {
-            throw WorldSeedError.invalidStoryCount(world.stories)
-        }
         try GenerationParamsValidator.validate(
-            algorithm: generation.algorithm,
             width: world.width,
             height: world.height,
             room: generation.room,

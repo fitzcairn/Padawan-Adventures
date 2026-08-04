@@ -1,9 +1,13 @@
 import Foundation
 
 nonisolated extension ProceduralGenerator {
-    /// True when no two rooms' interiors are reachable from each other treating `.gate` as blocked
-    /// (floors/pits passable, walls blocked). This is the gated-passage invariant.
-    static func roomsAreSeparatedByGates(rooms: [GeneratedRoom], tiles: [[Tile]]) -> Bool {
+    /// True when no two rooms' interiors are reachable from each other treating `.gate` and
+    /// intentional doorway cells as blocked (other floors/pits passable, walls blocked).
+    static func roomPassagesAreIntentional(
+        rooms: [GeneratedRoom],
+        tiles: [[Tile]],
+        doorways: Set<GridCoord>
+    ) -> Bool {
         guard rooms.count >= 2 else { return true }
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
             for cell in room.cells {
@@ -23,8 +27,9 @@ nonisolated extension ProceduralGenerator {
                     guard next.y >= 0, next.y < tiles.count else { continue }
                     guard next.x >= 0, next.x < tiles[next.y].count else { continue }
                     let tile = tiles[next.y][next.x]
-                    // Gates block; only ordinary floors (incl. pits) are passable.
+                    // Gates and intentional doorways block; only ordinary floors (incl. pits) pass.
                     guard case .floor = tile.kind else { continue }
+                    guard !doorways.contains(next) else { continue }
                     if let otherID = roomByCell[next], otherID != room.id {
                         return false
                     }

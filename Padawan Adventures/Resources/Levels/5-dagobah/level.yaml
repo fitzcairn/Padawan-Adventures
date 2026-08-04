@@ -8,6 +8,7 @@ order: 5
 color: "#556B2F"
 artifact: drop.fill
 treasure: lower-grip
-enemies:
-  types: [snake, treant]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [snake, treant]
+    spawn_probability_per_room: 0.8

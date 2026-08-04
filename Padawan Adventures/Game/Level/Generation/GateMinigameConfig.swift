@@ -3,6 +3,8 @@ import Foundation
 /// Per-entry gate spelling-puzzle config (was `GatePuzzleConfig`).
 /// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
 nonisolated struct GateSpellingConfig: Equatable, Sendable {
+    /// Relative pick weight within `gate.minigames`.
+    var weight: Double
     /// In-puzzle FX (optional `win` override for shared `sound.yaml`).
     var fx: SoundEffectTable
     /// Extra random letters beyond the chosen word (total sprites = word length + this).
@@ -11,22 +13,25 @@ nonisolated struct GateSpellingConfig: Equatable, Sendable {
     var wordIDs: [String]?
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
     var words: [GateWord]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
+    /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
     nonisolated static let fallback = GateSpellingConfig(
+        weight: 1,
         numPaddingLetters: 6,
         words: WordCatalog.fallback.words,
         music: "gate"
     )
 
     nonisolated init(
+        weight: Double = 1,
         fx: SoundEffectTable = SoundEffectTable(),
         numPaddingLetters: Int = 6,
         wordIDs: [String]? = nil,
         words: [GateWord],
         music: String? = nil
     ) {
+        self.weight = weight
         self.fx = fx
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
@@ -78,8 +83,8 @@ nonisolated struct GateLetter: Equatable, Sendable {
 /// Per-entry gate letter-matching config.
 /// Letter FX lives in shared `Resources/Config/Catalogs/phonics.yaml`; levels may optionally subset via `letters: [id, …]`.
 nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
-    /// Seconds after an incorrect tap before replaying the target pronunciation.
-    var incorrectReplayDelaySeconds: Double
+    /// Relative pick weight within `gate.minigames`.
+    var weight: Double
     /// Inclusive lower bound for letters chosen per round (clamped to the letter pool).
     var letterCountMin: Int
     /// Inclusive upper bound for letters chosen per round (clamped to the letter pool).
@@ -90,11 +95,11 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     var letterIDs: [String]?
     /// Resolved letters (sorted). Populated via `resolveLetters(from:)`.
     var letters: [GateLetter]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
+    /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
     nonisolated static let fallback = GateLetterMatchConfig(
-        incorrectReplayDelaySeconds: 1,
+        weight: 1,
         letterCountMin: 4,
         letterCountMax: 8,
         letters: LetterCatalog.fallback.letters,
@@ -102,7 +107,7 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     )
 
     nonisolated init(
-        incorrectReplayDelaySeconds: Double = 1,
+        weight: Double = 1,
         letterCountMin: Int = 4,
         letterCountMax: Int = 8,
         fx: SoundEffectTable = SoundEffectTable(),
@@ -110,7 +115,7 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
         letters: [GateLetter],
         music: String? = nil
     ) {
-        self.incorrectReplayDelaySeconds = incorrectReplayDelaySeconds
+        self.weight = weight
         self.letterCountMin = letterCountMin
         self.letterCountMax = letterCountMax
         self.fx = fx
@@ -124,9 +129,6 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     }
 
     func validate() throws {
-        guard incorrectReplayDelaySeconds > 0 else {
-            throw WorldSeedError.invalidGateLetterMatchIncorrectReplayDelay(incorrectReplayDelaySeconds)
-        }
         guard letterCountMin >= 1, letterCountMax >= letterCountMin else {
             throw WorldSeedError.invalidGateLetterMatchLetterCountRange(
                 min: letterCountMin,
@@ -160,6 +162,8 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
 /// Per-entry gate word-plug config: match each word's missing first letter.
 /// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/phonics.yaml`.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
+    /// Relative pick weight within `gate.minigames`.
+    var weight: Double
     /// Inclusive lower bound for words per round (>= 1).
     var wordCountMin: Int
     /// Inclusive upper bound for words per round (<= `maxWordsPerRound`).
@@ -171,13 +175,14 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     var words: [GateWord]
     /// Resolved full letter catalog. Populated via `resolveLetters(from:)`.
     var letters: [GateLetter]
-    /// Per-entry music override; `nil` → use `game_music.gate`.
+    /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
     /// Up to 3 columns x 3 rows of word plates.
     nonisolated static let maxWordsPerRound = 9
 
     nonisolated static let fallback = GateWordPlugConfig(
+        weight: 1,
         wordCountMin: 3,
         wordCountMax: 6,
         words: WordCatalog.fallback.words,
@@ -186,6 +191,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     )
 
     nonisolated init(
+        weight: Double = 1,
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
         fx: SoundEffectTable = SoundEffectTable(),
@@ -194,6 +200,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         letters: [GateLetter],
         music: String? = nil
     ) {
+        self.weight = weight
         self.wordCountMin = wordCountMin
         self.wordCountMax = wordCountMax
         self.fx = fx
@@ -240,6 +247,12 @@ nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIte
     case wordPlug = "word_plug"
 }
 
+/// Gate kind + pick weight used during generation.
+nonisolated struct WeightedGateKind: Equatable, Sendable {
+    var kind: GateMinigameKind
+    var weight: Double
+}
+
 /// Discriminated union over the gate minigame entries in level YAML.
 nonisolated enum GateMinigameConfig: Equatable, Sendable {
     case spelling(GateSpellingConfig)
@@ -251,6 +264,15 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
         case .spelling: .spelling
         case .letterMatch: .letterMatch
         case .wordPlug: .wordPlug
+        }
+    }
+
+    /// Relative pick weight; negatives are rejected by `GateConfig.validate()`.
+    var weight: Double {
+        switch self {
+        case .spelling(let config): config.weight
+        case .letterMatch(let config): config.weight
+        case .wordPlug(let config): config.weight
         }
     }
 
@@ -267,12 +289,15 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
 nonisolated struct GateConfig: Equatable, Sendable {
     /// Must include `"opened"` — the world-level gate-open SFX.
     var fx: SoundEffectTable
+    /// Music track basename for gate minigames; `nil` → inherit from audio.yaml.
+    var music: String?
     /// Probability of presenting a minigame on gate contact (`0...1`). Miss → free-open.
     var minigameChance: Double
     var minigames: [GateMinigameConfig]
 
     nonisolated static let fallback = GateConfig(
         fx: SoundEffectTable(events: ["opened": "gate-open"]),
+        music: "gate",
         minigames: [
             .spelling(.fallback),
             .letterMatch(.fallback),
@@ -282,10 +307,12 @@ nonisolated struct GateConfig: Equatable, Sendable {
 
     nonisolated init(
         fx: SoundEffectTable,
+        music: String? = nil,
         minigames: [GateMinigameConfig],
         minigameChance: Double = 0.6
     ) {
         self.fx = fx
+        self.music = music
         self.minigameChance = minigameChance
         self.minigames = minigames
     }
@@ -301,37 +328,31 @@ nonisolated struct GateConfig: Equatable, Sendable {
             throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
         }
         for minigame in minigames {
+            guard minigame.weight >= 0 else {
+                throw WorldSeedError.invalidGateMinigameWeight(minigame.weight)
+            }
             switch minigame {
             case .spelling(let c): try c.validate()
             case .letterMatch(let c): try c.validate()
             case .wordPlug(let c): try c.validate()
             }
         }
-    }
-
-    /// Unique kinds in `minigames`, first-seen order.
-    var distinctMinigameKinds: [GateMinigameKind] {
-        var seen = Set<GateMinigameKind>()
-        var ordered: [GateMinigameKind] = []
-        for entry in minigames {
-            if seen.insert(entry.kind).inserted {
-                ordered.append(entry.kind)
+        var seenKinds = Set<GateMinigameKind>()
+        for minigame in minigames {
+            guard seenKinds.insert(minigame.kind).inserted else {
+                throw WorldSeedError.duplicateGateMinigameKind(minigame.kind)
             }
         }
-        return ordered
+    }
+
+    /// Gate kinds with their pick weights, in declaration order.
+    /// Duplicate kinds are rejected by `validate()`, so this is 1:1 with `minigames`.
+    var weightedMinigameKinds: [WeightedGateKind] {
+        minigames.map { WeightedGateKind(kind: $0.kind, weight: $0.weight) }
     }
 
     func minigame(for kind: GateMinigameKind) -> GateMinigameConfig? {
         minigames.first { $0.kind == kind }
-    }
-
-    /// Uniform pick among distinct kinds (generation only).
-    func pickMinigameKind(using rng: inout some RandomNumberGenerator) throws -> GateMinigameKind {
-        let kinds = distinctMinigameKinds
-        guard !kinds.isEmpty else {
-            throw WorldSeedError.decodeFailed("gate.minigames must not be empty")
-        }
-        return kinds[Int.random(in: 0..<kinds.count, using: &rng)]
     }
 
     mutating func resolveMinigames(

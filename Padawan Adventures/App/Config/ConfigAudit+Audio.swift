@@ -43,15 +43,15 @@ extension ConfigAudit {
 
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"
-            references.append(contentsOf: musicReferences(level.musicCue, kind: "\(label).music"))
+            references.append(contentsOf: musicReferences(level.musicCue, kind: "\(label).world.music"))
             references.append(contentsOf: musicReferences(
-                level.gameMusic.combatCue, kind: "\(label).game_music.combat"
+                MusicCue.parse(level.combat.music), kind: "\(label).combat.music"
             ))
             references.append(contentsOf: musicReferences(
-                level.gameMusic.pitCue, kind: "\(label).game_music.pit"
+                MusicCue.parse(level.pit.music), kind: "\(label).pit.music"
             ))
             references.append(contentsOf: musicReferences(
-                level.gameMusic.gateCue, kind: "\(label).game_music.gate"
+                MusicCue.parse(level.gate.music), kind: "\(label).gate.music"
             ))
             references.append(contentsOf: fxReferences(level.pit.fx, kind: "\(label).pit.fx"))
             references.append(contentsOf: fxReferences(level.gate.fx, kind: "\(label).gate.fx"))
@@ -144,6 +144,8 @@ extension ConfigAudit {
         // Opt-in `switch_push` override shown in the commented letter_match example in
         // `Levels/_defaults.yaml`; a level enables it by uncommenting that block.
         "gate-letter_match-switch-push",
+        // Pit falling SFX bundled for future use; no level currently references it via `pit.fx`.
+        "pit-falling",
     ]
 
     /// Flags bundled audio that no config can reach.

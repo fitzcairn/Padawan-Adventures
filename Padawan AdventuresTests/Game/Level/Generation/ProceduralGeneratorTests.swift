@@ -5,15 +5,14 @@ struct ProceduralGeneratorTests {
     private func roomsDoorsConfig(seed: UInt64 = 99, roomCount: Int = 6) -> WorldGenerationConfig {
         WorldGenerationConfig(
             seed: seed,
-            world: .init(width: 30, height: 30, stories: 1),
+            world: .init(width: 30, height: 30),
             generation: .init(
-                algorithm: "rooms_doors",
                 roomCount: roomCount,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 10,
                     pitChance: 0.2,
-                    partitionGateChance: 0.5
+                    gateProbability: 0.5
                 )
             )
         )
@@ -174,13 +173,13 @@ struct ProceduralGeneratorTests {
         let config = roomsDoorsConfig(seed: 22, roomCount: 9)
         let result = try ProceduralGenerator().generateDetailed(from: config)
         let outside = floorCellsOutsideRooms(world: result.world, rooms: result.rooms)
-        #expect(outside == 0, "packed joins must not carve hallway floors")
+        #expect(outside == result.doorwayCells.count, "only intentional doorway floors may sit outside rooms")
     }
 
     @Test func everyGateIsExactlyTwoAdjacentCells() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             var visited = Set<GridCoord>()
             for y in 0..<result.world.height {
@@ -320,7 +319,7 @@ struct ProceduralGeneratorTests {
     @Test func partitionGatesAreTwoTilesWithWallFlanks() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 16)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
                 for cell in room.cells { map[cell] = room.id }
@@ -399,11 +398,11 @@ struct ProceduralGeneratorTests {
 
     @Test func gatesSitOutsideRooms() throws {
         // Hallway connectivity can filter out every gate candidate for some seeds even
-        // at partition_gate_chance 1.0, so require gates across the seed set rather than per seed.
+        // at gate_probability 1.0, so require gates across the seed set rather than per seed.
         var totalGates = 0
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 16)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomCells = result.rooms.reduce(into: Set<GridCoord>()) { $0.formUnion($1.cells) }
             for y in 0..<result.world.height {
@@ -416,13 +415,13 @@ struct ProceduralGeneratorTests {
                 }
             }
         }
-        #expect(totalGates > 0, "expected gates with partition_gate_chance 1.0 across seeds")
+        #expect(totalGates > 0, "expected gates with gate_probability 1.0 across seeds")
     }
 
     @Test func gatesAreTwoTilesWithRoomsOnEachSide() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 16)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
                 for cell in room.cells { map[cell] = room.id }
@@ -484,7 +483,7 @@ struct ProceduralGeneratorTests {
         // Corridor mouths used to gate both ends, stacking two puzzles on the same path.
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 16)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let world = result.world
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
@@ -561,9 +560,14 @@ struct ProceduralGeneratorTests {
         var sawSpelling = false
         var sawLetterMatch = false
         for seed: UInt64 in [11, 42, 99, 123, 777] {
-            let config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            #expect(config.gateMinigameKinds.contains(.spelling))
-            #expect(config.gateMinigameKinds.contains(.letterMatch))
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.generation.room.gateProbability = 1.0
+            config.gateMinigames = [
+                WeightedGateKind(kind: .spelling, weight: 1),
+                WeightedGateKind(kind: .letterMatch, weight: 1),
+            ]
+            #expect(config.gateMinigames.contains { $0.kind == .spelling })
+            #expect(config.gateMinigames.contains { $0.kind == .letterMatch })
             let world = try ProceduralGenerator().generate(from: config)
             for y in 0..<world.height {
                 for x in 0..<world.width {
@@ -578,22 +582,70 @@ struct ProceduralGeneratorTests {
         #expect(sawLetterMatch, "expected at least one letterMatch gate across seeds")
     }
 
-    @Test func zeroPartitionChanceStillPlacesJoinGates() throws {
+    @Test func zeroWeightGateMinigameKindsAreNeverBaked() throws {
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.generation.room.gateProbability = 1.0
+            config.gateMinigames = [
+                WeightedGateKind(kind: .wordPlug, weight: 1),
+                WeightedGateKind(kind: .spelling, weight: 0),
+                WeightedGateKind(kind: .letterMatch, weight: 0),
+            ]
+            let world = try ProceduralGenerator().generate(from: config)
+            for y in 0..<world.height {
+                for x in 0..<world.width {
+                    guard let kind = world.tile(at: GridCoord(x: x, y: y, story: 0))?.gateMinigame
+                    else { continue }
+                    #expect(kind == .wordPlug, "unexpected gate kind \(kind) at seed \(seed)")
+                }
+            }
+        }
+    }
+
+    @Test func halfGateProbabilityProducesDoorwaysAndGatesAcrossSeeds() throws {
+        var sawDoorway = false
+        var sawGate = false
+        for seed: UInt64 in [11, 42, 99, 123, 777] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.generation.room.gateProbability = 0.5
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            if !result.doorwayCells.isEmpty { sawDoorway = true }
+            for y in 0..<result.world.height {
+                for x in 0..<result.world.width {
+                    if result.world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate == true {
+                        sawGate = true
+                    }
+                }
+            }
+        }
+        #expect(sawDoorway, "expected at least one open doorway across seeds at gate_probability 0.5")
+        #expect(sawGate, "expected at least one gate across seeds at gate_probability 0.5")
+    }
+
+    @Test func zeroGateProbabilityForcesExactlyOneGate() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 12)
-        config.generation.room.partitionGateChance = 0
-        let world = try ProceduralGenerator().generate(from: config)
-        let gates = (0..<world.height).reduce(0) { count, y in
-            count + (0..<world.width).filter { x in
-                world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate == true
+        config.generation.room.gateProbability = 0
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        let gates = (0..<result.world.height).reduce(0) { count, y in
+            count + (0..<result.world.width).filter { x in
+                result.world.tile(at: GridCoord(x: x, y: y, story: 0))?.isGate == true
             }.count
         }
-        #expect(gates >= 2, "join gate is a 2-tile strip, found \(gates)")
+        #expect(gates == 2, "forceOneGate should place exactly one 2-tile strip, found \(gates)")
+        let tiles = result.world.tiles.first ?? []
+        #expect(
+            ProceduralGenerator.allRoomsGateConnected(
+                rooms: result.rooms,
+                spawn: result.world.spawn,
+                tiles: tiles
+            )
+        )
     }
 
     @Test func atMostOneGatePerSharedWall() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 16)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let world = result.world
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
@@ -658,30 +710,28 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func yamlLevelUsesRoomsDoorsAlgorithm() throws {
+    @Test func yamlLevelComposesGenerationParams() throws {
         let appYAML = """
         version: 1
         seed: 42
-        world:
-          stories: 1
         """
         let levelYAML = """
         name: Rooms Doors
-        width: 24
-        height: 24
-        algorithm: rooms_doors
-        room_count: 6
-        room:
-          min_room_size: 4
-          max_room_size: 6
-          pit_chance: 0.2
-          partition_gate_chance: 0.2
+        world:
+          width_tiles: 24
+          height_tiles: 24
+          room_count: 6
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 6
+            pit_probability: 0.2
+            gate_probability: 0.2
         """
 
         let app = try WorldLoader.decodeConfig(from: appYAML)
         let level = try LevelConfig.decode(from: levelYAML)
         let config = WorldGenerationConfig.compose(app: app, level: level)
-        #expect(config.generation.algorithm == "rooms_doors")
+        #expect(config.generation.roomCount == 6)
         #expect(config.generation.room.minRoomSize == 4)
         #expect(config.generation.room.maxRoomSize == 6)
         #expect(config.generation.room.pitChance == 0.2)
@@ -933,7 +983,7 @@ struct ProceduralGeneratorTests {
 
     @Test func generatesGatesAndPitsWhenRequired() throws {
         var config = roomsDoorsConfig(seed: 42, roomCount: 20)
-        config.generation.room.partitionGateChance = 0
+        config.generation.room.gateProbability = 0
         config.generation.room.pitChance = 0
         config.enemies = .init(type: "spider", spawnChancePerRoom: 0)
 
@@ -968,15 +1018,19 @@ struct ProceduralGeneratorTests {
         }
     }
 
-    @Test func roomsAreSeparatedByGatesInvariant() throws {
+    @Test func roomPassagesAreIntentionalInvariant() throws {
         for seed: UInt64 in [11, 42, 99, 123, 256, 777, 1001] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let tiles = result.world.tiles.first ?? []
             #expect(
-                ProceduralGenerator.roomsAreSeparatedByGates(rooms: result.rooms, tiles: tiles),
-                "rooms should be separated by gates for seed \(seed)"
+                ProceduralGenerator.roomPassagesAreIntentional(
+                    rooms: result.rooms,
+                    tiles: tiles,
+                    doorways: result.doorwayCells
+                ),
+                "room passages should be intentional for seed \(seed)"
             )
         }
     }
@@ -1013,8 +1067,10 @@ struct ProceduralGeneratorTests {
                     }
                 }
                 #expect(minDist == 2, "join \(aIndex)-\(bIndex) minDist \(minDist) seed \(seed)")
-                let hasGateBetween = midpoints.contains { result.world.tile(at: $0)?.isGate == true }
-                #expect(hasGateBetween, "no gate between rooms \(aIndex)-\(bIndex) seed \(seed)")
+                let hasPassageBetween = midpoints.contains {
+                    result.world.tile(at: $0)?.isGate == true || result.doorwayCells.contains($0)
+                }
+                #expect(hasPassageBetween, "no gate/doorway between rooms \(aIndex)-\(bIndex) seed \(seed)")
             }
         }
     }
@@ -1022,7 +1078,7 @@ struct ProceduralGeneratorTests {
     @Test func everyGateSeparatesTwoDistinctRooms() throws {
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
-            config.generation.room.partitionGateChance = 1.0
+            config.generation.room.gateProbability = 1.0
             let result = try ProceduralGenerator().generateDetailed(from: config)
             let roomByCell = result.rooms.reduce(into: [GridCoord: Int]()) { map, room in
                 for cell in room.cells { map[cell] = room.id }

@@ -61,15 +61,14 @@ struct PlayerConfigTests {
     @Test func newWorldUsesStartingHudCounts() throws {
         let seed = WorldGenerationConfig(
             seed: 7,
-            world: .init(width: 30, height: 30, stories: 1),
+            world: .init(width: 30, height: 30),
             generation: .init(
-                algorithm: "rooms_doors",
                 roomCount: 4,
                 room: .init(
                     minRoomSize: 4,
                     maxRoomSize: 8,
                     pitChance: 0,
-                    partitionGateChance: 0
+                    gateProbability: 0
                 )
             )
         )

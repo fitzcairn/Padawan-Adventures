@@ -1,25 +1,36 @@
+import Foundation
 import Testing
+import Yams
 @testable import Padawan_Adventures
 
 struct LevelConfigTests {
     private static let baseLevelYAML = """
         name: Level
-        music: level
-        game_music:
-          combat: combat
-          pit: pit
-          gate: gate
-        width: 100
-        height: 100
-        algorithm: rooms_doors
-        room_count: 100
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.2
-          pit_mean_size: 2
-          pit_max_size: 5
+        world:
+          music: level
+          width_tiles: 100
+          height_tiles: 100
+          room_count: 100
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.2
+            pit_mean_size_tiles: 2
+            pit_max_size_tiles: 5
+          enemies:
+            type: spider
+            spawn_probability_per_room: 0.8
+          pickups:
+            health:
+              spawn_probability_per_room: 0.8
+            energy:
+              spawn_probability_per_room: 0.8
+        combat:
+          music: combat
+          minigames:
+            - type: slash
         gate:
+          music: gate
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: spelling
@@ -28,127 +39,100 @@ struct LevelConfigTests {
             - type: letter_match
               letters: [a, b, c, d, e, f, g, h]
               music: gate
-        enemies:
-          type: spider
-          spawn_chance_per_room: 0.8
-        pickups:
-          health:
-            spawn_chance_per_room: 0.8
-          energy:
-            spawn_chance_per_room: 0.8
+        pit:
+          music: pit
+          minigames:
+            - type: spelling
+              words: [cat, dog, star]
         """
 
-    /// Base YAML without the `gate:` block so inheritance tests can append their own.
+    /// Base YAML without gate/pit blocks so inheritance tests can append their own.
     private static let baseLevelYAMLWithoutPuzzles = """
         name: Level
-        music: level
-        game_music:
-          combat: combat
-          pit: pit
-          gate: gate
-        width: 100
-        height: 100
-        algorithm: rooms_doors
-        room_count: 100
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.2
-          pit_mean_size: 2
-          pit_max_size: 5
-        enemies:
-          type: spider
-          spawn_chance_per_room: 0.8
-        pickups:
-          health:
-            spawn_chance_per_room: 0.8
-          energy:
-            spawn_chance_per_room: 0.8
+        world:
+          music: level
+          width_tiles: 100
+          height_tiles: 100
+          room_count: 100
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.2
+            pit_mean_size_tiles: 2
+            pit_max_size_tiles: 5
+          enemies:
+            type: spider
+            spawn_probability_per_room: 0.8
+          pickups:
+            health:
+              spawn_probability_per_room: 0.8
+            energy:
+              spawn_probability_per_room: 0.8
+        combat:
+          music: combat
+          minigames:
+            - type: slash
         """
 
     @Test func decodesLevelYAML() throws {
         let yaml = """
         name: Level 1
-        width: 100
-        height: 100
-        algorithm: rooms_doors
-        room_count: 100
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.2
-          pit_mean_size: 2
-          pit_max_size: 5
-          partition_gate_chance: 0.8
-        enemies:
-          type: spider
-          spawn_chance_per_room: 0.8
-        pickups:
-          health:
-            spawn_chance_per_room: 0.8
-          energy:
-            spawn_chance_per_room: 0.8
+        world:
+          width_tiles: 100
+          height_tiles: 100
+          room_count: 100
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.2
+            pit_mean_size_tiles: 2
+            pit_max_size_tiles: 5
+            gate_probability: 0.8
+          enemies:
+            type: spider
+            spawn_probability_per_room: 0.8
+          pickups:
+            health:
+              spawn_probability_per_room: 0.8
+            energy:
+              spawn_probability_per_room: 0.8
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.name == "Level 1")
         #expect(level.width == 100)
         #expect(level.height == 100)
-        #expect(level.algorithm == "rooms_doors")
         #expect(level.roomCount == 100)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
         #expect(level.room.pitChance == 0.2)
         #expect(level.room.pitMeanSize == 2)
         #expect(level.room.pitMaxSize == 5)
-        #expect(level.room.partitionGateChance == 0.8)
+        #expect(level.room.gateProbability == 0.8)
         #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
         #expect(level.music == nil)
         #expect(level.musicCue == .unchanged)
-        #expect(level.gameMusic == .fallback)
         #expect(level.artifact == LevelConfig.fallbackArtifact)
         #expect(level.letters.set == LevelConfig.fallbackLetters.set)
     }
 
-    @Test func rejectsUnsupportedGenerationAlgorithm() {
-        #expect {
-            try LevelConfig.decode(from: """
-            name: Level 1
-            width: 20
-            height: 20
-            algorithm: cellular_automata
-            room_count: 5
-            room:
-              min_room_size: 4
-              max_room_size: 8
-              pit_chance: 0
-              partition_gate_chance: 0
-            """)
-        } throws: { error in
-            guard let error = error as? WorldSeedError,
-                  case .unsupportedGenerationAlgorithm(let name) = error else {
-                return false
-            }
-            return name == "cellular_automata"
-        }
-    }
 
     @Test func decodesLetterSpriteSet() throws {
         let level = try LevelConfig.decode(from: """
         name: Tatooine
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 5
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.2
-          pit_mean_size: 2
-          pit_max_size: 5
-          partition_gate_chance: 0.8
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 5
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.2
+            pit_mean_size_tiles: 2
+            pit_max_size_tiles: 5
+            gate_probability: 0.8
         letters:
           set: 2-tatooine
         """)
@@ -221,33 +205,41 @@ struct LevelConfigTests {
         )
         #expect(level.music == "level")
         #expect(level.musicCue == .track("level"))
-        #expect(level.gameMusic.combatCue == .track("combat"))
-        #expect(level.gameMusic.pitCue == .track("pit"))
-        #expect(level.gameMusic.gateCue == .track("gate"))
+        #expect(MusicCue.parse(level.combat.music) == .track("combat"))
+        #expect(MusicCue.parse(level.pit.music) == .track("pit"))
+        #expect(MusicCue.parse(level.gate.music) == .track("gate"))
     }
 
     @Test func childCanOverrideGameMusicKeys() throws {
         let child = """
         inherits: base_level
         name: Level 1
-        game_music:
-          combat: combat_alt
-          gate: silence
+        combat:
+          music: combat_alt
+          minigames:
+            - type: slash
+        gate:
+          music: silence
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: spelling
+              words: [cat, dog, star]
         """
         let level = try LevelConfig.decode(
             from: child,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.gameMusic.combat == "combat_alt")
-        #expect(level.gameMusic.gateCue == .silence)
-        #expect(level.gameMusic.pit == "pit")
+        #expect(level.combat.music == "combat_alt")
+        #expect(MusicCue.parse(level.gate.music) == .silence)
+        #expect(level.pit.music == "pit")
     }
 
     @Test func childCanOverrideMusic() throws {
         let child = """
         inherits: base_level
         name: Level 1
-        music: silence
+        world:
+          music: silence
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -260,15 +252,15 @@ struct LevelConfigTests {
     @Test func decodesPuzzleWorldFx() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened_alt }
           minigames:
@@ -299,9 +291,10 @@ struct LevelConfigTests {
         let child = """
         inherits: base_level
         name: Level 2
-        room_count: 50
-        room:
-          pit_chance: 0.9
+        world:
+          room_count: 50
+          room:
+            pit_probability: 0.9
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -314,7 +307,7 @@ struct LevelConfigTests {
         #expect(level.room.pitChance == 0.9)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
-        #expect(level.room.partitionGateChance == 0.8)
+        #expect(level.room.gateProbability == 0.8)
         #expect(level.enemies?.type == "spider")
         #expect(level.enemies?.spawnChancePerRoom == 0.8)
         #expect(level.pickups?.health?.spawnChancePerRoom == 0.8)
@@ -333,7 +326,8 @@ struct LevelConfigTests {
     @Test func incompleteLevelWithoutInheritanceFailsDecode() throws {
         let yaml = """
         name: Level 1
-        room_count: 10
+        world:
+          room_count: 10
         """
         #expect {
             try LevelConfig.decode(from: yaml)
@@ -350,12 +344,9 @@ struct LevelConfigTests {
         let yaml = """
         version: 1
         seed: time
-        world:
-          stories: 1
         """
         let config = try WorldLoader.decodeConfig(from: yaml)
         #expect(config.seed == nil)
-        #expect(config.world.stories == 1)
         try config.validate()
 
         let generation = WorldGenerationConfig.compose(app: config, level: .fallback)
@@ -367,14 +358,14 @@ struct LevelConfigTests {
     @Test func deepMergeNestedDictionariesPreferChild() {
         let base: [String: Any] = [
             "room": [
-                "pit_chance": 0.2,
-                "partition_gate_chance": 0.5,
+                "pit_probability": 0.2,
+                "gate_probability": 0.5,
             ],
             "room_count": 100,
         ]
         let child: [String: Any] = [
             "room": [
-                "pit_chance": 0.9,
+                "pit_probability": 0.9,
             ],
             "name": "Level 3",
         ]
@@ -382,8 +373,8 @@ struct LevelConfigTests {
         #expect(merged["name"] as? String == "Level 3")
         #expect(merged["room_count"] as? Int == 100)
         let room = merged["room"] as? [String: Any]
-        #expect(room?["pit_chance"] as? Double == 0.9)
-        #expect(room?["partition_gate_chance"] as? Double == 0.5)
+        #expect(room?["pit_probability"] as? Double == 0.9)
+        #expect(room?["gate_probability"] as? Double == 0.5)
     }
 
     @Test func catalogLoadsPlayableLevelsFromBundle() throws {
@@ -414,8 +405,12 @@ struct LevelConfigTests {
         #expect(tython.enemies?.types == ["dino", "treant"])
         #expect(tython.width == 20)
         #expect(tython.roomCount == 5)
-        #expect(tython.combatLetterSpawnRate == 0.7)
-        #expect(tython.combatLetterCase == .lower)
+        guard case .slash(let tythonSlash) = tython.combat.minigames.first else {
+            Issue.record("expected slash entry")
+            return
+        }
+        #expect(tythonSlash.letterSpawnMultiplier == 0.7)
+        #expect(tythonSlash.letterCase == .lower)
     }
 
     @Test func decodesCombatLetterSpawnRateAndCase() throws {
@@ -423,13 +418,20 @@ struct LevelConfigTests {
             from: """
             inherits: base_level
             name: Level 1
-            combat_letter_spawn_rate: 0.5
-            combat_letter_case: both
+            combat:
+              minigames:
+                - type: slash
+                  letter_spawn_multiplier: 0.5
+                  letter_case: both
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
-        #expect(level.combatLetterSpawnRate == 0.5)
-        #expect(level.combatLetterCase == .both)
+        guard case .slash(let slash) = level.combat.minigames.first else {
+            Issue.record("expected slash entry")
+            return
+        }
+        #expect(slash.letterSpawnMultiplier == 0.5)
+        #expect(slash.letterCase == .both)
     }
 
     @Test func rejectsInvalidCombatLetterSpawnRate() throws {
@@ -438,7 +440,10 @@ struct LevelConfigTests {
                 from: """
                 inherits: base_level
                 name: Level 1
-                combat_letter_spawn_rate: 0
+                combat:
+                  minigames:
+                    - type: slash
+                      letter_spawn_multiplier: 0
                 """,
                 parents: ["base_level": Self.baseLevelYAML]
             )
@@ -450,9 +455,10 @@ struct LevelConfigTests {
             from: """
             inherits: base_level
             name: Tatooine
-            enemies:
-              types: [dino, treant]
-              spawn_chance_per_room: 0.5
+            world:
+              enemies:
+                types: [dino, treant]
+                spawn_probability_per_room: 0.5
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
@@ -464,9 +470,10 @@ struct LevelConfigTests {
             from: """
             inherits: base_level
             name: Tython
-            enemies:
-              type: ice_monster
-              spawn_chance_per_room: 0.25
+            world:
+              enemies:
+                type: ice_monster
+                spawn_probability_per_room: 0.25
             """,
             parents: ["base_level": Self.baseLevelYAML]
         )
@@ -513,15 +520,15 @@ struct LevelConfigTests {
     @Test func decodesGateConfigWithDefaultsWhenOmitted() throws {
         let level = try LevelConfig.decode(from: """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         """)
         #expect(level.gate == GateConfig.fallback)
     }
@@ -529,15 +536,15 @@ struct LevelConfigTests {
     @Test func decodesGateSpellingMinigameFromYAML() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -559,18 +566,18 @@ struct LevelConfigTests {
     @Test func decodesGateMinigameChanceFromYAML() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
-          minigame_chance: 0.25
+          minigame_probability: 0.25
           minigames:
             - type: spelling
               words: [cat]
@@ -582,18 +589,18 @@ struct LevelConfigTests {
     @Test func rejectsInvalidGateMinigameChance() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
-          minigame_chance: 1.5
+          minigame_probability: 1.5
           minigames:
             - type: spelling
               words: [cat]
@@ -706,15 +713,15 @@ struct LevelConfigTests {
     @Test func rejectsEmptyGateSpellingWords() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -729,15 +736,15 @@ struct LevelConfigTests {
     @Test func rejectsUnknownGateSpellingWordID() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -788,7 +795,7 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.fx.trackID(for: "win") == nil)
-        #expect(tython.pit.fx.trackID(for: "lose") == "pit-falling")
+        #expect(tython.pit.fx.trackID(for: "lose") == nil)
         #expect(tython.pit.fx.trackID(for: "jump") == "pit-jump")
         let spelling = try pitSpelling(tython)
         #expect(spelling.numPaddingLetters == 6)
@@ -803,15 +810,15 @@ struct LevelConfigTests {
     @Test func decodesOptionalMinigameSoundOverrides() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         pit:
           fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
           minigames:
@@ -842,14 +849,14 @@ struct LevelConfigTests {
     @Test func decodesPitWordIDsFromCatalog() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
         pit:
           minigames:
             - type: spelling
@@ -863,14 +870,14 @@ struct LevelConfigTests {
     @Test func rejectsEmptyPitWords() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
         pit:
           minigames:
             - type: spelling
@@ -884,14 +891,14 @@ struct LevelConfigTests {
     @Test func rejectsUnknownPitWordID() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
         pit:
           minigames:
             - type: spelling
@@ -905,15 +912,15 @@ struct LevelConfigTests {
     @Test func decodesGateLetterMatchConfigWithDefaultsWhenOmitted() throws {
         let level = try LevelConfig.decode(from: """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         """)
         #expect(level.gate == GateConfig.fallback)
     }
@@ -921,32 +928,28 @@ struct LevelConfigTests {
     @Test func decodesGateLetterMatchConfigFromYAML() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
-        letter_sound_repeat_seconds: 8
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: letter_match
-              incorrect_replay_delay_seconds: 2
-              letter_count_min: 2
-              letter_count_max: 3
+              min_letter_count: 2
+              max_letter_count: 3
               letters: [B, a]
         """
         let level = try LevelConfig.decode(from: yaml)
-        #expect(level.letterSoundRepeatSeconds == 8)
         guard case .letterMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
         }
-        #expect(lm.incorrectReplayDelaySeconds == 2)
         #expect(lm.letterCountMin == 2)
         #expect(lm.letterCountMax == 3)
         #expect(lm.letterIDs == ["b", "a"])
@@ -960,13 +963,12 @@ struct LevelConfigTests {
     @Test func inheritsGateLetterMatchConfigFromBase() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
-        letter_sound_repeat_seconds: 6
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: letter_match
-              letter_count_min: 1
-              letter_count_max: 2
+              min_letter_count: 1
+              max_letter_count: 2
               letters: [a, c]
         """
         let child = """
@@ -977,7 +979,6 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": base]
         )
-        #expect(level.letterSoundRepeatSeconds == 6)
         guard case .letterMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
@@ -990,7 +991,6 @@ struct LevelConfigTests {
     @Test func childCanOverrideInheritedGateLetterMatchLetterIDs() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
-        letter_sound_repeat_seconds: 6
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -1000,7 +1000,6 @@ struct LevelConfigTests {
         let child = """
         inherits: base_level
         name: Level 1
-        letter_sound_repeat_seconds: 12
         gate:
           minigames:
             - type: letter_match
@@ -1010,7 +1009,6 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": base]
         )
-        #expect(level.letterSoundRepeatSeconds == 12)
         guard case .letterMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
@@ -1021,21 +1019,21 @@ struct LevelConfigTests {
     @Test func rejectsInvalidGateLetterMatchLetterCountRange() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: letter_match
-              letter_count_min: 4
-              letter_count_max: 2
+              min_letter_count: 4
+              max_letter_count: 2
               letters: [a]
         """
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetterCountRange(min: 4, max: 2)) {
@@ -1046,15 +1044,15 @@ struct LevelConfigTests {
     @Test func rejectsEmptyGateLetterMatchLetters() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -1069,15 +1067,15 @@ struct LevelConfigTests {
     @Test func rejectsUnknownGateLetterMatchLetterID() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -1111,21 +1109,21 @@ struct LevelConfigTests {
     @Test func decodesGateWordPlugMinigame() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 3
-              word_count_max: 6
+              min_word_count: 3
+              max_word_count: 6
               words: [cat, dog]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -1142,21 +1140,21 @@ struct LevelConfigTests {
     @Test func acceptsNonMultipleOfThreeGateWordPlugWordCount() throws {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 2
-              word_count_max: 4
+              min_word_count: 2
+              max_word_count: 4
               words: [cat, dog]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -1171,21 +1169,21 @@ struct LevelConfigTests {
     @Test func rejectsTooManyGateWordPlugWords() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: word_plug
-              word_count_min: 3
-              word_count_max: 12
+              min_word_count: 3
+              max_word_count: 12
               words: [cat, dog]
         """
         #expect(throws: WorldSeedError.invalidGateWordPlugWordCountRange(min: 3, max: 12)) {
@@ -1196,15 +1194,15 @@ struct LevelConfigTests {
     @Test func rejectsUnknownGateWordPlugWordID() {
         let yaml = """
         name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
@@ -1221,15 +1219,15 @@ struct LevelConfigTests {
     /// Minimal level body the combat tests append a `combat:` block to.
     private static let combatLevelPrefix = """
     name: Level 1
-    width: 20
-    height: 20
-    algorithm: rooms_doors
-    room_count: 4
-    room:
-      min_room_size: 4
-      max_room_size: 8
-      pit_chance: 0
-      partition_gate_chance: 0
+    world:
+      width_tiles: 20
+      height_tiles: 20
+      room_count: 4
+      room:
+        min_size_tiles: 4
+        max_size_tiles: 8
+        pit_probability: 0
+        gate_probability: 0
 
     """
 
@@ -1247,7 +1245,7 @@ struct LevelConfigTests {
               weight: 0.0
             - type: deflect
               weight: 1.0
-              monster_hp: 4
+              monster_hit_points: 4
               orb_travel_seconds: 2.5
               letters: [C, a, b]
         """)
@@ -1298,7 +1296,7 @@ struct LevelConfigTests {
           minigames:
             - type: deflect
               weight: 1.0
-              monster_hp: 7
+              monster_hit_points: 7
               letters: [a, b, c]
         """
         let level = try LevelConfig.decode(
@@ -1351,14 +1349,6 @@ struct LevelConfigTests {
         var rng = CombatSeededGenerator(seed: 3)
         #expect(throws: WorldSeedError.self) {
             try config.pickMinigame(using: &rng)
-        }
-    }
-
-    @Test func pickGateMinigameKindThrowsWhenMinigamesEmpty() {
-        let config = GateConfig(fx: .empty, minigames: [])
-        var rng = CombatSeededGenerator(seed: 3)
-        #expect(throws: WorldSeedError.self) {
-            try config.pickMinigameKind(using: &rng)
         }
     }
 
@@ -1421,7 +1411,7 @@ struct LevelConfigTests {
             combat:
               minigames:
                 - type: deflect
-                  monster_hp: 0
+                  monster_hit_points: 0
             """)
         }
     }
@@ -1506,32 +1496,23 @@ struct LevelConfigTests {
         #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
     }
 
-    @Test func decodesTopLevelLetterSoundRepeatSeconds() throws {
-        let yaml = """
-        name: Level 1
-        width: 20
-        height: 20
-        algorithm: rooms_doors
-        room_count: 4
-        letter_sound_repeat_seconds: 3
-        room:
-          min_room_size: 4
-          max_room_size: 8
-          pit_chance: 0
-          partition_gate_chance: 0
-        gate:
-          fx: { opened: sfx_gate_opened }
+    @Test func decodesSlashLetterSoundRepeatSeconds() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
           minigames:
-            - type: letter_match
-              letters: [a]
-        """
-        let level = try LevelConfig.decode(from: yaml)
-        #expect(level.letterSoundRepeatSeconds == 3)
+            - type: slash
+              letter_sound_repeat_seconds: 5
+        """)
+        guard case .slash(let slash) = level.combat.minigames.first else {
+            Issue.record("expected slash entry")
+            return
+        }
+        #expect(slash.letterSoundRepeatSeconds == 5)
     }
 
     @Test func gateConfigLooksUpMinigameByKind() {
         let config = GateConfig.fallback
-        #expect(config.distinctMinigameKinds == [.spelling, .letterMatch])
+        #expect(config.weightedMinigameKinds.map(\.kind) == [.spelling, .letterMatch])
         guard case .letterMatch = config.minigame(for: .letterMatch) else {
             Issue.record("expected letter_match config")
             return
@@ -1548,23 +1529,25 @@ struct LevelConfigTests {
                 .spelling(.fallback),
             ]
         )
-        #expect(duplicated.distinctMinigameKinds == [.spelling, .letterMatch])
+        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.spelling)) {
+            try duplicated.validate()
+        }
     }
 
     @Test func decodesEnemiesSpawnBlock() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-        enemies:
-          types: [spider, ice_monster]
-          spawn_chance_per_room: 0.8
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          enemies:
+            types: [spider, ice_monster]
+            spawn_probability_per_room: 0.8
         """
 
         let level = try LevelConfig.decode(from: yaml)
@@ -1577,17 +1560,17 @@ struct LevelConfigTests {
     @Test func rejectsInvalidEnemySpawnChance() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-        enemies:
-          type: spider
-          spawn_chance_per_room: 1.5
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          enemies:
+            type: spider
+            spawn_probability_per_room: 1.5
         """
 
         #expect(throws: WorldSeedError.invalidEnemySpawnChance(1.5)) {
@@ -1598,19 +1581,19 @@ struct LevelConfigTests {
     @Test func decodesPickupsSpawnBlock() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-        pickups:
-          health:
-            spawn_chance_per_room: 0.8
-          energy:
-            spawn_chance_per_room: 0.5
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          pickups:
+            health:
+              spawn_probability_per_room: 0.8
+            energy:
+              spawn_probability_per_room: 0.5
         """
 
         let level = try LevelConfig.decode(from: yaml)
@@ -1622,17 +1605,17 @@ struct LevelConfigTests {
     @Test func rejectsInvalidPickupSpawnChance() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-        pickups:
-          health:
-            spawn_chance_per_room: -0.1
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          pickups:
+            health:
+              spawn_probability_per_room: -0.1
         """
 
         #expect(throws: WorldSeedError.invalidPickupSpawnChance(kind: .health, chance: -0.1)) {
@@ -1643,16 +1626,16 @@ struct LevelConfigTests {
     @Test func rejectsInvalidPitSize() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.2
-          pit_mean_size: 6
-          pit_max_size: 5
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.2
+            pit_mean_size_tiles: 6
+            pit_max_size_tiles: 5
         """
 
         #expect(throws: WorldSeedError.invalidRoomPitSize(mean: 6, max: 5)) {
@@ -1660,21 +1643,21 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func rejectsInvalidPartitionGateChance() throws {
+    @Test func rejectsInvalidGateProbability() throws {
         let yaml = """
         name: Level
-        width: 10
-        height: 10
-        algorithm: rooms_doors
-        room_count: 2
-        room:
-          min_room_size: 4
-          max_room_size: 12
-          pit_chance: 0.0
-          partition_gate_chance: 1.5
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+            gate_probability: 1.5
         """
 
-        #expect(throws: WorldSeedError.invalidRoomPartitionGateChance(1.5)) {
+        #expect(throws: WorldSeedError.invalidGateProbability(1.5)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1684,22 +1667,22 @@ struct LevelConfigTests {
     /// Minimal level body the pit minigame tests append a `pit:` block to.
     private static let pitLevelPrefix = """
     name: Level 1
-    width: 20
-    height: 20
-    algorithm: rooms_doors
-    room_count: 4
-    room:
-      min_room_size: 4
-      max_room_size: 8
-      pit_chance: 0
-      partition_gate_chance: 0
+    world:
+      width_tiles: 20
+      height_tiles: 20
+      room_count: 4
+      room:
+        min_size_tiles: 4
+        max_size_tiles: 8
+        pit_probability: 0
+        gate_probability: 0
 
     """
 
     @Test func defaultsToSpellingOnlyWhenPitBlockOmitted() throws {
         let level = try LevelConfig.decode(from: Self.pitLevelPrefix)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
-        #expect(level.pit.fx.trackID(for: "lose") == "pit-falling")
+        #expect(level.pit.fx.trackID(for: "lose") == nil)
         #expect(level.pit.minigames.map(\.kind) == [.spelling])
         let spelling = try pitSpelling(level)
         #expect(spelling.weight == 1)
@@ -1709,16 +1692,16 @@ struct LevelConfigTests {
     @Test func decodesPitMinigamesFromYAML() throws {
         let level = try LevelConfig.decode(from: Self.pitLevelPrefix + """
         pit:
-          fx: { lose: pit-falling, jump: pit-jump }
+          fx: { jump: pit-jump }
           minigames:
             - type: spelling
               weight: 0.0
-              num_padding_letters: 6
+              padding_letter_count: 6
               words: [cat, dog, star]
             - type: bridge
               weight: 1.0
-              min_words: 2
-              max_words: 4
+              min_word_count: 2
+              max_word_count: 4
               words: [car, dog, trash, sun, star, book]
         """)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
@@ -1763,12 +1746,12 @@ struct LevelConfigTests {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         pit:
-          fx: { lose: pit-falling, jump: pit-jump }
+          fx: { jump: pit-jump }
           minigames:
             - type: bridge
               weight: 1
-              min_words: 2
-              max_words: 3
+              min_word_count: 2
+              max_word_count: 3
               words: [car, dog, trash, sun]
         """
         let child = """
@@ -1906,14 +1889,41 @@ struct LevelConfigTests {
         }
     }
 
+    @Test func rejectsNegativeGateMinigameWeight() {
+        #expect(throws: WorldSeedError.invalidGateMinigameWeight(-1)) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            gate:
+              fx: { opened: sfx_gate_opened }
+              minigames:
+                - type: spelling
+                  weight: -1
+                  words: [cat]
+            """)
+        }
+    }
+
+    @Test func rejectsDuplicateGateMinigameKinds() {
+        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.spelling)) {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            gate:
+              fx: { opened: sfx_gate_opened }
+              minigames:
+                - type: spelling
+                  words: [cat]
+                - type: spelling
+                  words: [dog]
+            """)
+        }
+    }
+
     @Test func rejectsInvalidPitBridgeWordRange() {
         #expect(throws: WorldSeedError.invalidPitBridgeWordRange(min: 0, max: 4)) {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
                 - type: bridge
-                  min_words: 0
-                  max_words: 4
+                  min_word_count: 0
+                  max_word_count: 4
             """)
         }
         #expect(throws: WorldSeedError.invalidPitBridgeWordRange(min: 5, max: 2)) {
@@ -1921,8 +1931,8 @@ struct LevelConfigTests {
             pit:
               minigames:
                 - type: bridge
-                  min_words: 5
-                  max_words: 2
+                  min_word_count: 5
+                  max_word_count: 2
                   words: [car, dog, trash, sun, star, book]
             """)
         }
@@ -1934,8 +1944,8 @@ struct LevelConfigTests {
             pit:
               minigames:
                 - type: bridge
-                  min_words: 2
-                  max_words: 4
+                  min_word_count: 2
+                  max_word_count: 4
                   words: [car, dog]
             """)
         }
@@ -1947,8 +1957,8 @@ struct LevelConfigTests {
             pit:
               minigames:
                 - type: bridge
-                  min_words: 2
-                  max_words: 2
+                  min_word_count: 2
+                  max_word_count: 2
                   words: [car, car]
             """)
         }
@@ -1957,8 +1967,8 @@ struct LevelConfigTests {
             pit:
               minigames:
                 - type: bridge
-                  min_words: 1
-                  max_words: 1
+                  min_word_count: 1
+                  max_word_count: 1
                   words: [a]
             """)
         }
@@ -1970,8 +1980,8 @@ struct LevelConfigTests {
             pit:
               minigames:
                 - type: bridge
-                  min_words: 1
-                  max_words: 1
+                  min_word_count: 1
+                  max_word_count: 1
                   words: [gate]
             """)
         }
@@ -1983,13 +1993,8 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.minigames.map(\.kind) == [.spelling, .bridge])
-        if case .spelling(let spelling) = tython.pit.minigames[0] {
-            #expect(spelling.weight == 0)
-        } else {
-            Issue.record("expected spelling entry")
-        }
+        #expect(tython.pit.minigames.map(\.weight) == [0.5, 0.5])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
-            #expect(bridge.weight == 1)
             #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
             #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
         } else {
@@ -2007,7 +2012,6 @@ struct LevelConfigTests {
 
         #expect(throws: WorldSeedError.invalidFloorCohesion(1.5)) {
             try GenerationParamsValidator.validate(
-                algorithm: "rooms_doors",
                 width: 100,
                 height: 100,
                 room: LevelConfig.RoomParams(
@@ -2023,6 +2027,213 @@ struct LevelConfigTests {
                 enemies: nil,
                 pickups: nil
             )
+        }
+    }
+
+    // MARK: - Override / inheritance guarantees
+
+    @Test func everyDefaultsKeyIsOverridableByAChildLevel() throws {
+        let defaultsData = try ConfigStore.data(at: .levelDefaults)
+        let defaultsTree = try ConfigStore.rawTree(
+            from: defaultsData,
+            parentDataNamed: nil,
+            fileLabel: "_defaults"
+        )
+        let leaves = Self.collectLeaves(from: defaultsTree)
+        #expect(!leaves.isEmpty)
+
+        for leaf in leaves {
+            let path = leaf.path
+            if path == ["inherits"] { continue }
+            if path == ["sprite"] { continue }
+            if path == ["world", "floor", "set"] { continue }
+            if path == ["letters", "set"] { continue }
+
+            let sentinel = Self.sentinel(differingFrom: leaf.value)
+            var childDict: [String: Any] = ["inherits": "_defaults", "name": "OverrideProbe"]
+            Self.setValue(sentinel, at: path, in: &childDict)
+            let childYAML = try Yams.dump(object: childDict)
+            let childData = Data(childYAML.utf8)
+
+            let merged = try ConfigStore.rawTree(
+                from: childData,
+                parentDataNamed: { _ in defaultsData },
+                fileLabel: "test"
+            )
+            let actual = Self.value(at: path, in: merged)
+            #expect(
+                Self.yamlEqual(actual, sentinel),
+                "override failed at \(path.joined(separator: ".")): got \(String(describing: actual))"
+            )
+        }
+    }
+
+    @Test func childCanOverrideWorldPickupsWithoutLosingSibling() throws {
+        let defaultsData = try ConfigStore.data(at: .levelDefaults)
+        let child = """
+        inherits: _defaults
+        name: PickupOverride
+        world:
+          pickups:
+            health:
+              spawn_probability_per_room: 0.25
+        """
+        let merged = try ConfigStore.rawTree(
+            from: Data(child.utf8),
+            parentDataNamed: { _ in defaultsData },
+            fileLabel: "test"
+        )
+        let world = merged["world"] as? [String: Any]
+        let pickups = world?["pickups"] as? [String: Any]
+        let health = pickups?["health"] as? [String: Any]
+        let energy = pickups?["energy"] as? [String: Any]
+        #expect(health?["spawn_probability_per_room"] as? Double == 0.25)
+        #expect(energy?["spawn_probability_per_room"] as? Double == 0.8)
+
+        let level = try LevelConfig.decode(
+            from: Data(child.utf8),
+            parentDataNamed: { _ in defaultsData },
+            fileLabel: "test",
+            levelID: "1-tython"
+        )
+        #expect(level.pickups?.health?.spawnChancePerRoom == 0.25)
+        #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
+    }
+
+    @Test func realisticChildOverridesDecodeAndValidate() throws {
+        let child = """
+        inherits: _defaults
+        name: Custom
+        world:
+          width_tiles: 24
+          room:
+            max_size_tiles: 8
+            gate_probability: 0.5
+          enemies:
+            types: [spider]
+            spawn_probability_per_room: 0.4
+        combat:
+          music: combat
+          minigames:
+            - type: slash
+              weight: 0.0
+              letter_spawn_multiplier: 0.7
+              letter_case: lower
+              letter_sound_repeat_seconds: 3
+            - type: deflect
+              weight: 1.0
+              monster_hit_points: 5
+              orb_travel_seconds: 3.0
+              letters: [a, b, c, d]
+        """
+        let level = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        // Decode the child against shipped defaults.
+        let defaultsData = try ConfigStore.data(at: .levelDefaults)
+        let decoded = try LevelConfig.decode(
+            from: Data(child.utf8),
+            parentDataNamed: { _ in defaultsData },
+            fileLabel: "test",
+            levelID: "1-tython"
+        )
+        #expect(decoded.name == "Custom")
+        #expect(decoded.width == 24)
+        #expect(decoded.room.maxRoomSize == 8)
+        #expect(decoded.room.gateProbability == 0.5)
+        #expect(decoded.enemies?.spawnChancePerRoom == 0.4)
+        #expect(decoded.height == level.height)
+        try decoded.validate()
+    }
+
+    // MARK: - Override helpers
+
+    private struct Leaf {
+        let path: [String]
+        let value: Any
+    }
+
+    private static func collectLeaves(from tree: [String: Any], prefix: [String] = []) -> [Leaf] {
+        var leaves: [Leaf] = []
+        for key in tree.keys.sorted() {
+            let path = prefix + [key]
+            let value = tree[key] as Any
+            if let dict = value as? [String: Any] {
+                leaves.append(contentsOf: collectLeaves(from: dict, prefix: path))
+            } else {
+                leaves.append(Leaf(path: path, value: value))
+            }
+        }
+        return leaves
+    }
+
+    private static func sentinel(differingFrom value: Any) -> Any {
+        switch value {
+        case let int as Int:
+            return int + 1
+        case let double as Double:
+            return double + 1
+        case let string as String:
+            return string + "_x"
+        case let bool as Bool:
+            return !bool
+        case let array as [Any]:
+            var copy = array
+            if copy.isEmpty {
+                copy.append("x")
+            } else {
+                copy.removeLast()
+            }
+            return copy
+        default:
+            return "sentinel"
+        }
+    }
+
+    private static func setValue(_ value: Any, at path: [String], in dict: inout [String: Any]) {
+        guard let first = path.first else { return }
+        if path.count == 1 {
+            dict[first] = value
+            return
+        }
+        var nested = dict[first] as? [String: Any] ?? [:]
+        setValue(value, at: Array(path.dropFirst()), in: &nested)
+        dict[first] = nested
+    }
+
+    private static func value(at path: [String], in dict: [String: Any]) -> Any? {
+        guard let first = path.first else { return nil }
+        if path.count == 1 { return dict[first] }
+        guard let nested = dict[first] as? [String: Any] else { return nil }
+        return value(at: Array(path.dropFirst()), in: nested)
+    }
+
+    private static func yamlEqual(_ lhs: Any?, _ rhs: Any) -> Bool {
+        switch (lhs, rhs) {
+        case let (l as Int, r as Int):
+            return l == r
+        case let (l as Double, r as Double):
+            return l == r
+        case let (l as Int, r as Double):
+            return Double(l) == r
+        case let (l as Double, r as Int):
+            return l == Double(r)
+        case let (l as String, r as String):
+            return l == r
+        case let (l as Bool, r as Bool):
+            return l == r
+        case let (l as [String: Any], r as [String: Any]):
+            guard l.keys.count == r.keys.count else { return false }
+            return l.keys.allSatisfy { key in
+                guard let rv = r[key] else { return false }
+                return yamlEqual(l[key] as Any?, rv)
+            }
+        case let (l as [Any], r as [Any]):
+            guard l.count == r.count else { return false }
+            return zip(l, r).allSatisfy { yamlEqual($0, $1) }
+        default:
+            return false
         }
     }
 }

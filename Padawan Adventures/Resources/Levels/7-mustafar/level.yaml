@@ -7,6 +7,7 @@ order: 7
 color: "#E65100"
 artifact: flame.fill
 treasure: connector
-enemies:
-  types: [lava_lizard]
-  spawn_chance_per_room: 0.8
+world:
+  enemies:
+    types: [lava_lizard]
+    spawn_probability_per_room: 0.8

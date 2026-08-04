@@ -15,20 +15,12 @@ final class AppSession {
     var selectedLevelArtifact: String
     /// Raw level `music:` value for the selected level.
     var selectedLevelMusic: String?
-    /// Per-minigame music for the selected level.
-    var selectedGameMusic: GameMusicConfig
     /// Pit minigame variants + weights for the selected level.
     var selectedPitConfig: PitConfig
     /// Gate config (host FX + minigames list) for the selected level.
     var selectedGateConfig: GateConfig
     /// Combat minigame variants + weights for the selected level.
     var selectedCombatConfig: CombatConfig
-    /// Shared letter-name prompt replay interval for combat / wall / related games.
-    var selectedLetterSoundRepeatSeconds: Double
-    /// Combat letter spawn frequency multiplier for the selected level.
-    var selectedCombatLetterSpawnRate: Double
-    /// Combat letter casing for the selected level.
-    var selectedCombatLetterCase: CombatLetterCase
 
     /// App + level knobs for procedural generation / save-size checks.
     var generationConfig: WorldGenerationConfig {
@@ -69,13 +61,9 @@ final class AppSession {
         selectedLevelResourceName: String? = nil,
         selectedLevelArtifact: String? = nil,
         selectedLevelMusic: String? = nil,
-        selectedGameMusic: GameMusicConfig? = nil,
         selectedPitConfig: PitConfig? = nil,
         selectedGateConfig: GateConfig? = nil,
         selectedCombatConfig: CombatConfig? = nil,
-        selectedLetterSoundRepeatSeconds: Double? = nil,
-        selectedCombatLetterSpawnRate: Double? = nil,
-        selectedCombatLetterCase: CombatLetterCase? = nil,
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
@@ -100,16 +88,9 @@ final class AppSession {
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelArtifact = selectedLevelArtifact ?? selectedLevel.artifact
         self.selectedLevelMusic = selectedLevelMusic ?? selectedLevel.music
-        self.selectedGameMusic = selectedGameMusic ?? selectedLevel.gameMusic
         self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
         self.selectedCombatConfig = selectedCombatConfig ?? selectedLevel.combat
-        self.selectedLetterSoundRepeatSeconds = selectedLetterSoundRepeatSeconds
-            ?? selectedLevel.letterSoundRepeatSeconds
-        self.selectedCombatLetterSpawnRate = selectedCombatLetterSpawnRate
-            ?? selectedLevel.combatLetterSpawnRate
-        self.selectedCombatLetterCase = selectedCombatLetterCase
-            ?? selectedLevel.combatLetterCase
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback

@@ -80,12 +80,12 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
                 }
                 guard highlight.birthRate > 0 else {
                     throw ItemsConfigError.invalid(
-                        "\(id).highlight.birth_rate must be greater than 0"
+                        "\(id).highlight.birth_rate_per_second must be greater than 0"
                     )
                 }
                 guard highlight.lifetime > 0 else {
                     throw ItemsConfigError.invalid(
-                        "\(id).highlight.lifetime must be greater than 0"
+                        "\(id).highlight.lifetime_seconds must be greater than 0"
                     )
                 }
             }

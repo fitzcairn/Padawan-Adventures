@@ -54,14 +54,17 @@ nonisolated extension ProceduralGenerator {
         return edges
     }
 
-    /// Writes one 2-cell gate strip into the shared wall of each join, no carving.
+    /// Writes one 2-cell join into the shared wall of each edge: a gated strip on hit,
+    /// or a carved floor doorway on miss. No further carving.
     @discardableResult
     func placeJoinGates(
         _ edges: [(Int, Int)],
         segmentsByPair: [RoomPair: [[GridCoord]]],
         tiles: inout [[[Tile]]],
         story: Int,
-        gateMinigameKinds: [GateMinigameKind],
+        gateMinigames: [WeightedGateKind],
+        gateProbability: Double,
+        doorwayCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> Int {
         let ordered = edges.sorted { lhs, rhs in
@@ -90,9 +93,16 @@ nonisolated extension ProceduralGenerator {
                 if chosen != nil { break }
             }
             guard let segment = chosen else { continue }
-            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
-            for cell in segment {
-                tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
+            if rng.nextBool(probability: gateProbability) {
+                let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
+                for cell in segment {
+                    tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
+                }
+            } else {
+                for cell in segment {
+                    tiles[story][cell.y][cell.x] = Tile(kind: .floor(isPit: false))
+                    doorwayCells.insert(cell)
+                }
             }
             placed += 1
         }
@@ -101,7 +111,7 @@ nonisolated extension ProceduralGenerator {
 
     // MARK: - Reachability repair
 
-    /// Gates an unused shared wall when a room is not yet reachable through gates.
+    /// Opens an unused shared wall (gate or doorway) when a room is not yet reachable.
     @discardableResult
     func ensureGateConnectivity(
         rooms: [GeneratedRoom],
@@ -109,7 +119,9 @@ nonisolated extension ProceduralGenerator {
         segmentsByPair: [RoomPair: [[GridCoord]]],
         tiles: inout [[[Tile]]],
         story: Int,
-        gateMinigameKinds: [GateMinigameKind],
+        gateMinigames: [WeightedGateKind],
+        gateProbability: Double,
+        doorwayCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> Int {
         var placed = 0
@@ -132,7 +144,9 @@ nonisolated extension ProceduralGenerator {
                         segmentsByPair: segmentsByPair,
                         tiles: &tiles,
                         story: story,
-                        gateMinigameKinds: gateMinigameKinds,
+                        gateMinigames: gateMinigames,
+                        gateProbability: gateProbability,
+                        doorwayCells: &doorwayCells,
                         rng: &rng
                     )
                     if count > 0 {
@@ -180,62 +194,14 @@ nonisolated extension ProceduralGenerator {
 
     // MARK: - Pits / walls / gates
 
-    /// Optional sealed shared-wall shortcut gates: exactly two adjacent room–room partition
-    /// tiles, flanked by solid walls (never corners / opening edges).
-    /// At most one gate feature per shared wall between rooms (joins already gated).
-    func placePartitionGates(
-        rooms: [GeneratedRoom],
-        in story: inout [[Tile]],
-        chance: Double,
-        gateMinigameKinds: [GateMinigameKind],
-        rng: inout SeededGenerator
-    ) {
-        let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
-            for cell in room.cells {
-                map[cell] = room.id
-            }
-        }
-        var occupiedPairs = roomPairsSeparatedByGate(in: story, roomByCell: roomByCell)
-        let candidates = partitionGateSegments(in: story, roomByCell: roomByCell)
-
-        var claimed = Set<GridCoord>()
-        for segment in candidates {
-            guard segment.count == 2 else { continue }
-            guard segment.allSatisfy({ !claimed.contains($0) }) else { continue }
-            guard let first = segment.first,
-                  let info = roomPartitionInfo(first, roomByCell: roomByCell),
-                  !occupiedPairs.contains(info.pair)
-            else { continue }
-            let touchesExisting = segment.contains { cell in
-                GridCoord.cardinals.contains { dx, dy in
-                    claimed.contains(cell.neighbor(dx: dx, dy: dy))
-                }
-            }
-            guard !touchesExisting else { continue }
-            guard !segmentAbutsGate(segment, in: story) else { continue }
-            guard isSealedPathSegment(segment, in: story, roomByCell: roomByCell) else { continue }
-            guard segmentHasSolidWallFlanks(
-                segment,
-                alongDX: info.alongDX,
-                alongDY: info.alongDY,
-                in: story
-            ) else { continue }
-            guard rng.nextBool(probability: chance) else { continue }
-            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
-            for cell in segment {
-                story[cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
-                claimed.insert(cell)
-            }
-            occupiedPairs.insert(info.pair)
-        }
-    }
-
-    /// Places exactly one 2-tile partition gate on the first valid sealed segment.
+    /// Places exactly one 2-tile gate so `RequiredInteractable.gate` stays satisfiable.
+    /// Prefers a sealed shared-wall segment; falls back to re-gating an open doorway.
     @discardableResult
-    func forceOnePartitionGate(
+    func forceOneGate(
         rooms: [GeneratedRoom],
         in story: inout [[Tile]],
-        gateMinigameKinds: [GateMinigameKind],
+        gateMinigames: [WeightedGateKind],
+        doorways: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> Bool {
         let roomByCell: [GridCoord: Int] = rooms.reduce(into: [:]) { map, room in
@@ -260,9 +226,24 @@ nonisolated extension ProceduralGenerator {
                 in: story
             ) else { continue }
 
-            let kind = pickGateMinigameKind(from: gateMinigameKinds, rng: &rng)
+            let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
             for cell in segment {
                 story[cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
+            }
+            return true
+        }
+
+        // Fallback: no sealed segment left, so re-gate a doorway we opened.
+        let ordered = doorways.sorted { ($0.x, $0.y) < ($1.x, $1.y) }
+        for cell in ordered {
+            let partner = GridCoord.cardinals.lazy
+                .map { cell.neighbor(dx: $0.dx, dy: $0.dy) }
+                .first(where: { doorways.contains($0) })
+            guard let partner else { continue }
+            let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
+            for target in [cell, partner] {
+                story[target.y][target.x] = Tile(kind: .gate(minigame: kind))
+                doorways.remove(target)
             }
             return true
         }
@@ -270,11 +251,14 @@ nonisolated extension ProceduralGenerator {
     }
 
     func pickGateMinigameKind(
-        from kinds: [GateMinigameKind],
+        from minigames: [WeightedGateKind],
         rng: inout SeededGenerator
     ) -> GateMinigameKind {
-        let pool = kinds.isEmpty ? [GateMinigameKind.spelling] : kinds
-        return pool[Int.random(in: 0..<pool.count, using: &rng)]
+        let pool = minigames.isEmpty
+            ? [WeightedGateKind(kind: .spelling, weight: 1)]
+            : minigames
+        let picked = WeightedPicker.pick(from: pool, weight: \.weight, using: &rng)
+        return (picked ?? pool[0]).kind
     }
 
     /// True when the cells immediately before/after the segment along the wall are solid walls.
@@ -521,7 +505,9 @@ nonisolated extension ProceduralGenerator {
             segmentsByPair: segmentsByPair,
             tiles: &state.tiles,
             story: 0,
-            gateMinigameKinds: config.gateMinigameKinds,
+            gateMinigames: config.gateMinigames,
+            gateProbability: params.room.gateProbability,
+            doorwayCells: &state.doorwayCells,
             rng: &state.rng
         )
         ensureGateConnectivity(
@@ -530,14 +516,9 @@ nonisolated extension ProceduralGenerator {
             segmentsByPair: segmentsByPair,
             tiles: &state.tiles,
             story: 0,
-            gateMinigameKinds: config.gateMinigameKinds,
-            rng: &state.rng
-        )
-        placePartitionGates(
-            rooms: state.rooms,
-            in: &state.tiles[0],
-            chance: params.room.partitionGateChance,
-            gateMinigameKinds: config.gateMinigameKinds,
+            gateMinigames: config.gateMinigames,
+            gateProbability: params.room.gateProbability,
+            doorwayCells: &state.doorwayCells,
             rng: &state.rng
         )
     }

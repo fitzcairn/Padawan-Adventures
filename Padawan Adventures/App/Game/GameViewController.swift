@@ -215,11 +215,25 @@ final class GameViewController: LandscapeHostingController {
         let healthCount = scene.currentWorld.healthCount
         let hudConfig = cachedHudConfig
         let playerFx = session.playerConfig.fx
-        let letterSoundRepeatSeconds = session.selectedLetterSoundRepeatSeconds
-        let letterSpawnRate = session.selectedCombatLetterSpawnRate
-        let letterCase = session.selectedCombatLetterCase
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
+
+        // Each encounter rolls its own arena from the level's weighted list.
+        var minigameRNG = SystemRandomNumberGenerator()
+        let chosenMinigame = (try? session.selectedCombatConfig.pickMinigame(using: &minigameRNG))
+            ?? CombatConfig.fallback.minigames[0]
+
+        let slash: CombatSlashConfig?
+        if case .slash(let config) = chosenMinigame {
+            slash = config
+        } else {
+            slash = nil
+        }
+        let letterSoundRepeatSeconds = slash?.letterSoundRepeatSeconds
+            ?? CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds
+        let letterSpawnRate = slash?.letterSpawnMultiplier
+            ?? CombatMinigameEngine.Config.defaultLetterSpawnRate
+        let letterCase = slash?.letterCase ?? .upper
 
         let context = CombatPresentationContext(
             enemyType: enemyType,
@@ -238,10 +252,6 @@ final class GameViewController: LandscapeHostingController {
             wallHeight: isoConfig.wallHeight,
             isoSquash: isoConfig.tileHeight / max(isoConfig.tileWidth, 1)
         )
-        // Each encounter rolls its own arena from the level's weighted list.
-        var minigameRNG = SystemRandomNumberGenerator()
-        let chosenMinigame = (try? session.selectedCombatConfig.pickMinigame(using: &minigameRNG))
-            ?? CombatConfig.fallback.minigames[0]
         GameLogger.mark(
             .combat,
             """
@@ -257,7 +267,7 @@ final class GameViewController: LandscapeHostingController {
         )
 
         encounterCoordinator.presentMinigame(
-            music: session.selectedGameMusic.combatCue,
+            music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
             makeView: { finish in
                 CombatMinigameFactory.makeView(
@@ -336,7 +346,7 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = cachedHudConfig
 
         encounterCoordinator.presentMinigame(
-            music: session.selectedGameMusic.pitCue,
+            music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
             makeView: { finish in
                 PitMinigameFactory.makeView(
@@ -426,7 +436,7 @@ final class GameViewController: LandscapeHostingController {
         let playerFx = session.playerConfig.fx
         let hudConfig = cachedHudConfig
 
-        let musicName = chosen.music ?? session.selectedGameMusic.gate
+        let musicName = chosen.music ?? session.selectedGateConfig.music
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",

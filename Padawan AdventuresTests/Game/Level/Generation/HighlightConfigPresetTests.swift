@@ -36,12 +36,12 @@ struct HighlightConfigPresetTests {
         custom:
           highlight:
             color: "#112233"
-            birth_rate: 10
-            lifetime: 0.5
-            radius: 0.2
-            particle_size: 0.1
+            birth_rate_per_second: 10
+            lifetime_seconds: 0.5
+            radius_fraction: 0.2
+            particle_size_fraction: 0.1
             alpha: 0.5
-            y_offset: 0.3
+            y_offset_fraction: 0.3
         """)
         let highlight = try #require(items.highlight(id: "custom"))
         #expect(highlight.color == "#112233")

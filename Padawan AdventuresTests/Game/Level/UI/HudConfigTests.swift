@@ -4,9 +4,9 @@ import Testing
 struct HudConfigTests {
     @Test func decodesSampleYAML() throws {
         let yaml = """
-        icon_size: 40
-        icon_spacing: 10
-        score_text_gap: 10
+        icon_size_points: 40
+        icon_spacing_points: 10
+        score_text_gap_points: 10
         """
 
         let config = try HudConfig.decode(from: yaml)
@@ -18,9 +18,9 @@ struct HudConfigTests {
 
     @Test func decodesCustomSizing() throws {
         let yaml = """
-        icon_size: 48
-        icon_spacing: 12
-        score_text_gap: 8
+        icon_size_points: 48
+        icon_spacing_points: 12
+        score_text_gap_points: 8
         """
 
         let config = try HudConfig.decode(from: yaml)
@@ -40,7 +40,7 @@ struct HudConfigTests {
     @Test func validateRejectsNonPositiveIconSize() {
         var config = HudConfig.fallback
         config.iconSize = 0
-        #expect(throws: HudConfigError.invalid("icon_size must be > 0")) {
+        #expect(throws: HudConfigError.invalid("icon_size_points must be > 0")) {
             try config.validate()
         }
     }
@@ -48,14 +48,14 @@ struct HudConfigTests {
     @Test func validateRejectsNonPositiveSpacing() {
         var config = HudConfig.fallback
         config.iconSpacing = -1
-        #expect(throws: HudConfigError.invalid("icon_spacing must be > 0")) {
+        #expect(throws: HudConfigError.invalid("icon_spacing_points must be > 0")) {
             try config.validate()
         }
     }
 
     @Test func decodeFailsOnInvalidYAML() {
         #expect(throws: HudConfigError.decodeFailed) {
-            try HudConfig.decode(from: "icon_size: [not, valid]")
+            try HudConfig.decode(from: "icon_size_points: [not, valid]")
         }
     }
 }

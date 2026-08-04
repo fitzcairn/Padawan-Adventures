@@ -4,7 +4,7 @@ nonisolated struct GeneratedRoom: Equatable, Sendable {
     let id: Int
     let cells: Set<GridCoord>
     let center: GridCoord
-    /// Reserved for packed-room adjacency; always 0 in the current rooms_doors algorithm.
+    /// Reserved for packed-room adjacency; always 0 in the current generator.
     let latticeX: Int
     let latticeY: Int
 }
@@ -14,6 +14,8 @@ nonisolated struct GenerationResult: Sendable {
     let rooms: [GeneratedRoom]
     let topRightRoomID: Int
     let joinPairs: [(Int, Int)]
+    /// Floor cells carved as open doorways (join edges that rolled miss on gate probability).
+    let doorwayCells: Set<GridCoord>
 }
 
 nonisolated struct RoomPair: Hashable, Sendable {
@@ -36,6 +38,7 @@ nonisolated struct GenerationAttemptState {
     var spawn: GridCoord
     var topRight: GeneratedRoom
     var joinEdges: [(Int, Int)]
+    var doorwayCells: Set<GridCoord>
     let width: Int
     let height: Int
     let stories: Int

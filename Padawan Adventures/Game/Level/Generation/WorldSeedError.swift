@@ -3,19 +3,20 @@ import Foundation
 
 nonisolated enum WorldSeedError: Error, Equatable {
     case unsupportedVersion(Int)
-    case invalidStoryCount(Int)
     case worldTooSmall
     case invalidTileSize
     case roomTooNarrow(Int)
     case invalidRoomSizeRange
     case invalidRoomPitChance(Double)
     case invalidRoomPitSize(mean: Double, max: Int)
-    case invalidRoomPartitionGateChance(Double)
+    case invalidGateProbability(Double)
     case invalidGateMinigameChance(Double)
     case invalidGatePaddingLetters(Int)
     case invalidGateWords
     case invalidPitWords
     case invalidPitMinigameWeight(Double)
+    case invalidGateMinigameWeight(Double)
+    case duplicateGateMinigameKind(GateMinigameKind)
     case invalidPitBridgeWordRange(min: Int, max: Int)
     case invalidPitBridgeWords
     case invalidLetterSoundRepeat(Double)
@@ -25,7 +26,6 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidCombatMonsterHP(Int)
     case invalidCombatOrbTravelSeconds(Double)
     case invalidCombatDeflectLetters
-    case invalidGateLetterMatchIncorrectReplayDelay(Double)
     case invalidGateLetterMatchLetterCountRange(min: Int, max: Int)
     case invalidGateLetterMatchLetters
     case invalidGateWordPlugWordCountRange(min: Int, max: Int)
@@ -42,6 +42,4 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case emptyLetterSet
     case invalidDecorProb(Double)
     case invalidFloorCohesion(Double)
-    /// Only `rooms_doors` is implemented; other values are rejected at validate time.
-    case unsupportedGenerationAlgorithm(String)
 }

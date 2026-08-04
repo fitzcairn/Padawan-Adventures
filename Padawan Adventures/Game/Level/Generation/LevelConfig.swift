@@ -71,17 +71,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var treasure: String?
     /// Raw `music:` value; interpret with `MusicCue.parse`.
     var music: String?
-    /// Per-minigame music overrides for this level.
-    var gameMusic: GameMusicConfig
-    /// Shared letter-name prompt replay interval (combat cues, wall puzzle, etc.).
-    var letterSoundRepeatSeconds: Double
-    /// Multiplier on combat letter spawn frequency vs derived baseline (`1.0` = unchanged).
-    var combatLetterSpawnRate: Double
-    /// Casing for combat projectile / cue letters.
-    var combatLetterCase: CombatLetterCase
     var width: Int
     var height: Int
-    var algorithm: String
     var roomCount: Int
     var room: RoomParams
     var enemies: EnemiesSpawnConfig?
@@ -103,23 +94,22 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case sprite
         case artifact
         case treasure
-        case music
-        case gameMusic = "game_music"
-        case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
-        case combatLetterSpawnRate = "combat_letter_spawn_rate"
-        case combatLetterCase = "combat_letter_case"
-        case width
-        case height
-        case algorithm
-        case roomCount = "room_count"
-        case room
-        case enemies
-        case pickups
+        case world
         case pit
         case gate
         case combat
-        case floor
         case letters
+    }
+
+    private enum WorldKeys: String, CodingKey {
+        case music
+        case widthTiles = "width_tiles"
+        case heightTiles = "height_tiles"
+        case roomCount = "room_count"
+        case room
+        case floor
+        case enemies
+        case pickups
     }
 
     /// Art set for `LevelConfig.fallback`, used only when the bundled config cannot
@@ -162,13 +152,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         sprite: nil,
         artifact: fallbackArtifact,
         music: "level",
-        gameMusic: .fallback,
-        letterSoundRepeatSeconds: 3,
-        combatLetterSpawnRate: 1.0,
-        combatLetterCase: .upper,
         width: 100,
         height: 100,
-        algorithm: "rooms_doors",
         roomCount: 100,
         room: .init(
             minRoomSize: 4,
@@ -176,7 +161,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             pitChance: 0.2,
             pitMeanSize: 2,
             pitMaxSize: 5,
-            partitionGateChance: 0.8
+            gateProbability: 0.8
         ),
         enemies: .init(types: ["spider"], spawnChancePerRoom: 0.8),
         pickups: .init(
@@ -207,13 +192,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         artifact: String = LevelConfig.fallbackArtifact,
         treasure: String? = nil,
         music: String? = nil,
-        gameMusic: GameMusicConfig = .fallback,
-        letterSoundRepeatSeconds: Double = 3,
-        combatLetterSpawnRate: Double = 1.0,
-        combatLetterCase: CombatLetterCase = .upper,
         width: Int,
         height: Int,
-        algorithm: String,
         roomCount: Int,
         room: RoomParams,
         enemies: EnemiesSpawnConfig? = nil,
@@ -231,13 +211,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.artifact = artifact
         self.treasure = treasure
         self.music = music
-        self.gameMusic = gameMusic
-        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
-        self.combatLetterSpawnRate = combatLetterSpawnRate
-        self.combatLetterCase = combatLetterCase
         self.width = width
         self.height = height
-        self.algorithm = algorithm
         self.roomCount = roomCount
         self.room = room
         self.enemies = enemies
@@ -261,45 +236,25 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         treasure = Self.normalizedOptionalID(
             try container.decodeIfPresent(String.self, forKey: .treasure)
         )
-        music = try container.decodeIfPresent(String.self, forKey: .music)
-        gameMusic = try container.decodeIfPresent(GameMusicConfig.self, forKey: .gameMusic) ?? .fallback
-        letterSoundRepeatSeconds = try container.decodeIfPresent(
-            Double.self,
-            forKey: .letterSoundRepeatSeconds
-        ) ?? Self.fallback.letterSoundRepeatSeconds
-        combatLetterSpawnRate = try container.decodeIfPresent(
-            Double.self,
-            forKey: .combatLetterSpawnRate
-        ) ?? Self.fallback.combatLetterSpawnRate
-        if let rawCase = try container.decodeIfPresent(String.self, forKey: .combatLetterCase) {
-            let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            guard let parsed = CombatLetterCase(rawValue: trimmed) else {
-                throw WorldSeedError.invalidCombatLetterCase(rawCase)
-            }
-            combatLetterCase = parsed
-        } else {
-            combatLetterCase = Self.fallback.combatLetterCase
-        }
-        width = try container.decode(Int.self, forKey: .width)
-        height = try container.decode(Int.self, forKey: .height)
-        algorithm = try container.decode(String.self, forKey: .algorithm)
-        roomCount = try container.decode(Int.self, forKey: .roomCount)
-        room = try container.decode(RoomParams.self, forKey: .room)
-        enemies = try container.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
-        pickups = try container.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
+
+        let world = try container.nestedContainer(keyedBy: WorldKeys.self, forKey: .world)
+        music = try world.decodeIfPresent(String.self, forKey: .music)
+        width = try world.decode(Int.self, forKey: .widthTiles)
+        height = try world.decode(Int.self, forKey: .heightTiles)
+        roomCount = try world.decode(Int.self, forKey: .roomCount)
+        room = try world.decode(RoomParams.self, forKey: .room)
+        enemies = try world.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
+        pickups = try world.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
+        floor = try world.decodeIfPresent(Floor.self, forKey: .floor) ?? Floor(set: "")
+
         pit = try PitConfig(from: decoder, container: container)
         gate = try GateConfig(from: decoder, container: container)
         combat = try CombatConfig(from: decoder, container: container)
-        // Absent blocks decode with an empty set, which applyDerivedAssets fills from
-        // the level folder. Using fallbackFloor/fallbackLetters here would hand the
-        // level another level's art without saying so.
-        floor = try container.decodeIfPresent(Floor.self, forKey: .floor) ?? Floor(set: "")
         letters = try container.decodeIfPresent(Letters.self, forKey: .letters) ?? Letters(set: "")
     }
 
     func validate() throws {
         try GenerationParamsValidator.validate(
-            algorithm: algorithm,
             width: width,
             height: height,
             room: room,
@@ -309,12 +264,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             enemies: enemies,
             pickups: pickups
         )
-        guard letterSoundRepeatSeconds > 0 else {
-            throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
-        }
-        guard combatLetterSpawnRate > 0 else {
-            throw WorldSeedError.invalidCombatLetterSpawnRate(combatLetterSpawnRate)
-        }
         guard !letters.set.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WorldSeedError.emptyLetterSet
         }
@@ -337,7 +286,6 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
 
     var generation: GenerationParams {
         .init(
-            algorithm: algorithm,
             roomCount: roomCount,
             room: room
         )
@@ -354,7 +302,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         enum CodingKeys: String, CodingKey {
             case type
             case types
-            case spawnChancePerRoom = "spawn_chance_per_room"
+            case spawnChancePerRoom = "spawn_probability_per_room"
         }
 
         nonisolated init(type: String, spawnChancePerRoom: Double) {
@@ -390,7 +338,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         var spawnChancePerRoom: Double
 
         enum CodingKeys: String, CodingKey {
-            case spawnChancePerRoom = "spawn_chance_per_room"
+            case spawnChancePerRoom = "spawn_probability_per_room"
         }
 
         init(spawnChancePerRoom: Double) {
@@ -549,8 +497,8 @@ extension LevelConfig {
 
         enum CodingKeys: String, CodingKey {
             case set
-            case decorProb = "decor_prob"
-            case cohesion
+            case decorProb = "decor_probability"
+            case cohesion = "cohesion_fraction"
         }
 
         nonisolated init(
@@ -594,39 +542,33 @@ extension LevelConfig {
     }
 
     nonisolated struct GenerationParams: Codable, Equatable, Sendable {
-        var algorithm: String
         var roomCount: Int
         var room: RoomParams
 
         enum CodingKeys: String, CodingKey {
-            case algorithm
             case roomCount = "room_count"
             case room
         }
 
         nonisolated init(
-            algorithm: String,
             roomCount: Int,
             room: RoomParams
         ) {
-            self.algorithm = algorithm
             self.roomCount = roomCount
             self.room = room
         }
 
         /// Convenience for tests / fallbacks.
         nonisolated init(
-            algorithm: String,
             roomCount: Int,
             minRoomSize: Int = 4,
             maxRoomSize: Int = 12,
             pitChance: Double,
             pitMeanSize: Double = 2,
             pitMaxSize: Int = 5,
-            partitionGateChance: Double = 0.8
+            gateProbability: Double = 0.8
         ) {
             self.init(
-                algorithm: algorithm,
                 roomCount: roomCount,
                 room: RoomParams(
                     minRoomSize: minRoomSize,
@@ -634,7 +576,7 @@ extension LevelConfig {
                     pitChance: pitChance,
                     pitMeanSize: pitMeanSize,
                     pitMaxSize: pitMaxSize,
-                    partitionGateChance: partitionGateChance
+                    gateProbability: gateProbability
                 )
             )
         }
@@ -650,16 +592,16 @@ extension LevelConfig {
         var pitMeanSize: Double
         /// Maximum pit area size in tiles.
         var pitMaxSize: Int
-        /// Probability that a sealed shared-wall segment becomes a shortcut gate.
-        var partitionGateChance: Double
+        /// Probability that a join edge becomes a gated strip (miss → open doorway).
+        var gateProbability: Double
 
         enum CodingKeys: String, CodingKey {
-            case minRoomSize = "min_room_size"
-            case maxRoomSize = "max_room_size"
-            case pitChance = "pit_chance"
-            case pitMeanSize = "pit_mean_size"
-            case pitMaxSize = "pit_max_size"
-            case partitionGateChance = "partition_gate_chance"
+            case minRoomSize = "min_size_tiles"
+            case maxRoomSize = "max_size_tiles"
+            case pitChance = "pit_probability"
+            case pitMeanSize = "pit_mean_size_tiles"
+            case pitMaxSize = "pit_max_size_tiles"
+            case gateProbability = "gate_probability"
         }
 
         nonisolated init(
@@ -668,14 +610,14 @@ extension LevelConfig {
             pitChance: Double,
             pitMeanSize: Double = 2,
             pitMaxSize: Int = 5,
-            partitionGateChance: Double = 0.8
+            gateProbability: Double = 0.8
         ) {
             self.minRoomSize = minRoomSize
             self.maxRoomSize = maxRoomSize
             self.pitChance = pitChance
             self.pitMeanSize = pitMeanSize
             self.pitMaxSize = pitMaxSize
-            self.partitionGateChance = partitionGateChance
+            self.gateProbability = gateProbability
         }
 
         init(from decoder: Decoder) throws {
@@ -685,8 +627,8 @@ extension LevelConfig {
             pitChance = try container.decode(Double.self, forKey: .pitChance)
             pitMeanSize = try container.decodeIfPresent(Double.self, forKey: .pitMeanSize) ?? 2
             pitMaxSize = try container.decodeIfPresent(Int.self, forKey: .pitMaxSize) ?? 5
-            partitionGateChance = try container.decodeIfPresent(
-                Double.self, forKey: .partitionGateChance
+            gateProbability = try container.decodeIfPresent(
+                Double.self, forKey: .gateProbability
             ) ?? 0.8
         }
     }

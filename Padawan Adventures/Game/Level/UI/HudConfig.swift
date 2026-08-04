@@ -7,9 +7,9 @@ struct HudConfig: Codable, Equatable, Sendable {
     var scoreTextGap: Int
 
     enum CodingKeys: String, CodingKey {
-        case iconSize = "icon_size"
-        case iconSpacing = "icon_spacing"
-        case scoreTextGap = "score_text_gap"
+        case iconSize = "icon_size_points"
+        case iconSpacing = "icon_spacing_points"
+        case scoreTextGap = "score_text_gap_points"
     }
 
     static let fallback = HudConfig(
@@ -19,9 +19,9 @@ struct HudConfig: Codable, Equatable, Sendable {
     )
 
     func validate() throws {
-        guard iconSize > 0 else { throw HudConfigError.invalid("icon_size must be > 0") }
-        guard iconSpacing > 0 else { throw HudConfigError.invalid("icon_spacing must be > 0") }
-        guard scoreTextGap > 0 else { throw HudConfigError.invalid("score_text_gap must be > 0") }
+        guard iconSize > 0 else { throw HudConfigError.invalid("icon_size_points must be > 0") }
+        guard iconSpacing > 0 else { throw HudConfigError.invalid("icon_spacing_points must be > 0") }
+        guard scoreTextGap > 0 else { throw HudConfigError.invalid("score_text_gap_points must be > 0") }
     }
 
     static func loadFromBundle(

@@ -9,7 +9,7 @@ nonisolated enum WorldLoader {
     ) -> Bool {
         world.width == config.world.width
             && world.height == config.world.height
-            && world.storyCount == config.world.stories
+            && world.storyCount == 1
             && (world.floorSetName == nil || world.floorSetName == config.floorSet)
     }
 

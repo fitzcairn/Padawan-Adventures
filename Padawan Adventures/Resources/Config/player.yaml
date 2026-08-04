@@ -24,9 +24,9 @@ fx:
 sprite:
   root: Sprites/Player
   chroma: black
-  scale: 1.2
+  height_fraction: 1.2
   # Percent of scaled height; nudges sprite toward bottom of screen (feet into tile).
-  anchor_correction: 7
+  anchor_correction_percent: 7
   animations:
     idle_up: { sheet: idle_up-spritesheet, atlas: idle_up-atlas }
     idle_northeast: { sheet: idle_northeast-spritesheet, atlas: idle_northeast-atlas }
