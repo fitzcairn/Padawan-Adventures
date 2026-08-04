@@ -9,6 +9,12 @@ extension IsometricRenderer {
             nodes: &floorNodes,
             identities: &floorIdentities,
             identity: { coord, tile in
+                if case .gate = tile.kind {
+                    // A gate strip is a hole in the floor; pave it so shallow gate art
+                    // cannot leave the void showing beside the doorway.
+                    guard showsWall(at: coord) else { return nil }
+                    return PlaceholderFactory.doorwayFloorIdentity(at: coord, in: world)
+                }
                 guard case .floor = tile.kind,
                       showsFloor(at: coord),
                       let tileIdentity = PlaceholderFactory.floorIdentity(for: tile) else {
@@ -27,7 +33,15 @@ extension IsometricRenderer {
                 node.zPosition = IsometricMath.floorSortValue(for: sort, config: config)
             },
             makeNode: { coord, tile in
-                PlaceholderFactory.tileNode(
+                if case .gate = tile.kind {
+                    return PlaceholderFactory.doorwayFloorNode(
+                        at: coord,
+                        in: world,
+                        config: config,
+                        floorTileSetLibrary: floorTileSetLibrary
+                    )
+                }
+                return PlaceholderFactory.tileNode(
                     for: tile,
                     at: coord,
                     in: world,

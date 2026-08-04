@@ -344,6 +344,23 @@ struct PlaceholderFactoryTests {
         )
     }
 
+    /// A gate strip is a hole in the floor, so the renderer paves it with a neighbouring
+    /// room's art. Gate sprites shallower than the tile they stand on -- 7-mustafar's slab
+    /// covers a quarter of one -- leave the void showing beside the doorway otherwise.
+    @Test @MainActor func closedGateBorrowsFloorArtFromTheRoomItOpensOnto() {
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 3)
+        let gate = GridCoord(x: 1, y: 1, story: 0)
+        let neighbour = GridCoord(x: 1, y: 0, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: gate)
+        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .floor(isPit: false), floorTileID: "r00c03"), at: neighbour)
+
+        #expect(PlaceholderFactory.doorwayFloorTileID(at: gate, in: world) == "r00c03")
+        #expect(PlaceholderFactory.doorwayFloorIdentity(at: gate, in: world) == "doorway|r00c03")
+        // Floor cells pave themselves; only gates borrow.
+        #expect(PlaceholderFactory.doorwayFloorTileID(at: neighbour, in: world) == nil)
+    }
+
     @Test func entityInFrontOfAlongYGateDrawsAboveEvenAtLowerY() {
         // Gate runs along Y at x=5; front cell is (5,5). Entity east at (6,4) is on the
         // camera-near side of the doorway but has lower Y than the front pillar.

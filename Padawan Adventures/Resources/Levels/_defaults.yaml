@@ -30,9 +30,9 @@ combat_letter_case: lower
 combat:
   minigames:
     - type: slash
-      weight: 0.0
+      weight: 0.5
     - type: deflect
-      weight: 1.0
+      weight: 0.5
       monster_hp: 5
       orb_travel_seconds: 3.0
       letters: [a, b, c, d]
@@ -76,11 +76,11 @@ pit:
   fx: { lose: pit-falling, jump: pit-jump }
   minigames:
     - type: spelling
-      weight: 0.0
+      weight: 0.5
       num_padding_letters: 6
       words: [cat, dog, star]
     - type: bridge
-      weight: 1.0
+      weight: 0.5
       min_words: 3
       max_words: 5
       words: [car, dog, trash, sun, star, book]
@@ -100,17 +100,17 @@ gate:
       words: [cat, dog, star, bath, dance, book, lightbulb, wand]
       music: gate
       fx: { loop: gate-spelling-loop-arc }
-  # - type: spelling
-  #   num_padding_letters: 6
-  #   words: [cat, dog, star, gate, car]
-  #   music: gate
-  #   fx: { loop: gate-spelling-loop-arc }
-  # - type: letter_match
-  #   letter_count_min: 4
-  #   letter_count_max: 8
-  #   letters: [a, b, c, d, e, f, g, h]
-  #   music: gate
-  #   fx: { switch_push: gate-letter_match-switch-push }
+    - type: spelling
+      num_padding_letters: 6
+      words: [cat, dog, star, gate, car]
+      music: gate
+      fx: { loop: gate-spelling-loop-arc }
+    - type: letter_match
+      letter_count_min: 4
+      letter_count_max: 8
+      letters: [a, b, c, d, e, f, g, h]
+      music: gate
+      fx: { switch_push: gate-letter_match-switch-push }
 
 enemies:
   types: [spider]

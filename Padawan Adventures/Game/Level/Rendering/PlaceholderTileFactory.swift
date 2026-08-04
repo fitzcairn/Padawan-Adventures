@@ -308,6 +308,56 @@ extension PlaceholderFactory {
         return "\(id)|\(isPit ? 1 : 0)"
     }
 
+    /// Floor art paving a closed gate's cell, borrowed from a room it opens onto.
+    ///
+    /// A gate strip is a hole in the floor that only the gate sprite covers, so art
+    /// shallower than the tile it stands on — 7-mustafar's slab is a quarter tile deep —
+    /// leaves the void showing beside it. Opening the gate turns the strip into floor
+    /// anyway, so paving it up front only ever removes a gap.
+    static func doorwayFloorTileID(at coord: GridCoord, in world: GameWorld?) -> String? {
+        guard let world, world.tile(at: coord)?.isGate == true else { return nil }
+        for direction in GridCoord.cardinals {
+            let neighbour = coord.neighbor(dx: direction.dx, dy: direction.dy)
+            guard let tile = world.tile(at: neighbour), case .floor = tile.kind else { continue }
+            if let id = tile.floorTileID { return id }
+        }
+        return nil
+    }
+
+    /// Identity key for reusing paved doorway nodes (nil when the strip has no floor to borrow).
+    static func doorwayFloorIdentity(at coord: GridCoord, in world: GameWorld?) -> String? {
+        doorwayFloorTileID(at: coord, in: world).map { "doorway|\($0)" }
+    }
+
+    /// Floor diamond drawn under a closed gate so the strip reads as ground, not void.
+    static func doorwayFloorNode(
+        at coord: GridCoord,
+        in world: GameWorld?,
+        config: IsometricConfig,
+        floorTileSetLibrary: FloorTileSetLibrary?
+    ) -> SKNode {
+        let container = SKNode()
+        container.position = IsometricMath.gridToScreen(coord, config: config)
+        container.zPosition = IsometricMath.floorSortValue(for: coord, config: config)
+        guard let library = floorTileSetLibrary,
+              let tileSet = library.tileSet,
+              let tileID = doorwayFloorTileID(at: coord, in: world),
+              let texture = library.texture(tileID),
+              let frame = library.frame(tileID) else {
+            return container
+        }
+        let sprite = floorTileNode(
+            tileID: tileID,
+            texture: texture,
+            frame: frame,
+            diamond: tileSet.meta.diamond,
+            config: config
+        )
+        sprite.zPosition = 0.02
+        container.addChild(sprite)
+        return container
+    }
+
     /// Identity key for reusing wall / gate block nodes (nil when nothing should draw).
     static func wallIdentity(
         for tile: Tile,
