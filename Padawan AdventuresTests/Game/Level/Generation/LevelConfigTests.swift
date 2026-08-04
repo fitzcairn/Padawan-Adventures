@@ -28,21 +28,21 @@ struct LevelConfigTests {
         combat:
           music: combat
           minigames:
-            - type: slash
+            - type: letter-sound-combat
         gate:
           music: gate
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [cat, dog, star]
               music: gate
-            - type: letter_match
+            - type: letter-sound-gate
               letters: [a, b, c, d, e, f, g, h]
               music: gate
         pit:
           music: pit
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: [cat, dog, star]
         """
 
@@ -71,7 +71,7 @@ struct LevelConfigTests {
         combat:
           music: combat
           minigames:
-            - type: slash
+            - type: letter-sound-combat
         """
 
     @Test func decodesLevelYAML() throws {
@@ -217,12 +217,12 @@ struct LevelConfigTests {
         combat:
           music: combat_alt
           minigames:
-            - type: slash
+            - type: letter-sound-combat
         gate:
           music: silence
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [cat, dog, star]
         """
         let level = try LevelConfig.decode(
@@ -264,7 +264,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened_alt }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [cat]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -420,7 +420,7 @@ struct LevelConfigTests {
             name: Level 1
             combat:
               minigames:
-                - type: slash
+                - type: letter-sound-combat
                   letter_spawn_multiplier: 0.5
                   letter_case: both
             """,
@@ -442,7 +442,7 @@ struct LevelConfigTests {
                 name: Level 1
                 combat:
                   minigames:
-                    - type: slash
+                    - type: letter-sound-combat
                       letter_spawn_multiplier: 0
                 """,
                 parents: ["base_level": Self.baseLevelYAML]
@@ -548,7 +548,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [CAT, Dog]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -579,7 +579,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigame_probability: 0.25
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [cat]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -602,7 +602,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigame_probability: 1.5
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [cat]
         """
 
@@ -633,7 +633,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [moon, sun]
         """
         let child = """
@@ -682,7 +682,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [moon]
         """
         let child = """
@@ -690,7 +690,7 @@ struct LevelConfigTests {
         name: Level 1
         gate:
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [nova, beam]
         """
         let level = try LevelConfig.decode(
@@ -725,7 +725,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: []
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
@@ -748,7 +748,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
@@ -780,7 +780,7 @@ struct LevelConfigTests {
         })
     }
 
-    /// First `type: spelling` entry in a level's pit config.
+    /// First `type: spelling-image-pit` entry in a level's pit config.
     private func pitSpelling(_ level: LevelConfig) throws -> PitPuzzleConfig {
         for minigame in level.pit.minigames {
             if case .spelling(let config) = minigame { return config }
@@ -822,15 +822,15 @@ struct LevelConfigTests {
         pit:
           fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: [cat]
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               fx: { win: sfx_gate_win_alt }
               words: [dog]
-            - type: letter_match
+            - type: letter-sound-gate
               fx: { correct: sfx_wall_correct_alt }
               letters: [a]
         """
@@ -859,7 +859,7 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: [star, car]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -880,7 +880,7 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: []
         """
         #expect(throws: WorldSeedError.invalidPitWords) {
@@ -901,7 +901,7 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidPitWords) {
@@ -940,7 +940,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               min_letter_count: 2
               max_letter_count: 3
               letters: [B, a]
@@ -966,7 +966,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               min_letter_count: 1
               max_letter_count: 2
               letters: [a, c]
@@ -994,7 +994,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               letters: [a]
         """
         let child = """
@@ -1002,7 +1002,7 @@ struct LevelConfigTests {
         name: Level 1
         gate:
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               letters: [b]
         """
         let level = try LevelConfig.decode(
@@ -1031,7 +1031,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               min_letter_count: 4
               max_letter_count: 2
               letters: [a]
@@ -1056,7 +1056,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               letters: []
         """
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
@@ -1079,7 +1079,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: letter_match
+            - type: letter-sound-gate
               letters: [z]
         """
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
@@ -1121,7 +1121,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: word_plug
+            - type: starting-sound-gate
               min_word_count: 3
               max_word_count: 6
               words: [cat, dog]
@@ -1152,7 +1152,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: word_plug
+            - type: starting-sound-gate
               min_word_count: 2
               max_word_count: 4
               words: [cat, dog]
@@ -1181,7 +1181,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: word_plug
+            - type: starting-sound-gate
               min_word_count: 3
               max_word_count: 12
               words: [cat, dog]
@@ -1206,7 +1206,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: word_plug
+            - type: starting-sound-gate
               words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
@@ -1241,9 +1241,9 @@ struct LevelConfigTests {
         let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
         combat:
           minigames:
-            - type: slash
+            - type: letter-sound-combat
               weight: 0.0
-            - type: deflect
+            - type: ending-sound-combat
               weight: 1.0
               monster_hit_points: 4
               orb_travel_seconds: 2.5
@@ -1278,7 +1278,7 @@ struct LevelConfigTests {
         let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
         combat:
           minigames:
-            - type: deflect
+            - type: ending-sound-combat
         """)
         guard case .deflect(let deflect) = level.combat.minigames.first else {
             Issue.record("expected a deflect entry")
@@ -1294,7 +1294,7 @@ struct LevelConfigTests {
         let base = Self.combatLevelPrefix + """
         combat:
           minigames:
-            - type: deflect
+            - type: ending-sound-combat
               weight: 1.0
               monster_hit_points: 7
               letters: [a, b, c]
@@ -1384,7 +1384,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   weight: -1.0
             """)
         }
@@ -1395,8 +1395,8 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
-                - type: deflect
+                - type: ending-sound-combat
+                - type: ending-sound-combat
             """)
         } throws: { error in
             guard let error = error as? WorldSeedError,
@@ -1410,7 +1410,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   monster_hit_points: 0
             """)
         }
@@ -1421,7 +1421,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   orb_travel_seconds: 0
             """)
         }
@@ -1432,7 +1432,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   letters: [a, b, not_a_letter]
             """)
         }
@@ -1443,7 +1443,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   letters: [a]
             """)
         }
@@ -1451,7 +1451,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   letters: [a, b, c, d, e, f, g]
             """)
         }
@@ -1461,7 +1461,7 @@ struct LevelConfigTests {
         let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
         combat:
           minigames:
-            - type: deflect
+            - type: ending-sound-combat
               letters: [a, b, c, d]
         """)
         guard case .deflect(let deflect) = level.combat.minigames.first else {
@@ -1476,7 +1476,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
-                - type: deflect
+                - type: ending-sound-combat
                   letters: [a, a, b]
             """)
         }
@@ -1500,7 +1500,7 @@ struct LevelConfigTests {
         let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
         combat:
           minigames:
-            - type: slash
+            - type: letter-sound-combat
               letter_sound_repeat_seconds: 5
         """)
         guard case .slash(let slash) = level.combat.minigames.first else {
@@ -1694,11 +1694,11 @@ struct LevelConfigTests {
         pit:
           fx: { jump: pit-jump }
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               weight: 0.0
               padding_letter_count: 6
               words: [cat, dog, star]
-            - type: bridge
+            - type: ending-sound-pit
               weight: 1.0
               min_word_count: 2
               max_word_count: 4
@@ -1729,7 +1729,7 @@ struct LevelConfigTests {
         let level = try LevelConfig.decode(from: Self.pitLevelPrefix + """
         pit:
           minigames:
-            - type: bridge
+            - type: ending-sound-pit
               weight: 1
         """)
         guard case .bridge(let bridge) = level.pit.minigames.first else {
@@ -1748,7 +1748,7 @@ struct LevelConfigTests {
         pit:
           fx: { jump: pit-jump }
           minigames:
-            - type: bridge
+            - type: ending-sound-pit
               weight: 1
               min_word_count: 2
               max_word_count: 3
@@ -1776,7 +1776,7 @@ struct LevelConfigTests {
 
         pit:
           minigames:
-            - type: spelling
+            - type: spelling-image-pit
               words: [cat]
         """
         let child = """
@@ -1784,7 +1784,7 @@ struct LevelConfigTests {
         name: Child
         pit:
           minigames:
-            - type: bridge
+            - type: ending-sound-pit
               words: [car, dog, trash, sun, star, book]
         """
         let level = try LevelConfig.decode(
@@ -1865,8 +1865,8 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
-                - type: bridge
+                - type: ending-sound-pit
+                - type: ending-sound-pit
                   weight: 2
             """)
         } throws: { error in
@@ -1883,7 +1883,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   weight: -1
             """)
         }
@@ -1895,7 +1895,7 @@ struct LevelConfigTests {
             gate:
               fx: { opened: sfx_gate_opened }
               minigames:
-                - type: spelling
+                - type: spelling-image-gate
                   weight: -1
                   words: [cat]
             """)
@@ -1908,9 +1908,9 @@ struct LevelConfigTests {
             gate:
               fx: { opened: sfx_gate_opened }
               minigames:
-                - type: spelling
+                - type: spelling-image-gate
                   words: [cat]
-                - type: spelling
+                - type: spelling-image-gate
                   words: [dog]
             """)
         }
@@ -1921,7 +1921,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 0
                   max_word_count: 4
             """)
@@ -1930,7 +1930,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 5
                   max_word_count: 2
                   words: [car, dog, trash, sun, star, book]
@@ -1943,7 +1943,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 2
                   max_word_count: 4
                   words: [car, dog]
@@ -1956,7 +1956,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 2
                   max_word_count: 2
                   words: [car, car]
@@ -1966,7 +1966,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 1
                   max_word_count: 1
                   words: [a]
@@ -1979,7 +1979,7 @@ struct LevelConfigTests {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             pit:
               minigames:
-                - type: bridge
+                - type: ending-sound-pit
                   min_word_count: 1
                   max_word_count: 1
                   words: [gate]
@@ -2115,12 +2115,12 @@ struct LevelConfigTests {
         combat:
           music: combat
           minigames:
-            - type: slash
+            - type: letter-sound-combat
               weight: 0.0
               letter_spawn_multiplier: 0.7
               letter_case: lower
               letter_sound_repeat_seconds: 3
-            - type: deflect
+            - type: ending-sound-combat
               weight: 1.0
               monster_hit_points: 5
               orb_travel_seconds: 3.0

@@ -242,9 +242,9 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
 
 /// Discriminator for which gate puzzle a tile/strip runs. YAML raw values match minigame `type:`.
 nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
-    case spelling
-    case letterMatch = "letter_match"
-    case wordPlug = "word_plug"
+    case spelling = "spelling-image-gate"
+    case letterMatch = "letter-sound-gate"
+    case wordPlug = "starting-sound-gate"
 }
 
 /// Gate kind + pick weight used during generation.

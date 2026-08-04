@@ -253,14 +253,14 @@ struct PlaceholderFactoryTests {
             in: world
         )
         #expect(solid == nil)
-        #expect(gate == "gate|spelling|\(WallFaceSet.all.rawValue)")
+        #expect(gate == "gate|spelling-image-gate|\(WallFaceSet.all.rawValue)")
 
         let letterMatch = PlaceholderFactory.wallIdentity(
             for: Tile(kind: .gate(minigame: .letterMatch)),
             at: a,
             in: world
         )
-        #expect(letterMatch == "gate|letter_match|\(WallFaceSet.all.rawValue)")
+        #expect(letterMatch == "gate|letter-sound-gate|\(WallFaceSet.all.rawValue)")
         #expect(letterMatch != gate)
 
         // Face culling applies to gates (east opaque neighbor hides .right).
@@ -271,7 +271,7 @@ struct PlaceholderFactoryTests {
             in: world
         )
         #expect(culled != gate)
-        #expect(culled == "gate|spelling|\(WallFaceSet([.left, .top]).rawValue)")
+        #expect(culled == "gate|spelling-image-gate|\(WallFaceSet([.left, .top]).rawValue)")
     }
 
     @Test @MainActor func wallIdentityUsesSpriteStripWhenLibraryLoaded() {
@@ -310,7 +310,7 @@ struct PlaceholderFactoryTests {
             in: world,
             gateSpriteSetLibrary: library
         )
-        #expect(canonical == "gate|sprite|spelling|along_x")
+        #expect(canonical == "gate|sprite|spelling-image-gate|along_x")
         #expect(partner == nil)
 
         let strip = PlaceholderFactory.gateStrip(at: a, minigame: .spelling, in: world)

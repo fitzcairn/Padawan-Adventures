@@ -3,9 +3,9 @@ import Foundation
 /// Discriminator for which combat minigame an encounter runs. Raw values match YAML `type:`.
 nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
     /// The original swipe-to-slash arena (`CombatScene`).
-    case slash
+    case slash = "letter-sound-combat"
     /// Tap-the-matching-ring deflect arena (`CombatDeflectScene`).
-    case deflect
+    case deflect = "ending-sound-combat"
 }
 
 /// Per-entry config for the slash arena.

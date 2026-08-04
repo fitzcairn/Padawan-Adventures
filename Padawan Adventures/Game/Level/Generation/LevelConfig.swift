@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-/// Per-entry pit spelling-hop settings under `pit.minigames` with `type: spelling`.
+/// Per-entry pit spelling-hop settings under `pit.minigames` with `type: spelling-image-pit`.
 /// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
 nonisolated struct PitPuzzleConfig: Equatable, Sendable {
     /// Relative pick weight within `pit.minigames`.

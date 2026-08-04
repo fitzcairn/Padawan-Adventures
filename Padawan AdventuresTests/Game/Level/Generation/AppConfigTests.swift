@@ -123,7 +123,7 @@ struct AppConfigTests {
         gate:
           fx: { opened: sfx_gate_opened_alt }
           minigames:
-            - type: spelling
+            - type: spelling-image-gate
               padding_letter_count: 2
         """)
         let generation = WorldGenerationConfig.compose(app: app, level: level)

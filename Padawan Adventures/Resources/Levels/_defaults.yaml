@@ -49,19 +49,22 @@ world:
 
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
-# `slash` is the swipe arena. `deflect`: monster throws a word image; tap the ring
-# for that word's first letter. Letters map left -> right onto evenly spaced rings
-# (2–6) and must resolve in phonics.yaml; each letter needs ≥1 imaged word in words.yaml.
+# `letter-sound-combat`: swipe-to-slash arena cued by letter-name sounds. Stars = letters hit.
+#   Letter pool and pacing come from enemies.yaml; this entry sets spawn rate, case, and
+#   how often to replay the current letter-name prompt.
+# `ending-sound-combat`: monster throws a word image; tap the ring for that word's first letter.
+#   Its `letters:` map left -> right onto evenly spaced rings (2–6) and must resolve in
+#   phonics.yaml; each letter needs ≥1 imaged word in words.yaml. Stars = orbs deflected.
 combat:
   music: combat
   minigames:
-    - type: slash
+    - type: letter-sound-combat
       weight: 0.5
       letter_spawn_multiplier: 0.7
       letter_case: lower
       # How often to replay the current letter-name prompt during slash combat.
       letter_sound_repeat_seconds: 3
-    - type: deflect
+    - type: ending-sound-combat
       weight: 0.5
       monster_hit_points: 5
       orb_travel_seconds: 3.0
@@ -70,9 +73,9 @@ combat:
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.jump` fires on every hop; `win` falls back to audio.yaml.
-# `spelling`: hop the letter platforms to spell the word. Stars = letters in the word.
+# `spelling-image-pit`: hop the letter platforms to spell the word. Stars = letters in the word.
 #   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
-# `bridge`: drag the tile whose letter is the word's end sound into the dashed slot.
+# `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
 #   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
 #   shows that image and plays the word's sfx. Pool must hold at least `max_word_count`
 #   entries. Stars = words placed.
@@ -80,11 +83,11 @@ pit:
   music: pit
   fx: { jump: pit-jump }
   minigames:
-    - type: spelling
+    - type: spelling-image-pit
       weight: 0.5
       padding_letter_count: 6
       words: [cat, dog, star]
-    - type: bridge
+    - type: ending-sound-pit
       weight: 0.5
       min_word_count: 3
       max_word_count: 5
@@ -96,24 +99,32 @@ pit:
 # `minigame_probability` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
 # Weights pick the kind baked onto each gate tile at generation time (weight 0 = never).
 # Duplicate `type:` entries are rejected.
+# `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
+#   Its `words:` are ids that must resolve in words.yaml. Plays the starting-letter pronunciation
+#   when a plug is picked up. Word count snaps to a multiple of 3 in `min_word_count`...`max_word_count`.
+# `spelling-image-gate`: arrange letter tokens to spell the prompted word. Stars = letters in the word.
+#   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
+# `letter-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = letters matched.
+#   Its `letters:` are ids that must resolve in phonics.yaml. Round size is
+#   `min_letter_count`...`max_letter_count` clamped to the pool.
 gate:
   music: gate
   fx: { opened: gate-open }
   minigame_probability: 1.0
   minigames:
-    - type: word_plug
+    - type: starting-sound-gate
       weight: 1.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
       words: [cat, dog, star, bath, dance, book, lightbulb, wand]
       fx: { loop: gate-spelling-loop-arc }
-    - type: spelling
+    - type: spelling-image-gate
       weight: 0.0
       padding_letter_count: 6
       words: [cat, dog, star, gate, car]
       fx: { loop: gate-spelling-loop-arc }
-    - type: letter_match
+    - type: letter-sound-gate
       weight: 0.0
       min_letter_count: 4
       max_letter_count: 8

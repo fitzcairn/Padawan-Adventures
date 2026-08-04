@@ -56,7 +56,7 @@ nonisolated struct GateMinigameDTO: Decodable {
 nonisolated enum MinigameDecodeRegistry {
     static func decodeGateMinigame(from entry: GateMinigameDTO) throws -> GateMinigameConfig {
         switch entry.type {
-        case "spelling":
+        case GateMinigameKind.spelling.rawValue:
             return .spelling(GateSpellingConfig(
                 weight: entry.weight ?? 1,
                 fx: entry.fx ?? SoundEffectTable(),
@@ -66,7 +66,7 @@ nonisolated enum MinigameDecodeRegistry {
                 words: [],
                 music: entry.music
             ))
-        case "letter_match":
+        case GateMinigameKind.letterMatch.rawValue:
             return .letterMatch(GateLetterMatchConfig(
                 weight: entry.weight ?? 1,
                 letterCountMin: entry.letterCountMin
@@ -78,7 +78,7 @@ nonisolated enum MinigameDecodeRegistry {
                 letters: [],
                 music: entry.music
             ))
-        case "word_plug":
+        case GateMinigameKind.wordPlug.rawValue:
             return .wordPlug(GateWordPlugConfig(
                 weight: entry.weight ?? 1,
                 wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,

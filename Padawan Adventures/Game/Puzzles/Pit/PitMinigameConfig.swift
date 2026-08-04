@@ -3,9 +3,9 @@ import Foundation
 /// Discriminator for which pit minigame a pit contact runs. Raw values match YAML `type:`.
 nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
     /// The original hop-the-letters spelling puzzle (`PitScene`).
-    case spelling
+    case spelling = "spelling-image-pit"
     /// Drag lettered floor tiles into slots to bridge the pit (`PitBridgeScene`).
-    case bridge
+    case bridge = "ending-sound-pit"
 }
 
 /// Per-entry config for the bridge-building pit game.

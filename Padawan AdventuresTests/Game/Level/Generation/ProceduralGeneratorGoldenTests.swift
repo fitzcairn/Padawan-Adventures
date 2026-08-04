@@ -48,11 +48,11 @@ struct ProceduralGeneratorGoldenTests {
     /// Full unhashed signature for seed 42 lives beside this file as
     /// `ProceduralGeneratorGolden_seed42.txt` for offline diffing when a hash fails.
     private static let goldenHashes: [UInt64: String] = [
-        11: "7243d239bc288cdc349d35b3dcc02025861ee94d706406e1f556873c2c2075c2",
-        42: "a582017d14f1debf1b52c1b7e1c288c7b01fe054777ac113e39f13fcff4396bf",
-        99: "b32f4d82df433c46dd29bf0ddec7a791f0f52ba5389b893b6030e442087d03af",
-        123: "572d1c5ddfd21db0c543bc85104b1f927249c37d0d1302098d9f7201152d1433",
-        777: "e9b74c264feb4422db4280e5d3a1e8b1e621d088943403c7ae9fe5e1a846ae4f",
+        11: "73f3f2b54624ce3329aa3554e82bd006176675522a0442e51ad265f76b7c58f5",
+        42: "ba72e8b18e93df7430f8242864442a925a998d96855638135c07cba4bb8176c7",
+        99: "5811d92aa525752197b87fdd3a434bf53400ba1d2f0741dc83cadc1bd8661308",
+        123: "ad1abd2395fe4abde85f496d70fd887fa3362940a0e0c0a418d0ae4fa7f31162",
+        777: "528731d96f255705d87dbfe3f67949a870c424add8fd3f7766e0a9cc97e973f1",
     ]
 
     private static let seeds: [UInt64] = [11, 42, 99, 123, 777]
