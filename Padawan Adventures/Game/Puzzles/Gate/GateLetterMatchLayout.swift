@@ -128,9 +128,12 @@ extension GateLetterMatchScene {
             root.addChild(square)
         }
 
-        let letter = OutlinedLetterFactory.make(text: token.letter, fontSize: side * 0.378)
+        let letter = OutlinedLetterFactory.make(
+            text: token.letter,
+            fontSize: side * 0.378,
+            disablesInteraction: true
+        )
         letter.zPosition = 1
-        letter.isUserInteractionEnabled = false
         root.addChild(letter)
 
         return root

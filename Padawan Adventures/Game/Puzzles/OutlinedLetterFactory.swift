@@ -14,9 +14,12 @@ enum OutlinedLetterFactory {
         text: String,
         fontSize: CGFloat,
         style: Style = .proportional,
-        disablesInteraction: Bool = false
+        /// Decorative letter stacks must not steal scene taps (SpriteKit delivers
+        /// touches to the deepest interactive node). Default is non-interactive.
+        disablesInteraction: Bool = true
     ) -> SKNode {
         let root = SKNode()
+        root.isUserInteractionEnabled = false
         let (outlineOffset, shadowOffset) = offsets(for: fontSize, style: style)
 
         for dx in -1...1 {

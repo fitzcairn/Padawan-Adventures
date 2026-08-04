@@ -26,8 +26,8 @@ extension GateLetterMatchScene {
         }
     }
 
-    /// Tap audio chain (each cue starts when the previous finishes):
-    /// switch → tapped letter → correct/error → next/current target.
+    /// Tap audio/visual chain (each cue starts when the previous finishes):
+    /// switch → tapped letter → correct/error (+ light green / flash red) → next/current target.
     func handleTapEvents(_ events: [GateLetterMatchEngineEvent]) {
         let nameTrack = events.compactMap { event -> String? in
             if case let .playName(trackID) = event { return trackID }
@@ -45,14 +45,6 @@ extension GateLetterMatchScene {
         }
 
         if let incorrectID {
-            for event in events {
-                switch event {
-                case .playName, .incorrectMatch:
-                    break
-                default:
-                    handle(event)
-                }
-            }
             runTapFeedback(
                 events: events,
                 nameTrackID: nameTrack,
@@ -75,19 +67,10 @@ extension GateLetterMatchScene {
     ) {
         inputLocked = true
 
-        if isCorrect {
-            for event in events {
-                switch event {
-                case .playName, .playYay, .playTargetPronunciation, .won:
-                    break
-                case let .correctMatch(id):
-                    applyMatchedAppearance(id: id)
-                default:
-                    handle(event)
-                }
-            }
-        }
-
+        let matchedID = events.compactMap { event -> UUID? in
+            if case let .correctMatch(id) = event { return id }
+            return nil
+        }.first
         let playTargetPrompt = isCorrect
             ? events.contains(.playTargetPronunciation)
             : true
@@ -95,41 +78,42 @@ extension GateLetterMatchScene {
         let feedbackTrackID = isCorrect ? correctSoundTrackID : errorSoundTrackID
         let feedbackDuration = SoundEffectsController.shared.cueDuration(of: feedbackTrackID)
 
-        var audioSteps: [SKAction] = []
-        appendTrackSteps(to: &audioSteps, trackID: nameTrackID)
-        audioSteps.append(SKAction.run { [weak self] in
-            if isCorrect {
+        var steps: [SKAction] = []
+        appendTrackSteps(to: &steps, trackID: nameTrackID)
+
+        // Visual + correct/error only after the letter name cue finishes.
+        if isCorrect {
+            steps.append(SKAction.run { [weak self] in
+                if let matchedID {
+                    self?.applyMatchedAppearance(id: matchedID)
+                }
                 self?.playCorrectSound()
-            } else {
-                self?.playErrorSound()
-            }
-        })
-        audioSteps.append(SKAction.wait(forDuration: feedbackDuration))
-        if playTargetPrompt {
-            audioSteps.append(SKAction.run { [weak self] in self?.playTargetPronunciation() })
+            })
+            steps.append(SKAction.wait(forDuration: feedbackDuration))
+        } else {
+            let flash = wrongFlashAction(for: incorrectID)
+            steps.append(SKAction.group([
+                flash,
+                SKAction.sequence([
+                    SKAction.run { [weak self] in self?.playErrorSound() },
+                    SKAction.wait(forDuration: feedbackDuration),
+                ]),
+            ]))
         }
 
-        let finish = SKAction.run { [weak self] in
+        if playTargetPrompt {
+            steps.append(SKAction.run { [weak self] in self?.playTargetPronunciation() })
+        }
+
+        steps.append(SKAction.run { [weak self] in
             guard let self else { return }
             if didWin {
                 self.finishWon()
             }
             self.inputLocked = false
-        }
+        })
 
-        if isCorrect {
-            run(SKAction.sequence(audioSteps + [finish]))
-            return
-        }
-
-        let flashTwice = wrongFlashAction(for: incorrectID)
-        run(SKAction.sequence([
-            SKAction.group([
-                flashTwice,
-                SKAction.sequence(audioSteps),
-            ]),
-            finish,
-        ]))
+        run(SKAction.sequence(steps))
     }
 
     var correctSoundTrackID: String? {
