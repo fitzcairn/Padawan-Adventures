@@ -137,22 +137,11 @@ extension PitSoundOutWordScene {
         promptNode?.position = geo.promptCenter
 
         for node in landedTileNodes {
-            let step = (node.userData?["step"] as? NSNumber)?.intValue
-                ?? (node.userData?["step"] as? Int)
-                ?? 0
-            let candidate = (node.userData?["index"] as? NSNumber)?.intValue
-                ?? (node.userData?["index"] as? Int)
-                ?? 0
-            let count = (node.userData?["count"] as? NSNumber)?.intValue
-                ?? (node.userData?["count"] as? Int)
-                ?? 1
-            node.position = geo.candidateCenter(step: step, candidate: candidate, count: count)
+            node.position = candidatePosition(for: node, geometry: geo)
         }
 
-        let count = candidateNodes.count
-        for (index, node) in candidateNodes.enumerated() {
-            let step = (node.userData?["step"] as? Int) ?? (engine.currentIndex ?? 0)
-            node.position = geo.candidateCenter(step: step, candidate: index, count: count)
+        for node in candidateNodes {
+            node.position = candidatePosition(for: node, geometry: geo)
         }
 
         if !isJumping, !isDraggingPlayer, let playerNode {
@@ -162,6 +151,28 @@ extension PitSoundOutWordScene {
                 playerNode.position = CGPoint(x: geo.leftPadRect.midX, y: geo.leftPadRect.midY)
             }
         }
+    }
+
+    /// Geometric fan centre plus the per-tile jitter stored in `userData`.
+    func candidatePosition(for node: SKNode, geometry geo: PitSoundOutWordGeometry) -> CGPoint {
+        let step = intUserData(node, "step") ?? (engine.currentIndex ?? 0)
+        let candidate = intUserData(node, "index") ?? 0
+        let count = intUserData(node, "count") ?? 1
+        let center = geo.candidateCenter(step: step, candidate: candidate, count: count)
+        let jitterX = cgFloatUserData(node, "jitterX") ?? 0
+        let jitterY = cgFloatUserData(node, "jitterY") ?? 0
+        return CGPoint(x: center.x + jitterX, y: center.y + jitterY)
+    }
+
+    private func intUserData(_ node: SKNode, _ key: String) -> Int? {
+        (node.userData?[key] as? NSNumber)?.intValue ?? (node.userData?[key] as? Int)
+    }
+
+    private func cgFloatUserData(_ node: SKNode, _ key: String) -> CGFloat? {
+        if let number = node.userData?[key] as? NSNumber {
+            return CGFloat(truncating: number)
+        }
+        return node.userData?[key] as? CGFloat
     }
 
     // MARK: - Audio

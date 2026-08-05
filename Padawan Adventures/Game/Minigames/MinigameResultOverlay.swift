@@ -11,7 +11,7 @@ struct MinigameResultOverlay: View {
 
     @State private var didFinish = false
     @State private var flightProgress: CGFloat = 0
-    @State private var coinFrame: CGRect = .zero
+    @State private var coinCenter: CGPoint?
 
     private static let holdSeconds: TimeInterval = 2
     private static let flightSeconds: TimeInterval = 0.75
@@ -19,6 +19,8 @@ struct MinigameResultOverlay: View {
 
     var body: some View {
         GeometryReader { geo in
+            let bounds = geo.frame(in: .global)
+
             ModalOverlayShell(
                 accessibilityRootID: "minigame.result.won.root",
                 onBackgroundTap: { finish() }
@@ -38,20 +40,32 @@ struct MinigameResultOverlay: View {
                     )
                     .background {
                         GeometryReader { proxy in
+                            let frame = proxy.frame(in: .global)
                             Color.clear.preference(
-                                key: CoinFrameKey.self,
-                                value: proxy.frame(in: .named(Self.coordinateSpace))
+                                key: CoinCenterKey.self,
+                                value: CGPoint(x: frame.midX, y: frame.midY)
                             )
                         }
                     }
-                    .offset(flightOffset(in: geo.size))
-                    .scaleEffect(1 - flightProgress)
+                    .modifier(
+                        CoinArcFlight(
+                            progress: flightProgress,
+                            start: coinCenter ?? CGPoint(x: bounds.midX, y: bounds.midY),
+                            end: CGPoint(x: bounds.minX, y: bounds.maxY),
+                            arcHeight: bounds.height * 0.22
+                        )
+                    )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .coordinateSpace(name: Self.coordinateSpace)
-        .onPreferenceChange(CoinFrameKey.self) { coinFrame = $0 }
+        .onPreferenceChange(CoinCenterKey.self) { center in
+            // The measured frame travels with the coins once they launch; keep the
+            // resting position so the arc has a fixed origin.
+            guard flightProgress == 0 else { return }
+            coinCenter = center
+        }
         .task {
             let holdNanos = UInt64(Self.holdSeconds * 1_000_000_000)
             try? await Task.sleep(nanoseconds: holdNanos)
@@ -67,26 +81,44 @@ struct MinigameResultOverlay: View {
         }
     }
 
-    /// Offset from the coin row's laid-out center along a quadratic arc to the
-    /// bottom-left corner of the overlay `(0, height)`.
-    private func flightOffset(in size: CGSize) -> CGSize {
-        guard flightProgress > 0, coinFrame != .zero else { return .zero }
-
-        let start = CGPoint(x: coinFrame.midX, y: coinFrame.midY)
-        let end = CGPoint(x: 0, y: size.height)
-        let control = CGPoint(
-            x: (start.x + end.x) * 0.5,
-            y: min(start.y, end.y) - size.height * 0.22
-        )
-        let x = Self.quad(flightProgress, start.x, control.x, end.x)
-        let y = Self.quad(flightProgress, start.y, control.y, end.y)
-        return CGSize(width: x - start.x, height: y - start.y)
-    }
-
     private func finish() {
         guard !didFinish else { return }
         didFinish = true
         onFinished()
+    }
+}
+
+/// Moves content along a quadratic arc from `start` to `end` while shrinking to nothing.
+///
+/// Animating `progress` directly (rather than the resulting offset) keeps the curve:
+/// SwiftUI would otherwise interpolate the endpoints in a straight line.
+private struct CoinArcFlight: ViewModifier, Animatable {
+    var progress: CGFloat
+    let start: CGPoint
+    let end: CGPoint
+    let arcHeight: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(max(1 - progress, 0))
+            .offset(offset)
+    }
+
+    private var offset: CGSize {
+        guard progress > 0 else { return .zero }
+        let control = CGPoint(
+            x: (start.x + end.x) / 2,
+            y: min(start.y, end.y) - arcHeight
+        )
+        return CGSize(
+            width: Self.quad(progress, start.x, control.x, end.x) - start.x,
+            height: Self.quad(progress, start.y, control.y, end.y) - start.y
+        )
     }
 
     /// Quadratic Bézier: `(1-t)²·p0 + 2(1-t)t·p1 + t²·p2`.
@@ -96,10 +128,10 @@ struct MinigameResultOverlay: View {
     }
 }
 
-private struct CoinFrameKey: PreferenceKey {
-    static let defaultValue: CGRect = .zero
+private struct CoinCenterKey: PreferenceKey {
+    static let defaultValue: CGPoint = .zero
 
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
         value = nextValue()
     }
 }

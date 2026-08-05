@@ -36,14 +36,17 @@ sprite:
     idle_southeast: { sheet: idle_southeast-spritesheet, atlas: idle_southeast-atlas }
     idle_southwest: { flip_of: idle_southeast }
     idle_down: { sheet: idle_down-spritesheet, atlas: idle_down-atlas }
+    # walk_down / walk_southeast were drawn oversized against the idle sheets (both head
+    # and overall height), so `bake_scale` brings them back in line. The other walk sheets
+    # differ in proportion rather than scale, which a single factor cannot correct.
     walk_up: { sheet: walk_up-spritesheet, atlas: walk_up-atlas }
     walk_northeast: { sheet: walk_northeast-spritesheet, atlas: walk_northeast-atlas }
     walk_northwest: { flip_of: walk_northeast }
     walk_right: { sheet: walk_right-spritesheet, atlas: walk_right-atlas }
     walk_left: { flip_of: walk_right }
-    walk_southeast: { sheet: walk_southeast-spritesheet, atlas: walk_southeast-atlas }
+    walk_southeast: { sheet: walk_southeast-spritesheet, atlas: walk_southeast-atlas, bake_scale: 0.95 }
     walk_southwest: { flip_of: walk_southeast }
-    walk_down: { sheet: walk_down-spritesheet, atlas: walk_down-atlas }
+    walk_down: { sheet: walk_down-spritesheet, atlas: walk_down-atlas, bake_scale: 0.96 }
     # Drawn on a 512px canvas rather than the 256px used above, so they bake at half
     # scale to keep Kam one size across every clip.
     jump_right: { sheet: jump_right-spritesheet, atlas: jump_right-atlas, bake_scale: 0.5 }

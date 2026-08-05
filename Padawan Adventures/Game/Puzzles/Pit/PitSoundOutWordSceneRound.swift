@@ -34,9 +34,17 @@ extension PitSoundOutWordScene {
         guard let stepIndex = engine.currentIndex else { return }
         let geo = geometry
         let count = engine.currentChoices.count
+        let jitters = geo.candidateJitters(step: stepIndex, count: count, using: &placementRNG)
         for (index, choice) in engine.currentChoices.enumerated() {
-            let node = makeCandidateTileNode(choice: choice, index: index, stepIndex: stepIndex)
-            node.position = geo.candidateCenter(step: stepIndex, candidate: index, count: count)
+            let jitter = jitters[index]
+            let node = makeCandidateTileNode(
+                choice: choice,
+                index: index,
+                stepIndex: stepIndex,
+                jitter: jitter
+            )
+            let center = geo.candidateCenter(step: stepIndex, candidate: index, count: count)
+            node.position = CGPoint(x: center.x + jitter.x, y: center.y + jitter.y)
             node.alpha = 0
             addChild(node)
             candidateNodes.append(node)
@@ -47,7 +55,8 @@ extension PitSoundOutWordScene {
     func makeCandidateTileNode(
         choice: GateSoundOutWordEngine.Choice,
         index: Int,
-        stepIndex: Int
+        stepIndex: Int,
+        jitter: CGPoint
     ) -> SKNode {
         let side = geometry.tileSide
         let root = SKNode()
@@ -58,6 +67,8 @@ extension PitSoundOutWordScene {
             "index": index,
             "step": stepIndex,
             "count": engine.currentChoices.count,
+            "jitterX": jitter.x,
+            "jitterY": jitter.y,
         ]
         root.zPosition = Self.candidateTilesZ
 
@@ -231,16 +242,12 @@ extension PitSoundOutWordScene {
             resumePlayerIdle()
             return
         }
-        let candidateIndex = geometry.nearestCandidate(
-            to: playerNode.position,
-            step: stepIndex,
-            count: count
-        )
-        let target = geometry.candidateCenter(
-            step: stepIndex,
-            candidate: candidateIndex,
-            count: count
-        )
+        // Prefer actual (jittered) tile positions over the geometric fan centres.
+        let candidateIndex = nearestCandidateNodeIndex(to: playerNode.position)
+            ?? geometry.nearestCandidate(to: playerNode.position, step: stepIndex, count: count)
+        let target = candidateNodes.indices.contains(candidateIndex)
+            ? candidateNodes[candidateIndex].position
+            : geometry.candidateCenter(step: stepIndex, candidate: candidateIndex, count: count)
 
         isUserInteractionEnabled = false
         playDucked(event: "jump", from: pitFx)
@@ -253,5 +260,20 @@ extension PitSoundOutWordScene {
             self.resumePlayerIdle()
             self.evaluate(candidateIndex: candidateIndex)
         }
+    }
+
+    /// Nearest live candidate by its on-screen (jittered) position.
+    func nearestCandidateNodeIndex(to point: CGPoint) -> Int? {
+        guard !candidateNodes.isEmpty else { return nil }
+        var bestIndex = 0
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+        for (index, node) in candidateNodes.enumerated() {
+            let distance = hypot(point.x - node.position.x, point.y - node.position.y)
+            if distance < bestDistance {
+                bestDistance = distance
+                bestIndex = index
+            }
+        }
+        return bestIndex
     }
 }
