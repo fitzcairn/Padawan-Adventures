@@ -15,7 +15,7 @@ struct EnemyConfigTests {
             shot_pacing_seconds: 10
             shot_travel_seconds: 1.5
             stars_to_win: 10
-            shot_letters: [a, b, c]
+            shot_graphemes: [a, b, c]
             fx:
               notice: enemy-spider
           scout:
@@ -23,7 +23,7 @@ struct EnemyConfigTests {
             color: "#00FF00"
             tiles_per_second: 2.0
             forget_seconds: 1.5
-            shot_letters: [a]
+            shot_graphemes: [a]
         """
 
         let config = try EnemyConfig.decode(from: yaml)
@@ -38,14 +38,14 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "spider")?.starsToWin == 10)
         #expect(config.type(named: "spider")?.fx.trackID(for: "notice") == "enemy-spider")
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
-        #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
-        #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_grapheme_b_name")
+        #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_grapheme_c_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.shotPacingSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
-        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
         try config.validate()
     }
 
@@ -73,7 +73,7 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            shot_letters: [a]
+            shot_graphemes: [a]
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == 0.75)
@@ -88,7 +88,7 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            shot_letters: [a]
+            shot_graphemes: [a]
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxScreenWidthFraction == 0.12)
@@ -105,7 +105,7 @@ struct EnemyConfigTests {
           shot_pacing_seconds: 30
           shot_travel_seconds: 8
           stars_to_win: 5
-          shot_letters: [a, b, c]
+          shot_graphemes: [a, b, c]
           fx:
             notice: enemy-spider
         enemies:
@@ -116,7 +116,7 @@ struct EnemyConfigTests {
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.tilesPerSecond == 2.0)
         #expect(config.type(named: "scout")?.starsToWin == 5)
@@ -154,7 +154,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt") == nil)
         #expect(config.type(named: "spider") != nil)
         #expect(config.enemies.count == 10)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
     }
 
@@ -172,7 +172,7 @@ struct EnemyConfigTests {
           color: "#FF0000"
           tiles_per_second: 0.5
           forget_seconds: 3.0
-          shot_letters: [a]
+          shot_graphemes: [a]
         enemies:
           spider: { sprite: spider }
         """
@@ -209,7 +209,7 @@ struct EnemyConfigTests {
           forget_seconds: 3.0
           shot_pacing_seconds: 30
           stars_to_win: 5
-          shot_letters: [a, b, c]
+          shot_graphemes: [a, b, c]
         enemies:
           dino:
             sprite: dino

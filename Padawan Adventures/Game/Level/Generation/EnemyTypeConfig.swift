@@ -112,9 +112,9 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
 
     /// Fallback A/B/C letter-name shots used by hand-built configs / tests.
     static let fallbackShotTypes: [String: EnemyShotTypeConfig] = [
-        "A": EnemyShotTypeConfig(trackBasename: "sfx_letter_a_name"),
-        "B": EnemyShotTypeConfig(trackBasename: "sfx_letter_b_name"),
-        "C": EnemyShotTypeConfig(trackBasename: "sfx_letter_c_name"),
+        "A": EnemyShotTypeConfig(trackBasename: "sfx_grapheme_a_name"),
+        "B": EnemyShotTypeConfig(trackBasename: "sfx_grapheme_b_name"),
+        "C": EnemyShotTypeConfig(trackBasename: "sfx_grapheme_c_name"),
     ]
 
     /// Stable letter keys for combat random selection.

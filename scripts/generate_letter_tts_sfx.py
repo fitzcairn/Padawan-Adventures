@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate letter name/pronunciation SFX via macOS `say` + afconvert into FX/Phonetics/."""
+"""Generate letter name/pronunciation SFX via macOS `say` + afconvert into FX/Graphemes/."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-LETTERS = list("abcdefgh") + ["l", "m", "o", "p", "s", "w"]
+LETTERS = list("abcdefghijklmnopqrstuvwxyz")
 
 # Spoken placeholders. Use phonetic spellings for names — macOS `say "B"` speaks
 # "Capital B", which is too long/awkward for gameplay prompts.
@@ -21,12 +21,24 @@ NAME_TEXT = {
     "f": "eff",
     "g": "jee",
     "h": "aitch",
+    "i": "eye",
+    "j": "jay",
+    "k": "kay",
     "l": "el",
     "m": "em",
+    "n": "en",
     "o": "oh",
     "p": "pee",
+    "q": "cue",
+    "r": "arr",
     "s": "ess",
+    "t": "tee",
+    "u": "you",
+    "v": "vee",
     "w": "double you",
+    "x": "ex",
+    "y": "why",
+    "z": "zee",
 }
 
 PRONUNCIATION_TEXT = {
@@ -38,12 +50,24 @@ PRONUNCIATION_TEXT = {
     "f": "fuh",
     "g": "guh",
     "h": "huh",
+    "i": "ih",
+    "j": "juh",
+    "k": "kuh",
     "l": "lll",
     "m": "mmm",
+    "n": "nnn",
     "o": "oh",  # long O, matching the word "open"
     "p": "puh",
+    "q": "kwuh",
+    "r": "rrr",
     "s": "sss",
+    "t": "tuh",
+    "u": "uh",
+    "v": "vvv",
     "w": "wuh",
+    "x": "kss",
+    "y": "yuh",
+    "z": "zzz",
 }
 
 
@@ -83,16 +107,23 @@ def generate(text: str, out_m4a: Path) -> None:
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     out_dir = (
-        repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Phonetics"
+        repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Graphemes"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for letter in LETTERS:
-        generate(NAME_TEXT[letter], out_dir / f"sfx_letter_{letter}_name.m4a")
-        generate(
-            PRONUNCIATION_TEXT[letter],
-            out_dir / f"sfx_letter_{letter}_pronunciation.m4a",
-        )
+    letters = [letter.lower() for letter in sys.argv[1:]] or LETTERS
+    for letter in letters:
+        clips = [
+            (NAME_TEXT[letter], out_dir / f"sfx_grapheme_{letter}_name.m4a"),
+            (
+                PRONUNCIATION_TEXT[letter],
+                out_dir / f"sfx_grapheme_{letter}_pronunciation.m4a",
+            ),
+        ]
+        for text, target in clips:
+            if target.exists():
+                continue
+            generate(text, target)
     return 0
 
 

@@ -34,7 +34,7 @@ nonisolated struct GateMinigameDTO: Decodable {
     var words: [String]?
     var letterCountMin: Int?
     var letterCountMax: Int?
-    var letters: [String]?
+    var graphemes: [String]?
     var wordCountMin: Int?
     var wordCountMax: Int?
 
@@ -43,11 +43,11 @@ nonisolated struct GateMinigameDTO: Decodable {
         case weight
         case fx
         case music
-        case numPaddingLetters = "padding_letter_count"
+        case numPaddingLetters = "padding_grapheme_count"
         case words
-        case letterCountMin = "min_letter_count"
-        case letterCountMax = "max_letter_count"
-        case letters
+        case letterCountMin = "min_grapheme_count"
+        case letterCountMax = "max_grapheme_count"
+        case graphemes
         case wordCountMin = "min_word_count"
         case wordCountMax = "max_word_count"
     }
@@ -74,7 +74,7 @@ nonisolated enum MinigameDecodeRegistry {
                 letterCountMax: entry.letterCountMax
                     ?? GateLetterMatchConfig.fallback.letterCountMax,
                 fx: entry.fx ?? SoundEffectTable(),
-                letterIDs: entry.letters?.map { $0.lowercased() },
+                letterIDs: entry.graphemes?.map { $0.lowercased() },
                 letters: [],
                 music: entry.music
             ))
@@ -131,7 +131,7 @@ nonisolated enum MinigameDecodeRegistry {
                 monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
                 orbTravelSeconds: entry.orbTravelSeconds
                     ?? CombatDeflectConfig.defaultOrbTravelSeconds,
-                letterIDs: entry.letters?.map { $0.lowercased() },
+                letterIDs: entry.graphemes?.map { $0.lowercased() },
                 letters: []
             ))
         default:
@@ -183,7 +183,7 @@ nonisolated struct CombatMinigameDTO: Decodable {
     var weight: Double?
     var monsterHP: Int?
     var orbTravelSeconds: Double?
-    var letters: [String]?
+    var graphemes: [String]?
     var letterSpawnMultiplier: Double?
     var letterCase: String?
     var letterSoundRepeatSeconds: Double?
@@ -193,10 +193,10 @@ nonisolated struct CombatMinigameDTO: Decodable {
         case weight
         case monsterHP = "monster_hit_points"
         case orbTravelSeconds = "orb_travel_seconds"
-        case letters
-        case letterSpawnMultiplier = "letter_spawn_multiplier"
-        case letterCase = "letter_case"
-        case letterSoundRepeatSeconds = "letter_sound_repeat_seconds"
+        case graphemes
+        case letterSpawnMultiplier = "grapheme_spawn_multiplier"
+        case letterCase = "grapheme_case"
+        case letterSoundRepeatSeconds = "grapheme_sound_repeat_seconds"
     }
 }
 
@@ -212,7 +212,7 @@ nonisolated struct PitMinigameDTO: Decodable {
     enum CodingKeys: String, CodingKey {
         case type
         case weight
-        case numPaddingLetters = "padding_letter_count"
+        case numPaddingLetters = "padding_grapheme_count"
         case words
         case minWords = "min_word_count"
         case maxWords = "max_word_count"

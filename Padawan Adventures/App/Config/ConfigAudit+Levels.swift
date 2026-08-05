@@ -170,7 +170,7 @@ extension ConfigAudit {
                 for id in ids {
                     if letters.letter(named: id) == nil {
                         problems.append(
-                            "\(label).gate.minigames[\(idx)].letters: unknown letter id '\(id)'"
+                            "\(label).gate.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
                         )
                     }
                 }
@@ -180,7 +180,7 @@ extension ConfigAudit {
             if case .deflect(let c) = minigame, let ids = c.letterIDs {
                 for id in ids where letters.letter(named: id) == nil {
                     problems.append(
-                        "\(label).combat.minigames[\(idx)].letters: unknown letter id '\(id)'"
+                        "\(label).combat.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
                     )
                 }
             }

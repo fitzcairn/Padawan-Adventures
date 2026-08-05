@@ -313,7 +313,7 @@ nonisolated enum ConfigStore {
         return found
     }
 
-    /// Shared by domain resolve steps (e.g. enemy `shot_letters`).
+    /// Shared by domain resolve steps (e.g. enemy `shot_graphemes`).
     nonisolated static func asStringKeyedDictionary(_ value: Any?) -> [String: Any]? {
         guard let value else { return nil }
         if let dict = value as? [String: Any] {

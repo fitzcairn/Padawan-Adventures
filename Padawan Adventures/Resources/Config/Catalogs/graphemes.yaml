@@ -1,0 +1,86 @@
+# Shared grapheme FX for minigames (gate letter-match, gate sound-out-word, combat cues, etc.).
+# Tracks live under Resources/Audio/FX/Graphemes/.
+#
+# Per entry:
+#   sfx:  pronunciation track basename (required)
+#   name: grapheme-name track basename (required)
+
+graphemes:
+  a:
+    sfx: sfx_grapheme_a_pronunciation
+    name: sfx_grapheme_a_name
+  b:
+    sfx: sfx_grapheme_b_pronunciation
+    name: sfx_grapheme_b_name
+  c:
+    sfx: sfx_grapheme_c_pronunciation
+    name: sfx_grapheme_c_name
+  d:
+    sfx: sfx_grapheme_d_pronunciation
+    name: sfx_grapheme_d_name
+  e:
+    sfx: sfx_grapheme_e_pronunciation
+    name: sfx_grapheme_e_name
+  f:
+    sfx: sfx_grapheme_f_pronunciation
+    name: sfx_grapheme_f_name
+  g:
+    sfx: sfx_grapheme_g_pronunciation
+    name: sfx_grapheme_g_name
+  h:
+    sfx: sfx_grapheme_h_pronunciation
+    name: sfx_grapheme_h_name
+  i:
+    sfx: sfx_grapheme_i_pronunciation
+    name: sfx_grapheme_i_name
+  j:
+    sfx: sfx_grapheme_j_pronunciation
+    name: sfx_grapheme_j_name
+  k:
+    sfx: sfx_grapheme_k_pronunciation
+    name: sfx_grapheme_k_name
+  l:
+    sfx: sfx_grapheme_l_pronunciation
+    name: sfx_grapheme_l_name
+  m:
+    sfx: sfx_grapheme_m_pronunciation
+    name: sfx_grapheme_m_name
+  n:
+    sfx: sfx_grapheme_n_pronunciation
+    name: sfx_grapheme_n_name
+  o:
+    sfx: sfx_grapheme_o_pronunciation
+    name: sfx_grapheme_o_name
+  p:
+    sfx: sfx_grapheme_p_pronunciation
+    name: sfx_grapheme_p_name
+  q:
+    sfx: sfx_grapheme_q_pronunciation
+    name: sfx_grapheme_q_name
+  r:
+    sfx: sfx_grapheme_r_pronunciation
+    name: sfx_grapheme_r_name
+  s:
+    sfx: sfx_grapheme_s_pronunciation
+    name: sfx_grapheme_s_name
+  t:
+    sfx: sfx_grapheme_t_pronunciation
+    name: sfx_grapheme_t_name
+  u:
+    sfx: sfx_grapheme_u_pronunciation
+    name: sfx_grapheme_u_name
+  v:
+    sfx: sfx_grapheme_v_pronunciation
+    name: sfx_grapheme_v_name
+  w:
+    sfx: sfx_grapheme_w_pronunciation
+    name: sfx_grapheme_w_name
+  x:
+    sfx: sfx_grapheme_x_pronunciation
+    name: sfx_grapheme_x_name
+  y:
+    sfx: sfx_grapheme_y_pronunciation
+    name: sfx_grapheme_y_name
+  z:
+    sfx: sfx_grapheme_z_pronunciation
+    name: sfx_grapheme_z_name

@@ -117,11 +117,11 @@ struct BundleAudioLayoutTests {
 
     @Test func phoneticAndUIClipsResolveInSubfolders() {
         let phonetic = BundleMusicAudioPlayer.audioURL(
-            for: "sfx_letter_a_name",
+            for: "sfx_grapheme_a_name",
             subdirectories: AudioBundleLayout.fxSubdirectories
         )
         #expect(phonetic != nil)
-        #expect(phonetic?.path.contains("/Audio/FX/Phonics/") == true)
+        #expect(phonetic?.path.contains("/Audio/FX/Graphemes/") == true)
 
         let ui = BundleMusicAudioPlayer.audioURL(
             for: "level-screen-artifact-appear",
@@ -167,7 +167,7 @@ struct BundleAudioLayoutTests {
         for basename in Set(basenames) {
             guard basename.hasPrefix("sfx_") else { continue }
             #expect(
-                basename.hasPrefix("sfx_letter_") || basename.hasPrefix("sfx_word_"),
+                basename.hasPrefix("sfx_grapheme_") || basename.hasPrefix("sfx_word_"),
                 "stale non-phonetic sfx basename '\(basename)'"
             )
         }

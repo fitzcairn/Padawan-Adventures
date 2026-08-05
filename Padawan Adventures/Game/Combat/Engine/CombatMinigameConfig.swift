@@ -3,7 +3,7 @@ import Foundation
 /// Discriminator for which combat minigame an encounter runs. Raw values match YAML `type:`.
 nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
     /// The original swipe-to-slash arena (`CombatScene`).
-    case slash = "letter-sound-combat"
+    case slash = "grapheme-sound-combat"
     /// Tap-the-matching-ring deflect arena (`CombatDeflectScene`).
     case deflect = "ending-sound-combat"
 }
@@ -60,7 +60,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     static let defaultOrbTravelSeconds: Double = 3
     static let minRingCount = 2
     static let maxRingCount = 6
-    /// Used when YAML omits `letters:` (and for the code fallback).
+    /// Used when YAML omits `graphemes:` (and for the code fallback).
     static let defaultRingCount = 3
     /// Back-compat alias for the default letter / ring count.
     static let ringCount = defaultRingCount

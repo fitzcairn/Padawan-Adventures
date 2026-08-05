@@ -3,9 +3,9 @@ import Testing
 
 struct LetterSoundCatalogTests {
     @Test func nameTrackUsesLowercaseLetter() {
-        #expect(LetterSoundCatalog.nameTrackID(for: "B") == "sfx_letter_b_name")
-        #expect(LetterSoundCatalog.nameTrackID(for: "a") == "sfx_letter_a_name")
-        #expect(LetterSoundCatalog.pronunciationTrackID(for: "C") == "sfx_letter_c_pronunciation")
+        #expect(LetterSoundCatalog.nameTrackID(for: "B") == "sfx_grapheme_b_name")
+        #expect(LetterSoundCatalog.nameTrackID(for: "a") == "sfx_grapheme_a_name")
+        #expect(LetterSoundCatalog.pronunciationTrackID(for: "C") == "sfx_grapheme_c_pronunciation")
     }
 
     @Test func rejectsNonLetters() {

@@ -133,7 +133,7 @@ extension ConfigAudit {
         }
 
         // 3) No basename collisions between searchable Music and FX trees
-        // (includes nested Phonics/, Words/, and UI/ under FX).
+        // (includes nested Graphemes/, Words/, and UI/ under FX).
         var locationsByBasename: [String: Set<String>] = [:]
         for subdirectory in ["Audio/Music", "Audio/FX"] {
             for url in audioFiles(under: subdirectory, in: resourceURL) {

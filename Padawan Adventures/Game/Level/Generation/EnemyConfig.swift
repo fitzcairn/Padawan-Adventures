@@ -142,7 +142,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         }
     }
 
-    /// Replaces each enemy's `shot_letters: [a, b, …]` with a `shot_types` map resolved
+    /// Replaces each enemy's `shot_graphemes: [a, b, …]` with a `shot_types` map resolved
     /// through the letter catalog (`a` → key `A`, shoot track = letter `name`).
     private static func resolveShotLetters(
         in tree: inout [String: Any],
@@ -153,7 +153,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         }
         for (enemyID, entryValue) in enemies {
             guard var entry = ConfigStore.asStringKeyedDictionary(entryValue) else { continue }
-            guard let rawLetters = entry["shot_letters"] as? [Any] else {
+            guard let rawLetters = entry["shot_graphemes"] as? [Any] else {
                 // Allow hand-built YAML that already has shot_types (tests).
                 continue
             }
@@ -161,17 +161,17 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
             for raw in rawLetters {
                 let id = String(describing: raw).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 guard !id.isEmpty else {
-                    throw EnemyConfigError.invalid("\(enemyID).shot_letters entries must be non-empty")
+                    throw EnemyConfigError.invalid("\(enemyID).shot_graphemes entries must be non-empty")
                 }
                 guard let letter = letterCatalog.letter(named: id) else {
                     throw EnemyConfigError.invalid(
-                        "\(enemyID).shot_letters.\(id) is not in the letter catalog"
+                        "\(enemyID).shot_graphemes.\(id) is not in the letter catalog"
                     )
                 }
                 let key = id.uppercased()
                 shotTypes[key] = ["fx": letter.name]
             }
-            entry.removeValue(forKey: "shot_letters")
+            entry.removeValue(forKey: "shot_graphemes")
             entry["shot_types"] = shotTypes
             enemies[enemyID] = entry
         }

@@ -24,7 +24,7 @@ nonisolated struct ConfigPath: Equatable, Sendable {
     static let items   = ConfigPath(basename: "items", subdirectory: catalogRoot)
     static let terrain = ConfigPath(basename: "terrain", subdirectory: catalogRoot)
     static let words   = ConfigPath(basename: "words", subdirectory: catalogRoot)
-    static let phonics = ConfigPath(basename: "phonics", subdirectory: catalogRoot)
+    static let graphemes = ConfigPath(basename: "graphemes", subdirectory: catalogRoot)
 
     static let levelDefaults = ConfigPath(basename: "_defaults", subdirectory: levelRoot)
     static let loading = ConfigPath(basename: "loading", subdirectory: "\(configRoot)/UI")

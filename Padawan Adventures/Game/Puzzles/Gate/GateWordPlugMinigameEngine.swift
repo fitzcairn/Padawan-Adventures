@@ -134,9 +134,9 @@ nonisolated struct GateWordPlugMinigameEngine {
                 )
             }
             let name = LetterSoundCatalog.nameTrackID(for: slot.letter)
-                ?? "sfx_letter_\(slot.letter)_name"
+                ?? "sfx_grapheme_\(slot.letter)_name"
             let pronunciation = LetterSoundCatalog.pronunciationTrackID(for: slot.letter)
-                ?? "sfx_letter_\(slot.letter)_pronunciation"
+                ?? "sfx_grapheme_\(slot.letter)_pronunciation"
             return LetterToken(
                 id: UUID(),
                 letter: slot.letter,

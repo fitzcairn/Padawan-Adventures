@@ -124,7 +124,7 @@ struct AppConfigTests {
           fx: { opened: sfx_gate_opened_alt }
           minigames:
             - type: spelling-image-gate
-              padding_letter_count: 2
+              padding_grapheme_count: 2
         """)
         let generation = WorldGenerationConfig.compose(app: app, level: level)
         #expect(generation.world.width == 30)

@@ -1,14 +1,14 @@
 import Foundation
 import Yams
 
-/// YAML shape for one shared phonics entry under `phonics.<letter>:`.
+/// YAML shape for one shared grapheme entry under `graphemes.<letter>:`.
 /// `sfx` is the pronunciation track; `name` is the letter-name track.
 nonisolated struct LetterSpec: Decodable, Equatable, Sendable {
     var sfx: String?
     var name: String?
 }
 
-/// Shared phonics FX loaded from `Resources/Config/Catalogs/phonics.yaml` for reuse across minigames.
+/// Shared grapheme FX loaded from `Resources/Config/Catalogs/graphemes.yaml` for reuse across minigames.
 nonisolated struct LetterCatalog: Equatable, Sendable {
     static let subdirectory = ConfigPath.catalogRoot
 
@@ -16,20 +16,32 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     private(set) var letters: [GateLetter]
 
     nonisolated static let fallback = LetterCatalog(letters: [
-        .init(letter: "a", pronunciation: "sfx_letter_a_pronunciation", name: "sfx_letter_a_name"),
-        .init(letter: "b", pronunciation: "sfx_letter_b_pronunciation", name: "sfx_letter_b_name"),
-        .init(letter: "c", pronunciation: "sfx_letter_c_pronunciation", name: "sfx_letter_c_name"),
-        .init(letter: "d", pronunciation: "sfx_letter_d_pronunciation", name: "sfx_letter_d_name"),
-        .init(letter: "e", pronunciation: "sfx_letter_e_pronunciation", name: "sfx_letter_e_name"),
-        .init(letter: "f", pronunciation: "sfx_letter_f_pronunciation", name: "sfx_letter_f_name"),
-        .init(letter: "g", pronunciation: "sfx_letter_g_pronunciation", name: "sfx_letter_g_name"),
-        .init(letter: "h", pronunciation: "sfx_letter_h_pronunciation", name: "sfx_letter_h_name"),
-        .init(letter: "l", pronunciation: "sfx_letter_l_pronunciation", name: "sfx_letter_l_name"),
-        .init(letter: "m", pronunciation: "sfx_letter_m_pronunciation", name: "sfx_letter_m_name"),
-        .init(letter: "o", pronunciation: "sfx_letter_o_pronunciation", name: "sfx_letter_o_name"),
-        .init(letter: "p", pronunciation: "sfx_letter_p_pronunciation", name: "sfx_letter_p_name"),
-        .init(letter: "s", pronunciation: "sfx_letter_s_pronunciation", name: "sfx_letter_s_name"),
-        .init(letter: "w", pronunciation: "sfx_letter_w_pronunciation", name: "sfx_letter_w_name"),
+        .init(letter: "a", pronunciation: "sfx_grapheme_a_pronunciation", name: "sfx_grapheme_a_name"),
+        .init(letter: "b", pronunciation: "sfx_grapheme_b_pronunciation", name: "sfx_grapheme_b_name"),
+        .init(letter: "c", pronunciation: "sfx_grapheme_c_pronunciation", name: "sfx_grapheme_c_name"),
+        .init(letter: "d", pronunciation: "sfx_grapheme_d_pronunciation", name: "sfx_grapheme_d_name"),
+        .init(letter: "e", pronunciation: "sfx_grapheme_e_pronunciation", name: "sfx_grapheme_e_name"),
+        .init(letter: "f", pronunciation: "sfx_grapheme_f_pronunciation", name: "sfx_grapheme_f_name"),
+        .init(letter: "g", pronunciation: "sfx_grapheme_g_pronunciation", name: "sfx_grapheme_g_name"),
+        .init(letter: "h", pronunciation: "sfx_grapheme_h_pronunciation", name: "sfx_grapheme_h_name"),
+        .init(letter: "i", pronunciation: "sfx_grapheme_i_pronunciation", name: "sfx_grapheme_i_name"),
+        .init(letter: "j", pronunciation: "sfx_grapheme_j_pronunciation", name: "sfx_grapheme_j_name"),
+        .init(letter: "k", pronunciation: "sfx_grapheme_k_pronunciation", name: "sfx_grapheme_k_name"),
+        .init(letter: "l", pronunciation: "sfx_grapheme_l_pronunciation", name: "sfx_grapheme_l_name"),
+        .init(letter: "m", pronunciation: "sfx_grapheme_m_pronunciation", name: "sfx_grapheme_m_name"),
+        .init(letter: "n", pronunciation: "sfx_grapheme_n_pronunciation", name: "sfx_grapheme_n_name"),
+        .init(letter: "o", pronunciation: "sfx_grapheme_o_pronunciation", name: "sfx_grapheme_o_name"),
+        .init(letter: "p", pronunciation: "sfx_grapheme_p_pronunciation", name: "sfx_grapheme_p_name"),
+        .init(letter: "q", pronunciation: "sfx_grapheme_q_pronunciation", name: "sfx_grapheme_q_name"),
+        .init(letter: "r", pronunciation: "sfx_grapheme_r_pronunciation", name: "sfx_grapheme_r_name"),
+        .init(letter: "s", pronunciation: "sfx_grapheme_s_pronunciation", name: "sfx_grapheme_s_name"),
+        .init(letter: "t", pronunciation: "sfx_grapheme_t_pronunciation", name: "sfx_grapheme_t_name"),
+        .init(letter: "u", pronunciation: "sfx_grapheme_u_pronunciation", name: "sfx_grapheme_u_name"),
+        .init(letter: "v", pronunciation: "sfx_grapheme_v_pronunciation", name: "sfx_grapheme_v_name"),
+        .init(letter: "w", pronunciation: "sfx_grapheme_w_pronunciation", name: "sfx_grapheme_w_name"),
+        .init(letter: "x", pronunciation: "sfx_grapheme_x_pronunciation", name: "sfx_grapheme_x_name"),
+        .init(letter: "y", pronunciation: "sfx_grapheme_y_pronunciation", name: "sfx_grapheme_y_name"),
+        .init(letter: "z", pronunciation: "sfx_grapheme_z_pronunciation", name: "sfx_grapheme_z_name"),
     ])
 
     nonisolated init(letters: [GateLetter]) {
@@ -71,7 +83,7 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
     }
 
     static func loadFromBundle(
-        named name: String = "phonics",
+        named name: String = "graphemes",
         withExtension ext: String = "yaml",
         subdirectory: String? = subdirectory
     ) throws -> LetterCatalog {
@@ -85,8 +97,8 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
         do {
             let decoded = try YAMLDecoder().decode(LetterCatalogDTO.self, from: data)
             var resolved: [GateLetter] = []
-            resolved.reserveCapacity(decoded.phonics.count)
-            for (key, spec) in decoded.phonics {
+            resolved.reserveCapacity(decoded.graphemes.count)
+            for (key, spec) in decoded.graphemes {
                 guard let entry = resolveEntry(id: key, spec: spec) else {
                     throw WorldSeedError.invalidGateLetterMatchLetters
                 }
@@ -129,5 +141,5 @@ nonisolated struct LetterCatalog: Equatable, Sendable {
 }
 
 private nonisolated struct LetterCatalogDTO: Decodable {
-    var phonics: [String: LetterSpec?]
+    var graphemes: [String: LetterSpec?]
 }

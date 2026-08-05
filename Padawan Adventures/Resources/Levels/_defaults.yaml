@@ -49,38 +49,38 @@ world:
 
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
-# `letter-sound-combat`: swipe-to-slash arena cued by letter-name sounds. Stars = letters hit.
+# `grapheme-sound-combat`: swipe-to-slash arena cued by grapheme-name sounds. Stars = graphemes hit.
 #   Letter pool and pacing come from enemies.yaml; this entry sets spawn rate, case, and
-#   how often to replay the current letter-name prompt.
+#   how often to replay the current grapheme-name prompt.
 # `ending-sound-combat`: monster throws a word image; tap the ring for that word's first letter.
-#   Its `letters:` map left -> right onto evenly spaced rings (2–6) and must resolve in
-#   phonics.yaml; each letter needs ≥1 imaged word in words.yaml. Stars = orbs deflected.
+#   Its `graphemes:` map left -> right onto evenly spaced rings (2–6) and must resolve in
+#   graphemes.yaml; each letter needs ≥1 imaged word in words.yaml. Stars = orbs deflected.
 combat:
   music: combat
   minigames:
-    - type: letter-sound-combat
+    - type: grapheme-sound-combat
       weight: 0.5
-      letter_spawn_multiplier: 0.7
-      letter_case: lower
-      # How often to replay the current letter-name prompt during slash combat.
-      letter_sound_repeat_seconds: 3
+      grapheme_spawn_multiplier: 0.7
+      grapheme_case: lower
+      # How often to replay the current grapheme-name prompt during slash combat.
+      grapheme_sound_repeat_seconds: 3
     - type: ending-sound-combat
       weight: 0.5
       monster_hit_points: 5
       orb_travel_seconds: 3.0
-      letters: [a, b, c, d]
+      graphemes: [a, b, c, d]
 
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.jump` fires on every hop; `win` falls back to audio.yaml.
-# `spelling-image-pit`: hop the letter platforms to spell the word. Stars = letters in the word.
+# `spelling-image-pit`: hop the letter platforms to spell the word. Stars = graphemes in the word.
 #   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
 # `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
 #   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
 #   shows that image and plays the word's sfx. Pool must hold at least `max_word_count`
 #   entries. Stars = words placed.
 # `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
-#   FIRST letter (`_og` for dog). Same `words:` rules: catalog ids with images, >= 2 letters,
+#   FIRST letter (`_og` for dog). Same `words:` rules: catalog ids with images, >= 2 graphemes,
 #   pool at least `max_word_count` entries. Stars = words placed.
 pit:
   music: pit
@@ -88,7 +88,7 @@ pit:
   minigames:
     - type: spelling-image-pit
       weight: 0.0
-      padding_letter_count: 6
+      padding_grapheme_count: 6
       words: [cat, dog, star]
     - type: ending-sound-pit
       weight: 0.0
@@ -112,12 +112,12 @@ pit:
 #   when a plug is picked up. Word count snaps to a multiple of 3 in `min_word_count`...`max_word_count`.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
 #   LAST letter (`do_` for dog) and the socket sits to the right of the plate. Every word's last
-#   letter must resolve in phonics.yaml, so words ending in t/r/k/n (cat, star, book, sun) are out.
-# `spelling-image-gate`: arrange letter tokens to spell the prompted word. Stars = letters in the word.
+#   letter must resolve in graphemes.yaml, so words ending in t/r/k/n (cat, star, book, sun) are out.
+# `spelling-image-gate`: arrange letter tokens to spell the prompted word. Stars = graphemes in the word.
 #   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
-# `letter-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = letters matched.
-#   Its `letters:` are ids that must resolve in phonics.yaml. Round size is
-#   `min_letter_count`...`max_letter_count` clamped to the pool.
+# `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
+#   Its `graphemes:` are ids that must resolve in graphemes.yaml. Round size is
+#   `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
 gate:
   music: gate
   fx: { opened: gate-open }
@@ -135,17 +135,17 @@ gate:
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
-      # Each word's LAST letter must exist in phonics.yaml.
+      # Each word's LAST letter must exist in graphemes.yaml.
       words: [dog, wand, cloud, lightbulb, pencil]
       fx: { loop: gate-spelling-loop-arc }
     - type: spelling-image-gate
       weight: 0.0
-      padding_letter_count: 6
+      padding_grapheme_count: 6
       words: [cat, dog, star, gate, car]
       fx: { loop: gate-spelling-loop-arc }
-    - type: letter-sound-gate
+    - type: grapheme-sound-gate
       weight: 0.0
-      min_letter_count: 4
-      max_letter_count: 8
-      letters: [a, b, c, d, e, f, g, h]
-      fx: { switch_push: gate-letter_match-switch-push }
+      min_grapheme_count: 4
+      max_grapheme_count: 8
+      graphemes: [a, b, c, d, e, f, g, h]
+      fx: { switch_push: gate-grapheme_match-switch-push }

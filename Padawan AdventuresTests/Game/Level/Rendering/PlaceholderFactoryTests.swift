@@ -260,7 +260,7 @@ struct PlaceholderFactoryTests {
             at: a,
             in: world
         )
-        #expect(letterMatch == "gate|letter-sound-gate|\(WallFaceSet.all.rawValue)")
+        #expect(letterMatch == "gate|grapheme-sound-gate|\(WallFaceSet.all.rawValue)")
         #expect(letterMatch != gate)
 
         // Face culling applies to gates (east opaque neighbor hides .right).

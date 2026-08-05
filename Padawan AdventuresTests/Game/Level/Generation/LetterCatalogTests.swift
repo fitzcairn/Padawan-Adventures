@@ -4,17 +4,17 @@ import Testing
 struct LetterCatalogTests {
     @Test func decodesSharedPhonicsYAML() throws {
         let catalog = try LetterCatalog.decode(from: """
-        phonics:
+        graphemes:
           B:
-            sfx: sfx_letter_b_pronunciation
-            name: sfx_letter_b_name
+            sfx: sfx_grapheme_b_pronunciation
+            name: sfx_grapheme_b_name
           a:
-            sfx: sfx_letter_a_pronunciation
-            name: sfx_letter_a_name
+            sfx: sfx_grapheme_a_pronunciation
+            name: sfx_grapheme_a_name
         """)
         #expect(catalog.letters.map(\.letter) == ["a", "b"])
-        #expect(catalog.letter(named: "A")?.pronunciation == "sfx_letter_a_pronunciation")
-        #expect(catalog.letter(named: "b")?.name == "sfx_letter_b_name")
+        #expect(catalog.letter(named: "A")?.pronunciation == "sfx_grapheme_a_pronunciation")
+        #expect(catalog.letter(named: "b")?.name == "sfx_grapheme_b_name")
     }
 
     @Test func resolveNilUsesFullCatalog() throws {
@@ -38,10 +38,10 @@ struct LetterCatalogTests {
     @Test func rejectsInvalidLetterEntry() {
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.decode(from: """
-            phonics:
+            graphemes:
               ab:
-                sfx: sfx_letter_ab_pronunciation
-                name: sfx_letter_ab_name
+                sfx: sfx_grapheme_ab_pronunciation
+                name: sfx_grapheme_ab_name
             """)
         }
     }
@@ -49,16 +49,16 @@ struct LetterCatalogTests {
     @Test func rejectsMissingSfxOrName() {
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.decode(from: """
-            phonics:
+            graphemes:
               a:
-                name: sfx_letter_a_name
+                name: sfx_grapheme_a_name
             """)
         }
         #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
             try LetterCatalog.decode(from: """
-            phonics:
+            graphemes:
               a:
-                sfx: sfx_letter_a_pronunciation
+                sfx: sfx_grapheme_a_pronunciation
             """)
         }
     }
@@ -66,9 +66,10 @@ struct LetterCatalogTests {
     @Test func bundlePhonicsProvidesWallVocabulary() throws {
         let catalog = try LetterCatalog.loadFromBundle()
         #expect(catalog.letters.map(\.letter) == [
-            "a", "b", "c", "d", "e", "f", "g", "h", "l", "m", "o", "p", "s", "w",
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+            "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
         ])
-        #expect(catalog.letter(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
-        #expect(catalog.letter(named: "a")?.name == "sfx_letter_a_name")
+        #expect(catalog.letter(named: "a")?.pronunciation == "sfx_grapheme_a_pronunciation")
+        #expect(catalog.letter(named: "a")?.name == "sfx_grapheme_a_name")
     }
 }

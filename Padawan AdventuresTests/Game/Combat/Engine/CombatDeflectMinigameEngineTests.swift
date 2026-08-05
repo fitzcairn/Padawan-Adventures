@@ -6,8 +6,8 @@ struct CombatDeflectMinigameEngineTests {
         values.map {
             GateLetter(
                 letter: $0,
-                pronunciation: "sfx_letter_\($0)_pronunciation",
-                name: "sfx_letter_\($0)_name"
+                pronunciation: "sfx_grapheme_\($0)_pronunciation",
+                name: "sfx_grapheme_\($0)_name"
             )
         }
     }

@@ -113,14 +113,14 @@ extension ConfigAudit {
         for letter in letters.letters {
             references.append(
                 AudioReference(
-                    kind: "letters.\(letter.letter).pronunciation",
+                    kind: "graphemes.\(letter.letter).pronunciation",
                     basename: letter.pronunciation,
                     tree: .fx
                 )
             )
             references.append(
                 AudioReference(
-                    kind: "letters.\(letter.letter).name",
+                    kind: "graphemes.\(letter.letter).name",
                     basename: letter.name,
                     tree: .fx
                 )
@@ -143,7 +143,7 @@ extension ConfigAudit {
     static let intentionallyUnreferencedAudio: Set<String> = [
         // Opt-in `switch_push` override shown in the commented letter_match example in
         // `Levels/_defaults.yaml`; a level enables it by uncommenting that block.
-        "gate-letter_match-switch-push",
+        "gate-grapheme_match-switch-push",
         // Pit falling SFX bundled for future use; no level currently references it via `pit.fx`.
         "pit-falling",
     ]
