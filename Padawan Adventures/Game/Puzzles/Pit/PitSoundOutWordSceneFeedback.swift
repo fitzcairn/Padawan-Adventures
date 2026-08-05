@@ -188,7 +188,6 @@ extension PitSoundOutWordScene {
         jumpPlayer(to: exit, landAnimation: "celebrate_down") { [weak self] in
             guard let self else { return }
             self.isJumping = false
-            let word = self.engine.targetWord
             let stars = self.engine.targetGraphemes.count
             var actions: [SKAction] = []
             actions.append(SKAction.run { [weak self] in
@@ -199,10 +198,7 @@ extension PitSoundOutWordScene {
                 )
             })
             actions.append(SKAction.run { [weak self] in
-                self?.soundOutDelegate?.pitSoundOutWordSceneDidWin(
-                    word: word,
-                    starsAwarded: stars
-                )
+                self?.soundOutDelegate?.pitSoundOutWordSceneDidWin(starsAwarded: stars)
             })
             self.run(SKAction.sequence(actions), withKey: Self.winSoundActionKey)
         }

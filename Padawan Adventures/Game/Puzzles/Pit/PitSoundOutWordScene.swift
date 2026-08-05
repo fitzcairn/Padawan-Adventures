@@ -2,7 +2,7 @@ import SpriteKit
 import UIKit
 
 protocol PitSoundOutWordSceneDelegate: AnyObject {
-    func pitSoundOutWordSceneDidWin(word: String, starsAwarded: Int)
+    func pitSoundOutWordSceneDidWin(starsAwarded: Int)
 }
 
 /// SpriteKit sound-out-word pit: blank tiles per grapheme, drag Kam to the right sound.

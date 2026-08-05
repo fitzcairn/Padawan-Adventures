@@ -66,7 +66,6 @@ struct PitSoundOutWordMinigameView: View {
 final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordSceneDelegate {
     @Published var showWon = false
     @Published private(set) var starsAwarded = 0
-    @Published private(set) var targetWord = ""
     @Published private(set) var scene: PitSoundOutWordScene?
 
     private let soundOutConfig: PitSoundOutWordConfig
@@ -137,8 +136,7 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
         onFinished(.abandoned)
     }
 
-    func pitSoundOutWordSceneDidWin(word: String, starsAwarded: Int) {
-        self.targetWord = word
+    func pitSoundOutWordSceneDidWin(starsAwarded: Int) {
         self.starsAwarded = starsAwarded
         Task { @MainActor in
             self.showWon = true
