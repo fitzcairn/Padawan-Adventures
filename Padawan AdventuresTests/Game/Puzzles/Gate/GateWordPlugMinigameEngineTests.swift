@@ -123,7 +123,7 @@ struct GateWordPlugMinigameEngineTests {
         )
     }
 
-    @Test func tapLetterPlaysNameThenSound() {
+    @Test func tapLetterPlaysPronunciation() {
         var engine = makeEngine(seed: 3)
         guard let token = engine.tray.first else {
             Issue.record("expected tray token")
@@ -131,7 +131,6 @@ struct GateWordPlugMinigameEngineTests {
         }
         let events = engine.tapLetter(id: token.id)
         #expect(events == [
-            .playLetterName(trackID: token.nameTrackID),
             .playLetterSound(trackID: token.pronunciationTrackID),
         ])
     }

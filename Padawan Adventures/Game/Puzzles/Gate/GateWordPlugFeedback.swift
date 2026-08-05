@@ -14,6 +14,8 @@ extension GateWordPlugScene {
             dragOffset = CGPoint(x: node.position.x - p.x, y: node.position.y - p.y)
             node.zPosition = 100
             beginDragCable(for: id)
+            // Pronunciation plays on touch-down (tap or drag start), not on release.
+            handle(engine.tapLetter(id: id))
             return
         }
         guard !inputLocked else { return }
@@ -76,9 +78,6 @@ extension GateWordPlugScene {
 
         tearDownCable(for: id)
         if !dragMoved {
-            if !inputLocked {
-                handle(engine.tapLetter(id: id))
-            }
             return
         }
         animateTokenHome(id: id)

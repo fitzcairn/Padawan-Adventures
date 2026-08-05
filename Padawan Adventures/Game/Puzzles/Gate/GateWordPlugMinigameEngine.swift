@@ -156,13 +156,11 @@ nonisolated struct GateWordPlugMinigameEngine {
         return [.playWordSound(trackID: slot.wordTrackID)]
     }
 
+    /// Pronunciation cue when a tray plug is touched / picked up.
     mutating func tapLetter(id: UUID) -> [GateWordPlugEngineEvent] {
         guard isActive, !isFrozen else { return [] }
         guard let token = token(id: id), !isTokenPlugged(id) else { return [] }
-        return [
-            .playLetterName(trackID: token.nameTrackID),
-            .playLetterSound(trackID: token.pronunciationTrackID),
-        ]
+        return [.playLetterSound(trackID: token.pronunciationTrackID)]
     }
 
     mutating func plug(letterID: UUID, intoSlotID: UUID) -> [GateWordPlugEngineEvent] {
