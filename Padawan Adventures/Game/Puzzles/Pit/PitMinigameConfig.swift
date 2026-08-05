@@ -87,6 +87,104 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     }
 }
 
+/// Per-entry config for the pit sound-out-word game.
+/// `words:` are shared catalog ids from `words.yaml` (must resolve to imaged entries).
+/// Graphemes always come from the full `Catalogs/graphemes.yaml`, which supplies the
+/// name/pronunciation audio and the decoy pool.
+nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
+    var weight: Double
+    /// Inclusive lower bound on tiles offered per grapheme.
+    var choiceCountMin: Int
+    /// Inclusive upper bound on tiles offered per grapheme.
+    var choiceCountMax: Int
+    var wordIDs: [String]?
+    var words: [GateWord]
+    /// Resolved full grapheme catalog. Populated via `resolveGraphemes(from:)`.
+    var graphemes: [GateGrapheme]
+
+    /// One correct tile plus at least one decoy.
+    static let minChoiceCount = 2
+    /// Wider fans stop fitting between the pads on phone-sized scenes.
+    static let maxChoiceCount = 6
+    /// Catalog ids with illustrations — used when YAML omits `words:`.
+    static let defaultWordIDs = ["cat", "dog", "sun", "star"]
+
+    nonisolated static let fallback = PitSoundOutWordConfig(
+        weight: 1,
+        wordIDs: defaultWordIDs,
+        words: WordCatalog.fallback.words.filter { defaultWordIDs.contains($0.word) },
+        graphemes: GraphemeCatalog.fallback.graphemes
+    )
+
+    nonisolated init(
+        weight: Double = 1,
+        choiceCountMin: Int = 3,
+        choiceCountMax: Int = 3,
+        wordIDs: [String]? = defaultWordIDs,
+        words: [GateWord] = [],
+        graphemes: [GateGrapheme] = []
+    ) {
+        self.weight = weight
+        self.choiceCountMin = choiceCountMin
+        self.choiceCountMax = choiceCountMax
+        self.wordIDs = wordIDs?.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        self.words = GateWord.normalized(words)
+        self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+    }
+
+    mutating func resolveWords(from catalog: WordCatalog) throws {
+        do {
+            words = try catalog.resolve(ids: wordIDs)
+        } catch WorldSeedError.invalidGateWords {
+            throw WorldSeedError.invalidPitSoundOutWordWords
+        }
+    }
+
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+        graphemes = try catalog.resolve(ids: nil)
+    }
+
+    func validate() throws {
+        guard choiceCountMin >= Self.minChoiceCount,
+              choiceCountMax >= choiceCountMin,
+              choiceCountMax <= Self.maxChoiceCount else {
+            throw WorldSeedError.invalidPitSoundOutWordChoiceRange(
+                min: choiceCountMin,
+                max: choiceCountMax
+            )
+        }
+        try CatalogValidators.validateWordEntries(
+            words,
+            emptyError: .invalidPitSoundOutWordWords,
+            invalidEntryError: .invalidPitSoundOutWordWords
+        )
+        // The picture is the prompt, so every word needs an illustration.
+        var seen = Set<String>()
+        for entry in words {
+            guard entry.word.count >= 2,
+                  let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !image.isEmpty,
+                  seen.insert(entry.word).inserted else {
+                throw WorldSeedError.invalidPitSoundOutWordWords
+            }
+        }
+        // Every grapheme is spoken by name and by sound, so all of them need audio.
+        let known = Set(graphemes.map(\.grapheme))
+        guard known.count >= choiceCountMax else {
+            throw WorldSeedError.invalidPitSoundOutWordGraphemes
+        }
+        for entry in words {
+            for character in entry.word {
+                guard known.contains(String(character).lowercased()) else {
+                    throw WorldSeedError.invalidPitSoundOutWordGraphemes
+                }
+            }
+        }
+    }
+}
+
 /// Discriminated union over the pit minigame entries in level YAML.
 nonisolated enum PitMinigameConfig: Equatable, Sendable {
     case spelling(PitPuzzleConfig)
@@ -149,17 +247,22 @@ nonisolated struct PitConfig: Equatable, Sendable {
         return picked
     }
 
-    mutating func resolveWords(from catalog: WordCatalog) throws {
+    mutating func resolveMinigames(
+        wordCatalog: WordCatalog,
+        graphemeCatalog: GraphemeCatalog
+    ) throws {
         for index in minigames.indices {
             switch minigames[index] {
             case .spelling(var config):
-                try config.resolveWords(from: catalog)
+                try config.resolveWords(from: wordCatalog)
                 minigames[index] = .spelling(config)
             case .bridge(var config):
-                try config.resolveWords(from: catalog)
+                try config.resolveWords(from: wordCatalog)
                 minigames[index] = .bridge(config)
             }
         }
+        // `graphemeCatalog` is reserved for `sound-out-word-pit` once that case lands.
+        _ = graphemeCatalog
     }
 
     func validate() throws {

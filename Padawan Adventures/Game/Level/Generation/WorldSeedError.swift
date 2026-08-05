@@ -20,6 +20,9 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case duplicateGateMinigameKind(GateMinigameKind)
     case invalidPitBridgeWordRange(min: Int, max: Int)
     case invalidPitBridgeWords
+    case invalidPitSoundOutWordChoiceRange(min: Int, max: Int)
+    case invalidPitSoundOutWordWords
+    case invalidPitSoundOutWordGraphemes
     case invalidGraphemeSoundRepeat(Double)
     case invalidCombatGraphemeSpawnRate(Double)
     case invalidCombatGraphemeCase(String)

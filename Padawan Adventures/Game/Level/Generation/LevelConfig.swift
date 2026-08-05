@@ -417,7 +417,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             if let levelID { level.applyDerivedAssets(levelID: levelID) }
             let words = try wordCatalog ?? Self.loadWordCatalog()
             let letters = try graphemeCatalog ?? Self.loadGraphemeCatalog()
-            try level.pit.resolveWords(from: words)
+            try level.pit.resolveMinigames(wordCatalog: words, graphemeCatalog: letters)
             try level.gate.resolveMinigames(wordCatalog: words, graphemeCatalog: letters)
             try level.combat.resolveGraphemes(from: letters)
             try level.validate()
