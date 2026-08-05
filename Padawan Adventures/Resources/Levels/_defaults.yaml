@@ -67,7 +67,7 @@ combat:
     - type: ending-sound-combat
       weight: 0.5
       monster_hit_points: 5
-      orb_travel_seconds: 3.0
+      orb_travel_seconds: 4.0
       graphemes: [a, b, c, d]
 
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.

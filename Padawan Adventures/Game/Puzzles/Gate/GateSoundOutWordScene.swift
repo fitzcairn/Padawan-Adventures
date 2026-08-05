@@ -77,7 +77,7 @@ final class GateSoundOutWordScene: MinigameScene {
         UIColor(red: 0.87, green: 0.91, blue: 0.60, alpha: 1),
         UIColor(red: 0.74, green: 0.83, blue: 0.93, alpha: 1),
     ]
-    let choiceTintBlend: CGFloat = 0.3
+    let choiceTintBlend: CGFloat = 0.55
     /// Fallback circle colors when the capacitor texture fails to load.
     let circleFill = UIColor(white: 0.22, alpha: 1)
     let connectorColor = UIColor(red: 0.55, green: 0.82, blue: 1.0, alpha: 1)

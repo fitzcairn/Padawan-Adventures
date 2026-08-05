@@ -43,7 +43,8 @@ extension GateSoundOutWordScene {
         SoundEffectsController.shared.play(event: "error", from: mergedFx)
     }
 
-    /// Holds the finished circuit, reads the whole word back, then hands off the win.
+    /// Holds the finished circuit, spells the word letter-by-letter (green highlight + name),
+    /// reads the whole word back, then hands off the win.
     func beginWinSequence() {
         guard !didEnd, !isCompletingWin else { return }
         isCompletingWin = true
@@ -51,18 +52,36 @@ extension GateSoundOutWordScene {
         dragChoiceID = nil
         clearChoiceNodes()
         updateConnectors()
+        updatePromptColors()
+
+        var actions: [SKAction] = [
+            SKAction.wait(forDuration: Self.winConnectorHoldDuration),
+        ]
+        for (index, grapheme) in engine.targetGraphemes.enumerated() {
+            let nameTrackID = engine.nameTrackID(for: grapheme)
+            actions.append(SKAction.run { [weak self] in
+                guard let self else { return }
+                self.setPromptColor(at: index, color: self.promptSolvedFlashColor)
+                self.playGraphemeName(grapheme)
+            })
+            actions.append(
+                SKAction.wait(
+                    forDuration: SoundEffectsController.shared.cueDuration(of: nameTrackID)
+                )
+            )
+            actions.append(SKAction.run { [weak self] in
+                guard let self else { return }
+                self.setPromptColor(at: index, color: self.promptPendingColor)
+            })
+        }
 
         let wordDuration = SoundEffectsController.shared.cueDuration(of: engine.wordTrackID)
+        actions.append(SKAction.run { [weak self] in self?.playWordSound() })
+        actions.append(SKAction.wait(forDuration: wordDuration))
+        actions.append(SKAction.run { [weak self] in self?.finishWon() })
+
         removeAction(forKey: Self.winSequenceActionKey)
-        run(
-            SKAction.sequence([
-                SKAction.wait(forDuration: Self.winConnectorHoldDuration),
-                SKAction.run { [weak self] in self?.playWordSound() },
-                SKAction.wait(forDuration: wordDuration),
-                SKAction.run { [weak self] in self?.finishWon() },
-            ]),
-            withKey: Self.winSequenceActionKey
-        )
+        run(SKAction.sequence(actions), withKey: Self.winSequenceActionKey)
     }
 
     func finishWon() {

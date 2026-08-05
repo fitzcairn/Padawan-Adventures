@@ -73,6 +73,9 @@ extension PitBridgeScene {
 
         let maxSide = max(geo.wordPromptMaxSide, 48)
         let fontSize = max(maxSide * 0.28, 18)
+        let font = AppFont.uiKit(size: fontSize)
+        // Spelling glyphs use baseline alignment; this is the visual mid-line above that baseline.
+        let spellingMidY = font.capHeight * 0.5
         let spelling = makeMaskedSpellingNode(fontSize: fontSize)
         spelling.zPosition = 2
         root.addChild(spelling)
@@ -90,14 +93,14 @@ extension PitBridgeScene {
             root.addChild(sprite)
 
             let gap = fontSize * 0.35
-            let totalHeight = sprite.size.height + gap + fontSize
+            let totalHeight = sprite.size.height + gap + font.capHeight
             sprite.position = CGPoint(x: 0, y: (totalHeight - sprite.size.height) * 0.5)
-            spelling.position = CGPoint(x: 0, y: -totalHeight * 0.5 + fontSize * 0.5)
+            spelling.position = CGPoint(x: 0, y: -totalHeight * 0.5 + spellingMidY)
             hitHeight = totalHeight * 1.15
         } else {
             // No illustration — masked spelling is the prompt.
-            spelling.position = .zero
-            hitHeight = max(fontSize * 1.4, maxSide * 0.5)
+            spelling.position = CGPoint(x: 0, y: -spellingMidY)
+            hitHeight = max(font.lineHeight * 1.2, maxSide * 0.5)
         }
 
         // Invisible hit pad so taps are reliable even on thin sprites.
@@ -113,43 +116,50 @@ extension PitBridgeScene {
     }
 
     /// Word letters plus a `_` blank for the missing sound, laid out under the illustration.
+    /// Each grapheme is its own baseline-aligned stack so the blank doesn't float above the rest.
     func makeMaskedSpellingNode(fontSize: CGFloat) -> SKNode {
         let row = SKNode()
         row.name = Self.wordSpellingNodeName
-        let word = engine.currentWord
-        let blankLeads = engine.config.letterPosition == .starting
-        let visible = word.isEmpty ? "" : String(blankLeads ? word.dropFirst() : word.dropLast())
+        let masked = engine.maskedPromptText
+        guard !masked.isEmpty else { return row }
 
-        var lettersNode: SKNode?
-        if !visible.isEmpty {
+        let blankLeads = engine.config.letterPosition == .starting
+        let characters = masked.map(String.init)
+        let widths = characters.map { spellingLetterWidth($0, fontSize: fontSize) }
+        let totalWidth = widths.reduce(0, +)
+        var cursorX = -totalWidth * 0.5
+
+        for (index, character) in characters.enumerated() {
             let node = OutlinedLetterFactory.make(
-                text: visible,
+                text: character,
                 fontSize: fontSize,
                 disablesInteraction: true
             )
-            node.name = "spellingLetters"
+            applySpellingBaselineAlignment(to: node)
+            let isBlank = blankLeads ? index == 0 : index == characters.count - 1
+            if isBlank {
+                node.name = Self.blankLetterNodeName
+                blankLetterNode = node
+            } else {
+                node.name = "spellingLetter:\(index)"
+            }
+            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: 0)
             row.addChild(node)
-            lettersNode = node
+            cursorX += widths[index]
         }
-        let blank = OutlinedLetterFactory.make(
-            text: "_",
-            fontSize: fontSize,
-            disablesInteraction: true
-        )
-        blank.name = Self.blankLetterNodeName
-        row.addChild(blank)
-        blankLetterNode = blank
-
-        // Horizontal pack: measure after children exist, then center the row.
-        let lettersWidth = lettersNode?.calculateAccumulatedFrame().width ?? 0
-        let blankWidth = blank.calculateAccumulatedFrame().width
-        let totalWidth = lettersWidth + blankWidth
-        let leadWidth = blankLeads ? blankWidth : lettersWidth
-        let leadX = -totalWidth * 0.5 + leadWidth * 0.5
-        let trailX = totalWidth * 0.5 - (blankLeads ? lettersWidth : blankWidth) * 0.5
-        blank.position = CGPoint(x: blankLeads ? leadX : trailX, y: 0)
-        lettersNode?.position = CGPoint(x: blankLeads ? trailX : leadX, y: 0)
         return row
+    }
+
+    /// Match GateSoundOutWord prompt packing so every grapheme shares one baseline.
+    func applySpellingBaselineAlignment(to root: SKNode) {
+        for case let label as SKLabelNode in root.children {
+            label.verticalAlignmentMode = .baseline
+        }
+    }
+
+    func spellingLetterWidth(_ letter: String, fontSize: CGFloat) -> CGFloat {
+        let font = AppFont.uiKit(size: max(1, fontSize))
+        return ceil((letter as NSString).size(withAttributes: [.font: font]).width)
     }
 
     func setBlankLetterText(_ text: String) {
