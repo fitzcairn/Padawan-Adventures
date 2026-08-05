@@ -86,3 +86,84 @@ graphemes:
   z:
     sfx: sfx_letter_z_pronunciation
     name: sfx_letter_z_name
+  ai:
+    sfx: sfx_grapheme_ai_pronunciation
+    name: sfx_grapheme_ai_name
+  ay:
+    sfx: sfx_grapheme_ay_pronunciation
+    name: sfx_grapheme_ay_name
+  bl:
+    sfx: sfx_grapheme_bl_pronunciation
+    name: sfx_grapheme_bl_name
+  br:
+    sfx: sfx_grapheme_br_pronunciation
+    name: sfx_grapheme_br_name
+  cr:
+    sfx: sfx_grapheme_cr_pronunciation
+    name: sfx_grapheme_cr_name
+  ea:
+    sfx: sfx_grapheme_ea_pronunciation
+    name: sfx_grapheme_ea_name
+  ee:
+    sfx: sfx_grapheme_ee_pronunciation
+    name: sfx_grapheme_ee_name
+  ff:
+    sfx: sfx_grapheme_ff_pronunciation
+    name: sfx_grapheme_ff_name
+  fl:
+    sfx: sfx_grapheme_fl_pronunciation
+    name: sfx_grapheme_fl_name
+  fr:
+    sfx: sfx_grapheme_fr_pronunciation
+    name: sfx_grapheme_fr_name
+  igh:
+    sfx: sfx_grapheme_igh_pronunciation
+    name: sfx_grapheme_igh_name
+  ll:
+    sfx: sfx_grapheme_ll_pronunciation
+    name: sfx_grapheme_ll_name
+  mp:
+    sfx: sfx_grapheme_mp_pronunciation
+    name: sfx_grapheme_mp_name
+  nd:
+    sfx: sfx_grapheme_nd_pronunciation
+    name: sfx_grapheme_nd_name
+  nt:
+    sfx: sfx_grapheme_nt_pronunciation
+    name: sfx_grapheme_nt_name
+  oa:
+    sfx: sfx_grapheme_oa_pronunciation
+    name: sfx_grapheme_oa_name
+  ow:
+    sfx: sfx_grapheme_ow_pronunciation
+    name: sfx_grapheme_ow_name
+  pl:
+    sfx: sfx_grapheme_pl_pronunciation
+    name: sfx_grapheme_pl_name
+  qu:
+    sfx: sfx_grapheme_qu_pronunciation
+    name: sfx_grapheme_qu_name
+  sh:
+    sfx: sfx_grapheme_sh_pronunciation
+    name: sfx_grapheme_sh_name
+  sl:
+    sfx: sfx_grapheme_sl_pronunciation
+    name: sfx_grapheme_sl_name
+  sn:
+    sfx: sfx_grapheme_sn_pronunciation
+    name: sfx_grapheme_sn_name
+  sp:
+    sfx: sfx_grapheme_sp_pronunciation
+    name: sfx_grapheme_sp_name
+  ss:
+    sfx: sfx_grapheme_ss_pronunciation
+    name: sfx_grapheme_ss_name
+  st:
+    sfx: sfx_grapheme_st_pronunciation
+    name: sfx_grapheme_st_name
+  tr:
+    sfx: sfx_grapheme_tr_pronunciation
+    name: sfx_grapheme_tr_name
+  zz:
+    sfx: sfx_grapheme_zz_pronunciation
+    name: sfx_grapheme_zz_name

@@ -28,8 +28,6 @@ extension ConfigAudit {
     /// `checkOrphanAudio` checks every file is reachable. Gathering them once means a newly
     /// added cue cannot be covered by one direction and silently missed by the other.
     ///
-    /// Derived tracks need no special casing here because decoding already materializes them —
-    /// `WordCatalog` expands each word's progressive prefixes into `GateWord.progressive`.
     static func audioReferences(
         levels: [LevelConfig],
         enemies: EnemyConfig,
@@ -99,15 +97,6 @@ extension ConfigAudit {
             references.append(
                 AudioReference(kind: "words.\(word.word).sfx", basename: word.sfx, tree: .fx)
             )
-            for (prefix, track) in word.progressive.sorted(by: { $0.key < $1.key }) {
-                references.append(
-                    AudioReference(
-                        kind: "words.\(word.word).progressive.\(prefix)",
-                        basename: track,
-                        tree: .fx
-                    )
-                )
-            }
         }
 
         for grapheme in letters.graphemes {

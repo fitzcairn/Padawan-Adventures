@@ -39,11 +39,25 @@ struct GraphemeCatalogTests {
         #expect(throws: WorldSeedError.invalidGateGraphemeMatchGraphemes) {
             try GraphemeCatalog.decode(from: """
             graphemes:
-              ab:
-                sfx: sfx_letter_ab_pronunciation
-                name: sfx_letter_ab_name
+              "1":
+                sfx: sfx_letter_1_pronunciation
+                name: sfx_letter_1_name
             """)
         }
+    }
+
+    @Test func acceptsMultiLetterGraphemes() throws {
+        let catalog = try GraphemeCatalog.decode(from: """
+        graphemes:
+          sh:
+            sfx: sfx_grapheme_sh_pronunciation
+            name: sfx_grapheme_sh_name
+          a:
+            sfx: sfx_letter_a_pronunciation
+            name: sfx_letter_a_name
+        """)
+        #expect(catalog.graphemes.map(\.grapheme) == ["a", "sh"])
+        #expect(catalog.grapheme(named: "sh")?.name == "sfx_grapheme_sh_name")
     }
 
     @Test func rejectsMissingSfxOrName() {
@@ -66,10 +80,14 @@ struct GraphemeCatalogTests {
     @Test func bundleGraphemesProvideWallVocabulary() throws {
         let catalog = try GraphemeCatalog.loadFromBundle()
         #expect(catalog.graphemes.map(\.grapheme) == [
-            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-            "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+            "a", "ai", "ay", "b", "bl", "br", "c", "cr", "d", "e", "ea", "ee",
+            "f", "ff", "fl", "fr", "g", "h", "i", "igh", "j", "k", "l", "ll",
+            "m", "mp", "n", "nd", "nt", "o", "oa", "ow", "p", "pl", "q", "qu",
+            "r", "s", "sh", "sl", "sn", "sp", "ss", "st", "t", "tr", "u", "v",
+            "w", "x", "y", "z", "zz",
         ])
         #expect(catalog.grapheme(named: "a")?.pronunciation == "sfx_letter_a_pronunciation")
         #expect(catalog.grapheme(named: "a")?.name == "sfx_letter_a_name")
+        #expect(catalog.grapheme(named: "sh")?.name == "sfx_grapheme_sh_name")
     }
 }

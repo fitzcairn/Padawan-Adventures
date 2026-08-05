@@ -14,14 +14,14 @@ nonisolated enum CatalogValidators {
         for entry in words {
             guard !entry.word.isEmpty,
                   entry.word.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
-                  !entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                  !entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !entry.graphemes.isEmpty,
+                  entry.graphemes.joined() == entry.word else {
                 throw invalidEntryError
             }
-            var prefix = ""
-            for character in entry.word {
-                prefix.append(character)
-                guard let track = entry.progressive[prefix]?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      !track.isEmpty else {
+            for grapheme in entry.graphemes {
+                guard !grapheme.isEmpty,
+                      grapheme.unicodeScalars.allSatisfy({ letterSet.contains($0) }) else {
                     throw invalidEntryError
                 }
             }
@@ -40,7 +40,7 @@ nonisolated enum CatalogValidators {
         let letterSet = CharacterSet.letters
         var seen = Set<String>()
         for entry in graphemes {
-            guard entry.grapheme.count == 1,
+            guard !entry.grapheme.isEmpty,
                   entry.grapheme.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
                   !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   seen.insert(entry.grapheme).inserted else {

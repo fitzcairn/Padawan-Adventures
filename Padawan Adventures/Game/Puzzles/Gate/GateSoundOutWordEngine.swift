@@ -70,7 +70,7 @@ nonisolated struct GateSoundOutWordEngine {
     var wordTrackID: String { targetEntry.sound }
 
     /// Graphemes of the target word, in order.
-    var targetGraphemes: [String] { targetWord.map { String($0) } }
+    var targetGraphemes: [String] { targetEntry.graphemes }
 
     var isSolved: Bool { !targetWord.isEmpty && placedCount >= targetGraphemes.count }
 
@@ -169,6 +169,8 @@ nonisolated struct GateSoundOutWordEngine {
     }
 
     /// One shuffled set per grapheme: the answer plus distinct decoys from the catalog.
+    /// Prefer decoys whose character length matches the answer so digraphs do not sit
+    /// beside single letters; fall back to the full pool when that set is empty.
     private mutating func buildChoiceSets(for graphemes: [String]) -> [[Choice]] {
         let pool = config.graphemes.map(\.grapheme)
         return graphemes.map { answer in
@@ -176,7 +178,10 @@ nonisolated struct GateSoundOutWordEngine {
                 in: config.choiceCountMin...config.choiceCountMax,
                 using: &rng
             )
-            var decoyPool = pool.filter { $0 != answer }
+            let lengthMatched = pool.filter { $0 != answer && $0.count == answer.count }
+            var decoyPool = lengthMatched.isEmpty
+                ? pool.filter { $0 != answer }
+                : lengthMatched
             decoyPool.shuffle(using: &rng)
             let decoyCount = min(max(requested - 1, 1), decoyPool.count)
             var set = [answer] + decoyPool.prefix(decoyCount)

@@ -176,8 +176,8 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
             throw WorldSeedError.invalidPitSoundOutWordGraphemes
         }
         for entry in words {
-            for character in entry.word {
-                guard known.contains(String(character).lowercased()) else {
+            for grapheme in entry.graphemes {
+                guard known.contains(grapheme.lowercased()) else {
                     throw WorldSeedError.invalidPitSoundOutWordGraphemes
                 }
             }

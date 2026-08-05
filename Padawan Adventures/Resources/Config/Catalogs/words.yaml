@@ -3,56 +3,73 @@
 # Per word:
 #   image: optional sprite basename under Resources/Sprites/Words/ (no extension)
 #   sfx:   pronunciation track basename under Resources/Audio/FX/Words/ (required)
-#   progressive: optional prefix → track map; omitted prefixes derive as <sfx>_<prefix>
+#   graphemes: ordered units that concatenate to the word id (required)
 
 words:
   apple:
     image: apple
     sfx: sfx_word_apple
+    graphemes: [a, p, p, l, e]
   bath:
     image: bath
     sfx: sfx_word_bath
+    graphemes: [b, a, t, h]
   boat:
     image: boat
     sfx: sfx_word_boat
+    graphemes: [b, o, a, t]
   book:
     image: book
     sfx: sfx_word_book
+    graphemes: [b, o, o, k]
   car:
     image: car
     sfx: sfx_word_car
+    graphemes: [c, a, r]
   cat:
     image: cat
     sfx: sfx_word_cat
+    graphemes: [c, a, t]
   cloud:
     image: cloud
     sfx: sfx_word_cloud
+    graphemes: [c, l, o, u, d]
   dance:
     image: dance
     sfx: sfx_word_dance
+    graphemes: [d, a, n, c, e]
   dog:
     image: dog
     sfx: sfx_word_dog
+    graphemes: [d, o, g]
   gate:
     sfx: sfx_word_gate
+    graphemes: [g, a, t, e]
   house:
     image: house
     sfx: sfx_word_house
+    graphemes: [h, o, u, s, e]
   lightbulb:
     image: lightbulb
     sfx: sfx_word_lightbulb
+    graphemes: [l, i, g, h, t, b, u, l, b]
   pencil:
     image: pencil
     sfx: sfx_word_pencil
+    graphemes: [p, e, n, c, i, l]
   star:
     image: star
     sfx: sfx_word_star
+    graphemes: [s, t, a, r]
   sun:
     image: sun
     sfx: sfx_word_sun
+    graphemes: [s, u, n]
   trash:
     image: trash
     sfx: sfx_word_trash
+    graphemes: [t, r, a, s, h]
   wand:
     image: wand
     sfx: sfx_word_wand
+    graphemes: [w, a, n, d]

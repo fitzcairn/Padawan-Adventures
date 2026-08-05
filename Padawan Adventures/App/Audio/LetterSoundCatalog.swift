@@ -1,24 +1,25 @@
 import Foundation
 
-/// Shared letter name / pronunciation track basenames used across minigames.
+/// Shared letter/grapheme name / pronunciation track basenames used across minigames.
 nonisolated enum LetterSoundCatalog {
-    /// `sfx_letter_<lower>_name` for a single letter (e.g. `"B"` → `sfx_letter_b_name`).
+    /// Name track for a grapheme (`sfx_letter_b_name` or `sfx_grapheme_sh_name`).
     static func nameTrackID(for letter: String) -> String? {
         trackID(for: letter, suffix: "name")
     }
 
-    /// `sfx_letter_<lower>_pronunciation` for a single letter.
+    /// Pronunciation track for a grapheme.
     static func pronunciationTrackID(for letter: String) -> String? {
         trackID(for: letter, suffix: "pronunciation")
     }
 
     private static func trackID(for letter: String, suffix: String) -> String? {
         let trimmed = letter.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let scalar = trimmed.unicodeScalars.first,
-              CharacterSet.letters.contains(scalar) else {
+        guard !trimmed.isEmpty,
+              trimmed.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }) else {
             return nil
         }
-        let lower = String(scalar).lowercased()
-        return "sfx_letter_\(lower)_\(suffix)"
+        let lower = trimmed.lowercased()
+        let prefix = lower.count == 1 ? "sfx_letter" : "sfx_grapheme"
+        return "\(prefix)_\(lower)_\(suffix)"
     }
 }

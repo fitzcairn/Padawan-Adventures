@@ -34,7 +34,6 @@ struct BundleSoundEffectPlayerTests {
         let words = try WordCatalog.loadFromBundle()
         for word in words.words {
             trackIDs.append(word.spelling)
-            trackIDs.append(contentsOf: word.progressive.values)
         }
         let audio = try SoundSettings.loadFromBundle()
         trackIDs.append(contentsOf: audio.fx.events.values)

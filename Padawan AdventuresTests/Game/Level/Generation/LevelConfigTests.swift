@@ -564,7 +564,7 @@ struct LevelConfigTests {
         #expect(soundOutWord.wordIDs == ["cat", "dog"])
         #expect(soundOutWord.words.map(\.word) == ["cat", "dog"])
         #expect(soundOutWord.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
-        #expect(soundOutWord.words[0].progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
+        #expect(soundOutWord.words[0].graphemes == ["c", "a", "t"])
     }
 
     @Test func decodesGateMinigameChanceFromYAML() throws {
@@ -622,17 +622,10 @@ struct LevelConfigTests {
         words:
           moon:
             sfx: sfx_word_moon
-            progressive:
-              m: sfx_word_moon_m
-              mo: sfx_word_moon_mo
-              moo: sfx_word_moon_moo
-              moon: sfx_word_moon_moon
+            graphemes: [m, o, o, n]
           sun:
             sfx: sfx_word_sun
-            progressive:
-              s: sfx_word_sun_s
-              su: sfx_word_sun_su
-              sun: sfx_word_sun_sun
+            graphemes: [s, u, n]
         """)
         let catalog = WordCatalog(words: WordCatalog.fallback.words + custom.words)
         let base = Self.baseLevelYAMLWithoutPuzzles + """
@@ -666,25 +659,13 @@ struct LevelConfigTests {
         words:
           moon:
             sfx: sfx_word_moon
-            progressive:
-              m: sfx_word_moon_m
-              mo: sfx_word_moon_mo
-              moo: sfx_word_moon_moo
-              moon: sfx_word_moon_moon
+            graphemes: [m, o, o, n]
           nova:
             sfx: sfx_word_nova
-            progressive:
-              n: sfx_word_nova_n
-              no: sfx_word_nova_no
-              nov: sfx_word_nova_nov
-              nova: sfx_word_nova_nova
+            graphemes: [n, o, v, a]
           beam:
             sfx: sfx_word_beam
-            progressive:
-              b: sfx_word_beam_b
-              be: sfx_word_beam_be
-              bea: sfx_word_beam_bea
-              beam: sfx_word_beam_beam
+            graphemes: [b, e, a, m]
         """)
         let catalog = WordCatalog(words: WordCatalog.fallback.words + custom.words)
         let base = Self.baseLevelYAMLWithoutPuzzles + """
@@ -786,7 +767,7 @@ struct LevelConfigTests {
         #expect(wordPlug.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
-                && $0.progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca"
+                && $0.graphemes == ["c", "a", "t"]
         })
     }
 
@@ -814,7 +795,7 @@ struct LevelConfigTests {
         #expect(soundOut.words.contains {
             $0.word == "star"
                 && $0.spelling == "sfx_word_star"
-                && $0.progressiveTrack(forPrefix: "sta") == "sfx_word_star_sta"
+                && $0.graphemes == ["s", "t", "a", "r"]
         })
     }
 

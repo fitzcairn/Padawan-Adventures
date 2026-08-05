@@ -2,11 +2,11 @@ import Foundation
 import Yams
 
 /// YAML shape for one shared vocabulary entry under `words.<word>:`.
-/// `sfx` is required; progressive prefixes default to `<sfx>_<prefix>` when omitted.
+/// `sfx` and `graphemes` are required; `graphemes` must concatenate to the word id.
 nonisolated struct WordSpec: Decodable, Equatable, Sendable {
     var image: String?
     var sfx: String?
-    var progressive: [String: String]?
+    var graphemes: [String]?
 }
 
 /// Shared vocabulary + word FX loaded from `Resources/Config/Catalogs/words.yaml` for reuse across minigames.
@@ -38,14 +38,14 @@ nonisolated struct WordCatalog: Equatable, Sendable {
         imagedFallbackEntry(word: "wand"),
     ])
 
-    /// Derived tracks plus a sprite basename matching the word id.
+    /// Derived graphemes plus a sprite basename matching the word id.
     nonisolated static func imagedFallbackEntry(word: String) -> GateWord {
         let derived = GateWord.fallbackEntry(word: word)
         return GateWord(
             word: derived.word,
             image: derived.word,
             sfx: derived.sfx,
-            progressive: derived.progressive
+            graphemes: derived.graphemes
         )
     }
 
@@ -136,26 +136,26 @@ nonisolated struct WordCatalog: Equatable, Sendable {
         try decode(from: Data(yaml.utf8))
     }
 
-    /// Requires explicit `sfx`. Progressive prefixes default to `<sfx>_<prefix>`;
-    /// explicit `progressive` / `image` keys override.
+    /// Requires explicit `sfx` and a non-empty `graphemes` list that concatenates to `id`.
     nonisolated static func resolveEntry(id: String, spec: WordSpec?) -> GateWord? {
         guard let spec,
-              let sfx = trimmedNonEmpty(spec.sfx) else {
+              let sfx = trimmedNonEmpty(spec.sfx),
+              let rawGraphemes = spec.graphemes,
+              !rawGraphemes.isEmpty else {
             return nil
         }
 
-        let derived = GateWord.fallbackEntry(word: id, sfx: sfx)
-        let image = trimmedNonEmpty(spec.image)
-
-        var progressive = derived.progressive
-        if let overrides = spec.progressive {
-            for (key, value) in overrides {
-                guard let trimmed = trimmedNonEmpty(value) else { continue }
-                progressive[key.lowercased()] = trimmed
-            }
+        let graphemes = rawGraphemes.compactMap { raw -> String? in
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        guard !graphemes.isEmpty,
+              graphemes.joined() == id.lowercased() else {
+            return nil
         }
 
-        return GateWord(word: id, image: image, sfx: sfx, progressive: progressive)
+        let image = trimmedNonEmpty(spec.image)
+        return GateWord(word: id, image: image, sfx: sfx, graphemes: graphemes)
     }
 
     private nonisolated static func trimmedNonEmpty(_ value: String?) -> String? {
