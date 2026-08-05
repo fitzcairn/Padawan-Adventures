@@ -1,18 +1,63 @@
 import SpriteKit
 
 extension CombatScene {
-    func spawnShot(id: UUID, travelSeconds: Double, visualLetter: String) {
-        guard let enemyNode else { return }
-        // Aim from the live cue so a just-changed letter already dodges or homes correctly.
-        let canHitPlayer = visualLetter == engine.sequenceRequiredLetter
-        let travel = max(travelSeconds, 0.05)
-        let start = bodyCenter(of: enemyNode, height: enemySpriteHeight)
-        let end = shotEndPoint(from: start, canHitPlayer: canHitPlayer)
-        let control = shotControlPoint(from: start, to: end, canHitPlayer: canHitPlayer)
+    func spawnWave(targetLetter: String, shots: [CombatWaveShot]) {
+        guard let enemyNode, let playerNode else { return }
+        let origin = bodyCenter(of: enemyNode, height: enemySpriteHeight)
+        let target = bodyCenter(of: playerNode, height: playerSpriteHeight)
+        // One speed for the whole wave, derived from the straight-line reference time,
+        // so a longer fanned path costs proportionally more time rather than more speed.
+        let referenceDistance = max(hypot(target.x - origin.x, target.y - origin.y), 1)
+        let baseSpeed = Double(referenceDistance) / max(engine.config.shotTravelSeconds, 0.05)
+        let laneCount = max(shots.count, 1)
 
+        for shot in shots {
+            let lane = laneOffset(index: shot.laneIndex, count: laneCount)
+            let start = CGPoint(x: origin.x + lane * enemySpriteHeight * 0.25, y: origin.y)
+            let drop = start.y - target.y
+            // c1 pushes hard sideways straight away — a cubic's initial tangent points at c1,
+            // so sprites are already separated within the first ~15% of the flight.
+            let c1 = CGPoint(x: start.x + lane * size.width * 0.42, y: start.y - drop * 0.15)
+            // c2 pulls the fan back onto the player late.
+            let c2 = CGPoint(x: target.x + lane * size.width * 0.15, y: start.y - drop * 0.65)
+            let length = cubicBezierLength(start: start, c1: c1, c2: c2, end: target)
+            let duration = max(Double(length) / (baseSpeed * shot.speedJitter), 0.2)
+
+            let node = makeShotNode(letter: shot.letter, id: shot.id)
+            node.position = start
+            node.setScale(0.35)
+            addChild(node)
+
+            shotVisuals[shot.id] = ShotVisual(
+                pathStart: start,
+                pathControl1: c1,
+                pathControl2: c2,
+                pathEnd: target,
+                pathStartedAt: sceneElapsed,
+                pathDurationSeconds: duration,
+                scaleStartedAt: sceneElapsed,
+                scaleDurationSeconds: duration,
+                letter: shot.letter,
+                isTarget: shot.isTarget,
+                role: .inbound,
+                node: node
+            )
+        }
+    }
+
+    /// Evenly spaced fan slot in -1...1, jittered inside its own bucket so lanes never cross.
+    func laneOffset(index: Int, count: Int) -> CGFloat {
+        guard count > 1 else { return CGFloat.random(in: -0.15...0.15) }
+        let bucket = 2.0 / CGFloat(count)
+        let center = -1 + bucket * (CGFloat(index) + 0.5)
+        let slack = bucket * 0.4
+        return center + CGFloat.random(in: -slack...slack)
+    }
+
+    func makeShotNode(letter: String, id: UUID) -> SKNode {
         let shot: SKNode
         if let glyph = LetterSpriteFactory.sprite(
-            letter: visualLetter,
+            letter: letter,
             side: shotBaseSize,
             library: letterSpriteSetLibrary
         ) {
@@ -22,7 +67,7 @@ extension CombatScene {
             shape.fillColor = enemyType.fillColor.withAlphaComponent(0.9)
             shape.strokeColor = .white
             shape.lineWidth = 1.5
-            let label = SKLabelNode(text: visualLetter)
+            let label = SKLabelNode(text: letter)
             label.fontName = AppFont.name
             label.fontSize = shotBaseSize * 0.62
             label.verticalAlignmentMode = .center
@@ -32,147 +77,82 @@ extension CombatScene {
             shape.addChild(label)
             shot = shape
         }
-        shot.position = start
-        shot.setScale(0.35)
         shot.zPosition = 20
         shot.name = "shot-\(id.uuidString)"
-        addChild(shot)
-
-        shotVisuals[id] = ShotVisual(
-            pathStart: start,
-            pathControl: control,
-            pathEnd: end,
-            pathSpawnElapsed: engine.elapsed,
-            pathTravelSeconds: travel,
-            scaleSpawnElapsed: engine.elapsed,
-            scaleTravelSeconds: travel,
-            canHitPlayer: canHitPlayer,
-            visualLetter: visualLetter,
-            node: shot
-        )
-    }
-
-    /// Matching shots aim at the player body; mismatches fly clearly off-screen past them.
-    func shotEndPoint(from start: CGPoint, canHitPlayer: Bool) -> CGPoint {
-        guard let playerNode else { return start }
-        let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        guard !canHitPlayer else { return player }
-
-        // Pick the side already away from the player so the dodge never crosses them.
-        let side: CGFloat = start.x >= player.x ? 1 : -1
-        let missX = side < 0 ? -size.width * 0.08 : size.width * 1.08
-        let missY = max(player.y - size.height * 0.12, -size.height * 0.05)
-        return CGPoint(x: missX, y: missY)
-    }
-
-    func shotControlPoint(from start: CGPoint, to end: CGPoint, canHitPlayer: Bool) -> CGPoint {
-        let mid = CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5)
-        if canHitPlayer {
-            let lateral = CGFloat.random(in: -size.width * 0.42...size.width * 0.42)
-            return CGPoint(x: mid.x + lateral, y: mid.y)
-        }
-        // Strong outward bend so non-targets obviously swerve around the player.
-        guard let playerNode else { return mid }
-        let player = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        let away: CGFloat = start.x >= player.x ? 1 : -1
-        let lateral = away * size.width * CGFloat.random(in: 0.40...0.62)
-        return CGPoint(x: mid.x + lateral, y: mid.y + size.height * 0.08)
-    }
-
-    /// Retarget in-flight letters when they become / stop being the live phonetic cue.
-    func syncShotAiming() {
-        let cue = engine.sequenceRequiredLetter
-        guard !cue.isEmpty else { return }
-
-        for (id, visual) in shotVisuals {
-            let shouldHit = visual.visualLetter == cue
-            guard shouldHit != visual.canHitPlayer else { continue }
-
-            let pathT = pathProgress(for: visual)
-            let remaining = max(visual.pathTravelSeconds * Double(1 - pathT), 0.35)
-            let current = quadraticBezier(
-                t: pathT,
-                start: visual.pathStart,
-                control: visual.pathControl,
-                end: visual.pathEnd
-            )
-            let end = shotEndPoint(from: current, canHitPlayer: shouldHit)
-            let control = shotControlPoint(from: current, to: end, canHitPlayer: shouldHit)
-
-            var updated = visual
-            updated.pathStart = current
-            updated.pathControl = control
-            updated.pathEnd = end
-            updated.pathSpawnElapsed = engine.elapsed
-            updated.pathTravelSeconds = remaining
-            updated.canHitPlayer = shouldHit
-            updated.node.position = current
-            shotVisuals[id] = updated
-        }
+        return shot
     }
 
     func pathProgress(for visual: ShotVisual) -> CGFloat {
         CGFloat(
-            min(1, max(0, (engine.elapsed - visual.pathSpawnElapsed) / max(visual.pathTravelSeconds, 0.05)))
+            min(1, max(0, (sceneElapsed - visual.pathStartedAt) / max(visual.pathDurationSeconds, 0.05)))
         )
     }
 
     func syncShotMotion() {
-        for (id, visual) in shotVisuals {
-            let pathT = pathProgress(for: visual)
-            let scaleT = CGFloat(
-                min(1, max(0, (engine.elapsed - visual.scaleSpawnElapsed) / max(visual.scaleTravelSeconds, 0.05)))
-            )
-            visual.node.position = quadraticBezier(
-                t: pathT,
+        // Keys snapshot + per-iteration re-read: resolving a wave inside this loop
+        // retargets the other sprites, and a stale `visual` would strand the wave.
+        for id in Array(shotVisuals.keys) {
+            guard let visual = shotVisuals[id] else { continue }
+            let t = pathProgress(for: visual)
+            visual.node.position = cubicBezier(
+                t: t,
                 start: visual.pathStart,
-                control: visual.pathControl,
+                c1: visual.pathControl1,
+                c2: visual.pathControl2,
                 end: visual.pathEnd
             )
-            visual.node.setScale(0.35 + 0.80 * scaleT)
-            if pathT >= 1 {
-                finishShotPath(shotID: id)
+            if visual.role == .inbound {
+                let scaleT = CGFloat(
+                    min(1, max(0, (sceneElapsed - visual.scaleStartedAt) / max(visual.scaleDurationSeconds, 0.05)))
+                )
+                visual.node.setScale(0.35 + 0.80 * scaleT)
             }
-        }
-    }
-
-    func checkImpacts() {
-        guard let playerNode else { return }
-        let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        for (id, visual) in shotVisuals where visual.canHitPlayer {
-            let hitRadius = max(shotBaseSize * visual.node.xScale * 0.5, 12)
-            let dx = visual.node.position.x - aim.x
-            let dy = visual.node.position.y - aim.y
-            let playerHitRadius = playerSpriteHeight * 0.45
-            if sqrt(dx * dx + dy * dy) <= hitRadius + playerHitRadius {
-                resolveImpactIfNeeded(shotID: id)
+            if t >= 1 {
+                finishShotPath(shotID: id)
             }
         }
     }
 
     func finishShotPath(shotID: UUID) {
         guard let visual = shotVisuals[shotID] else { return }
-        if visual.canHitPlayer {
-            resolveImpactIfNeeded(shotID: shotID)
-        } else {
-            // Missed the player — despawn quietly with no damage VFX.
-            engine.discardShot(shotID: shotID)
+        switch visual.role {
+        case .inbound:
+            resolveImpact(shotID: shotID)
+        case .sweepingOff:
             removeShotNode(id: shotID)
+            noteResolutionStepFinished()
+        case .charging:
+            landSprite(shotID: shotID)
+            noteResolutionStepFinished()
         }
     }
 
-    func resolveImpactIfNeeded(shotID: UUID) {
-        guard let visual = shotVisuals[shotID], visual.canHitPlayer else { return }
-        guard engine.registerImpact(shotID: shotID) else {
+    /// Proximity test, so a hit registers slightly before the path formally ends.
+    func checkImpacts() {
+        guard let playerNode else { return }
+        let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
+        let playerHitRadius = playerSpriteHeight * 0.45
+        for (id, visual) in shotVisuals where visual.role == .inbound {
+            let hitRadius = max(shotBaseSize * abs(visual.node.xScale) * 0.5, 12)
+            let distance = hypot(
+                visual.node.position.x - aim.x,
+                visual.node.position.y - aim.y
+            )
+            if distance <= hitRadius + playerHitRadius {
+                resolveImpact(shotID: id)
+                // The first arrival fails the wave; the rest are handled by the charge.
+                return
+            }
+        }
+    }
+
+    func resolveImpact(shotID: UUID) {
+        guard engine.registerWaveImpact(shotID: shotID) else {
+            // Wave already resolved — this sprite is stale, drop it silently.
             removeShotNode(id: shotID)
             return
         }
-        let position = visual.node.position
-        removeShotNode(id: shotID)
-        playDamage(at: position)
-        for pending in engine.drainPendingEvents() {
-            handle(pending)
-        }
+        resolveWaveFailed(reason: .impact(shotID))
     }
 
     func removeShotNode(id: UUID) {

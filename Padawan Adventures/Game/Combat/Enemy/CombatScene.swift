@@ -11,19 +11,25 @@ protocol CombatSceneDelegate: AnyObject {
 
 /// SpriteKit combat arena: player/enemy sprites, curved shots, slash input, VFX.
 final class CombatScene: MinigameScene {
+    enum ShotRole {
+        case inbound
+        case sweepingOff
+        case charging
+    }
+
     struct ShotVisual {
-        /// Current quadratic path (may be retargeted when the cue changes).
         var pathStart: CGPoint
-        var pathControl: CGPoint
+        var pathControl1: CGPoint
+        var pathControl2: CGPoint
         var pathEnd: CGPoint
-        var pathSpawnElapsed: Double
-        var pathTravelSeconds: Double
-        /// Original flight clock — used so scale keeps growing even after a retarget.
-        let scaleSpawnElapsed: Double
-        let scaleTravelSeconds: Double
-        /// Live: matching the current phonetic cue. Updated when the cue changes.
-        var canHitPlayer: Bool
-        let visualLetter: String
+        /// Scene-clock stamp when this (re)targeting began.
+        var pathStartedAt: Double
+        var pathDurationSeconds: Double
+        let scaleStartedAt: Double
+        let scaleDurationSeconds: Double
+        let letter: String
+        let isTarget: Bool
+        var role: ShotRole
         let node: SKNode
     }
 
@@ -55,11 +61,24 @@ final class CombatScene: MinigameScene {
     var lastUpdateTime: TimeInterval?
     var activeLoopTrackID: String?
 
+    /// Sprite motion clock. Independent of the engine so the resolution choreography
+    /// keeps animating after the wave outcome is decided and the engine freezes.
+    var sceneElapsed: Double = 0
+    /// Sprites still finishing their resolution animation; at zero the wave is done.
+    var resolvingSpriteCount = 0
+    /// One damage sound + player flash per failed wave, however many sprites land.
+    var didPlayWaveDamageSound = false
+
     let shotBaseSize: CGFloat = 103.68
     let playerFlashActionKey = "playerFlash"
     let playerCombatLibraryID = "player_combat"
     let playerSwingAnimationName = "swing"
     let slashFadeOutSeconds: TimeInterval = 0.28
+
+    static let sweepOffSeconds: Double = 0.35
+    /// Charge duration for a sprite a full screen height away; scaled by distance and clamped.
+    static let chargeReferenceSeconds: Double = 0.5
+    static let chargeSecondsRange: ClosedRange<Double> = 0.25...0.5
 
     init(
         size: CGSize,
@@ -140,12 +159,11 @@ final class CombatScene: MinigameScene {
 
         let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
         lastUpdateTime = currentTime
+        sceneElapsed += dt
 
-        let events = engine.tick(dt: dt)
-        for event in events {
+        for event in engine.tick(dt: dt) {
             handle(event)
         }
-        syncShotAiming()
         syncShotMotion()
         checkImpacts()
     }

@@ -82,10 +82,8 @@ extension CombatScene {
         switch event {
         case let .sequenceCue(requiredLetter):
             playSequenceCue(requiredLetter: requiredLetter)
-            // In-flight letters retarget immediately when the spoken cue changes.
-            syncShotAiming()
-        case let .spawnShot(id, travelSeconds, visualLetter):
-            spawnShot(id: id, travelSeconds: travelSeconds, visualLetter: visualLetter)
+        case let .spawnWave(targetLetter, shots):
+            spawnWave(targetLetter: targetLetter, shots: shots)
         case let .healthChanged(health):
             combatDelegate?.combatSceneDidUpdateHealth(health)
         case .won:

@@ -103,38 +103,25 @@ extension CombatScene {
         return false
     }
     func resolveSlashHits() {
-        guard isSlashActive, slashPoints.count >= 2 else { return }
-
-        // Any overlap between the stroke and the letter sprite bounds counts as a hit.
+        guard isSlashActive, slashPoints.count >= 2, engine.acceptsInput else { return }
         let stroke = slashPoints
 
-        for (id, visual) in shotVisuals {
+        for (id, visual) in shotVisuals where visual.role == .inbound {
             let bounds = shotSpriteBounds(for: visual.node)
             guard CombatSlashGeometry.slashIntersectsRect(points: stroke, rect: bounds) else {
                 continue
             }
-
-            let result = engine.registerSlashHit(shotID: id)
-            let pos = visual.node.position
-            switch result {
+            switch engine.registerSlashHit(shotID: id) {
             case .ignored:
                 continue
             case .correct:
-                removeShotNode(id: id)
-                playExplosion(at: pos)
                 combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
-                for pending in engine.drainPendingEvents() {
-                    handle(pending)
-                }
-                if engine.hasWon || engine.outcome != nil {
-                    finishWin()
-                    return
-                }
+                resolveWaveCleared(clearedShotID: id)
             case .wrong:
-                removeShotNode(id: id)
-                playIncorrectSlash(at: pos)
-                combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
+                resolveWaveFailed(reason: .wrongSlash(id))
             }
+            // One stroke resolves one sprite; the wave is now resolving.
+            return
         }
     }
 
