@@ -25,6 +25,9 @@ final class GameEncounterCoordinator {
         @ViewBuilder makeView: @escaping (_ finish: @escaping (MinigameOutcome) -> Void) -> Content,
         onOutcome: @escaping (_ outcome: MinigameOutcome?, _ done: @escaping () -> Void) -> Void
     ) {
+        // World one-shots (notice, footsteps, etc.) can still be audible when the
+        // overlay starts — clear them so minigame / combat audio owns the mix.
+        SoundEffectsController.shared.fadeOutAndStopAll()
         BackgroundMusicController.shared.apply(music)
         MemoryProbe.mark("minigame-present-\(memoryLabel)")
 

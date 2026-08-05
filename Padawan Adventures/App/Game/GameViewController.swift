@@ -88,7 +88,6 @@ final class GameViewController: LandscapeHostingController {
             self?.playEnemyNoticeFx(enemyID: enemyID)
         }
         scene.onPitEntered = { [weak self] approach in
-            self?.playPlayerFx("pit")
             self?.presentPit(approach: approach)
         }
         scene.onGateEntered = { [weak self] gate, approach in
@@ -261,11 +260,6 @@ final class GameViewController: LandscapeHostingController {
             """
         )
 
-        // Notice stingers can still be playing when contact starts combat — duck them out.
-        SoundEffectsController.shared.fadeOutAndStop(
-            trackID: enemyType.fx.trackID(for: "notice")
-        )
-
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
@@ -334,6 +328,7 @@ final class GameViewController: LandscapeHostingController {
     private func presentPit(approach: GridCoord) {
         guard let scene = gameScene else { return }
         if DefeatRules.isDefeatedByPit(health: scene.currentWorld.healthCount) {
+            playPlayerFx("pit")
             presentDefeat()
             return
         }
@@ -391,6 +386,8 @@ final class GameViewController: LandscapeHostingController {
                 }
             }
         )
+        // After world FX have begun fading so the pit sting is not cleared with them.
+        playPlayerFx("pit")
     }
 
     @MainActor
