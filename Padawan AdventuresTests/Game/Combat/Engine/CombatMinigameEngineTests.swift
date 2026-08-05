@@ -4,23 +4,23 @@ import Testing
 
 struct CombatMinigameEngineTests {
     private func makeEngine(
-        pacing: Double = 10,
         travel: Double = 1.5,
         starsToWin: Int = 10,
         shotLetters: [String] = ["A", "B", "C"],
-        meanInterval: Double? = 0.01,
         graphemeSoundRepeatSeconds: Double = 3,
+        minDecoy: Int = 2,
+        maxDecoy: Int = 4,
         startingHealth: Int = 3,
         seed: UInt64 = 42
     ) -> CombatMinigameEngine {
         var engine = CombatMinigameEngine(
             config: .init(
-                shotPacingSeconds: pacing,
                 shotTravelSeconds: travel,
                 starsToWin: starsToWin,
                 shotLetters: shotLetters,
-                meanShotIntervalSeconds: meanInterval,
-                graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds
+                graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
+                minDecoyCount: minDecoy,
+                maxDecoyCount: maxDecoy
             ),
             startingHealth: startingHealth,
             rng: CombatSeededGenerator(seed: seed)
@@ -29,12 +29,16 @@ struct CombatMinigameEngineTests {
         return engine
     }
 
-    private func firstSpawnedShot(
-        in events: [CombatEngineEvent]
-    ) -> (id: UUID, visualLetter: String)? {
-        for event in events {
-            if case let .spawnShot(id, _, visualLetter) = event {
-                return (id, visualLetter)
+    /// Ticks until the next `.spawnWave` and returns its shots (and target).
+    private func nextWave(
+        _ engine: inout CombatMinigameEngine,
+        maxTicks: Int = 200
+    ) -> (target: String, shots: [CombatWaveShot])? {
+        for _ in 0..<maxTicks {
+            for event in engine.tick(dt: 0.05) {
+                if case let .spawnWave(target, shots) = event {
+                    return (target, shots)
+                }
             }
         }
         return nil
@@ -43,7 +47,6 @@ struct CombatMinigameEngineTests {
     @Test func constructsInactive() {
         let engine = CombatMinigameEngine(
             config: .init(
-                shotPacingSeconds: 10,
                 shotTravelSeconds: 1,
                 starsToWin: 10
             )
@@ -58,67 +61,13 @@ struct CombatMinigameEngineTests {
         #expect(!engine.isActive)
     }
 
-    @Test func spawnsContinueAfterConfiguredPacingWindow() {
-        // The pacing window is pacing - travel (here 2). Spawns must continue past that.
-        var engine = makeEngine(pacing: 4, travel: 2, starsToWin: 99, meanInterval: 0.2, seed: 3)
-        var spawnCountBeforeWindow = 0
-        var spawnCountAfterWindow = 0
-        for _ in 0..<80 {
-            let events = engine.tick(dt: 0.1)
-            let spawns = events.filter {
-                if case .spawnShot = $0 { return true }
-                return false
-            }.count
-            if engine.elapsed <= 2 {
-                spawnCountBeforeWindow += spawns
-            } else {
-                spawnCountAfterWindow += spawns
-            }
-        }
-        #expect(spawnCountBeforeWindow > 0)
-        #expect(spawnCountAfterWindow > 0)
-        #expect(engine.outcome == nil)
+    @Test func combatLetterCaseBuildsPools() {
+        #expect(CombatGraphemeCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
+        #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
+        #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
     }
 
-    @Test func derivedIntervalSupportsWinWithFiftyPercentMisses() {
-        let pacing = 10.0
-        let travel = 3.2
-        let stars = 5
-        let letters = ["A", "B", "C"]
-        let interval = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            shotPacingSeconds: pacing,
-            shotTravelSeconds: travel,
-            starsToWin: stars,
-            shotLetterCount: letters.count
-        )
-        let spawnWindow = max(pacing - travel, pacing * 0.4)
-        let expectedShots = spawnWindow / interval
-        let expectedMatching = expectedShots / Double(letters.count)
-        let expectedStarsAtHalfHitRate = expectedMatching * 0.5
-        #expect(expectedStarsAtHalfHitRate + 0.01 >= Double(stars))
-    }
-
-    @Test func configFromEnemyTypeDerivesInterval() {
-        let type = EnemyTypeConfig(
-            letter: "E",
-            color: "#FF0000",
-            tilesPerSecond: 1,
-            forgetSeconds: 3,
-            shotPacingSeconds: 10,
-            shotTravelSeconds: 3.2,
-            starsToWin: 5
-        )
-        let config = CombatMinigameEngine.Config(from: type)
-        let expected = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            shotPacingSeconds: 10,
-            shotTravelSeconds: 3.2,
-            starsToWin: 5,
-            shotLetterCount: 3
-        )
-        #expect(abs(config.meanShotIntervalSeconds - expected) < 1e-9)
-    }
-
-    @Test func configAppliesSpawnRateAndLetterCase() {
+    @Test func configAppliesDecoyClampsAndLetterCase() {
         let type = EnemyTypeConfig(
             letter: "E",
             color: "#FF0000",
@@ -130,402 +79,189 @@ struct CombatMinigameEngineTests {
         )
         let config = CombatMinigameEngine.Config(
             from: type,
-            letterSpawnRate: 0.7,
+            minDecoyCount: 0,
+            maxDecoyCount: 2,
             graphemeCase: .lower
         )
         #expect(config.shotLetters == ["a", "b", "c"])
-        let derived = CombatMinigameEngine.Config.derivedMeanShotInterval(
-            shotPacingSeconds: 10,
-            shotTravelSeconds: 3.2,
-            starsToWin: 5,
-            shotLetterCount: 3
-        )
-        #expect(abs(config.meanShotIntervalSeconds - derived / 0.7) < 1e-9)
+        #expect(config.minDecoyCount == 1)
+        #expect(config.maxDecoyCount == 2)
 
         let both = CombatMinigameEngine.Config(from: type, graphemeCase: .both)
         #expect(both.shotLetters == ["a", "A", "b", "B", "c", "C"])
     }
 
-    @Test func combatLetterCaseBuildsPools() {
-        #expect(CombatGraphemeCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
-        #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
-        #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
-    }
-
-    @Test func sequenceCueThenSpawnsShareRequiredLetter() {
-        var engine = makeEngine(meanInterval: 0.01, seed: 11)
-        var currentCue: String?
-        var matchedSpawns = 0
-
-        for _ in 0..<60 {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                if case let .sequenceCue(letter) = event {
-                    currentCue = letter
-                    matchedSpawns = 0
-                }
-                if case let .spawnShot(id, _, _) = event,
-                   let shot = engine.shots[id] {
-                    #expect(currentCue != nil)
-                    #expect(shot.requiredLetter == currentCue)
-                    matchedSpawns += 1
-                }
-            }
-            if matchedSpawns >= 2 { break }
+    @Test func waveCompositionHasOneTargetAndValidDecoys() throws {
+        var engine = makeEngine(minDecoy: 2, maxDecoy: 4, seed: 11)
+        let wave = try #require(nextWave(&engine))
+        let targets = wave.shots.filter(\.isTarget)
+        let decoys = wave.shots.filter { !$0.isTarget }
+        #expect(targets.count == 1)
+        #expect(targets[0].letter == wave.target)
+        #expect((2...4).contains(decoys.count))
+        for decoy in decoys {
+            #expect(decoy.letter != wave.target)
+            #expect(["A", "B", "C"].contains(decoy.letter))
         }
-
-        #expect(currentCue != nil)
-        #expect(matchedSpawns >= 2)
-    }
-
-    @Test func visualLettersComeFromConfiguredAlphabet() {
-        var engine = makeEngine(shotLetters: ["A", "B", "C"], meanInterval: 0.01, seed: 3)
-        var visuals = Set<String>()
-        for _ in 0..<80 {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                if case let .spawnShot(_, _, visual) = event {
-                    visuals.insert(visual)
-                }
-            }
-        }
-        #expect(visuals.isSubset(of: ["A", "B", "C"]))
-        #expect(visuals.count > 1)
-    }
-
-    @Test func cuedLetterSpawnsMoreOftenThanEachOtherLetter() {
-        var engine = makeEngine(
-            starsToWin: 99,
-            shotLetters: ["A", "B", "C"],
-            meanInterval: 0.01,
-            seed: 17
-        )
-        // Establish a cue, then keep slashing only mismatches so the cue stays fixed.
-        var cue: String?
-        for _ in 0..<40 {
-            for event in engine.tick(dt: 0.05) {
-                if case let .sequenceCue(letter) = event {
-                    cue = letter
-                }
-            }
-            if cue != nil { break }
-        }
-        let required = try! #require(cue)
-
-        var counts: [String: Int] = ["A": 0, "B": 0, "C": 0]
-        for _ in 0..<400 {
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(id, _, visual) = event else { continue }
-                counts[visual, default: 0] += 1
-                if visual != required {
-                    _ = engine.registerSlashHit(shotID: id)
-                }
-            }
-        }
-
-        let cuedCount = counts[required] ?? 0
-        for letter in ["A", "B", "C"] where letter != required {
-            #expect(cuedCount > (counts[letter] ?? 0))
+        for shot in wave.shots {
+            #expect(["A", "B", "C"].contains(shot.letter))
         }
     }
 
-    @Test func correctSlashIncreasesNetProgressAndWrongDecreasesIt() {
-        var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, seed: 5)
-        var correctID: UUID?
-        var wrongID: UUID?
-
-        for _ in 0..<80 where correctID == nil || wrongID == nil {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                guard case let .spawnShot(id, _, _) = event,
-                      let shot = engine.shots[id] else { continue }
-                if shot.visualLetter == engine.sequenceRequiredLetter {
-                    correctID = id
-                } else {
-                    wrongID = id
-                }
-            }
+    @Test func speedJitterAndLaneIndicesAreValid() throws {
+        var engine = makeEngine(minDecoy: 3, maxDecoy: 3, seed: 5)
+        let wave = try #require(nextWave(&engine))
+        for shot in wave.shots {
+            #expect(shot.speedJitter >= 0.9 - 1e-9)
+            #expect(shot.speedJitter <= 1.1 + 1e-9)
         }
+        let lanes = wave.shots.map(\.laneIndex).sorted()
+        #expect(lanes == Array(0..<wave.shots.count))
+    }
 
-        #expect(correctID != nil)
-        #expect(wrongID != nil)
+    @Test func singleLetterPoolProducesSoloWave() throws {
+        var engine = makeEngine(shotLetters: ["A"], minDecoy: 2, maxDecoy: 4, seed: 1)
+        let wave = try #require(nextWave(&engine))
+        #expect(wave.shots.count == 1)
+        #expect(wave.shots[0].isTarget)
+        #expect(wave.shots[0].letter == "A")
+    }
 
-        #expect(engine.registerSlashHit(shotID: correctID!) == .correct)
+    @Test func correctSlashAwardsStarAndResolves() throws {
+        var engine = makeEngine(starsToWin: 99, seed: 7)
+        let wave = try #require(nextWave(&engine))
+        let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+        #expect(engine.registerSlashHit(shotID: targetID) == .correct)
         #expect(engine.combatStars == 1)
+        #expect(engine.wavePhase == .resolving)
+        #expect(engine.registerSlashHit(shotID: targetID) == .ignored)
+    }
 
-        #expect(engine.registerSlashHit(shotID: wrongID!) == .wrong)
+    @Test func wrongSlashCostsOneHeartAndNoStars() throws {
+        var engine = makeEngine(starsToWin: 99, startingHealth: 3, seed: 9)
+        let wave = try #require(nextWave(&engine))
+        let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
+        #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
         #expect(engine.combatStars == 0)
-        #expect(engine.shots[wrongID!] == nil)
+        #expect(engine.healthCount == 2)
+        #expect(engine.wavePhase == .resolving)
     }
 
-    @Test func winRequiresNetProgressNotGrossCorrects() {
-        var engine = makeEngine(starsToWin: 3, meanInterval: 0.01, seed: 9)
-
-        func slashMatching(count: Int) {
-            var done = 0
-            while done < count, engine.outcome == nil {
-                for event in engine.tick(dt: 0.05) {
-                    guard case let .spawnShot(id, _, _) = event,
-                          engine.matchesCurrentCue(shotID: id) else { continue }
-                    #expect(engine.registerSlashHit(shotID: id) == .correct)
-                    done += 1
-                    if done >= count { break }
-                }
-            }
-        }
-
-        slashMatching(count: 2)
-        #expect(engine.combatStars == 2)
-        #expect(engine.outcome == nil)
-
-        var wrongDone = false
-        for _ in 0..<80 where !wrongDone {
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(id, _, _) = event,
-                      let shot = engine.shots[id],
-                      shot.visualLetter != engine.sequenceRequiredLetter else { continue }
-                #expect(engine.registerSlashHit(shotID: id) == .wrong)
-                wrongDone = true
-                break
-            }
-        }
-        #expect(wrongDone)
-        #expect(engine.combatStars == 1)
-        #expect(engine.outcome == nil)
-
-        slashMatching(count: 2)
-        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 3))
+    @Test func impactCostsExactlyOneHeartPerWave() throws {
+        var engine = makeEngine(starsToWin: 99, startingHealth: 3, seed: 13)
+        let wave = try #require(nextWave(&engine))
+        #expect(wave.shots.count >= 2)
+        let first = wave.shots[0].id
+        let second = wave.shots[1].id
+        let firstDamaged = engine.registerWaveImpact(shotID: first)
+        #expect(firstDamaged)
+        #expect(engine.healthCount == 2)
+        let secondDamaged = engine.registerWaveImpact(shotID: second)
+        #expect(!secondDamaged)
+        #expect(engine.healthCount == 2)
+        #expect(engine.wavePhase == .resolving)
     }
 
-    @Test func onScreenShotBecomesCorrectWhenCueChangesToItsLetter() throws {
+    @Test func deferredLostEmittedFromFinishWaveResolution() throws {
+        var engine = makeEngine(starsToWin: 99, startingHealth: 1, seed: 15)
+        let wave = try #require(nextWave(&engine))
+        let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
+        #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
+        #expect(engine.outcome == .lost)
+
+        for _ in 0..<20 {
+            let events = engine.tick(dt: 0.05)
+            #expect(!events.contains(.lost))
+        }
+
+        let finishing = engine.finishWaveResolution()
+        #expect(finishing.contains(.healthChanged(0)))
+        #expect(finishing.contains(.lost))
+    }
+
+    @Test func deferredWonEmittedFromFinishWaveResolution() throws {
+        var engine = makeEngine(starsToWin: 1, seed: 17)
+        let wave = try #require(nextWave(&engine))
+        let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+        #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 1))
+
+        for _ in 0..<20 {
+            let events = engine.tick(dt: 0.05)
+            #expect(!events.contains(.won))
+        }
+
+        let finishing = engine.finishWaveResolution()
+        #expect(finishing.contains(.won))
+    }
+
+    @Test func nextWaveSpawnsAfterGapWithDifferentTarget() throws {
+        var engine = makeEngine(starsToWin: 99, seed: 21)
+        let first = try #require(nextWave(&engine))
+        let targetID = try #require(first.shots.first(where: \.isTarget)?.id)
+        #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+        _ = engine.finishWaveResolution()
+
+        let second = try #require(nextWave(&engine))
+        #expect(second.target != first.target)
+    }
+
+    @Test func sequenceCueReplaysOnLetterSoundInterval() throws {
         var engine = makeEngine(
             starsToWin: 99,
-            shotLetters: ["A", "B"],
-            meanInterval: 0.01,
-            seed: 8
+            graphemeSoundRepeatSeconds: 3,
+            seed: 1
         )
-        var targetID: UUID?
-        var targetVisual: String?
-
-        for _ in 0..<80 {
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(id, _, visual) = event else { continue }
-                guard visual != engine.sequenceRequiredLetter else { continue }
-                targetID = id
-                targetVisual = visual
-            }
-            if targetID != nil { break }
-        }
-
-        let livingID = try #require(targetID)
-        let livingVisual = try #require(targetVisual)
-        #expect(livingVisual != engine.sequenceRequiredLetter)
-        #expect(engine.registerSlashHit(shotID: livingID) == .wrong)
-
-        // Keep a second mismatch alive until the cue changes to its letter.
-        targetID = nil
-        targetVisual = nil
-        for _ in 0..<80 {
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(id, _, visual) = event else { continue }
-                guard visual != engine.sequenceRequiredLetter else { continue }
-                targetID = id
-                targetVisual = visual
-            }
-            if targetID != nil { break }
-        }
-
-        let pendingID = try #require(targetID)
-        let pendingVisual = try #require(targetVisual)
-        #expect(pendingVisual != engine.sequenceRequiredLetter)
-
-        var becameCorrect = false
-        for _ in 0..<500 {
-            if engine.sequenceRequiredLetter == pendingVisual, engine.shots[pendingID] != nil {
-                let starsBefore = engine.combatStars
-                #expect(engine.registerSlashHit(shotID: pendingID) == .correct)
-                #expect(engine.combatStars == starsBefore + 1)
-                becameCorrect = true
-                break
-            }
-
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(spawnID, _, _) = event,
-                      spawnID != pendingID,
-                      engine.matchesCurrentCue(shotID: spawnID) else { continue }
-                if engine.registerSlashHit(shotID: spawnID) == .correct {
-                    _ = engine.drainPendingEvents()
+        let wave = try #require(nextWave(&engine))
+        var replayCount = 0
+        for _ in 0..<70 {
+            for event in engine.tick(dt: 0.1) {
+                if case let .sequenceCue(letter) = event {
+                    #expect(letter == wave.target)
+                    replayCount += 1
                 }
             }
         }
-
-        #expect(becameCorrect)
-    }
-
-    @Test func correctSlashesCanWin() {
-        var engine = makeEngine(starsToWin: 3, meanInterval: 0.01, seed: 9)
-        while engine.combatStars < 3, engine.outcome == nil {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                guard case let .spawnShot(id, _, _) = event,
-                      let shot = engine.shots[id] else { continue }
-                if shot.visualLetter == engine.sequenceRequiredLetter {
-                    _ = engine.registerSlashHit(shotID: id)
-                }
-            }
-        }
-        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 3))
-        #expect(engine.isFrozen)
+        #expect(replayCount >= 2)
     }
 
     @Test func correctSlashChangesCueToADifferentLetter() throws {
         var engine = makeEngine(
             starsToWin: 99,
             shotLetters: ["A", "B", "C"],
-            meanInterval: 0.01,
             seed: 21
         )
-        var firstCue: String?
-        for _ in 0..<40 {
-            for event in engine.tick(dt: 0.05) {
-                if case let .sequenceCue(letter) = event {
-                    firstCue = letter
-                }
-            }
-            if firstCue != nil { break }
-        }
-        let previous = try #require(firstCue)
-
-        var changed = false
-        for _ in 0..<200 where !changed {
-            for event in engine.tick(dt: 0.05) {
-                guard case let .spawnShot(id, _, _) = event,
-                      engine.matchesCurrentCue(shotID: id) else { continue }
-                #expect(engine.registerSlashHit(shotID: id) == .correct)
-                let pending = engine.drainPendingEvents()
-                let nextCue = pending.compactMap { event -> String? in
-                    if case let .sequenceCue(letter) = event { return letter }
-                    return nil
-                }.first
-                let next = try #require(nextCue)
-                #expect(next != previous)
-                #expect(engine.sequenceRequiredLetter == next)
-                changed = true
-                break
-            }
-        }
-        #expect(changed)
+        let first = try #require(nextWave(&engine))
+        let targetID = try #require(first.shots.first(where: \.isTarget)?.id)
+        #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+        _ = engine.finishWaveResolution()
+        let second = try #require(nextWave(&engine))
+        #expect(second.target != first.target)
+        #expect(engine.sequenceRequiredLetter == second.target)
     }
 
-    @Test func spawnIntervalStaysWithinJitterBounds() {
-        let base = 2.0
-        var delays: [Double] = []
-        for seed in UInt64(1)...UInt64(20) {
-            var e = CombatMinigameEngine(
-                config: .init(
-                    shotPacingSeconds: 30,
-                    shotTravelSeconds: 1,
-                    starsToWin: 99,
-                    meanShotIntervalSeconds: base
-                ),
-                rng: CombatSeededGenerator(seed: seed)
-            )
-            delays.append(e.scheduleNextSpawnDelay())
+    @Test func clearingEveryWaveWins() throws {
+        var engine = makeEngine(starsToWin: 3, seed: 9)
+        while engine.outcome == nil {
+            guard let wave = nextWave(&engine) else { break }
+            let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+            #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+            for event in engine.finishWaveResolution() {
+                if case .won = event { break }
+            }
         }
-        for delay in delays {
-            #expect(delay >= base * 0.5 - 1e-9)
-            #expect(delay <= base * 1.5 + 1e-9)
-        }
-        #expect(Set(delays.map { Int($0 * 1000) }).count > 1)
+        #expect(engine.outcome == MinigameOutcome.won(starsAwarded: 3))
+        #expect(engine.isFrozen)
     }
 
-    @Test func sequenceCueReplaysOnLetterSoundInterval() {
-        var engine = makeEngine(
-            pacing: 20,
-            starsToWin: 99,
-            meanInterval: 0.01,
-            graphemeSoundRepeatSeconds: 3,
-            seed: 1
-        )
-
-        var firstCue: String?
-        for _ in 0..<40 {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                if case let .sequenceCue(letter) = event {
-                    firstCue = letter
-                }
-            }
-            if firstCue != nil { break }
+    @Test func failingEveryWaveLoses() throws {
+        var engine = makeEngine(starsToWin: 99, startingHealth: 2, seed: 7)
+        while engine.outcome == nil {
+            guard let wave = nextWave(&engine) else { break }
+            let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
+            #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
+            _ = engine.finishWaveResolution()
         }
-        #expect(firstCue != nil)
-
-        var replayCount = 0
-        for _ in 0..<70 {
-            let events = engine.tick(dt: 0.1)
-            for event in events {
-                if case let .sequenceCue(letter) = event {
-                    #expect(letter == firstCue)
-                    replayCount += 1
-                }
-            }
-        }
-        // ~7 seconds of post-cue time at 3s interval → at least two replays.
-        #expect(replayCount >= 2)
-    }
-
-    @Test func impactRemovesShotWithoutStarAndDeductsHealth() throws {
-        var engine = makeEngine(
-            pacing: 10,
-            travel: 1.5,
-            starsToWin: 10,
-            meanInterval: 0.01,
-            startingHealth: 3,
-            seed: 7
-        )
-        var matchingID: UUID?
-        var mismatchID: UUID?
-        for _ in 0..<80 {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                guard case let .spawnShot(id, _, _) = event else { continue }
-                if engine.matchesCurrentCue(shotID: id) {
-                    matchingID = id
-                } else {
-                    mismatchID = id
-                }
-            }
-            if matchingID != nil, mismatchID != nil { break }
-        }
-        let match = try #require(matchingID)
-        let mismatch = try #require(mismatchID)
-
-        let matchDamaged = engine.registerImpact(shotID: match)
-        let mismatchDamaged = engine.registerImpact(shotID: mismatch)
-        #expect(matchDamaged)
-        #expect(!mismatchDamaged)
-        #expect(engine.combatStars == 0)
-        #expect(engine.healthCount == 2)
-        #expect(engine.shots[match] == nil)
-        #expect(engine.shots[mismatch] == nil)
-        let pending = engine.drainPendingEvents()
-        #expect(pending.contains(.healthChanged(2)))
-    }
-
-    @Test func matchingImpactsToZeroHealthLoseCombat() throws {
-        var engine = makeEngine(starsToWin: 99, meanInterval: 0.01, startingHealth: 2, seed: 7)
-        var hits = 0
-        for _ in 0..<200 where engine.outcome == nil {
-            let events = engine.tick(dt: 0.05)
-            for event in events {
-                guard case let .spawnShot(id, _, _) = event,
-                      engine.matchesCurrentCue(shotID: id) else { continue }
-                if engine.registerImpact(shotID: id) {
-                    hits += 1
-                }
-            }
-        }
-        #expect(hits == 2)
         #expect(engine.healthCount == 0)
         #expect(engine.outcome == .lost)
         #expect(engine.isFrozen)

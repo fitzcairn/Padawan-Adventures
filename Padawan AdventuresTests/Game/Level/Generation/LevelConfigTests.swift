@@ -2165,7 +2165,7 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
-        #expect(tython.pit.minigames.map(\.weight) == [0, 0, 1])
+        #expect(tython.pit.minigames.map(\.weight) == [1, 0, 0])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.letterPosition == .ending)
             #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
