@@ -96,10 +96,12 @@ extension PitSoundOutWordScene {
         )
         flashOverlay(on: tile, color: platformWrongTint) { [weak self] in
             guard let self else { return }
-            self.isJumping = true
-            self.jumpPlayer(to: self.dragStartPosition) {
-                self.isJumping = false
-                // Face right once standing on the previous tile again.
+            // Bounce Kam home and reshuffle the blank tiles in parallel.
+            var pending = 2
+            let finish: () -> Void = { [weak self] in
+                guard let self else { return }
+                pending -= 1
+                guard pending == 0 else { return }
                 self.playerFacingLeft = false
                 self.resumePlayerIdle()
                 if let grapheme = self.engine.currentGrapheme,
@@ -108,7 +110,67 @@ extension PitSoundOutWordScene {
                 }
                 self.isUserInteractionEnabled = true
             }
+            self.isJumping = true
+            self.jumpPlayer(to: self.dragStartPosition) {
+                self.isJumping = false
+                finish()
+            }
+            self.shuffleAndAnimateCandidates(completion: finish)
         }
+    }
+
+    /// Reorders the active set, rolls fresh jitter, and slides every tile into place.
+    func shuffleAndAnimateCandidates(completion: (() -> Void)? = nil) {
+        guard let stepIndex = engine.currentIndex, !candidateNodes.isEmpty else {
+            completion?()
+            return
+        }
+        engine.shuffleCurrentChoices()
+
+        var nodesByID: [UUID: SKNode] = [:]
+        for node in candidateNodes {
+            guard let idString = node.userData?["id"] as? String,
+                  let id = UUID(uuidString: idString) else { continue }
+            nodesByID[id] = node
+        }
+
+        let geo = geometry
+        let choices = engine.currentChoices
+        let count = choices.count
+        let jitters = geo.candidateJitters(step: stepIndex, count: count, using: &placementRNG)
+        var reordered: [SKNode] = []
+        reordered.reserveCapacity(count)
+
+        for (index, choice) in choices.enumerated() {
+            guard let node = nodesByID[choice.id] else { continue }
+            let jitter = jitters[index]
+            let center = geo.candidateCenter(step: stepIndex, candidate: index, count: count)
+            let target = CGPoint(x: center.x + jitter.x, y: center.y + jitter.y)
+
+            node.name = "candidate:\(index)"
+            if node.userData == nil { node.userData = NSMutableDictionary() }
+            node.userData?["index"] = index
+            node.userData?["count"] = count
+            node.userData?["step"] = stepIndex
+            node.userData?["jitterX"] = jitter.x
+            node.userData?["jitterY"] = jitter.y
+
+            node.removeAction(forKey: "candidateShuffle")
+            let move = SKAction.move(to: target, duration: Self.shuffleDuration)
+            move.timingMode = .easeInEaseOut
+            node.run(move, withKey: "candidateShuffle")
+            reordered.append(node)
+        }
+        candidateNodes = reordered
+
+        removeAction(forKey: Self.shuffleActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: Self.shuffleDuration),
+                SKAction.run { completion?() },
+            ]),
+            withKey: Self.shuffleActionKey
+        )
     }
 
     func flashOverlay(on node: SKNode, color: UIColor, completion: @escaping () -> Void) {

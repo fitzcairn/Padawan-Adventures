@@ -41,6 +41,9 @@ final class PitSoundOutWordScene: MinigameScene {
     static let jumpDuration: TimeInterval = 1.0
     static let settleDuration: TimeInterval = 0.18
     static let letterRevealDuration: TimeInterval = 0.25
+    /// Duration for the post-miss candidate reshuffle slide.
+    static let shuffleDuration: TimeInterval = 0.35
+    static let shuffleActionKey = "pitSoundOutShuffle"
     static let playerLibraryID = "player"
     static let playerZ: CGFloat = SceneLayer.player
     static let padsZ: CGFloat = SceneLayer.pads
@@ -100,6 +103,7 @@ final class PitSoundOutWordScene: MinigameScene {
     override func willMove(from view: SKView) {
         removeAction(forKey: Self.promptWatchdogKey)
         removeAction(forKey: Self.promptSoundKey)
+        removeAction(forKey: Self.shuffleActionKey)
     }
 
     override func rebuildLayout() {

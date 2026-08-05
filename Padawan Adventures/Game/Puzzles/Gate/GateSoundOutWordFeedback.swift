@@ -65,6 +65,11 @@ extension GateSoundOutWordScene {
         clearChoiceNodes()
         let choices = engine.currentChoices
         guard !choices.isEmpty else { return }
+        // The engine guarantees this; log loudly if a future change breaks solvability.
+        assert(
+            engine.currentChoicesIncludeAnswer,
+            "sound-out-word gate is missing answer '\(engine.currentGrapheme ?? "")'"
+        )
 
         let positions = choiceRowPositions(count: choices.count)
         for (index, choice) in choices.enumerated() {

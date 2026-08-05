@@ -89,6 +89,12 @@ nonisolated struct GateSoundOutWordEngine {
         return choiceSets[index]
     }
 
+    /// Whether the active choice set includes the grapheme the player must pick next.
+    var currentChoicesIncludeAnswer: Bool {
+        guard let answer = currentGrapheme?.lowercased() else { return false }
+        return currentChoices.contains { $0.grapheme.lowercased() == answer }
+    }
+
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
         self.rng = rng
