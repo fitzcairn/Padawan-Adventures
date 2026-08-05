@@ -98,16 +98,3 @@ final class PitScene: MinigameScene {
         rebuildLayoutPreservingLetters()
     }
 }
-
-final class SceneTestTouch: UITouch {
-    let location: CGPoint
-
-    init(location: CGPoint) {
-        self.location = location
-        super.init()
-    }
-
-    override func location(in view: UIView?) -> CGPoint {
-        location
-    }
-}
