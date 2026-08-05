@@ -49,9 +49,11 @@ world:
 
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
-# `grapheme-sound-combat`: swipe-to-slash arena cued by grapheme-name sounds. Stars = graphemes hit.
-#   Letter pool and pacing come from enemies.yaml; this entry sets spawn rate, case, and
-#   how often to replay the current grapheme-name prompt.
+# `grapheme-sound-combat`: wave-based swipe-to-slash arena. Each wave speaks one grapheme
+#   name and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
+#   fanned, equal-speed curves. Slash the matching letter to score; slashing a decoy, or
+#   letting any letter reach you, costs one heart. Letter pool and flight time come from
+#   enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word image; tap the ring for that word's first
 #   grapheme. Its `graphemes:` map left -> right onto evenly spaced rings (2–6) and must resolve
 #   in graphemes.yaml; each needs ≥1 imaged word in words.yaml that starts with it.
@@ -63,9 +65,11 @@ combat:
   minigames:
     - type: grapheme-sound-combat
       weight: 0.5
-      grapheme_spawn_multiplier: 0.7
+      # Extra non-matching letters launched alongside the cued one, per wave.
+      min_decoy_count: 2
+      max_decoy_count: 4
       grapheme_case: lower
-      # How often to replay the current grapheme-name prompt during slash combat.
+      # How often to replay the current grapheme-name prompt while a wave is in flight.
       grapheme_sound_repeat_seconds: 3
     - type: starting-sound-combat
       weight: 0.5

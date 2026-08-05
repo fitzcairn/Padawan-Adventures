@@ -409,11 +409,12 @@ struct LevelConfigTests {
             Issue.record("expected slash entry")
             return
         }
-        #expect(tythonSlash.graphemeSpawnMultiplier == 0.7)
+        #expect(tythonSlash.minDecoyCount == 2)
+        #expect(tythonSlash.maxDecoyCount == 4)
         #expect(tythonSlash.graphemeCase == .lower)
     }
 
-    @Test func decodesCombatLetterSpawnRateAndCase() throws {
+    @Test func decodesCombatDecoyCountAndCase() throws {
         let level = try LevelConfig.decode(
             from: """
             inherits: base_level
@@ -421,7 +422,8 @@ struct LevelConfigTests {
             combat:
               minigames:
                 - type: grapheme-sound-combat
-                  grapheme_spawn_multiplier: 0.5
+                  min_decoy_count: 3
+                  max_decoy_count: 3
                   grapheme_case: both
             """,
             parents: ["base_level": Self.baseLevelYAML]
@@ -430,12 +432,13 @@ struct LevelConfigTests {
             Issue.record("expected slash entry")
             return
         }
-        #expect(slash.graphemeSpawnMultiplier == 0.5)
+        #expect(slash.minDecoyCount == 3)
+        #expect(slash.maxDecoyCount == 3)
         #expect(slash.graphemeCase == .both)
     }
 
-    @Test func rejectsInvalidCombatLetterSpawnRate() throws {
-        #expect(throws: WorldSeedError.invalidCombatGraphemeSpawnRate(0)) {
+    @Test func rejectsInvalidCombatDecoyCount() throws {
+        #expect(throws: WorldSeedError.invalidCombatDecoyCount(min: 4, max: 2)) {
             try LevelConfig.decode(
                 from: """
                 inherits: base_level
@@ -443,7 +446,8 @@ struct LevelConfigTests {
                 combat:
                   minigames:
                     - type: grapheme-sound-combat
-                      grapheme_spawn_multiplier: 0
+                      min_decoy_count: 4
+                      max_decoy_count: 2
                 """,
                 parents: ["base_level": Self.baseLevelYAML]
             )
@@ -2293,7 +2297,8 @@ struct LevelConfigTests {
           minigames:
             - type: grapheme-sound-combat
               weight: 0.0
-              grapheme_spawn_multiplier: 0.7
+              min_decoy_count: 2
+              max_decoy_count: 4
               grapheme_case: lower
               grapheme_sound_repeat_seconds: 3
             - type: ending-sound-combat

@@ -126,7 +126,10 @@ nonisolated enum MinigameDecodeRegistry {
             }
             return .slash(CombatSlashConfig(
                 weight: entry.weight ?? 1,
-                graphemeSpawnMultiplier: entry.graphemeSpawnMultiplier ?? 1.0,
+                minDecoyCount: entry.minDecoyCount
+                    ?? CombatMinigameEngine.Config.defaultMinDecoyCount,
+                maxDecoyCount: entry.maxDecoyCount
+                    ?? CombatMinigameEngine.Config.defaultMaxDecoyCount,
                 graphemeCase: graphemeCase,
                 graphemeSoundRepeatSeconds: entry.graphemeSoundRepeatSeconds ?? 3
             ))
@@ -203,7 +206,8 @@ nonisolated struct CombatMinigameDTO: Decodable {
     var monsterHP: Int?
     var orbTravelSeconds: Double?
     var graphemes: [String]?
-    var graphemeSpawnMultiplier: Double?
+    var minDecoyCount: Int?
+    var maxDecoyCount: Int?
     var graphemeCase: String?
     var graphemeSoundRepeatSeconds: Double?
 
@@ -213,7 +217,8 @@ nonisolated struct CombatMinigameDTO: Decodable {
         case monsterHP = "monster_hit_points"
         case orbTravelSeconds = "orb_travel_seconds"
         case graphemes
-        case graphemeSpawnMultiplier = "grapheme_spawn_multiplier"
+        case minDecoyCount = "min_decoy_count"
+        case maxDecoyCount = "max_decoy_count"
         case graphemeCase = "grapheme_case"
         case graphemeSoundRepeatSeconds = "grapheme_sound_repeat_seconds"
     }

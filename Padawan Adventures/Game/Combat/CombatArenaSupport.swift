@@ -57,6 +57,40 @@ extension SKScene {
         return CGPoint(x: x, y: y)
     }
 
+    func cubicBezier(t: CGFloat, start: CGPoint, c1: CGPoint, c2: CGPoint, end: CGPoint) -> CGPoint {
+        let u = 1 - t
+        let a = u * u * u
+        let b = 3 * u * u * t
+        let c = 3 * u * t * t
+        let d = t * t * t
+        return CGPoint(
+            x: a * start.x + b * c1.x + c * c2.x + d * end.x,
+            y: a * start.y + b * c1.y + c * c2.y + d * end.y
+        )
+    }
+
+    /// Polyline approximation of arc length, used to turn a constant speed into a duration.
+    func cubicBezierLength(
+        start: CGPoint,
+        c1: CGPoint,
+        c2: CGPoint,
+        end: CGPoint,
+        samples: Int = 24
+    ) -> CGFloat {
+        let steps = max(samples, 2)
+        var total: CGFloat = 0
+        var previous = start
+        for step in 1...steps {
+            let point = cubicBezier(
+                t: CGFloat(step) / CGFloat(steps),
+                start: start, c1: c1, c2: c2, end: end
+            )
+            total += hypot(point.x - previous.x, point.y - previous.y)
+            previous = point
+        }
+        return total
+    }
+
     /// Temporary colorize pulse on a sprite (damage / impact feedback).
     func flashNode(
         _ node: SKSpriteNode?,

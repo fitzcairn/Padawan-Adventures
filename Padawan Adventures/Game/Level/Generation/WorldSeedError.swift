@@ -24,7 +24,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidPitSoundOutWordWords
     case invalidPitSoundOutWordGraphemes
     case invalidGraphemeSoundRepeat(Double)
-    case invalidCombatGraphemeSpawnRate(Double)
+    case invalidCombatDecoyCount(min: Int, max: Int)
     case invalidCombatGraphemeCase(String)
     case invalidCombatMinigameWeight(Double)
     case invalidCombatMonsterHP(Int)

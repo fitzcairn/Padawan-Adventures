@@ -26,17 +26,24 @@ nonisolated struct CombatMinigameEngine {
         var shotLetters: [String]
         /// Seconds between letter-name cue replays while a sequence is active.
         var graphemeSoundRepeatSeconds: Double
+        /// Extra non-matching letters launched alongside the target, per wave.
+        var minDecoyCount: Int
+        var maxDecoyCount: Int
 
         /// Assumed fraction of matching shots the player successfully slashes.
         static let defaultAssumedPlayerHitRate: Double = 0.5
         static let defaultGraphemeSoundRepeatSeconds: Double = 3
         /// Multiplier on spawn frequency vs derived baseline (`1.0` = unchanged).
         static let defaultLetterSpawnRate: Double = 1.0
+        static let defaultMinDecoyCount = 2
+        static let defaultMaxDecoyCount = 4
 
         init(
             from type: EnemyTypeConfig,
             graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             letterSpawnRate: Double = defaultLetterSpawnRate,
+            minDecoyCount: Int = defaultMinDecoyCount,
+            maxDecoyCount: Int = defaultMaxDecoyCount,
             graphemeCase: CombatGraphemeCase = .upper
         ) {
             let letters = graphemeCase.shotLetterPool(from: type.shotLetters)
@@ -45,6 +52,8 @@ nonisolated struct CombatMinigameEngine {
             starsToWin = type.starsToWin
             shotLetters = letters
             self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
+            self.minDecoyCount = max(minDecoyCount, 1)
+            self.maxDecoyCount = max(maxDecoyCount, self.minDecoyCount)
             let derived = Self.derivedMeanShotInterval(
                 shotPacingSeconds: type.shotPacingSeconds,
                 shotTravelSeconds: type.shotTravelSeconds,
@@ -62,13 +71,17 @@ nonisolated struct CombatMinigameEngine {
             shotLetters: [String] = ["A", "B", "C"],
             meanShotIntervalSeconds: Double? = nil,
             graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
-            letterSpawnRate: Double = defaultLetterSpawnRate
+            letterSpawnRate: Double = defaultLetterSpawnRate,
+            minDecoyCount: Int = defaultMinDecoyCount,
+            maxDecoyCount: Int = defaultMaxDecoyCount
         ) {
             self.shotPacingSeconds = shotPacingSeconds
             self.shotTravelSeconds = shotTravelSeconds
             self.starsToWin = starsToWin
             self.shotLetters = shotLetters
             self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
+            self.minDecoyCount = max(minDecoyCount, 1)
+            self.maxDecoyCount = max(maxDecoyCount, self.minDecoyCount)
             if let meanShotIntervalSeconds {
                 self.meanShotIntervalSeconds = meanShotIntervalSeconds
             } else {

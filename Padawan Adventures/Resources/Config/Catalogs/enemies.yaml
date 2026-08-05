@@ -245,8 +245,9 @@ defaults:
   color: "#FF0000"
   tiles_per_second: 0.7
   forget_seconds: 3.0
-  # Reference fight length (seconds) used to derive letter spawn cadence — not a shot interval.
+  # Unused by the wave-based slash arena (kept for EnemyTypeConfig / tests).
   shot_pacing_seconds: 30
+  # Straight-line flight time for a wave projectile; sets the equal-speed baseline.
   shot_travel_seconds: 8
   stars_to_win: 5
   shot_graphemes: [a, b, c]

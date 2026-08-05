@@ -230,8 +230,10 @@ final class GameViewController: LandscapeHostingController {
         }
         let graphemeSoundRepeatSeconds = slash?.graphemeSoundRepeatSeconds
             ?? CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds
-        let letterSpawnRate = slash?.graphemeSpawnMultiplier
-            ?? CombatMinigameEngine.Config.defaultLetterSpawnRate
+        let minDecoyCount = slash?.minDecoyCount
+            ?? CombatMinigameEngine.Config.defaultMinDecoyCount
+        let maxDecoyCount = slash?.maxDecoyCount
+            ?? CombatMinigameEngine.Config.defaultMaxDecoyCount
         let graphemeCase = slash?.graphemeCase ?? .upper
 
         let context = CombatPresentationContext(
@@ -240,7 +242,8 @@ final class GameViewController: LandscapeHostingController {
             playerFx: playerFx,
             hudConfig: hudConfig,
             graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
-            letterSpawnRate: letterSpawnRate,
+            minDecoyCount: minDecoyCount,
+            maxDecoyCount: maxDecoyCount,
             graphemeCase: graphemeCase,
             slashMaxSeconds: slashMaxSeconds,
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,

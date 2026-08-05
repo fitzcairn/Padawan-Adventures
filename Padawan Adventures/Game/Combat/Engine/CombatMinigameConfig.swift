@@ -13,8 +13,9 @@ nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseI
 /// Per-entry config for the slash arena.
 nonisolated struct CombatSlashConfig: Equatable, Sendable {
     var weight: Double
-    /// Multiplier on combat letter spawn frequency vs derived baseline (`1.0` = unchanged).
-    var graphemeSpawnMultiplier: Double
+    /// Extra non-matching letters launched alongside the cued one, per wave.
+    var minDecoyCount: Int
+    var maxDecoyCount: Int
     /// Casing for combat projectile / cue letters.
     var graphemeCase: CombatGraphemeCase
     /// Letter-name prompt replay interval in seconds.
@@ -24,19 +25,23 @@ nonisolated struct CombatSlashConfig: Equatable, Sendable {
 
     nonisolated init(
         weight: Double = 1,
-        graphemeSpawnMultiplier: Double = 1.0,
+        minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
+        maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         graphemeSoundRepeatSeconds: Double = 3
     ) {
         self.weight = weight
-        self.graphemeSpawnMultiplier = graphemeSpawnMultiplier
+        self.minDecoyCount = minDecoyCount
+        self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
     }
 
     func validate() throws {
-        guard graphemeSpawnMultiplier > 0 else {
-            throw WorldSeedError.invalidCombatGraphemeSpawnRate(graphemeSpawnMultiplier)
+        guard minDecoyCount >= 1,
+              maxDecoyCount >= minDecoyCount,
+              maxDecoyCount <= 8 else {
+            throw WorldSeedError.invalidCombatDecoyCount(min: minDecoyCount, max: maxDecoyCount)
         }
         guard graphemeSoundRepeatSeconds > 0 else {
             throw WorldSeedError.invalidGraphemeSoundRepeat(graphemeSoundRepeatSeconds)

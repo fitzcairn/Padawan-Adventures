@@ -9,7 +9,8 @@ struct EnemyMinigameView: View {
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
     let graphemeSoundRepeatSeconds: Double
-    let letterSpawnRate: Double
+    let minDecoyCount: Int
+    let maxDecoyCount: Int
     let graphemeCase: CombatGraphemeCase
     let slashMaxSeconds: Double
     let slashMaxScreenWidthFraction: Double
@@ -28,7 +29,8 @@ struct EnemyMinigameView: View {
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
         graphemeSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds,
-        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
+        maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
@@ -44,7 +46,8 @@ struct EnemyMinigameView: View {
         self.playerFx = playerFx
         self.hudConfig = hudConfig
         self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
-        self.letterSpawnRate = letterSpawnRate
+        self.minDecoyCount = minDecoyCount
+        self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
@@ -60,7 +63,8 @@ struct EnemyMinigameView: View {
                 playerFx: playerFx,
                 startingHealth: healthCount,
                 graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
-                letterSpawnRate: letterSpawnRate,
+                minDecoyCount: minDecoyCount,
+                maxDecoyCount: maxDecoyCount,
                 graphemeCase: graphemeCase,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
@@ -121,7 +125,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let playerFx: SoundEffectTable
     private let startingHealth: Int
     private let graphemeSoundRepeatSeconds: Double
-    private let letterSpawnRate: Double
+    private let minDecoyCount: Int
+    private let maxDecoyCount: Int
     private let graphemeCase: CombatGraphemeCase
     private let slashMaxSeconds: Double
     private let slashMaxScreenWidthFraction: Double
@@ -132,14 +137,15 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let wallHeight: CGFloat
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatScene>(
-        make: { [enemyType, playerFx, startingHealth, graphemeSoundRepeatSeconds, letterSpawnRate, graphemeCase, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in
+        make: { [enemyType, playerFx, startingHealth, graphemeSoundRepeatSeconds, minDecoyCount, maxDecoyCount, graphemeCase, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in
             CombatScene(
                 size: size,
                 enemyType: enemyType,
                 playerFx: playerFx,
                 startingHealth: startingHealth,
                 graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
-                letterSpawnRate: letterSpawnRate,
+                minDecoyCount: minDecoyCount,
+                maxDecoyCount: maxDecoyCount,
                 graphemeCase: graphemeCase,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
@@ -162,7 +168,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         playerFx: SoundEffectTable,
         startingHealth: Int,
         graphemeSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds,
-        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
+        maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
@@ -176,7 +183,8 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         self.playerFx = playerFx
         self.startingHealth = startingHealth
         self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
-        self.letterSpawnRate = letterSpawnRate
+        self.minDecoyCount = minDecoyCount
+        self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction

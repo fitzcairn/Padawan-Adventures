@@ -52,7 +52,8 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected slash combat entry")
             return
         }
-        #expect(slash.graphemeSpawnMultiplier == 0.7)
+        #expect(slash.minDecoyCount == 2)
+        #expect(slash.maxDecoyCount == 4)
         #expect(slash.graphemeCase == .lower)
         #expect(slash.graphemeSoundRepeatSeconds == 3)
         guard case .deflect(let deflect) = level.combat.minigames[1] else {

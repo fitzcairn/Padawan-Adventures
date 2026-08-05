@@ -67,7 +67,8 @@ final class CombatScene: MinigameScene {
         playerFx: SoundEffectTable,
         startingHealth: Int,
         graphemeSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds,
-        letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
+        minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
+        maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
@@ -90,7 +91,8 @@ final class CombatScene: MinigameScene {
             config: .init(
                 from: enemyType,
                 graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
-                letterSpawnRate: letterSpawnRate,
+                minDecoyCount: minDecoyCount,
+                maxDecoyCount: maxDecoyCount,
                 graphemeCase: graphemeCase
             ),
             startingHealth: startingHealth
