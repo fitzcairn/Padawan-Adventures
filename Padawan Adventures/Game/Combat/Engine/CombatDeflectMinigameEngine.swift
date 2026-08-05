@@ -64,6 +64,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         var words: [GateWord]
         var monsterHP: Int
         var orbTravelSeconds: Double
+        var letterPosition: GateWordPlugLetterPosition
 
         var ringCount: Int { graphemes.count }
 
@@ -71,12 +72,14 @@ nonisolated struct CombatDeflectMinigameEngine {
             graphemes: [GateGrapheme],
             words: [GateWord] = WordCatalog.fallback.words,
             monsterHP: Int,
-            orbTravelSeconds: Double
+            orbTravelSeconds: Double,
+            letterPosition: GateWordPlugLetterPosition = .starting
         ) {
             self.graphemes = graphemes
             self.words = words
             self.monsterHP = max(monsterHP, 1)
             self.orbTravelSeconds = max(orbTravelSeconds, 0.2)
+            self.letterPosition = letterPosition
         }
 
         init(from deflect: CombatDeflectConfig, words: [GateWord] = WordCatalog.fallback.words) {
@@ -84,15 +87,15 @@ nonisolated struct CombatDeflectMinigameEngine {
                 graphemes: deflect.graphemes,
                 words: words,
                 monsterHP: deflect.monsterHP,
-                orbTravelSeconds: deflect.orbTravelSeconds
+                orbTravelSeconds: deflect.orbTravelSeconds,
+                letterPosition: deflect.letterPosition
             )
         }
 
-        /// Imaged vocabulary entries that begin with `letter`.
-        func words(startingWith letter: String) -> [GateWord] {
-            let key = letter.lowercased()
-            return words.filter { entry in
-                entry.word.hasPrefix(key)
+        /// Imaged vocabulary entries that start (or end) with `grapheme`.
+        func words(matching grapheme: String) -> [GateWord] {
+            words.filter { entry in
+                letterPosition.matches(grapheme: grapheme, in: entry.word)
                     && entry.image.map { !$0.isEmpty } == true
             }
         }
@@ -152,13 +155,13 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
     /// Picks a ring letter (excluding the last successful deflect), then a random imaged
-    /// word from the catalog that begins with that letter.
+    /// word whose start or end matches that grapheme, per `letterPosition`.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
         guard isActive, outcome == nil, activeOrb == nil, !config.graphemes.isEmpty else {
             return []
         }
         let withWords = config.graphemes.indices.filter { index in
-            !config.words(startingWith: config.graphemes[index].grapheme).isEmpty
+            !config.words(matching: config.graphemes[index].grapheme).isEmpty
         }
         // Prefer a different letter than the last deflect; if that empties the pool
         // (only one letter has imaged words), allow a repeat.
@@ -169,7 +172,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         guard let index = candidates.randomElement(using: &rng) else { return [] }
         let ring = CombatDeflectRing(index)
         let entry = config.graphemes[index]
-        let wordChoices = config.words(startingWith: entry.grapheme)
+        let wordChoices = config.words(matching: entry.grapheme)
         guard let word = wordChoices.randomElement(using: &rng) else { return [] }
         let orb = Orb(
             id: UUID(),

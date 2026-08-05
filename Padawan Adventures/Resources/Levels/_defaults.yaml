@@ -52,9 +52,12 @@ world:
 # `grapheme-sound-combat`: swipe-to-slash arena cued by grapheme-name sounds. Stars = graphemes hit.
 #   Letter pool and pacing come from enemies.yaml; this entry sets spawn rate, case, and
 #   how often to replay the current grapheme-name prompt.
-# `ending-sound-combat`: monster throws a word image; tap the ring for that word's first letter.
-#   Its `graphemes:` map left -> right onto evenly spaced rings (2–6) and must resolve in
-#   graphemes.yaml; each letter needs ≥1 imaged word in words.yaml. Stars = orbs deflected.
+# `starting-sound-combat`: monster throws a word image; tap the ring for that word's first
+#   grapheme. Its `graphemes:` map left -> right onto evenly spaced rings (2–6) and must resolve
+#   in graphemes.yaml; each needs ≥1 imaged word in words.yaml that starts with it.
+#   Stars = orbs deflected.
+# `ending-sound-combat`: same arena, but the ring must match the word's last grapheme, so each
+#   of its `graphemes:` needs ≥1 imaged word that ends with it.
 combat:
   music: combat
   minigames:
@@ -64,11 +67,16 @@ combat:
       grapheme_case: lower
       # How often to replay the current grapheme-name prompt during slash combat.
       grapheme_sound_repeat_seconds: 3
-    - type: ending-sound-combat
+    - type: starting-sound-combat
       weight: 0.5
       monster_hit_points: 5
       orb_travel_seconds: 4.0
       graphemes: [a, b, c, d]
+    - type: ending-sound-combat
+      weight: 0.0
+      monster_hit_points: 5
+      orb_travel_seconds: 4.0
+      graphemes: [t, d, n, r]
 
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.

@@ -4,8 +4,10 @@ import Foundation
 nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
     /// The original swipe-to-slash arena (`CombatScene`).
     case slash = "grapheme-sound-combat"
-    /// Tap-the-matching-ring deflect arena (`CombatDeflectScene`).
-    case deflect = "ending-sound-combat"
+    /// Tap-the-matching-ring deflect arena, keyed on the word's first grapheme (`CombatDeflectScene`).
+    case startingSoundDeflect = "starting-sound-combat"
+    /// Same arena, keyed on the word's last grapheme.
+    case endingSoundDeflect = "ending-sound-combat"
 }
 
 /// Per-entry config for the slash arena.
@@ -49,6 +51,9 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     var monsterHP: Int
     /// Seconds for an orb to fly from the monster to the player.
     var orbTravelSeconds: Double
+    /// Which grapheme the ring must match: word start (`starting-sound-combat`)
+    /// or word end (`ending-sound-combat`).
+    var letterPosition: GateWordPlugLetterPosition
     /// Optional subset of shared catalog ids (`nil` = first `defaultRingCount` catalog entries).
     /// Order is meaningful: left to right on screen.
     var graphemeIDs: [String]?
@@ -75,12 +80,14 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         weight: Double = 1,
         monsterHP: Int = defaultMonsterHP,
         orbTravelSeconds: Double = defaultOrbTravelSeconds,
+        letterPosition: GateWordPlugLetterPosition = .starting,
         graphemeIDs: [String]? = nil,
         graphemes: [GateGrapheme] = []
     ) {
         self.weight = weight
         self.monsterHP = monsterHP
         self.orbTravelSeconds = orbTravelSeconds
+        self.letterPosition = letterPosition
         self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
         self.graphemes = graphemes
     }
@@ -127,7 +134,9 @@ nonisolated enum CombatMinigameConfig: Equatable, Sendable {
     var kind: CombatMinigameKind {
         switch self {
         case .slash: .slash
-        case .deflect: .deflect
+        // Both deflect YAML types share this case; the letter position picks the kind.
+        case .deflect(let config):
+            config.letterPosition == .ending ? .endingSoundDeflect : .startingSoundDeflect
         }
     }
 

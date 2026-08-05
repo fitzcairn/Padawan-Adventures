@@ -44,8 +44,10 @@ struct LevelConfigSnapshotTests {
         #expect(level.roomCount == 5)
         #expect(level.enemies?.types == ["dino", "treant"])
 
-        #expect(level.combat.minigames.map(\.kind) == [.slash, .deflect])
-        #expect(level.combat.minigames.map(\.weight) == [0.5, 0.5])
+        #expect(level.combat.minigames.map(\.kind) == [
+            .slash, .startingSoundDeflect, .endingSoundDeflect,
+        ])
+        #expect(level.combat.minigames.map(\.weight) == [0.5, 0.5, 0])
         guard case .slash(let slash) = level.combat.minigames[0] else {
             Issue.record("expected slash combat entry")
             return
@@ -54,12 +56,21 @@ struct LevelConfigSnapshotTests {
         #expect(slash.graphemeCase == .lower)
         #expect(slash.graphemeSoundRepeatSeconds == 3)
         guard case .deflect(let deflect) = level.combat.minigames[1] else {
-            Issue.record("expected deflect combat entry")
+            Issue.record("expected starting-sound deflect combat entry")
             return
         }
+        #expect(deflect.letterPosition == .starting)
         #expect(deflect.monsterHP == 5)
-        #expect(deflect.orbTravelSeconds == 3)
+        #expect(deflect.orbTravelSeconds == 4)
         #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c", "d"])
+        guard case .deflect(let endingDeflect) = level.combat.minigames[2] else {
+            Issue.record("expected ending-sound deflect combat entry")
+            return
+        }
+        #expect(endingDeflect.letterPosition == .ending)
+        #expect(endingDeflect.monsterHP == 5)
+        #expect(endingDeflect.orbTravelSeconds == 4)
+        #expect(endingDeflect.graphemes.map(\.grapheme) == ["t", "d", "n", "r"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")

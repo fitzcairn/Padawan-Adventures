@@ -1328,7 +1328,7 @@ struct LevelConfigTests {
               graphemes: [C, a, b]
         """)
 
-        #expect(level.combat.minigames.map(\.kind) == [.slash, .deflect])
+        #expect(level.combat.minigames.map(\.kind) == [.slash, .endingSoundDeflect])
         guard case .slash(let slash) = level.combat.minigames[0] else {
             Issue.record("expected a slash entry first")
             return
@@ -1342,6 +1342,7 @@ struct LevelConfigTests {
         #expect(deflect.weight == 1)
         #expect(deflect.monsterHP == 4)
         #expect(deflect.orbTravelSeconds == 2.5)
+        #expect(deflect.letterPosition == .ending)
         #expect(deflect.graphemeIDs == ["c", "a", "b"])
         // Ring order is positional (left to right), so YAML order must survive decode.
         #expect(deflect.graphemes.map(\.grapheme) == ["c", "a", "b"])
@@ -1396,7 +1397,7 @@ struct LevelConfigTests {
         ])
         var rng = CombatSeededGenerator(seed: 5)
         for _ in 0..<200 {
-            #expect(try config.pickMinigame(using: &rng).kind == .deflect)
+            #expect(try config.pickMinigame(using: &rng).kind == .startingSoundDeflect)
         }
     }
 
@@ -1410,7 +1411,7 @@ struct LevelConfigTests {
         for _ in 0..<200 {
             seen.insert(try config.pickMinigame(using: &rng).kind)
         }
-        #expect(seen == Set(CombatMinigameKind.allCases))
+        #expect(seen == [.slash, .startingSoundDeflect])
     }
 
     @Test func pickMinigameFallsBackToTheFirstEntryWhenAllWeightsAreZero() throws {
@@ -1565,7 +1566,7 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        guard case .deflect(let deflect) = tython.combat.minigame(for: .deflect) else {
+        guard case .deflect(let deflect) = tython.combat.minigame(for: .startingSoundDeflect) else {
             Issue.record("expected the bundled defaults to define a deflect minigame")
             return
         }

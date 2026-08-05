@@ -130,20 +130,30 @@ nonisolated enum MinigameDecodeRegistry {
                 graphemeCase: graphemeCase,
                 graphemeSoundRepeatSeconds: entry.graphemeSoundRepeatSeconds ?? 3
             ))
-        case CombatMinigameKind.deflect.rawValue:
-            return .deflect(CombatDeflectConfig(
-                weight: entry.weight ?? 1,
-                monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
-                orbTravelSeconds: entry.orbTravelSeconds
-                    ?? CombatDeflectConfig.defaultOrbTravelSeconds,
-                graphemeIDs: entry.graphemes?.map { $0.lowercased() },
-                graphemes: []
-            ))
+        case CombatMinigameKind.startingSoundDeflect.rawValue:
+            return .deflect(Self.combatDeflectConfig(from: entry, letterPosition: .starting))
+        case CombatMinigameKind.endingSoundDeflect.rawValue:
+            return .deflect(Self.combatDeflectConfig(from: entry, letterPosition: .ending))
         default:
             throw WorldSeedError.decodeFailed(
                 "Unknown combat minigame type: '\(entry.type)'"
             )
         }
+    }
+
+    private static func combatDeflectConfig(
+        from entry: CombatMinigameDTO,
+        letterPosition: GateWordPlugLetterPosition
+    ) -> CombatDeflectConfig {
+        CombatDeflectConfig(
+            weight: entry.weight ?? 1,
+            monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
+            orbTravelSeconds: entry.orbTravelSeconds
+                ?? CombatDeflectConfig.defaultOrbTravelSeconds,
+            letterPosition: letterPosition,
+            graphemeIDs: entry.graphemes?.map { $0.lowercased() },
+            graphemes: []
+        )
     }
 
     // MARK: - Pit
