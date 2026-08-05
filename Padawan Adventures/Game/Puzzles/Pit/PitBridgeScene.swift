@@ -28,7 +28,7 @@ final class PitBridgeScene: MinigameScene {
     var placedTileNodes: [SKNode] = []
     var slotBoxNode: SKShapeNode?
     var wordPromptNode: SKNode?
-    /// Last-letter blank under the word illustration (`_` until a tile is dropped).
+    /// Answer-letter blank under the word illustration (`_` until a tile is dropped).
     var blankLetterNode: SKNode?
     var draggedNode: SKNode?
     var dragOffset: CGPoint = .zero

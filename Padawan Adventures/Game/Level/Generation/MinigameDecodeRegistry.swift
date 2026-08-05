@@ -154,17 +154,27 @@ nonisolated enum MinigameDecodeRegistry {
                 words: []
             ))
         case PitMinigameKind.bridge.rawValue:
-            return .bridge(PitBridgeConfig(
-                weight: entry.weight ?? 1,
-                minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
-                maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
-                wordIDs: entry.words?.map { $0.lowercased() } ?? PitBridgeConfig.defaultWordIDs,
-                words: []
-            ))
+            return .bridge(Self.pitBridgeConfig(from: entry, letterPosition: .ending))
+        case PitMinigameKind.startingSoundBridge.rawValue:
+            return .bridge(Self.pitBridgeConfig(from: entry, letterPosition: .starting))
 
         default:
             throw WorldSeedError.decodeFailed("Unknown pit minigame type: '\(entry.type)'")
         }
+    }
+
+    private static func pitBridgeConfig(
+        from entry: PitMinigameDTO,
+        letterPosition: GateWordPlugLetterPosition
+    ) -> PitBridgeConfig {
+        PitBridgeConfig(
+            weight: entry.weight ?? 1,
+            minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
+            maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
+            letterPosition: letterPosition,
+            wordIDs: entry.words?.map { $0.lowercased() } ?? PitBridgeConfig.defaultWordIDs,
+            words: []
+        )
     }
 }
 

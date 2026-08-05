@@ -81,8 +81,8 @@ struct LevelConfigSnapshotTests {
         #expect(endingSound.letterPosition == .ending)
         #expect(endingSound.words.map(\.word) == ["cloud", "dog", "lightbulb", "pencil", "wand"])
 
-        #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
-        #expect(level.pit.minigames.map(\.weight) == [0.5, 0.5])
+        #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge, .startingSoundBridge])
+        #expect(level.pit.minigames.map(\.weight) == [0, 0, 1])
         guard case .spelling(let spelling) = level.pit.minigames[0] else {
             Issue.record("expected pit spelling entry")
             return
@@ -92,8 +92,16 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected pit bridge entry")
             return
         }
+        #expect(bridge.letterPosition == .ending)
         #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
         #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+        guard case .bridge(let starting) = level.pit.minigames[2] else {
+            Issue.record("expected pit starting-sound bridge entry")
+            return
+        }
+        #expect(starting.letterPosition == .starting)
+        #expect(starting.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+        #expect(Set(starting.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
 
     }
 }

@@ -1816,8 +1816,32 @@ struct LevelConfigTests {
         }
         #expect(bridge.minWords == PitBridgeConfig.defaultMinWords)
         #expect(bridge.maxWords == PitBridgeConfig.defaultMaxWords)
+        #expect(bridge.letterPosition == .ending)
         #expect(bridge.wordIDs == PitBridgeConfig.defaultWordIDs)
         #expect(Set(bridge.words.map(\.word)) == Set(PitBridgeConfig.defaultWordIDs))
+    }
+
+    @Test func decodesStartingSoundPitFromYAML() throws {
+        let level = try LevelConfig.decode(from: Self.pitLevelPrefix + """
+        pit:
+          minigames:
+            - type: starting-sound-pit
+              weight: 1.0
+              min_word_count: 3
+              max_word_count: 5
+              words: [car, dog, trash, sun, star, book]
+        """)
+        #expect(level.pit.minigames.map(\.kind) == [.startingSoundBridge])
+        guard case .bridge(let bridge) = level.pit.minigames.first else {
+            Issue.record("expected starting-sound bridge entry")
+            return
+        }
+        #expect(bridge.letterPosition == .starting)
+        #expect(bridge.weight == 1)
+        #expect(bridge.minWords == 3)
+        #expect(bridge.maxWords == 5)
+        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
     }
 
     @Test func inheritsPitBlockFromBase() throws {
@@ -1892,6 +1916,7 @@ struct LevelConfigTests {
             minigames: [
                 .spelling(PitPuzzleConfig(weight: 1, words: PitPuzzleConfig.fallback.words)),
                 .bridge(PitBridgeConfig(weight: 1)),
+                .bridge(PitBridgeConfig(weight: 1, letterPosition: .starting)),
             ]
         )
         var rng = PitSeededGenerator(seed: 11)
@@ -1953,6 +1978,24 @@ struct LevelConfigTests {
                 return false
             }
             return message.contains("duplicate type")
+        }
+    }
+
+    @Test func rejectsDuplicateStartingSoundPitMinigameTypes() {
+        #expect {
+            try LevelConfig.decode(from: Self.pitLevelPrefix + """
+            pit:
+              minigames:
+                - type: starting-sound-pit
+                - type: starting-sound-pit
+                  weight: 2
+            """)
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed(let message) = error else {
+                return false
+            }
+            return message.contains("duplicate type 'starting-sound-pit'")
         }
     }
 
@@ -2070,13 +2113,21 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.pit.minigames.map(\.kind) == [.spelling, .bridge])
-        #expect(tython.pit.minigames.map(\.weight) == [0.5, 0.5])
+        #expect(tython.pit.minigames.map(\.kind) == [.spelling, .bridge, .startingSoundBridge])
+        #expect(tython.pit.minigames.map(\.weight) == [0, 0, 1])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
+            #expect(bridge.letterPosition == .ending)
             #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
             #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
         } else {
             Issue.record("expected bridge entry")
+        }
+        if case .bridge(let starting) = tython.pit.minigames[2] {
+            #expect(starting.letterPosition == .starting)
+            #expect(starting.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
+            #expect(Set(starting.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+        } else {
+            Issue.record("expected starting-sound bridge entry")
         }
     }
 

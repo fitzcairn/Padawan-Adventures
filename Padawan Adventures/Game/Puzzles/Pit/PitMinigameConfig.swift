@@ -6,6 +6,8 @@ nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIter
     case spelling = "spelling-image-pit"
     /// Drag lettered floor tiles into slots to bridge the pit (`PitBridgeScene`).
     case bridge = "ending-sound-pit"
+    /// Same board, but the tile must match the word's first letter.
+    case startingSoundBridge = "starting-sound-pit"
 }
 
 /// Per-entry config for the bridge-building pit game.
@@ -16,6 +18,8 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     var minWords: Int
     /// Inclusive upper bound on words per session; the pool must be at least this large.
     var maxWords: Int
+    /// Which letter the player supplies: word end (`ending-sound-pit`) or start (`starting-sound-pit`).
+    var letterPosition: GateWordPlugLetterPosition
     /// Optional subset of shared catalog ids (`nil` / omitted YAML → `defaultWordIDs`).
     var wordIDs: [String]?
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
@@ -36,12 +40,14 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         weight: Double = 1,
         minWords: Int = defaultMinWords,
         maxWords: Int = defaultMaxWords,
+        letterPosition: GateWordPlugLetterPosition = .ending,
         wordIDs: [String]? = defaultWordIDs,
         words: [GateWord] = []
     ) {
         self.weight = weight
         self.minWords = minWords
         self.maxWords = maxWords
+        self.letterPosition = letterPosition
         self.wordIDs = wordIDs?.map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         }
@@ -89,7 +95,9 @@ nonisolated enum PitMinigameConfig: Equatable, Sendable {
     var kind: PitMinigameKind {
         switch self {
         case .spelling: .spelling
-        case .bridge: .bridge
+        // Both bridge YAML types share this case; the mode picks the kind.
+        case .bridge(let config):
+            config.letterPosition == .starting ? .startingSoundBridge : .bridge
         }
     }
 

@@ -46,10 +46,14 @@ struct PitBridgeMinigameView: View {
         )
     }
 
+    private var rootID: String {
+        bridgeConfig.letterPosition == .starting ? "minigame.pit.starting_sound" : "minigame.pit_bridge"
+    }
+
     var body: some View {
         MinigameShellView(
             scene: session.scene,
-            accessibilityRootID: "minigame.pit_bridge",
+            accessibilityRootID: rootID,
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,

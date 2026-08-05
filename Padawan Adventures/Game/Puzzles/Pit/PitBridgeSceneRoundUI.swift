@@ -112,20 +112,24 @@ extension PitBridgeScene {
         wordPromptNode = root
     }
 
-    /// Prefix letters + a `_` blank for the ending sound, laid out under the illustration.
+    /// Word letters plus a `_` blank for the missing sound, laid out under the illustration.
     func makeMaskedSpellingNode(fontSize: CGFloat) -> SKNode {
         let row = SKNode()
         row.name = Self.wordSpellingNodeName
         let word = engine.currentWord
-        let prefix = word.isEmpty ? "" : String(word.dropLast())
-        if !prefix.isEmpty {
-            let prefixNode = OutlinedLetterFactory.make(
-                text: prefix,
+        let blankLeads = engine.config.letterPosition == .starting
+        let visible = word.isEmpty ? "" : String(blankLeads ? word.dropFirst() : word.dropLast())
+
+        var lettersNode: SKNode?
+        if !visible.isEmpty {
+            let node = OutlinedLetterFactory.make(
+                text: visible,
                 fontSize: fontSize,
                 disablesInteraction: true
             )
-            prefixNode.name = "spellingPrefix"
-            row.addChild(prefixNode)
+            node.name = "spellingLetters"
+            row.addChild(node)
+            lettersNode = node
         }
         let blank = OutlinedLetterFactory.make(
             text: "_",
@@ -137,12 +141,14 @@ extension PitBridgeScene {
         blankLetterNode = blank
 
         // Horizontal pack: measure after children exist, then center the row.
-        let prefixNode = row.childNode(withName: "spellingPrefix")
-        let prefixWidth = prefixNode?.calculateAccumulatedFrame().width ?? 0
+        let lettersWidth = lettersNode?.calculateAccumulatedFrame().width ?? 0
         let blankWidth = blank.calculateAccumulatedFrame().width
-        let totalWidth = prefixWidth + blankWidth
-        prefixNode?.position = CGPoint(x: -totalWidth * 0.5 + prefixWidth * 0.5, y: 0)
-        blank.position = CGPoint(x: totalWidth * 0.5 - blankWidth * 0.5, y: 0)
+        let totalWidth = lettersWidth + blankWidth
+        let leadWidth = blankLeads ? blankWidth : lettersWidth
+        let leadX = -totalWidth * 0.5 + leadWidth * 0.5
+        let trailX = totalWidth * 0.5 - (blankLeads ? lettersWidth : blankWidth) * 0.5
+        blank.position = CGPoint(x: blankLeads ? leadX : trailX, y: 0)
+        lettersNode?.position = CGPoint(x: blankLeads ? trailX : leadX, y: 0)
         return row
     }
 

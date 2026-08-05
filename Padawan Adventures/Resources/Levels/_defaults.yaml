@@ -79,16 +79,24 @@ combat:
 #   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
 #   shows that image and plays the word's sfx. Pool must hold at least `max_word_count`
 #   entries. Stars = words placed.
+# `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
+#   FIRST letter (`_og` for dog). Same `words:` rules: catalog ids with images, >= 2 letters,
+#   pool at least `max_word_count` entries. Stars = words placed.
 pit:
   music: pit
   fx: { jump: pit-jump }
   minigames:
     - type: spelling-image-pit
-      weight: 0.5
+      weight: 0.0
       padding_letter_count: 6
       words: [cat, dog, star]
     - type: ending-sound-pit
-      weight: 0.5
+      weight: 0.0
+      min_word_count: 3
+      max_word_count: 5
+      words: [car, dog, trash, sun, star, book]
+    - type: starting-sound-pit
+      weight: 1.0
       min_word_count: 3
       max_word_count: 5
       words: [car, dog, trash, sun, star, book]

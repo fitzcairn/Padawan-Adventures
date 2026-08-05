@@ -12,6 +12,7 @@ struct PitBridgeMinigameEngineTests {
     private func makeEngine(
         minWords: Int = 2,
         maxWords: Int = 4,
+        letterPosition: GateWordPlugLetterPosition = .ending,
         words: [GateWord]? = nil,
         seed: UInt64 = 42
     ) -> PitBridgeMinigameEngine {
@@ -19,6 +20,7 @@ struct PitBridgeMinigameEngineTests {
             config: .init(
                 minWords: minWords,
                 maxWords: maxWords,
+                letterPosition: letterPosition,
                 words: words ?? pool
             ),
             rng: PitSeededGenerator(seed: seed)
@@ -77,6 +79,34 @@ struct PitBridgeMinigameEngineTests {
         #expect(engine.maskedPromptText == "ca_")
         #expect(engine.maskedPromptText.last == "_")
         #expect(String(engine.maskedPromptText.dropLast()) == String(engine.currentWord.dropLast()))
+    }
+
+    @Test func startingModeAnswersAndMasksFirstLetter() {
+        let dog = WordCatalog.imagedFallbackEntry(word: "dog")
+        let engine = makeEngine(
+            minWords: 1,
+            maxWords: 1,
+            letterPosition: .starting,
+            words: [dog],
+            seed: 1
+        )
+        #expect(engine.currentAnswer == "d")
+        #expect(engine.maskedPromptText == "_og")
+        #expect(engine.choices.first(where: \.isCorrect)?.letter == "d")
+    }
+
+    @Test func startingModeMasksFirstLetterAcrossPool() {
+        for seed in UInt64(1)...UInt64(40) {
+            let engine = makeEngine(
+                minWords: 1,
+                maxWords: 1,
+                letterPosition: .starting,
+                seed: seed
+            )
+            #expect(engine.maskedPromptText == "_\(engine.currentWord.dropFirst())")
+            #expect(engine.currentAnswer == String(engine.currentWord.prefix(1)))
+            #expect(engine.choices.first(where: \.isCorrect)?.letter == engine.currentAnswer)
+        }
     }
 
     @Test func wrongAcceptLeavesStateUntouched() {

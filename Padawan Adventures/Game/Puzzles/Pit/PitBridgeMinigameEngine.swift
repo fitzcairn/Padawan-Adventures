@@ -11,21 +11,29 @@ nonisolated struct PitBridgeMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var minWords: Int
         var maxWords: Int
+        var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
 
         init(from bridge: PitBridgeConfig) {
             self.init(
                 minWords: bridge.minWords,
                 maxWords: bridge.maxWords,
+                letterPosition: bridge.letterPosition,
                 words: bridge.words
             )
         }
 
-        init(minWords: Int = 2, maxWords: Int = 4, words: [GateWord]) {
+        init(
+            minWords: Int = 2,
+            maxWords: Int = 4,
+            letterPosition: GateWordPlugLetterPosition = .ending,
+            words: [GateWord]
+        ) {
             let upper = max(1, maxWords)
             let lower = min(max(1, minWords), upper)
             self.minWords = lower
             self.maxWords = upper
+            self.letterPosition = letterPosition
             self.words = GateSpellingConfig.normalizedWords(words)
         }
     }
@@ -75,16 +83,15 @@ nonisolated struct PitBridgeMinigameEngine {
         currentEntry?.sfx ?? ""
     }
 
-    /// Last letter of the current word — the answer.
+    /// First or last letter of the current word, per `config.letterPosition` — the answer.
     var currentAnswer: String {
-        guard let last = currentWord.last else { return "" }
-        return String(last)
+        config.letterPosition.answerLetter(in: currentWord) ?? ""
     }
 
-    /// Current word with the final letter replaced by `_` (e.g. `ca_` for `car`).
+    /// Current word with the answer letter replaced by `_` (`ca_` for car, `_og` for dog).
     var maskedPromptText: String {
         guard !currentWord.isEmpty else { return "" }
-        return String(currentWord.dropLast()) + "_"
+        return config.letterPosition.maskedText(for: currentWord)
     }
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
