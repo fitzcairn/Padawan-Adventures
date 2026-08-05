@@ -12,36 +12,38 @@ extension PitBridgeScene {
         }
         flashOverlay(on: node, color: platformCorrectTint) { [weak self] in
             guard let self else { return }
-            self.playDucked(
-                event: "correct",
-                from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
-            )
-            if let label = node.childNode(withName: "letterLabel") {
-                label.run(SKAction.sequence([
-                    SKAction.fadeOut(withDuration: 0.3),
-                    SKAction.removeFromParent(),
-                ]))
-            }
-            self.slotBoxNode?.removeFromParent()
-            self.slotBoxNode = nil
-            node.zPosition = Self.placedTilesZ
-            self.trayNodes.removeValue(forKey: id)
-            self.placedTileNodes.append(node)
-            let leftovers = Array(self.trayNodes.values)
-            self.trayNodes = [:]
-            for other in leftovers {
-                other.run(SKAction.sequence([
-                    SKAction.fadeOut(withDuration: 0.2),
-                    SKAction.removeFromParent(),
-                ]))
-            }
-            self.isJumping = true
-            self.jumpPlayer(to: target) {
-                self.isJumping = false
-                if won {
-                    self.finishWon()
-                } else {
-                    self.beginRound()
+            self.playCorrectLetterCues(letter: letter) {
+                self.playDucked(
+                    event: "correct",
+                    from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
+                )
+                if let label = node.childNode(withName: "letterLabel") {
+                    label.run(SKAction.sequence([
+                        SKAction.fadeOut(withDuration: 0.3),
+                        SKAction.removeFromParent(),
+                    ]))
+                }
+                self.slotBoxNode?.removeFromParent()
+                self.slotBoxNode = nil
+                node.zPosition = Self.placedTilesZ
+                self.trayNodes.removeValue(forKey: id)
+                self.placedTileNodes.append(node)
+                let leftovers = Array(self.trayNodes.values)
+                self.trayNodes = [:]
+                for other in leftovers {
+                    other.run(SKAction.sequence([
+                        SKAction.fadeOut(withDuration: 0.2),
+                        SKAction.removeFromParent(),
+                    ]))
+                }
+                self.isJumping = true
+                self.jumpPlayer(to: target) {
+                    self.isJumping = false
+                    if won {
+                        self.finishWon()
+                    } else {
+                        self.beginRound()
+                    }
                 }
             }
         }

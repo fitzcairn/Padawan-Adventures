@@ -200,12 +200,14 @@ extension StarWarsConsoleView {
 
 // MARK: - Console plate (image + masked word)
 
-/// CRT console plate: word illustration left, masked spelling right (e.g. `_og`).
+/// CRT console plate: word illustration + masked spelling (e.g. `_og` / `do_`).
 /// Image is square, sized to the plate's content height.
 struct StarWarsConsoleImageView: View {
     let image: UIImage
     /// Lowercase masked spelling shown beside the image (`_og` for dog).
     var maskedText: String = ""
+    /// Leading for starting-sound plates; trailing hugs the socket on ending-sound.
+    var contentAlignment: Alignment = .leading
 
     var body: some View {
         GeometryReader { geo in
@@ -230,10 +232,10 @@ struct StarWarsConsoleImageView: View {
                             .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, fontSize * 0.12))
                             .lineLimit(1)
                             .minimumScaleFactor(0.35)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                            .frame(maxHeight: .infinity)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment)
             }
         }
     }
@@ -246,10 +248,15 @@ extension StarWarsConsoleImageView {
         image: UIImage,
         maskedText: String = "",
         size: CGSize,
+        contentAlignment: Alignment = .leading,
         scale: CGFloat = 2
     ) -> SKTexture {
         renderTexture(
-            StarWarsConsoleImageView(image: image, maskedText: maskedText),
+            StarWarsConsoleImageView(
+                image: image,
+                maskedText: maskedText,
+                contentAlignment: contentAlignment
+            ),
             size: size,
             scale: scale,
             placeholderSolved: false

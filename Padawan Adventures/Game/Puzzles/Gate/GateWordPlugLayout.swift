@@ -1,4 +1,5 @@
 import SpriteKit
+import SwiftUI
 import UIKit
 
 extension GateWordPlugScene {
@@ -130,11 +131,15 @@ extension GateWordPlugScene {
             )
 
             let plateSize = CGSize(width: rectWidth, height: rectHeight)
+            // Ending-sound: hug the trailing socket so image + blank sit on the right.
+            let plateAlignment: Alignment =
+                puzzleConfig.letterPosition == .ending ? .trailing : .leading
             let plateTexture = GateWordPlugImageSprites.image(named: slot.imageName).map {
                 StarWarsConsoleImageView.makeTexture(
                     image: $0,
                     maskedText: slot.maskedText,
-                    size: plateSize
+                    size: plateSize,
+                    contentAlignment: plateAlignment
                 )
             } ?? StarWarsConsoleView.makeTexture(text: slot.maskedText, size: plateSize)
             let plate = SKSpriteNode(texture: plateTexture, size: plateSize)

@@ -134,7 +134,7 @@ gate:
       words: [cat, dog, star, bath, dance, book, lightbulb, wand]
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
-      weight: 1.0
+      weight: 0.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
@@ -142,7 +142,7 @@ gate:
       words: [dog, wand, cloud, lightbulb, pencil]
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
-      weight: 0.0
+      weight: 1.0
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4

@@ -18,7 +18,6 @@ final class PitBridgeScene: MinigameScene {
     let playerSpriteConfig: SpriteConfig?
 
     var engine: PitBridgeMinigameEngine
-    let speaker = GraphemeSpeaker()
     var placementRNG = SystemRandomNumberGenerator()
 
     var playerNode: SKNode?
@@ -55,6 +54,7 @@ final class PitBridgeScene: MinigameScene {
     static let promptWatchdogSeconds: TimeInterval = 10
     static let promptWatchdogKey = "pitBridgePromptWatchdog"
     static let promptSoundKey = "pitBridgePromptSound"
+    static let letterCueActionKey = "pitBridgeLetterCue"
     static let winSoundActionKey = "pitBridgeWinSound"
     static let springBackDuration: TimeInterval = 0.18
     static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
@@ -96,9 +96,9 @@ final class PitBridgeScene: MinigameScene {
 
     override func willMove(from view: SKView) {
         GameLogger.mark(.world, "pitBridge.willMove teardown")
-        speaker.cancel()
         removeAction(forKey: Self.promptWatchdogKey)
         removeAction(forKey: Self.promptSoundKey)
+        removeAction(forKey: Self.letterCueActionKey)
     }
 
     override func rebuildLayout() {

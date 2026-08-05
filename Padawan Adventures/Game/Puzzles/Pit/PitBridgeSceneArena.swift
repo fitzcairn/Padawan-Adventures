@@ -173,4 +173,36 @@ extension PitBridgeScene {
             duration: SoundEffectsController.shared.cueDuration(of: trackID)
         )
     }
+
+    /// Letter sound ("buh") when a tray tile is picked up.
+    func playLetterPronunciation(_ letter: String) {
+        guard let trackID = LetterSoundCatalog.pronunciationTrackID(for: letter) else { return }
+        removeAction(forKey: Self.letterCueActionKey)
+        SoundEffectsController.shared.play(trackID: trackID)
+    }
+
+    /// After a correct drop: pronunciation, then letter name, then `continuation`.
+    func playCorrectLetterCues(letter: String, then continuation: @escaping () -> Void) {
+        var steps: [SKAction] = []
+        appendLetterTrackSteps(
+            to: &steps,
+            trackID: LetterSoundCatalog.pronunciationTrackID(for: letter)
+        )
+        appendLetterTrackSteps(
+            to: &steps,
+            trackID: LetterSoundCatalog.nameTrackID(for: letter)
+        )
+        steps.append(SKAction.run(continuation))
+        removeAction(forKey: Self.letterCueActionKey)
+        run(SKAction.sequence(steps), withKey: Self.letterCueActionKey)
+    }
+
+    func appendLetterTrackSteps(to steps: inout [SKAction], trackID: String?) {
+        guard let trackID, !trackID.isEmpty else { return }
+        let duration = SoundEffectsController.shared.cueDuration(of: trackID)
+        steps.append(SKAction.run {
+            SoundEffectsController.shared.play(trackID: trackID)
+        })
+        steps.append(SKAction.wait(forDuration: duration))
+    }
 }

@@ -295,7 +295,7 @@ extension PitBridgeScene {
         startForceLiftSparkles(on: node)
         playForceLiftAnimation(toward: node.position)
         if let letter = node.userData?["letter"] as? String {
-            speaker.speak([letter], completion: {})
+            playLetterPronunciation(letter)
         }
     }
 
