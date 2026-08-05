@@ -35,14 +35,16 @@ struct CombatDeflectMinigameEngineTests {
         orbTravelSeconds: Double = 3,
         pool: [String] = ["a", "b", "c"],
         wordPool: [GateWord]? = nil,
-        seed: UInt64 = 42
+        seed: UInt64 = 42,
+        letterPosition: GateWordPlugLetterPosition = .starting
     ) -> CombatDeflectMinigameEngine {
         var engine = CombatDeflectMinigameEngine(
             config: .init(
                 graphemes: letters(pool),
                 words: wordPool ?? words(for: pool),
                 monsterHP: monsterHP,
-                orbTravelSeconds: orbTravelSeconds
+                orbTravelSeconds: orbTravelSeconds,
+                letterPosition: letterPosition
             ),
             startingHealth: startingHealth,
             rng: CombatSeededGenerator(seed: seed)
@@ -127,6 +129,52 @@ struct CombatDeflectMinigameEngineTests {
                 return
             }
             #expect(letter == "a")
+            _ = engine.registerOrbReachedMonster()
+        }
+    }
+
+    @Test func endingPositionThrowsWordsEndingWithTheRingGrapheme() {
+        let wordPool = [
+            WordCatalog.imagedFallbackEntry(word: "boat"),
+            WordCatalog.imagedFallbackEntry(word: "cat"),
+            WordCatalog.imagedFallbackEntry(word: "cloud"),
+            WordCatalog.imagedFallbackEntry(word: "wand"),
+        ]
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["t", "d"],
+            wordPool: wordPool,
+            seed: 7,
+            letterPosition: .ending
+        )
+        for _ in 0..<40 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, let word, _, let ring, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(["t", "d"].contains(letter))
+            #expect(engine.config.graphemes[ring.rawValue].grapheme == letter)
+            #expect(word.hasSuffix(letter))
+            _ = engine.registerOrbReachedMonster()
+        }
+    }
+
+    @Test func endingPositionSkipsGraphemesWithNoMatchingWord() {
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["a", "t"],
+            wordPool: [WordCatalog.imagedFallbackEntry(word: "cat")],
+            seed: 1,
+            letterPosition: .ending
+        )
+        for _ in 0..<20 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, _, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(letter == "t")
             _ = engine.registerOrbReachedMonster()
         }
     }

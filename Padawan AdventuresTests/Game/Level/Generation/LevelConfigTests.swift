@@ -1369,6 +1369,50 @@ struct LevelConfigTests {
         #expect(deflect.graphemes.count == CombatDeflectConfig.ringCount)
     }
 
+    @Test func decodesStartingSoundCombat() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: starting-sound-combat
+              graphemes: [a, b, c]
+        """)
+        #expect(level.combat.minigames.map(\.kind) == [.startingSoundDeflect])
+        guard case .deflect(let deflect) = level.combat.minigames.first else {
+            Issue.record("expected a starting-sound deflect entry")
+            return
+        }
+        #expect(deflect.letterPosition == .starting)
+    }
+
+    @Test func decodesEndingSoundCombatAsAnEndPosition() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: ending-sound-combat
+              graphemes: [t, d, n, r]
+        """)
+        #expect(level.combat.minigames.map(\.kind) == [.endingSoundDeflect])
+        guard case .deflect(let deflect) = level.combat.minigames.first else {
+            Issue.record("expected an ending-sound deflect entry")
+            return
+        }
+        #expect(deflect.letterPosition == .ending)
+    }
+
+    @Test func acceptsBothSoundCombatVariantsTogether() throws {
+        let level = try LevelConfig.decode(from: Self.combatLevelPrefix + """
+        combat:
+          minigames:
+            - type: starting-sound-combat
+              graphemes: [a, b, c, d]
+            - type: ending-sound-combat
+              graphemes: [t, d, n, r]
+        """)
+        #expect(level.combat.minigames.map(\.kind) == [
+            .startingSoundDeflect, .endingSoundDeflect,
+        ])
+    }
+
     @Test func inheritsCombatBlockFromBase() throws {
         let base = Self.combatLevelPrefix + """
         combat:
