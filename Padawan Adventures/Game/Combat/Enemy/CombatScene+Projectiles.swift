@@ -13,13 +13,14 @@ extension CombatScene {
 
         for shot in shots {
             let lane = laneOffset(index: shot.laneIndex, count: laneCount)
-            let start = CGPoint(x: origin.x + lane * enemySpriteHeight * 0.25, y: origin.y)
+            // Stagger spawn X immediately so neighbors are not stacked under one swipe.
+            let start = CGPoint(x: origin.x + lane * size.width * 0.18, y: origin.y)
             let drop = start.y - target.y
-            // c1 pushes hard sideways straight away — a cubic's initial tangent points at c1,
-            // so sprites are already separated within the first ~15% of the flight.
-            let c1 = CGPoint(x: start.x + lane * size.width * 0.42, y: start.y - drop * 0.15)
-            // c2 pulls the fan back onto the player late.
-            let c2 = CGPoint(x: target.x + lane * size.width * 0.15, y: start.y - drop * 0.65)
+            // Cubic initial tangent points at c1 — keep c1 almost level with start so the
+            // first motion is a hard horizontal fan-out before diving toward the player.
+            let c1 = CGPoint(x: start.x + lane * size.width * 0.58, y: start.y - drop * 0.04)
+            // Converge late; keep a little residual lateral so paths don't re-cross early.
+            let c2 = CGPoint(x: target.x + lane * size.width * 0.12, y: start.y - drop * 0.62)
             let length = cubicBezierLength(start: start, c1: c1, c2: c2, end: target)
             let duration = max(Double(length) / (baseSpeed * shot.speedJitter), 0.2)
 
@@ -45,12 +46,13 @@ extension CombatScene {
         }
     }
 
-    /// Evenly spaced fan slot in -1...1, jittered inside its own bucket so lanes never cross.
+    /// Evenly spaced fan slot in -1...1, lightly jittered inside its own bucket so lanes
+    /// never cross and neighbors stay far enough apart for a single-sprite swipe.
     func laneOffset(index: Int, count: Int) -> CGFloat {
-        guard count > 1 else { return CGFloat.random(in: -0.15...0.15) }
+        guard count > 1 else { return CGFloat.random(in: -0.08...0.08) }
         let bucket = 2.0 / CGFloat(count)
         let center = -1 + bucket * (CGFloat(index) + 0.5)
-        let slack = bucket * 0.4
+        let slack = bucket * 0.2
         return center + CGFloat.random(in: -slack...slack)
     }
 
