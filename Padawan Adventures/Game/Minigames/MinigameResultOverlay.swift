@@ -15,7 +15,6 @@ struct MinigameResultOverlay: View {
 
     private static let holdSeconds: TimeInterval = 2
     private static let flightSeconds: TimeInterval = 0.75
-    private static let coordinateSpace = "minigame.result.won"
 
     var body: some View {
         GeometryReader { geo in
@@ -59,7 +58,6 @@ struct MinigameResultOverlay: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .coordinateSpace(name: Self.coordinateSpace)
         .onPreferenceChange(CoinCenterKey.self) { center in
             // The measured frame travels with the coins once they launch; keep the
             // resting position so the arc has a fixed origin.
@@ -111,8 +109,10 @@ private struct CoinArcFlight: ViewModifier, Animatable {
 
     private var offset: CGSize {
         guard progress > 0 else { return .zero }
+        // Control point sits most of the way toward the corner horizontally and above
+        // the start, so the coins sweep left early and then drop into the corner.
         let control = CGPoint(
-            x: (start.x + end.x) / 2,
+            x: start.x + (end.x - start.x) * 0.75,
             y: min(start.y, end.y) - arcHeight
         )
         return CGSize(
