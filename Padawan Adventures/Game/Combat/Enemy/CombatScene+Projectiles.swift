@@ -77,7 +77,7 @@ extension CombatScene {
             shape.addChild(label)
             shot = shape
         }
-        shot.zPosition = 20
+        shot.zPosition = Layer.shots
         shot.name = "shot-\(id.uuidString)"
         return shot
     }

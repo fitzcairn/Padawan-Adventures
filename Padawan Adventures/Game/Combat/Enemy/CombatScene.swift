@@ -48,6 +48,8 @@ final class CombatScene: MinigameScene {
     var engine: CombatMinigameEngine
     var playerNode: AnimatedSpriteNode?
     var enemyNode: AnimatedSpriteNode?
+    /// In-scene monster HP / damage bar (same chrome as the deflect arenas).
+    var hpTrack: SKSpriteNode?
     var shotVisuals: [UUID: ShotVisual] = [:]
     var slashPoints: [CGPoint] = []
     var slashPathLength: CGFloat = 0
@@ -79,6 +81,13 @@ final class CombatScene: MinigameScene {
     /// Charge duration for a sprite a full screen height away; scaled by distance and clamped.
     static let chargeReferenceSeconds: Double = 0.5
     static let chargeSecondsRange: ClosedRange<Double> = 0.25...0.5
+
+    enum Layer {
+        static let sprites: CGFloat = 10
+        static let shots: CGFloat = 20
+        static let hpBar: CGFloat = 30
+        static let vfx: CGFloat = 40
+    }
 
     init(
         size: CGSize,
@@ -147,6 +156,7 @@ final class CombatScene: MinigameScene {
     override func rebuildLayout() {
         // Keep the fight running; only re-layout sprites. Live shots keep their paths.
         repositionArenaNodes()
+        layoutMonsterHPBar()
     }
 
     override func update(_ currentTime: TimeInterval) {

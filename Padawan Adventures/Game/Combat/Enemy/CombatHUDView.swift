@@ -1,8 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// Combat-only HUD: health (top-leading), net-progress bar (bottom-leading).
-/// The deflect arena opts out of the progress bar — it draws monster HP in-scene instead.
+/// Combat-only HUD: health (top-leading), optional progress bar (bottom-leading).
+/// Both slash and deflect arenas opt out of the progress bar — they draw monster HP
+/// beside the enemy in-scene instead.
 final class CombatHUDView: UIView {
     private let config: HudConfig
     private let heartsStack: UIStackView

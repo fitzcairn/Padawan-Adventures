@@ -59,6 +59,7 @@ extension CombatScene {
         }
         // Size + place after texture is known so the top-middle pixel sits on the view top.
         placeEnemyAtTopOfView()
+        buildMonsterHPBar()
     }
 
     func placeEnemyAtTopOfView() {
@@ -74,6 +75,7 @@ extension CombatScene {
         playerNode.fitHeight(playerSpriteHeight)
         playerNode.position = playerPosition
         pinToTopOfView(enemyNode, height: enemySpriteHeight)
+        layoutMonsterHPBar()
     }
 
     // MARK: - Engine events

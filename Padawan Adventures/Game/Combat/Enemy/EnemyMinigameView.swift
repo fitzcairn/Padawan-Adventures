@@ -87,16 +87,15 @@ struct EnemyMinigameView: View {
             hud: {
                 HUDHostRepresentable(
                     makeHUD: {
+                        // Progress / damage is drawn beside the enemy in-scene (same as deflect).
                         CombatHUDView(
                             config: hudConfig,
                             healthCount: session.health,
-                            progress: session.stars,
-                            progressGoal: enemyType.starsToWin
+                            showsProgressBar: false
                         )
                     },
                     update: { hud in
                         hud.setHealth(session.health)
-                        hud.setProgress(current: session.stars, goal: enemyType.starsToWin)
                     }
                 )
             },

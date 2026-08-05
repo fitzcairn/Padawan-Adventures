@@ -116,6 +116,7 @@ extension CombatScene {
                 continue
             case .correct:
                 combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
+                animateMonsterHPBar()
                 resolveWaveCleared(clearedShotID: id)
             case .wrong:
                 resolveWaveFailed(reason: .wrongSlash(id))
