@@ -80,7 +80,7 @@ struct CombatDeflectMinigameView: View {
             },
             overlay: {
                 if session.showVictory {
-                    MinigameResultOverlay(kind: .combatVictory) {
+                    MinigameResultOverlay(starsAwarded: session.starsAwarded) {
                         session.confirmVictory(onFinished: onFinished)
                     }
                 }
@@ -95,6 +95,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     @Published var monsterHP: Int
     @Published var monsterHPTotal: Int
     @Published var showVictory = false
+    @Published private(set) var starsAwarded = 0
     @Published private(set) var scene: CombatDeflectScene?
 
     var onLost: (() -> Void)?
@@ -108,7 +109,6 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     private let enemySprite: (id: String, config: SpriteConfig)?
     private let wallHeight: CGFloat
     private let isoSquash: CGFloat
-    private var starsAwarded = 0
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatDeflectScene>(
         make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, wallHeight, isoSquash] size in

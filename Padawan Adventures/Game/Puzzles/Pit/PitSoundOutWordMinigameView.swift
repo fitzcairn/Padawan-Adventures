@@ -53,12 +53,7 @@ struct PitSoundOutWordMinigameView: View {
             hud: { EmptyView() },
             overlay: {
                 if session.showWon {
-                    MinigameResultOverlay(
-                        kind: .escaped(
-                            word: session.targetWord,
-                            starsAwarded: session.starsAwarded
-                        )
-                    ) {
+                    MinigameResultOverlay(starsAwarded: session.starsAwarded) {
                         session.confirmWon(onFinished: onFinished)
                     }
                 }

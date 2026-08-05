@@ -189,7 +189,24 @@ final class GateSoundOutWordScene: MinigameScene {
             return
         }
 
-        let isPlacementValid = isValidDrop(node.position)
+        if isValidDrop(node.position) {
+            resolveDrop(choiceID: choiceID, isPlacementValid: true)
+            return
+        }
+
+        // Near miss: dragged closer to the play area than home — ease into the nearest
+        // legal spot, then accept or reject from there.
+        if let home = choiceHome[choiceID],
+           let target = nearestValidDropPoint(to: node.position),
+           distanceToPlayArea(node.position) < distanceToPlayArea(home) {
+            runAssistedPlacement(choiceID: choiceID, to: target)
+            return
+        }
+
+        resolveDrop(choiceID: choiceID, isPlacementValid: false)
+    }
+
+    func resolveDrop(choiceID: UUID, isPlacementValid: Bool) {
         switch engine.drop(choiceID: choiceID, isPlacementValid: isPlacementValid) {
         case .accepted:
             runAcceptedPlacement(choiceID: choiceID)

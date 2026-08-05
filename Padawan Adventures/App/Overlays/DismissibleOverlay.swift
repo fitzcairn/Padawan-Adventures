@@ -20,8 +20,8 @@ enum OverlayChrome {
     static let backgroundColor = Color.black
     static var uiBackgroundColor: UIColor { .black }
 
-    /// 50% dim scrim so the screen behind a modal stays visible.
-    static let dimColor = Color.black.opacity(0.5)
+    /// 70% dim scrim so the screen behind a modal stays faintly visible.
+    static let dimColor = Color.black.opacity(0.7)
 }
 
 /// Full-bleed dim scrim + centered content for modal overlays.
@@ -105,7 +105,7 @@ struct DismissibleOverlay<Content: View>: View {
     }
 }
 
-/// Shared coin row used by puzzle result overlays (score awards).
+/// Shared coin row used by win result overlays (score awards).
 struct OverlayStars: View {
     let count: Int
     let accessibilityID: String

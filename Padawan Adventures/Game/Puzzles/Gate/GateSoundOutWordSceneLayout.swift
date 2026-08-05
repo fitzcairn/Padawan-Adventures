@@ -72,7 +72,7 @@ extension GateSoundOutWordScene {
     var promptPictureSide: CGFloat { promptFontSize * 1.6 }
 
     /// Vertical gap between the picture and the word under it.
-    var promptPictureWordGap: CGFloat { promptFontSize * 0.35 }
+    var promptPictureWordGap: CGFloat { promptFontSize * 0.12 }
 
     /// Total height of the stacked picture + word block.
     var promptStackHeight: CGFloat {
@@ -151,6 +151,31 @@ extension GateSoundOutWordScene {
             return false
         }
         return center.x >= minDropX(forIndex: index) && center.x <= maxDropX(forIndex: index)
+    }
+
+    /// Distance from `point` to the play-area rectangle (0 when inside).
+    func distanceToPlayArea(_ point: CGPoint) -> CGFloat {
+        let rect = playAreaRect
+        let dx = max(rect.minX - point.x, 0, point.x - rect.maxX)
+        let dy = max(rect.minY - point.y, 0, point.y - rect.maxY)
+        return hypot(dx, dy)
+    }
+
+    /// Closest center that would count as a valid drop for the current grapheme.
+    func nearestValidDropPoint(to point: CGPoint) -> CGPoint? {
+        guard let index = engine.currentIndex else { return nil }
+        let rect = playAreaRect
+        let radius = laidOutDiameter * 0.5
+        let verticalInset = min(radius, rect.height * 0.5)
+        let minX = minDropX(forIndex: index)
+        let maxX = maxDropX(forIndex: index)
+        let minY = rect.minY + verticalInset
+        let maxY = rect.maxY - verticalInset
+        guard minX <= maxX, minY <= maxY else { return nil }
+        return CGPoint(
+            x: min(max(point.x, minX), maxX),
+            y: min(max(point.y, minY), maxY)
+        )
     }
 
     // MARK: - Build

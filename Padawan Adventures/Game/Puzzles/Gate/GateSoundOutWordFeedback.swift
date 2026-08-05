@@ -155,6 +155,21 @@ extension GateSoundOutWordScene {
         )
     }
 
+    /// Eases a near-miss drop into the closest legal play-area spot, then resolves accept/reject.
+    func runAssistedPlacement(choiceID: UUID, to target: CGPoint) {
+        guard let node = choiceNodes[choiceID] else { return }
+        inputLocked = true
+        node.run(
+            SKAction.sequence([
+                SKAction.move(to: target, duration: Self.returnHomeDuration)
+                    .withTimingMode(.easeInEaseOut),
+                SKAction.run { [weak self] in
+                    self?.resolveDrop(choiceID: choiceID, isPlacementValid: true)
+                },
+            ])
+        )
+    }
+
     /// Wrong grapheme, or the right one in the wrong place: buzz, flash red, slide home.
     func runRejectedPlacement(choiceID: UUID) {
         guard let node = choiceNodes[choiceID] else { return }

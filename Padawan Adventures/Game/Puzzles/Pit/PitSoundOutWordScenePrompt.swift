@@ -80,7 +80,7 @@ extension PitSoundOutWordScene {
             sprite.isUserInteractionEnabled = false
             root.addChild(sprite)
 
-            let gap = fontSize * 0.35
+            let gap = fontSize * 0.1
             let rowHeight = wordRow.calculateAccumulatedFrame().height
             let totalHeight = sprite.size.height + gap + max(rowHeight, fontSize)
             sprite.position = CGPoint(x: 0, y: (totalHeight - sprite.size.height) * 0.5)

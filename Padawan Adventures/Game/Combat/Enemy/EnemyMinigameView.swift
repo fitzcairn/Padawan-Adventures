@@ -98,7 +98,7 @@ struct EnemyMinigameView: View {
             },
             overlay: {
                 if session.showVictory {
-                    MinigameResultOverlay(kind: .combatVictory) {
+                    MinigameResultOverlay(starsAwarded: session.starsAwarded) {
                         session.confirmVictory(onFinished: onFinished)
                     }
                 }
@@ -112,6 +112,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     @Published var stars = 0
     @Published var health: Int
     @Published var showVictory = false
+    @Published private(set) var starsAwarded = 0
     @Published private(set) var scene: CombatScene?
 
     var onLost: (() -> Void)?
@@ -129,7 +130,6 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let combatSprite: SpriteConfig?
     private let enemySprite: (id: String, config: SpriteConfig)?
     private let wallHeight: CGFloat
-    private var starsAwarded = 0
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatScene>(
         make: { [enemyType, playerFx, startingHealth, graphemeSoundRepeatSeconds, letterSpawnRate, graphemeCase, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in

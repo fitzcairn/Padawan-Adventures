@@ -61,9 +61,7 @@ struct PitBridgeMinigameView: View {
             hud: { EmptyView() },
             overlay: {
                 if session.showWon {
-                    MinigameResultOverlay(
-                        kind: .bridged(starsAwarded: session.starsAwarded)
-                    ) {
+                    MinigameResultOverlay(starsAwarded: session.starsAwarded) {
                         session.confirmWon(onFinished: onFinished)
                     }
                 }

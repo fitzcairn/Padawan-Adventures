@@ -41,9 +41,7 @@ struct GateWordPlugMinigameView: View {
             hud: { EmptyView() },
             overlay: {
                 if session.showUnlocked {
-                    MinigameResultOverlay(
-                        kind: .unlocked(starsAwarded: session.starsAwarded)
-                    ) {
+                    MinigameResultOverlay(starsAwarded: session.starsAwarded) {
                         session.confirmUnlocked(onFinished: onFinished)
                     }
                 }
