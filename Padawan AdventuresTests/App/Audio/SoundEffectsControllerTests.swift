@@ -10,6 +10,7 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var loopTrackIDs: Set<String> = []
     private(set) var prepareCalls: [[String]] = []
     private(set) var fadeOutCalls: [(trackID: String, duration: TimeInterval)] = []
+    private(set) var fadeOutAllCalls: [TimeInterval] = []
     private(set) var loopDuckScale: Float = 1
 
     @discardableResult
@@ -54,6 +55,11 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
     func fadeOutAndStop(trackID: String, duration: TimeInterval) {
         fadeOutCalls.append((trackID, duration))
         loopTrackIDs.remove(trackID)
+    }
+
+    func fadeOutAndStopAll(duration: TimeInterval) {
+        fadeOutAllCalls.append(duration)
+        loopTrackIDs.removeAll()
     }
 
     var playedTrackIDs: [String] {
@@ -192,6 +198,13 @@ struct SoundEffectsControllerTests {
         controller.play(trackID: "sfx_b")
         controller.play(trackID: "sfx_c")
         #expect(mock.playedTrackIDs == ["sfx_a", "sfx_b", "sfx_c"])
+    }
+
+    @Test func fadeOutAndStopAllForwardsDefaultDuration() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.fadeOutAndStopAll()
+        #expect(mock.fadeOutAllCalls == [SoundEffectsController.defaultOneShotFadeOutSeconds])
     }
 }
 

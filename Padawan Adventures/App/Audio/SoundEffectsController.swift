@@ -125,7 +125,7 @@ final class SoundEffectsController {
         player.stopAllLoops()
     }
 
-    /// Default fade when silencing a one-shot that should yield to combat audio.
+    /// Default fade when silencing FX that should yield to minigame / combat audio.
     /// `nonisolated` so it can be used as a default argument below, which is
     /// evaluated outside the main actor.
     nonisolated static let defaultOneShotFadeOutSeconds: TimeInterval = 0.35
@@ -138,6 +138,11 @@ final class SoundEffectsController {
         guard let trimmed = trackID?.trimmingCharacters(in: .whitespacesAndNewlines),
               !trimmed.isEmpty else { return }
         player.fadeOutAndStop(trackID: trimmed, duration: max(0, duration))
+    }
+
+    /// Fades every currently playing FX one-shot and loop to silence, then stops them.
+    func fadeOutAndStopAll(duration: TimeInterval = defaultOneShotFadeOutSeconds) {
+        player.fadeOutAndStopAll(duration: max(0, duration))
     }
 
     /// Clip length, or nil for a blank or unresolvable track.
