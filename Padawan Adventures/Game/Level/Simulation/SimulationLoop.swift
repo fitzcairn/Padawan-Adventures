@@ -167,7 +167,8 @@ struct SimulationLoop: Sendable {
     }
 
     private func playerSortPose(occupancy: GridCoord, movement: MovementSystem) -> FractionalGridPose {
-        if movement.isMoving {
+        // Prefer the continuous pose while moving or frozen at a gate/pit border.
+        if movement.segmentStart != nil, movement.segmentEnd != nil {
             return movement.fractionalPosition()
         }
         return FractionalGridPose(

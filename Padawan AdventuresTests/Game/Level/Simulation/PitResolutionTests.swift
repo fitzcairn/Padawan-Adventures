@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 @testable import Padawan_Adventures
 
@@ -27,6 +28,12 @@ struct PitResolutionTests {
         #expect(events.contains(.pit(resolution: .hazard, approach: start)))
         #expect(world.playerPosition == pit)
         #expect(movement.isMoving == false)
+        // Display stays at the approach border instead of snapping to the pit center.
+        #expect(abs(movement.segmentProgress - 0.5) < 0.000_001)
+        #expect(
+            movement.interpolatedScreenPosition(in: world)
+                == IsometricMath.entityScreenPosition(x: 0.5, y: 1.0, story: 0)
+        )
     }
 
     @Test func nearestNonPitTileFindsAdjacentFloorAcrossPitBlob() {

@@ -38,7 +38,8 @@ struct MovementSystem: Sendable {
             return
         }
 
-        let preserved = isMoving ? fractionalPosition() : nil
+        // Preserve a moving or encounter-frozen pose so repath / resume never snaps.
+        let preserved = hasDisplaySegment ? fractionalPosition() : nil
 
         self.path = path
         pathIndex = 0
@@ -91,6 +92,18 @@ struct MovementSystem: Sendable {
         pathIndex = 0
     }
 
+    /// Halt immediately at the current fractional pose (e.g. gate/pit border).
+    /// Clears the remaining path but keeps segment state so display does not snap to tile center.
+    mutating func freezeAtCurrentPose() {
+        guard hasDisplaySegment else {
+            reset()
+            return
+        }
+        path = []
+        pathIndex = 0
+        isMoving = false
+    }
+
     mutating func reset() {
         path = []
         pathIndex = 0
@@ -100,6 +113,11 @@ struct MovementSystem: Sendable {
         occupancyCommitted = false
         isMoving = false
         clearSegmentOrigin()
+    }
+
+    /// True when segment endpoints are available for continuous display (moving or frozen).
+    private var hasDisplaySegment: Bool {
+        segmentStart != nil && segmentEnd != nil
     }
 
     /// Advances movement by `deltaTime` seconds. Returns events triggered this frame.
@@ -199,7 +217,8 @@ struct MovementSystem: Sendable {
         fallback: GridCoord,
         config: IsometricConfig
     ) -> CGPoint {
-        guard isMoving, segmentStart != nil, segmentEnd != nil else {
+        // Use the fractional pose while moving *or* frozen at an encounter border.
+        guard hasDisplaySegment else {
             let coord = entityID.flatMap { world.entity(id: $0)?.position } ?? fallback
             return IsometricMath.entityScreenPosition(coord, config: config)
         }
@@ -256,13 +275,15 @@ struct MovementSystem: Sendable {
             let resolution = world.resolvePit(at: end)
             let approach = segmentStart ?? end
             events.append(.pit(resolution: resolution, approach: approach))
-            reset()
+            // Freeze at the tile border so the sprite does not snap into the pit center.
+            freezeAtCurrentPose()
             return
         }
         if tile.isGate {
             let approach = segmentStart ?? end
             events.append(.gate(gate: end, approach: approach))
-            reset()
+            // Freeze at the tile border so the sprite does not snap into the gate center.
+            freezeAtCurrentPose()
         }
     }
 

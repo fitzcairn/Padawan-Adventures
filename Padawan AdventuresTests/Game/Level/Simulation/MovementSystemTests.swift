@@ -231,6 +231,55 @@ struct MovementSystemTests {
         #expect(movement.isMoving == false)
     }
 
+    @Test func enteringGateFreezesDisplayAtTileBorder() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let gate = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: gate)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, gate])
+
+        // Cross the border (0.5s at 1 tile/s) and stop — do not overshoot into the gate center.
+        let events = movement.update(deltaTime: 0.5, world: &world)
+        #expect(events.contains(.gate(gate: gate, approach: start)))
+        #expect(movement.isMoving == false)
+        #expect(abs(movement.segmentProgress - 0.5) < 0.000_001)
+
+        let pose = movement.fractionalPosition()
+        #expect(abs(pose.x - 0.5) < 0.000_001)
+        #expect(abs(pose.y - 1.0) < 0.000_001)
+
+        let screen = movement.interpolatedScreenPosition(in: world)
+        let gateCenter = IsometricMath.entityScreenPosition(gate)
+        let border = IsometricMath.entityScreenPosition(x: 0.5, y: 1.0, story: 0)
+        #expect(screen == border)
+        #expect(screen != gateCenter)
+    }
+
+    @Test func enteringPitFreezesDisplayAtTileBorder() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let pit = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .floor(isPit: true)), at: pit)
+        world.setPlayerPosition(start)
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        movement.begin(path: [start, pit])
+
+        let events = movement.update(deltaTime: 0.5, world: &world)
+        #expect(events.contains(.pit(resolution: .hazard, approach: start)))
+        #expect(movement.isMoving == false)
+        #expect(abs(movement.segmentProgress - 0.5) < 0.000_001)
+
+        let screen = movement.interpolatedScreenPosition(in: world)
+        let pitCenter = IsometricMath.entityScreenPosition(pit)
+        let border = IsometricMath.entityScreenPosition(x: 0.5, y: 1.0, story: 0)
+        #expect(screen == border)
+        #expect(screen != pitCenter)
+    }
+
     private func screenDistance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
         let dx = a.x - b.x
         let dy = a.y - b.y
