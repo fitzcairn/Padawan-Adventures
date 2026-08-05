@@ -57,10 +57,16 @@ struct CombatDeflectMinigameView: View {
         )
     }
 
+    private var rootID: String {
+        deflectConfig.letterPosition == .ending
+            ? "minigame.enemy.ending_sound"
+            : "minigame.enemy.deflect"
+    }
+
     var body: some View {
         MinigameShellView(
             scene: session.scene,
-            accessibilityRootID: "minigame.enemy.deflect",
+            accessibilityRootID: rootID,
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             onAppear: { session.onLost = { onFinished(.lost) } },

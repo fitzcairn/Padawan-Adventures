@@ -10,7 +10,8 @@ protocol CombatDeflectSceneDelegate: AnyObject {
 }
 
 /// SpriteKit deflect arena: the monster lobs one word-image orb at a time and the player
-/// taps the ring whose letter matches the word's first letter to send it back.
+/// taps the ring whose grapheme matches the word's first or last grapheme (per config) to
+/// send it back.
 final class CombatDeflectScene: MinigameScene {
     /// A live orb and the quadratic path it is currently following.
     struct OrbVisual {
@@ -119,6 +120,7 @@ final class CombatDeflectScene: MinigameScene {
             """
             deflect arena didMove size=\(Int(size.width))x\(Int(size.height)) \
             hp=\(engine.config.monsterHP) \
+            position=\(engine.config.letterPosition.rawValue) \
             letters=\(engine.config.graphemes.map(\.grapheme).joined())
             """
         )
