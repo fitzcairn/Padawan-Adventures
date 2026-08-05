@@ -157,10 +157,10 @@ struct PlaceholderFactoryTests {
             && abs(ab - eb) < 0.001 && abs(aa - ea) < 0.001
     }
 
-    @Test func spellingGateUsesGreenColor() {
+    @Test func soundOutWordGateUsesGreenColor() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
@@ -240,7 +240,7 @@ struct PlaceholderFactoryTests {
     @Test func wallIdentityTracksKindAndFaces() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: a)
 
         let solid = PlaceholderFactory.wallIdentity(
             for: Tile(kind: .wall),
@@ -248,12 +248,12 @@ struct PlaceholderFactoryTests {
             in: world
         )
         let gate = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: a,
             in: world
         )
         #expect(solid == nil)
-        #expect(gate == "gate|spelling-image-gate|\(WallFaceSet.all.rawValue)")
+        #expect(gate == "gate|sound-out-word-gate|\(WallFaceSet.all.rawValue)")
 
         let graphemeMatch = PlaceholderFactory.wallIdentity(
             for: Tile(kind: .gate(minigame: .graphemeMatch)),
@@ -266,20 +266,20 @@ struct PlaceholderFactoryTests {
         // Face culling applies to gates (east opaque neighbor hides .right).
         world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))
         let culled = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: a,
             in: world
         )
         #expect(culled != gate)
-        #expect(culled == "gate|spelling-image-gate|\(WallFaceSet([.left, .top]).rawValue)")
+        #expect(culled == "gate|sound-out-word-gate|\(WallFaceSet([.left, .top]).rawValue)")
     }
 
     @Test @MainActor func wallIdentityUsesSpriteStripWhenLibraryLoaded() {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 3)
         let a = GridCoord(x: 1, y: 1, story: 0)
         let b = GridCoord(x: 2, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: a)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: b)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: a)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: b)
 
         let library = GateSpriteSetLibrary()
         let gateSet = GateSpriteSet(
@@ -299,21 +299,21 @@ struct PlaceholderFactoryTests {
         library.seedForTesting(gateSet: gateSet, textures: [:])
 
         let canonical = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: a,
             in: world,
             gateSpriteSetLibrary: library
         )
         let partner = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: b,
             in: world,
             gateSpriteSetLibrary: library
         )
-        #expect(canonical == "gate|sprite|spelling-image-gate|along_x")
+        #expect(canonical == "gate|sprite|sound-out-word-gate|along_x")
         #expect(partner == nil)
 
-        let strip = PlaceholderFactory.gateStrip(at: a, minigame: .spelling, in: world)
+        let strip = PlaceholderFactory.gateStrip(at: a, minigame: .soundOutWord, in: world)
         #expect(strip?.axis == .alongX)
         #expect(strip?.isCanonical == true)
 
@@ -321,7 +321,7 @@ struct PlaceholderFactoryTests {
         // cobblestone base lands in the seam between the two rooms.
         let config = IsometricConfig()
         let pos = PlaceholderFactory.wallScreenPosition(
-            for: Tile(kind: .gate(minigame: .spelling)),
+            for: Tile(kind: .gate(minigame: .soundOutWord)),
             at: a,
             in: world,
             config: config,
@@ -351,8 +351,8 @@ struct PlaceholderFactoryTests {
         var world = TestWorldFactory.emptyFloor(width: 4, height: 3)
         let gate = GridCoord(x: 1, y: 1, story: 0)
         let neighbour = GridCoord(x: 1, y: 0, story: 0)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: gate)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: gate)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: GridCoord(x: 2, y: 1, story: 0))
         world.setTile(Tile(kind: .floor(isPit: false), floorTileID: "r00c03"), at: neighbour)
 
         #expect(PlaceholderFactory.doorwayFloorTileID(at: gate, in: world) == "r00c03")
@@ -519,7 +519,7 @@ struct PlaceholderFactoryTests {
 
     @Test func gateToTheEastOccludesPickupFloor() {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: GridCoord(x: 2, y: 1, story: 0))
         let cell = GridCoord(x: 1, y: 1, story: 0)
         #expect(IsometricTileGeometry.isAdjacentToOpaqueOccluder(at: cell, in: world.tiles[0]))
         #expect(!IsometricTileGeometry.isPickupVisibleFloor(at: cell, in: world))

@@ -12,7 +12,7 @@ struct PitBridgeMinigameEngineTests {
     private func makeEngine(
         minWords: Int = 2,
         maxWords: Int = 4,
-        letterPosition: GateWordPlugGraphemePosition = .ending,
+        letterPosition: GateWordPlugLetterPosition = .ending,
         words: [GateWord]? = nil,
         seed: UInt64 = 42
     ) -> PitBridgeMinigameEngine {

@@ -26,10 +26,10 @@ struct BundleSoundEffectPlayerTests {
     @Test func trackCacheIsBounded() throws {
         let player = BundleSoundEffectPlayer()
         var trackIDs: [String] = []
-        let letters = try GraphemeCatalog.loadFromBundle()
-        for letter in letters.letters {
-            trackIDs.append(letter.name)
-            trackIDs.append(letter.pronunciation)
+        let graphemes = try GraphemeCatalog.loadFromBundle()
+        for grapheme in graphemes.graphemes {
+            trackIDs.append(grapheme.name)
+            trackIDs.append(grapheme.pronunciation)
         }
         let words = try WordCatalog.loadFromBundle()
         for word in words.words {

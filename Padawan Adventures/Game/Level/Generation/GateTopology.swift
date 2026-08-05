@@ -255,7 +255,7 @@ nonisolated extension ProceduralGenerator {
         rng: inout SeededGenerator
     ) -> GateMinigameKind {
         let pool = minigames.isEmpty
-            ? [WeightedGateKind(kind: .spelling, weight: 1)]
+            ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
             : minigames
         let picked = WeightedPicker.pick(from: pool, weight: \.weight, using: &rng)
         return (picked ?? pool[0]).kind

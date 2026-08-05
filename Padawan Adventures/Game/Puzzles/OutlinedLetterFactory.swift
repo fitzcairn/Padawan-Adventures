@@ -3,6 +3,9 @@ import UIKit
 
 /// White-on-black outlined letter stacks for gate spelling minigames (SpriteKit).
 enum OutlinedLetterFactory {
+    /// Node name of the colored fill label, so callers can recolor a built stack.
+    static let fillNodeName = "outlinedLetterFill"
+
     enum Style {
         /// Fixed 2pt outline for capacitor-face letters at gate puzzle sizes.
         case capacitorFace
@@ -54,6 +57,7 @@ enum OutlinedLetterFactory {
         root.addChild(innerShadow)
 
         let label = SKLabelNode(text: text)
+        label.name = fillNodeName
         label.fontName = AppFont.name
         label.fontSize = fontSize
         label.fontColor = .white
@@ -64,6 +68,11 @@ enum OutlinedLetterFactory {
         root.addChild(label)
 
         return root
+    }
+
+    /// Colored fill of a stack built by `make(text:…)`, for recoloring in place.
+    static func fillLabel(in root: SKNode) -> SKLabelNode? {
+        root.childNode(withName: fillNodeName) as? SKLabelNode
     }
 
     private static func offsets(for fontSize: CGFloat, style: Style) -> (CGFloat, CGFloat) {

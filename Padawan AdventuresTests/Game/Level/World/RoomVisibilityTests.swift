@@ -4,7 +4,7 @@ import Testing
 struct RoomVisibilityTests {
     /// Two 1x3 rooms in columns 0 and 4, sealed by a 2-cell gate strip at x = 2.
     /// Column 1 and 3 are solid wall, so the gate is the only join.
-    private func twoRoomWorld(gate: GateMinigameKind = .spelling) -> GameWorld {
+    private func twoRoomWorld(gate: GateMinigameKind = .soundOutWord) -> GameWorld {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         for y in 0..<3 {
             world.setTile(Tile(kind: .wall), at: GridCoord(x: 1, y: y, story: 0))
@@ -51,7 +51,7 @@ struct RoomVisibilityTests {
         var world = TestWorldFactory.emptyFloor(width: 7, height: 1)
         let near = GridCoord(x: 1, y: 0, story: 0)
         let far = GridCoord(x: 4, y: 0, story: 0)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: near)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: near)
         world.setTile(Tile(kind: .gate(minigame: .graphemeMatch)), at: far)
         world.setPlayerPosition(GridCoord(x: 0, y: 0, story: 0))
 

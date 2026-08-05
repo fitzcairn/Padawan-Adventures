@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-extension GateScene {
+extension GateSoundOutWordScene {
     /// One light-blue electricity span between two linked capacitors.
     struct ElectricConnector {
         var start: CGPoint

@@ -33,7 +33,7 @@ struct LineOfSightTests {
 
     @Test func gateBlocksSight() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: GridCoord(x: 2, y: 1, story: 0))
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: GridCoord(x: 2, y: 1, story: 0))
         let from = GridCoord(x: 0, y: 1, story: 0)
         let to = GridCoord(x: 4, y: 1, story: 0)
         #expect(LineOfSight.canSee(from: from, to: to, in: world) == false)

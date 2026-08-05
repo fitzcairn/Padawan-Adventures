@@ -59,11 +59,11 @@ struct LevelConfigSnapshotTests {
         }
         #expect(deflect.monsterHP == 5)
         #expect(deflect.orbTravelSeconds == 3)
-        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c", "d"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
-        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .spelling, .graphemeMatch])
+        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .soundOutWord, .graphemeMatch])
         #expect(level.gate.minigames.map(\.weight) == [0, 1, 0, 0])
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")

@@ -7,8 +7,8 @@ struct GateGraphemeMatchMinigameEngineTests {
         values.map {
             GateGrapheme(
                 grapheme: $0,
-                pronunciation: "sfx_grapheme_\($0)_pronunciation",
-                name: "sfx_grapheme_\($0)_name"
+                pronunciation: "sfx_letter_\($0)_pronunciation",
+                name: "sfx_letter_\($0)_name"
             )
         }
     }
@@ -52,7 +52,7 @@ struct GateGraphemeMatchMinigameEngineTests {
     @Test func beginIsDeterministicForSeed() {
         let a = makeEngine(graphemeCountMin: 2, graphemeCountMax: 4, seed: 99)
         let b = makeEngine(graphemeCountMin: 2, graphemeCountMax: 4, seed: 99)
-        #expect(a.letters.map(.grapheme) == b.letters.map(.grapheme))
+        #expect(a.letters.map(\.letter) == b.letters.map(\.letter))
         #expect(a.currentTarget?.letter == b.currentTarget?.letter)
     }
 

@@ -82,13 +82,13 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         self.monsterHP = monsterHP
         self.orbTravelSeconds = orbTravelSeconds
         self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
-        self.graphemes = letters
+        self.graphemes = graphemes
     }
 
     /// Resolves `graphemeIDs` against the shared catalog, preserving YAML order.
     /// Gate letter-match sorts its letters; ring order here is positional, so it must not.
     mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        let ids = graphemeIDs ?? catalog.graphemes.prefix(Self.defaultRingCount).map(.grapheme)
+        let ids = graphemeIDs ?? catalog.graphemes.prefix(Self.defaultRingCount).map(\.grapheme)
         var resolved: [GateGrapheme] = []
         resolved.reserveCapacity(ids.count)
         for id in ids {
@@ -97,7 +97,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
             }
             resolved.append(entry)
         }
-        letters = resolved
+        graphemes = resolved
     }
 
     func validate() throws {
@@ -107,7 +107,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         guard orbTravelSeconds > 0 else {
             throw WorldSeedError.invalidCombatOrbTravelSeconds(orbTravelSeconds)
         }
-        guard (Self.minRingCount...Self.maxRingCount).contains(letters.count) else {
+        guard (Self.minRingCount...Self.maxRingCount).contains(graphemes.count) else {
             throw WorldSeedError.invalidCombatDeflectGraphemes
         }
         try CatalogValidators.validateGraphemeEntries(

@@ -7,8 +7,8 @@ struct GateWordPlugMinigameEngineTests {
         values.map {
             GateGrapheme(
                 grapheme: $0,
-                pronunciation: "sfx_grapheme_\($0)_pronunciation",
-                name: "sfx_grapheme_\($0)_name"
+                pronunciation: "sfx_letter_\($0)_pronunciation",
+                name: "sfx_letter_\($0)_name"
             )
         }
     }
@@ -20,7 +20,7 @@ struct GateWordPlugMinigameEngineTests {
     private func makeEngine(
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
-        letterPosition: GateWordPlugGraphemePosition = .starting,
+        letterPosition: GateWordPlugLetterPosition = .starting,
         pool: [String] = ["cat", "dog", "star", "gate", "car"],
         letterPool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"],
         seed: UInt64 = 42
@@ -77,7 +77,7 @@ struct GateWordPlugMinigameEngineTests {
         let a = makeEngine(seed: 99)
         let b = makeEngine(seed: 99)
         #expect(a.slots.map(\.word) == b.slots.map(\.word))
-        #expect(a.tray.map(.grapheme) == b.tray.map(.grapheme))
+        #expect(a.tray.map(\.letter) == b.tray.map(\.letter))
     }
 
     @Test func beginCanPickEveryWordInThePool() {
@@ -106,7 +106,7 @@ struct GateWordPlugMinigameEngineTests {
             seed: 7
         )
         #expect(engine.slots.map(\.word).sorted() == ["bath", "book"])
-        #expect(engine.tray.map(.grapheme) == ["b", "b"])
+        #expect(engine.tray.map(\.letter) == ["b", "b"])
     }
 
     @Test func maskedTextReplacesFirstLetter() {
@@ -143,7 +143,7 @@ struct GateWordPlugMinigameEngineTests {
         #expect(engine.slots.count == 3)
         for slot in engine.slots {
             guard let token = engine.tray.first(where: {
-                $0.grapheme == slot.letter && !engine.isTokenPlugged($0.id)
+                $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
             }) else {
                 Issue.record("missing token for \(slot.letter)")
                 return
@@ -158,7 +158,7 @@ struct GateWordPlugMinigameEngineTests {
         let engine = makeEngine(seed: 11)
         #expect(engine.tray.count == engine.slots.count)
         #expect(
-            engine.tray.map(.grapheme).sorted() == engine.slots.map(.grapheme).sorted()
+            engine.tray.map(\.letter).sorted() == engine.slots.map(\.letter).sorted()
         )
     }
 
@@ -192,7 +192,7 @@ struct GateWordPlugMinigameEngineTests {
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
-              let token = engine.tray.first(where: { $0.grapheme == "c" }) else {
+              let token = engine.tray.first(where: { $0.letter == "c" }) else {
             Issue.record("expected cat slot and c token")
             return
         }
@@ -213,7 +213,7 @@ struct GateWordPlugMinigameEngineTests {
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
-              let token = engine.tray.first(where: { $0.grapheme == "d" }) else {
+              let token = engine.tray.first(where: { $0.letter == "d" }) else {
             Issue.record("expected cat slot and d token")
             return
         }
@@ -236,7 +236,7 @@ struct GateWordPlugMinigameEngineTests {
             #expect(engine.slots.count == maxCount)
             for slot in engine.slots {
                 guard let token = engine.tray.first(where: {
-                    $0.grapheme == slot.letter && !engine.isTokenPlugged($0.id)
+                    $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
                 }) else {
                     Issue.record("missing token for \(slot.letter)")
                     return
@@ -257,7 +257,7 @@ struct GateWordPlugMinigameEngineTests {
         )
         for slot in engine.slots {
             guard let token = engine.tray.first(where: {
-                $0.grapheme == slot.letter && !engine.isTokenPlugged($0.id)
+                $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
             }) else { continue }
             _ = engine.plug(letterID: token.id, intoSlotID: slot.id)
         }
@@ -277,8 +277,8 @@ struct GateWordPlugMinigameEngineTests {
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
-              let token = engine.tray.first(where: { $0.grapheme == "c" }),
-              let other = engine.tray.first(where: { $0.grapheme == "d" }) else {
+              let token = engine.tray.first(where: { $0.letter == "c" }),
+              let other = engine.tray.first(where: { $0.letter == "d" }) else {
             Issue.record("expected tokens")
             return
         }

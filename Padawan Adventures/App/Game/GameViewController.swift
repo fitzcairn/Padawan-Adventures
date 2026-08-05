@@ -431,7 +431,7 @@ final class GameViewController: LandscapeHostingController {
             return
         }
 
-        let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .spelling
+        let kind = gameScene?.currentWorld.tile(at: coord)?.gateMinigame ?? .soundOutWord
         let chosen = gateConfig.minigame(for: kind) ?? gateConfig.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = cachedHudConfig

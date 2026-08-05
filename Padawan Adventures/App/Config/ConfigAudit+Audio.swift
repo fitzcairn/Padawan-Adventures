@@ -61,7 +61,7 @@ extension ConfigAudit {
                 let fx: SoundEffectTable
                 let music: String?
                 switch minigame {
-                case .spelling(let config):
+                case .soundOutWord(let config):
                     fx = config.fx
                     music = config.music
                 case .graphemeMatch(let config):

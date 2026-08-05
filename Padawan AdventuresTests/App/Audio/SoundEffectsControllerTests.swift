@@ -107,7 +107,7 @@ struct SoundEffectsControllerTests {
         let controller = SoundEffectsController(player: mock)
         // Phonetic playback ducks BGM; absorb it so the shared controller is untouched.
         controller.phoneticCueDuckHandler = { _ in }
-        controller.play(trackID: "sfx_grapheme_a_name")
+        controller.play(trackID: "sfx_letter_a_name")
         controller.play(trackID: "sfx_boom")
         controller.play(trackID: "lightsaber-hum")
         let volumes = mock.playCalls.map(\.volume)

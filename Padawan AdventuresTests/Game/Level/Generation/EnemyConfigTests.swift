@@ -38,14 +38,14 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "spider")?.starsToWin == 10)
         #expect(config.type(named: "spider")?.fx.trackID(for: "notice") == "enemy-spider")
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
-        #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_grapheme_b_name")
-        #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_grapheme_c_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
+        #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.shotPacingSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
-        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
+        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         try config.validate()
     }
 
@@ -116,7 +116,7 @@ struct EnemyConfigTests {
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.tilesPerSecond == 2.0)
         #expect(config.type(named: "scout")?.starsToWin == 5)
@@ -154,7 +154,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt") == nil)
         #expect(config.type(named: "spider") != nil)
         #expect(config.enemies.count == 10)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_grapheme_a_name")
+        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
     }
 

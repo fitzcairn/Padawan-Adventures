@@ -65,7 +65,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         var monsterHP: Int
         var orbTravelSeconds: Double
 
-        var ringCount: Int { letters.count }
+        var ringCount: Int { graphemes.count }
 
         init(
             graphemes: [GateGrapheme],
@@ -73,7 +73,7 @@ nonisolated struct CombatDeflectMinigameEngine {
             monsterHP: Int,
             orbTravelSeconds: Double
         ) {
-            self.graphemes = letters
+            self.graphemes = graphemes
             self.words = words
             self.monsterHP = max(monsterHP, 1)
             self.orbTravelSeconds = max(orbTravelSeconds, 0.2)
@@ -81,7 +81,7 @@ nonisolated struct CombatDeflectMinigameEngine {
 
         init(from deflect: CombatDeflectConfig, words: [GateWord] = WordCatalog.fallback.words) {
             self.init(
-                letters: deflect.graphemes,
+                graphemes: deflect.graphemes,
                 words: words,
                 monsterHP: deflect.monsterHP,
                 orbTravelSeconds: deflect.orbTravelSeconds
@@ -158,7 +158,7 @@ nonisolated struct CombatDeflectMinigameEngine {
             return []
         }
         let withWords = config.graphemes.indices.filter { index in
-            !config.words(startingWith: config.graphemes[index].letter).isEmpty
+            !config.words(startingWith: config.graphemes[index].grapheme).isEmpty
         }
         // Prefer a different letter than the last deflect; if that empties the pool
         // (only one letter has imaged words), allow a repeat.

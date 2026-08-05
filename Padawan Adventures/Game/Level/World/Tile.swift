@@ -34,7 +34,7 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
             self = .floor(isPit: try container.decode(Bool.self, forKey: .isPit))
         case .gate:
             let kind = try container.decodeIfPresent(GateMinigameKind.self, forKey: .minigame)
-                ?? .spelling
+                ?? .soundOutWord
             self = .gate(minigame: kind)
         case .wall:
             // Legacy `hasLadder` is ignored if present.
@@ -43,8 +43,8 @@ nonisolated enum TileKind: Equatable, Sendable, WorldPersistable {
             if try container.decodeIfPresent(Bool.self, forKey: .hasDoor) == true {
                 self = .floor(isPit: false)
             } else if try container.decodeIfPresent(Bool.self, forKey: .destructible) == true {
-                // Legacy destructible walls become spelling gates.
-                self = .gate(minigame: .spelling)
+                // Legacy destructible walls become sound-out-word gates.
+                self = .gate(minigame: .soundOutWord)
             } else {
                 self = .wall
             }

@@ -9,9 +9,9 @@ enum GateMinigameFactory {
         onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         switch config {
-        case .spelling(let spelling):
-            GateMinigameView(
-                puzzleConfig: spelling,
+        case .soundOutWord(let soundOutWord):
+            GateSoundOutWordMinigameView(
+                puzzleConfig: soundOutWord,
                 hudConfig: hudConfig,
                 onFinished: onFinished
             )

@@ -33,7 +33,7 @@ struct LevelConfigTests {
           music: gate
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [cat, dog, star]
               music: gate
             - type: grapheme-sound-gate
@@ -222,7 +222,7 @@ struct LevelConfigTests {
           music: silence
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [cat, dog, star]
         """
         let level = try LevelConfig.decode(
@@ -264,7 +264,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened_alt }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [cat]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -533,7 +533,7 @@ struct LevelConfigTests {
         #expect(level.gate == GateConfig.fallback)
     }
 
-    @Test func decodesGateSpellingMinigameFromYAML() throws {
+    @Test func decodesGateSoundOutWordMinigameFromYAML() throws {
         let yaml = """
         name: Level 1
         world:
@@ -548,19 +548,19 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [CAT, Dog]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.gate.minigameChance == 0.6)
-        guard case .spelling(let spelling) = level.gate.minigames.first else {
-            Issue.record("expected spelling minigame")
+        guard case .soundOutWord(let soundOutWord) = level.gate.minigames.first else {
+            Issue.record("expected sound-out-word minigame")
             return
         }
-        #expect(spelling.wordIDs == ["cat", "dog"])
-        #expect(spelling.words.map(\.word) == ["cat", "dog"])
-        #expect(spelling.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
-        #expect(spelling.words[0].progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
+        #expect(soundOutWord.wordIDs == ["cat", "dog"])
+        #expect(soundOutWord.words.map(\.word) == ["cat", "dog"])
+        #expect(soundOutWord.words.map(\.spelling) == ["sfx_word_cat", "sfx_word_dog"])
+        #expect(soundOutWord.words[0].progressiveTrack(forPrefix: "ca") == "sfx_word_cat_ca")
     }
 
     @Test func decodesGateMinigameChanceFromYAML() throws {
@@ -579,7 +579,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigame_probability: 0.25
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [cat]
         """
         let level = try LevelConfig.decode(from: yaml)
@@ -602,7 +602,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigame_probability: 1.5
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [cat]
         """
 
@@ -633,7 +633,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [moon, sun]
         """
         let child = """
@@ -645,11 +645,11 @@ struct LevelConfigTests {
             parents: ["base_level": base],
             wordCatalog: catalog
         )
-        guard case .spelling(let spelling) = level.gate.minigames.first else {
-            Issue.record("expected spelling minigame")
+        guard case .soundOutWord(let soundOutWord) = level.gate.minigames.first else {
+            Issue.record("expected sound-out-word minigame")
             return
         }
-        #expect(spelling.words.map(\.word) == ["moon", "sun"])
+        #expect(soundOutWord.words.map(\.word) == ["moon", "sun"])
     }
 
     @Test func childCanOverrideInheritedGateWordIDs() throws {
@@ -682,7 +682,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [moon]
         """
         let child = """
@@ -690,7 +690,7 @@ struct LevelConfigTests {
         name: Level 1
         gate:
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [nova, beam]
         """
         let level = try LevelConfig.decode(
@@ -698,19 +698,19 @@ struct LevelConfigTests {
             parents: ["base_level": base],
             wordCatalog: catalog
         )
-        guard case .spelling(let spelling) = level.gate.minigames.first else {
-            Issue.record("expected spelling minigame")
+        guard case .soundOutWord(let soundOutWord) = level.gate.minigames.first else {
+            Issue.record("expected sound-out-word minigame")
             return
         }
         // `minigames` lists replace on inherit (not deep-merged per entry).
-        #expect(spelling.words.map(\.word) == ["beam", "nova"])
-        #expect(spelling.words.map(\.spelling) == [
+        #expect(soundOutWord.words.map(\.word) == ["beam", "nova"])
+        #expect(soundOutWord.words.map(\.spelling) == [
             "sfx_word_beam",
             "sfx_word_nova",
         ])
     }
 
-    @Test func rejectsEmptyGateSpellingWords() {
+    @Test func rejectsEmptyGateSoundOutWordWords() {
         let yaml = """
         name: Level 1
         world:
@@ -725,7 +725,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: []
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
@@ -733,7 +733,7 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func rejectsUnknownGateSpellingWordID() {
+    @Test func rejectsUnknownGateSoundOutWordWordID() {
         let yaml = """
         name: Level 1
         world:
@@ -748,7 +748,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               words: [not_a_real_word]
         """
         #expect(throws: WorldSeedError.invalidGateWords) {
@@ -827,7 +827,7 @@ struct LevelConfigTests {
         gate:
           fx: { opened: sfx_gate_opened }
           minigames:
-            - type: spelling-image-gate
+            - type: sound-out-word-gate
               fx: { win: sfx_gate_win_alt }
               words: [dog]
             - type: grapheme-sound-gate
@@ -838,8 +838,8 @@ struct LevelConfigTests {
         #expect(level.pit.fx.trackID(for: "win") == "sfx_pit_win_alt")
         #expect(level.pit.fx.trackID(for: "lose") == "sfx_pit_lose_alt")
         #expect(level.gate.fx.trackID(for: "opened") == "sfx_gate_opened")
-        if case .spelling(let spelling) = level.gate.minigames.first {
-            #expect(spelling.fx.trackID(for: "win") == "sfx_gate_win_alt")
+        if case .soundOutWord(let soundOutWord) = level.gate.minigames.first {
+            #expect(soundOutWord.fx.trackID(for: "win") == "sfx_gate_win_alt")
         }
         if case .graphemeMatch(let graphemeMatch) = level.gate.minigames.last {
             #expect(graphemeMatch.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
@@ -953,10 +953,10 @@ struct LevelConfigTests {
         #expect(lm.graphemeCountMin == 2)
         #expect(lm.graphemeCountMax == 3)
         #expect(lm.graphemeIDs == ["b", "a"])
-        #expect(lm.graphemes.map(.grapheme) == ["a", "b"])
+        #expect(lm.graphemes.map(\.grapheme) == ["a", "b"])
         #expect(lm.graphemes.map(\.pronunciation) == [
-            "sfx_grapheme_a_pronunciation",
-            "sfx_grapheme_b_pronunciation",
+            "sfx_letter_a_pronunciation",
+            "sfx_letter_b_pronunciation",
         ])
     }
 
@@ -985,7 +985,7 @@ struct LevelConfigTests {
         }
         #expect(lm.graphemeCountMin == 1)
         #expect(lm.graphemeCountMax == 2)
-        #expect(lm.graphemes.map(.grapheme) == ["a", "c"])
+        #expect(lm.graphemes.map(\.grapheme) == ["a", "c"])
     }
 
     @Test func childCanOverrideInheritedGateGraphemeMatchLetterIDs() throws {
@@ -1013,7 +1013,7 @@ struct LevelConfigTests {
             Issue.record("expected letter_match minigame")
             return
         }
-        #expect(lm.graphemes.map(.grapheme) == ["b"])
+        #expect(lm.graphemes.map(\.grapheme) == ["b"])
     }
 
     @Test func rejectsInvalidGateGraphemeMatchLetterCountRange() {
@@ -1080,7 +1080,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: grapheme-sound-gate
-              graphemes: [z]
+              graphemes: [qq]
         """
         #expect(throws: WorldSeedError.invalidGateGraphemeMatchGraphemes) {
             try LevelConfig.decode(from: yaml)
@@ -1134,7 +1134,7 @@ struct LevelConfigTests {
         #expect(wp.wordCountMin == 3)
         #expect(wp.wordCountMax == 6)
         #expect(wp.words.map(\.word) == ["cat", "dog"])
-        #expect(!wp.letters.isEmpty)
+        #expect(!wp.graphemes.isEmpty)
     }
 
     @Test func decodesGateEndingSoundMinigame() throws {
@@ -1165,29 +1165,22 @@ struct LevelConfigTests {
         #expect(level.gate.minigames.map(\.kind) == [.endingSoundPlug])
         #expect(wp.letterPosition == .ending)
         #expect(wp.words.map(\.word) == ["dog", "wand"])
-        #expect(!wp.letters.isEmpty)
+        #expect(!wp.graphemes.isEmpty)
     }
 
-    @Test func rejectsGateEndingSoundWordWithoutPhonicsLetter() {
-        let yaml = """
-        name: Level 1
-        world:
-          width_tiles: 20
-          height_tiles: 20
-          room_count: 4
-          room:
-            min_size_tiles: 4
-            max_size_tiles: 8
-            pit_probability: 0
-            gate_probability: 0
-        gate:
-          fx: { opened: sfx_gate_opened }
-          minigames:
-            - type: ending-sound-gate
-              words: [cat]
-        """
+    @Test func rejectsGateEndingSoundWordWithoutGraphemeAudio() {
+        // The shipped catalog covers every letter, so pair a word with a trimmed grapheme
+        // list to reach the missing-audio guard.
+        let config = GateWordPlugConfig(
+            letterPosition: .ending,
+            words: [GateWord.fallbackEntry(word: "cat")],
+            graphemes: [
+                GateGrapheme(grapheme: "c", pronunciation: "sfx_letter_c", name: "sfx_letter_c_name"),
+                GateGrapheme(grapheme: "a", pronunciation: "sfx_letter_a", name: "sfx_letter_a_name"),
+            ]
+        )
         #expect(throws: WorldSeedError.invalidGateWordPlugGraphemes) {
-            try LevelConfig.decode(from: yaml)
+            try config.validate()
         }
     }
 
@@ -1344,11 +1337,11 @@ struct LevelConfigTests {
         #expect(deflect.orbTravelSeconds == 2.5)
         #expect(deflect.graphemeIDs == ["c", "a", "b"])
         // Ring order is positional (left to right), so YAML order must survive decode.
-        #expect(deflect.graphemes.map(.grapheme) == ["c", "a", "b"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["c", "a", "b"])
         #expect(deflect.graphemes.map(\.name) == [
-            "sfx_grapheme_c_name",
-            "sfx_grapheme_a_name",
-            "sfx_grapheme_b_name",
+            "sfx_letter_c_name",
+            "sfx_letter_a_name",
+            "sfx_letter_b_name",
         ])
     }
 
@@ -1386,7 +1379,7 @@ struct LevelConfigTests {
             return
         }
         #expect(deflect.monsterHP == 7)
-        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c"])
     }
 
     @Test func pickMinigameNeverChoosesAZeroWeightEntry() throws {
@@ -1546,7 +1539,7 @@ struct LevelConfigTests {
             Issue.record("expected a deflect entry")
             return
         }
-        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c", "d"])
     }
 
     @Test func rejectsDuplicateCombatDeflectLetters() {
@@ -1571,7 +1564,7 @@ struct LevelConfigTests {
         }
         #expect(deflect.monsterHP >= 1)
         #expect(deflect.orbTravelSeconds > 0)
-        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c", "d"])
     }
 
     @Test func decodesSlashLetterSoundRepeatSeconds() throws {
@@ -1590,24 +1583,24 @@ struct LevelConfigTests {
 
     @Test func gateConfigLooksUpMinigameByKind() {
         let config = GateConfig.fallback
-        #expect(config.weightedMinigameKinds.map(\.kind) == [.spelling, .graphemeMatch])
+        #expect(config.weightedMinigameKinds.map(\.kind) == [.soundOutWord, .graphemeMatch])
         guard case .graphemeMatch = config.minigame(for: .graphemeMatch) else {
-            Issue.record("expected letter_match config")
+            Issue.record("expected grapheme_match config")
             return
         }
-        guard case .spelling = config.minigame(for: .spelling) else {
-            Issue.record("expected spelling config")
+        guard case .soundOutWord = config.minigame(for: .soundOutWord) else {
+            Issue.record("expected sound_out_word config")
             return
         }
         let duplicated = GateConfig(
             fx: config.fx,
             minigames: [
-                .spelling(.fallback),
+                .soundOutWord(.fallback),
                 .graphemeMatch(.fallback),
-                .spelling(.fallback),
+                .soundOutWord(.fallback),
             ]
         )
-        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.spelling)) {
+        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.soundOutWord)) {
             try duplicated.validate()
         }
     }
@@ -2016,7 +2009,7 @@ struct LevelConfigTests {
             gate:
               fx: { opened: sfx_gate_opened }
               minigames:
-                - type: spelling-image-gate
+                - type: sound-out-word-gate
                   weight: -1
                   words: [cat]
             """)
@@ -2024,14 +2017,14 @@ struct LevelConfigTests {
     }
 
     @Test func rejectsDuplicateGateMinigameKinds() {
-        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.spelling)) {
+        #expect(throws: WorldSeedError.duplicateGateMinigameKind(.soundOutWord)) {
             try LevelConfig.decode(from: Self.pitLevelPrefix + """
             gate:
               fx: { opened: sfx_gate_opened }
               minigames:
-                - type: spelling-image-gate
+                - type: sound-out-word-gate
                   words: [cat]
-                - type: spelling-image-gate
+                - type: sound-out-word-gate
                   words: [dog]
             """)
         }

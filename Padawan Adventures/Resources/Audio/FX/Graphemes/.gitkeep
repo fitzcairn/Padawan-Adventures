@@ -1,0 +1,2 @@
+Multi-letter grapheme tracks (sfx_grapheme_sh_*, …) live here.
+Single letters are in ../Letters/ as sfx_letter_<x>_{name,pronunciation}.

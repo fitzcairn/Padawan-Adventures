@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate letter name/pronunciation SFX via macOS `say` + afconvert into FX/Graphemes/."""
+"""Generate letter name/pronunciation SFX via macOS `say` + afconvert into FX/Letters/."""
 
 from __future__ import annotations
 
@@ -107,17 +107,17 @@ def generate(text: str, out_m4a: Path) -> None:
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     out_dir = (
-        repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Graphemes"
+        repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Letters"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     letters = [letter.lower() for letter in sys.argv[1:]] or LETTERS
     for letter in letters:
         clips = [
-            (NAME_TEXT[letter], out_dir / f"sfx_grapheme_{letter}_name.m4a"),
+            (NAME_TEXT[letter], out_dir / f"sfx_letter_{letter}_name.m4a"),
             (
                 PRONUNCIATION_TEXT[letter],
-                out_dir / f"sfx_grapheme_{letter}_pronunciation.m4a",
+                out_dir / f"sfx_letter_{letter}_pronunciation.m4a",
             ),
         ]
         for text, target in clips:

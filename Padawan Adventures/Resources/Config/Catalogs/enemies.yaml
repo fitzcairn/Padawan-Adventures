@@ -1,7 +1,7 @@
 # Enemy type definitions. Level YAML spawn config references keys under `enemies:`.
 # Empty entries inherit `defaults:`. `shot_graphemes` resolve through Catalogs/graphemes.yaml:
 # each id's uppercased form becomes the shotTypes key, and that letter's `name` track
-# becomes the shoot FX (e.g. a → shotTypes["A"].fx.shoot == sfx_grapheme_a_name).
+# becomes the shoot FX (e.g. a → shotTypes["A"].fx.shoot == sfx_letter_a_name).
 
 slash_max_seconds: 0.5
 # Max combat slash path length as a fraction of scene width (0.20 = 20%).

@@ -119,7 +119,7 @@ final class CombatDeflectScene: MinigameScene {
             """
             deflect arena didMove size=\(Int(size.width))x\(Int(size.height)) \
             hp=\(engine.config.monsterHP) \
-            letters=\(engine.config.graphemes.map(.grapheme).joined())
+            letters=\(engine.config.graphemes.map(\.grapheme).joined())
             """
         )
         GameLogger.step(.combat, "deflect.buildArena") { buildArena() }

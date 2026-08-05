@@ -15,7 +15,7 @@ nonisolated struct GateWordPlugMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var wordCountMin: Int
         var wordCountMax: Int
-        var letterPosition: GateWordPlugGraphemePosition
+        var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
         var graphemes: [GateGrapheme]
 
@@ -24,13 +24,13 @@ nonisolated struct GateWordPlugMinigameEngine {
             wordCountMax = puzzle.wordCountMax
             letterPosition = puzzle.letterPosition
             words = puzzle.words
-            letters = puzzle.letters
+            graphemes = puzzle.graphemes
         }
 
         init(
             wordCountMin: Int = 3,
             wordCountMax: Int = 6,
-            letterPosition: GateWordPlugGraphemePosition = .starting,
+            letterPosition: GateWordPlugLetterPosition = .starting,
             words: [GateWord],
             graphemes: [GateGrapheme]
         ) {
@@ -133,10 +133,10 @@ nonisolated struct GateWordPlugMinigameEngine {
                     pronunciationTrackID: entry.pronunciation
                 )
             }
-            let name = GraphemeSoundCatalog.nameTrackID(for: slot.letter)
-                ?? "sfx_grapheme_\(slot.letter)_name"
-            let pronunciation = GraphemeSoundCatalog.pronunciationTrackID(for: slot.letter)
-                ?? "sfx_grapheme_\(slot.letter)_pronunciation"
+            let name = LetterSoundCatalog.nameTrackID(for: slot.letter)
+                ?? "sfx_letter_\(slot.letter)_name"
+            let pronunciation = LetterSoundCatalog.pronunciationTrackID(for: slot.letter)
+                ?? "sfx_letter_\(slot.letter)_pronunciation"
             return LetterToken(
                 id: UUID(),
                 letter: slot.letter,

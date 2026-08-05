@@ -7,6 +7,7 @@ import Foundation
 nonisolated enum AudioBundleLayout {
     static let fxSubdirectories = [
         "Audio/FX",
+        "Audio/FX/Letters",
         "Audio/FX/Graphemes",
         "Audio/FX/Words",
         "Audio/FX/UI",

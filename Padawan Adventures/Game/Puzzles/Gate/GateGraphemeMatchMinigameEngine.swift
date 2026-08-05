@@ -19,7 +19,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         init(from puzzle: GateGraphemeMatchConfig) {
             graphemeCountMin = puzzle.graphemeCountMin
             graphemeCountMax = puzzle.graphemeCountMax
-            letters = puzzle.letters
+            graphemes = puzzle.graphemes
         }
 
         init(
@@ -29,7 +29,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         ) {
             self.graphemeCountMin = graphemeCountMin
             self.graphemeCountMax = graphemeCountMax
-            self.graphemes = letters.map {
+            self.graphemes = graphemes.map {
                 GateGrapheme(
                     grapheme: $0.grapheme.lowercased(),
                     pronunciation: $0.pronunciation,
@@ -64,7 +64,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
 
     var currentTarget: LetterToken? {
         guard let currentTargetID else { return nil }
-        return graphemes.first { $0.id == currentTargetID }
+        return letters.first { $0.id == currentTargetID }
     }
 
     var targetPronunciationTrackID: String {

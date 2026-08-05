@@ -80,7 +80,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
             invalidEntryError: .invalidGateWords
         )
         // Every letter is spoken by name and by sound, so all of them need grapheme audio.
-        let known = Set(letters.map(.grapheme))
+        let known = Set(graphemes.map(\.grapheme))
         guard known.count >= choiceCountMax else {
             throw WorldSeedError.invalidGateSoundOutWordLetters
         }
@@ -93,6 +93,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         }
     }
 }
+
 /// A gate letter-match puzzle letter: glyph + pronunciation/name track basenames.
 nonisolated struct GateGrapheme: Equatable, Sendable {
     var grapheme: String
@@ -175,12 +176,12 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
                     name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
             }
-            .sorted { $0.grapheme < $1.letter }
+            .sorted { $0.grapheme < $1.grapheme }
     }
 }
 
 /// Which letter of the word the player must plug in.
-nonisolated enum GateWordPlugGraphemePosition: String, Equatable, Sendable {
+nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
     case starting
     case ending
 
@@ -211,7 +212,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Inclusive upper bound for words per round (<= `maxWordsPerRound`).
     var wordCountMax: Int
     /// Which letter the player supplies: word start (`starting-sound-gate`) or word end (`ending-sound-gate`).
-    var letterPosition: GateWordPlugGraphemePosition
+    var letterPosition: GateWordPlugLetterPosition
     var fx: SoundEffectTable
     /// Optional subset of shared word-catalog ids (`nil` = full catalog).
     var wordIDs: [String]?
@@ -238,7 +239,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         weight: Double = 1,
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
-        letterPosition: GateWordPlugGraphemePosition = .starting,
+        letterPosition: GateWordPlugLetterPosition = .starting,
         fx: SoundEffectTable = SoundEffectTable(),
         wordIDs: [String]? = nil,
         words: [GateWord],
@@ -276,7 +277,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
         guard !graphemes.isEmpty else { throw WorldSeedError.invalidGateWordPlugGraphemes }
         // The answer letter must have name + pronunciation audio in graphemes.yaml.
-        let known = Set(letters.map(.grapheme))
+        let known = Set(graphemes.map(\.grapheme))
         for entry in words {
             if letterPosition == .ending, entry.word.count < 2 {
                 throw WorldSeedError.invalidGateWordPlugGraphemes

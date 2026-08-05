@@ -148,7 +148,7 @@ extension ConfigAudit {
         for (idx, minigame) in level.gate.minigames.enumerated() {
             let ids: [String]?
             switch minigame {
-            case .spelling(let c): ids = c.wordIDs
+            case .soundOutWord(let c): ids = c.wordIDs
             case .wordPlug(let c): ids = c.wordIDs
             case .graphemeMatch: ids = nil
             }

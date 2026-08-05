@@ -140,7 +140,7 @@ struct SimulationLoopTests {
         var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
         let start = GridCoord(x: 0, y: 1, story: 0)
         let gate = GridCoord(x: 1, y: 1, story: 0)
-        world.setTile(Tile(kind: .gate(minigame: .spelling)), at: gate)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: gate)
         world.setPlayerPosition(start)
 
         var movement = MovementSystem(tilesPerSecond: 1.0)

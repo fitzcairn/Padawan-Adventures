@@ -557,28 +557,28 @@ struct ProceduralGeneratorTests {
     }
 
     @Test func generationPlacesBothGateMinigameKindsAcrossSeeds() throws {
-        var sawSpelling = false
+        var sawSoundOutWord = false
         var sawLetterMatch = false
         for seed: UInt64 in [11, 42, 99, 123, 777] {
             var config = roomsDoorsConfig(seed: seed, roomCount: 12)
             config.generation.room.gateProbability = 1.0
             config.gateMinigames = [
-                WeightedGateKind(kind: .spelling, weight: 1),
+                WeightedGateKind(kind: .soundOutWord, weight: 1),
                 WeightedGateKind(kind: .graphemeMatch, weight: 1),
             ]
-            #expect(config.gateMinigames.contains { $0.kind == .spelling })
+            #expect(config.gateMinigames.contains { $0.kind == .soundOutWord })
             #expect(config.gateMinigames.contains { $0.kind == .graphemeMatch })
             let world = try ProceduralGenerator().generate(from: config)
             for y in 0..<world.height {
                 for x in 0..<world.width {
                     guard let kind = world.tile(at: GridCoord(x: x, y: y, story: 0))?.gateMinigame
                     else { continue }
-                    if kind == .spelling { sawSpelling = true }
+                    if kind == .soundOutWord { sawSoundOutWord = true }
                     if kind == .graphemeMatch { sawLetterMatch = true }
                 }
             }
         }
-        #expect(sawSpelling, "expected at least one spelling gate across seeds")
+        #expect(sawSoundOutWord, "expected at least one sound-out-word gate across seeds")
         #expect(sawLetterMatch, "expected at least one graphemeMatch gate across seeds")
     }
 
@@ -588,7 +588,7 @@ struct ProceduralGeneratorTests {
             config.generation.room.gateProbability = 1.0
             config.gateMinigames = [
                 WeightedGateKind(kind: .wordPlug, weight: 1),
-                WeightedGateKind(kind: .spelling, weight: 0),
+                WeightedGateKind(kind: .soundOutWord, weight: 0),
                 WeightedGateKind(kind: .graphemeMatch, weight: 0),
             ]
             let world = try ProceduralGenerator().generate(from: config)

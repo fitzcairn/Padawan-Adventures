@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct GateElectricityVariantsTests {
     @Test func connectorsBakeMultiplePathVariants() throws {
-        let scene = GateScene(
+        let scene = GateSoundOutWordScene(
             size: CGSize(width: 800, height: 600),
             puzzleConfig: .fallback
         )

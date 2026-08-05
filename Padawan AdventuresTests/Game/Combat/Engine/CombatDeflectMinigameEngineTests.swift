@@ -6,8 +6,8 @@ struct CombatDeflectMinigameEngineTests {
         values.map {
             GateGrapheme(
                 grapheme: $0,
-                pronunciation: "sfx_grapheme_\($0)_pronunciation",
-                name: "sfx_grapheme_\($0)_name"
+                pronunciation: "sfx_letter_\($0)_pronunciation",
+                name: "sfx_letter_\($0)_name"
             )
         }
     }
@@ -82,7 +82,7 @@ struct CombatDeflectMinigameEngineTests {
         #expect(travel == 3)
         #expect(["a", "b", "c"].contains(letter))
         // The orb's letter must be the letter on the ring that deflects it.
-        #expect(engine.config.graphemes[ring.rawValue].letter == letter)
+        #expect(engine.config.graphemes[ring.rawValue].grapheme == letter)
         #expect(word.hasPrefix(letter))
         #expect(imageName != nil)
         #expect(events[1] == .speakWord(trackID: "sfx_word_\(word)"))

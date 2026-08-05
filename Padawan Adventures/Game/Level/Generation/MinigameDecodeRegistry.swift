@@ -68,7 +68,7 @@ nonisolated enum MinigameDecodeRegistry {
                     ?? GateSoundOutWordConfig.fallback.choiceCountMax,
                 wordIDs: entry.words?.map { $0.lowercased() },
                 words: [],
-                letters: [],
+                graphemes: [],
                 music: entry.music
             ))
         case GateMinigameKind.graphemeMatch.rawValue:
@@ -96,7 +96,7 @@ nonisolated enum MinigameDecodeRegistry {
 
     private static func gateWordPlugConfig(
         from entry: GateMinigameDTO,
-        letterPosition: GateWordPlugGraphemePosition
+        letterPosition: GateWordPlugLetterPosition
     ) -> GateWordPlugConfig {
         GateWordPlugConfig(
             weight: entry.weight ?? 1,
@@ -170,7 +170,7 @@ nonisolated enum MinigameDecodeRegistry {
 
     private static func pitBridgeConfig(
         from entry: PitMinigameDTO,
-        letterPosition: GateWordPlugGraphemePosition
+        letterPosition: GateWordPlugLetterPosition
     ) -> PitBridgeConfig {
         PitBridgeConfig(
             weight: entry.weight ?? 1,

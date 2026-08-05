@@ -11,7 +11,7 @@ nonisolated struct PitBridgeMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var minWords: Int
         var maxWords: Int
-        var letterPosition: GateWordPlugGraphemePosition
+        var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
 
         init(from bridge: PitBridgeConfig) {
@@ -26,7 +26,7 @@ nonisolated struct PitBridgeMinigameEngine {
         init(
             minWords: Int = 2,
             maxWords: Int = 4,
-            letterPosition: GateWordPlugGraphemePosition = .ending,
+            letterPosition: GateWordPlugLetterPosition = .ending,
             words: [GateWord]
         ) {
             let upper = max(1, maxWords)

@@ -47,7 +47,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.cohesion = cohesion
         let kinds = gateMinigames
         self.gateMinigames = kinds.isEmpty
-            ? [WeightedGateKind(kind: .spelling, weight: 1)]
+            ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
             : kinds
     }
 
@@ -66,7 +66,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             decorProb: level.floor.decorProb,
             cohesion: level.floor.cohesion,
             gateMinigames: kinds.isEmpty
-                ? [WeightedGateKind(kind: .spelling, weight: 1)]
+                ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
                 : kinds
         )
     }

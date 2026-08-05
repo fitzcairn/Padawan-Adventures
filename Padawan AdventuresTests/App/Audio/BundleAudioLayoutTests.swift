@@ -47,10 +47,10 @@ struct BundleAudioLayoutTests {
         }
 
         let words = try WordCatalog.loadFromBundle()
-        let letters = try GraphemeCatalog.loadFromBundle()
-        for letter in letters.letters {
-            assertFX(letter.name)
-            assertFX(letter.pronunciation)
+        let graphemes = try GraphemeCatalog.loadFromBundle()
+        for grapheme in graphemes.graphemes {
+            assertFX(grapheme.name)
+            assertFX(grapheme.pronunciation)
         }
 
         let descriptors = LevelCatalog.loadFromBundle()
@@ -59,7 +59,7 @@ struct BundleAudioLayoutTests {
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                graphemeCatalog: letters
+                graphemeCatalog: graphemes
             )
         }
         for level in levels {
@@ -75,7 +75,7 @@ struct BundleAudioLayoutTests {
             }
             for minigame in level.gate.minigames {
                 switch minigame {
-                case .spelling(let config):
+                case .soundOutWord(let config):
                     for (_, trackID) in config.fx.events {
                         assertFX(trackID)
                     }
@@ -117,11 +117,11 @@ struct BundleAudioLayoutTests {
 
     @Test func phoneticAndUIClipsResolveInSubfolders() {
         let phonetic = BundleMusicAudioPlayer.audioURL(
-            for: "sfx_grapheme_a_name",
+            for: "sfx_letter_a_name",
             subdirectories: AudioBundleLayout.fxSubdirectories
         )
         #expect(phonetic != nil)
-        #expect(phonetic?.path.contains("/Audio/FX/Graphemes/") == true)
+        #expect(phonetic?.path.contains("/Audio/FX/Letters/") == true)
 
         let ui = BundleMusicAudioPlayer.audioURL(
             for: "level-screen-artifact-appear",
@@ -142,20 +142,20 @@ struct BundleAudioLayoutTests {
             basenames.append(contentsOf: enemy.fx.events.values)
         }
         let words = try WordCatalog.loadFromBundle()
-        let letters = try GraphemeCatalog.loadFromBundle()
+        let graphemes = try GraphemeCatalog.loadFromBundle()
         let descriptors = LevelCatalog.loadFromBundle()
         for descriptor in descriptors {
             let level = try LevelConfig.loadFromBundle(
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                graphemeCatalog: letters
+                graphemeCatalog: graphemes
             )
             basenames.append(contentsOf: level.pit.fx.events.values)
             basenames.append(contentsOf: level.gate.fx.events.values)
             for minigame in level.gate.minigames {
                 switch minigame {
-                case .spelling(let config):
+                case .soundOutWord(let config):
                     basenames.append(contentsOf: config.fx.events.values)
                 case .graphemeMatch(let config):
                     basenames.append(contentsOf: config.fx.events.values)
@@ -167,7 +167,9 @@ struct BundleAudioLayoutTests {
         for basename in Set(basenames) {
             guard basename.hasPrefix("sfx_") else { continue }
             #expect(
-                basename.hasPrefix("sfx_grapheme_") || basename.hasPrefix("sfx_word_"),
+                basename.hasPrefix("sfx_letter_")
+                    || basename.hasPrefix("sfx_grapheme_")
+                    || basename.hasPrefix("sfx_word_"),
                 "stale non-phonetic sfx basename '\(basename)'"
             )
         }

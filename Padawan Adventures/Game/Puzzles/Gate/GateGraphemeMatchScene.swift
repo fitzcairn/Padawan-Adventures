@@ -39,7 +39,7 @@ final class GateGraphemeMatchScene: MinigameScene {
 
     override func buildContent() {
         engine.begin()
-        GameLogger.step(.world, "gateLetterMatch.buildPuzzle") { buildPuzzle() }
+        GameLogger.step(.world, "gateGraphemeMatch.buildPuzzle") { buildPuzzle() }
         playTargetPronunciation()
     }
     /// Preferred gap as a fraction of tile side; compress toward `minGapRatio` before shrinking tiles.

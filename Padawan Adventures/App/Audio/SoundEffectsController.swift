@@ -172,10 +172,13 @@ final class SoundEffectsController {
         return soundEffectsVolume * scale
     }
 
-    /// Phonetic clips use `sfx_grapheme_*` (under `Audio/FX/Graphemes/`) and
-    /// `sfx_word_*` (under `Audio/FX/Words/`) basenames.
+    /// Phonetic clips use `sfx_letter_*` (under `Audio/FX/Letters/`),
+    /// `sfx_grapheme_*` (under `Audio/FX/Graphemes/`) and `sfx_word_*`
+    /// (under `Audio/FX/Words/`) basenames.
     static func isPhoneticTrack(_ trackID: String) -> Bool {
-        trackID.hasPrefix("sfx_grapheme_") || trackID.hasPrefix("sfx_word_")
+        trackID.hasPrefix("sfx_letter_")
+            || trackID.hasPrefix("sfx_grapheme_")
+            || trackID.hasPrefix("sfx_word_")
     }
 
     /// Combat saber one-shots and the looping hum (`*lightsaber*` basenames).
