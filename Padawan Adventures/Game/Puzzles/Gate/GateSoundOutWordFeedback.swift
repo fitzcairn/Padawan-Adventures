@@ -170,7 +170,8 @@ extension GateSoundOutWordScene {
         )
     }
 
-    /// Wrong grapheme, or the right one in the wrong place: buzz, flash red, slide home.
+    /// Wrong grapheme, or the right one in the wrong place: buzz, flash red, then reshuffle
+    /// the whole set with a slide into the new order.
     func runRejectedPlacement(choiceID: UUID) {
         guard let node = choiceNodes[choiceID] else { return }
         inputLocked = true
@@ -195,14 +196,36 @@ extension GateSoundOutWordScene {
             SKAction.sequence([
                 flash,
                 SKAction.run { [weak self] in
-                    self?.restoreChoiceTint(choiceID: choiceID)
+                    guard let self else { return }
+                    self.restoreChoiceTint(choiceID: choiceID)
+                    self.shuffleAndAnimateChoices()
                 },
-                SKAction.move(
-                    to: choiceHome[choiceID] ?? node.position,
-                    duration: Self.returnHomeDuration
-                ).withTimingMode(.easeInEaseOut),
-                SKAction.run { [weak self] in self?.inputLocked = false },
             ])
+        )
+    }
+
+    /// Shuffles the active set and slides every capacitor (including the rejected one) home.
+    func shuffleAndAnimateChoices() {
+        engine.shuffleCurrentChoices()
+        let choices = engine.currentChoices
+        let positions = choiceRowPositions(count: choices.count)
+        for (index, choice) in choices.enumerated() {
+            let home = positions[index]
+            choiceHome[choice.id] = home
+            guard let node = choiceNodes[choice.id] else { continue }
+            node.zPosition = 20
+            node.run(
+                SKAction.move(to: home, duration: Self.shuffleDuration)
+                    .withTimingMode(.easeInEaseOut)
+            )
+        }
+        removeAction(forKey: Self.feedbackActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: Self.shuffleDuration),
+                SKAction.run { [weak self] in self?.inputLocked = false },
+            ]),
+            withKey: Self.feedbackActionKey
         )
     }
 

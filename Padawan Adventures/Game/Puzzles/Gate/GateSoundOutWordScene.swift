@@ -12,6 +12,8 @@ final class GateSoundOutWordScene: MinigameScene {
     static let wrongFlashPeriod: TimeInterval = 0.12
     static let solvedFlashPeriod: TimeInterval = 0.16
     static let returnHomeDuration: TimeInterval = 0.3
+    /// Duration for the post-miss capacitor reshuffle slide.
+    static let shuffleDuration: TimeInterval = 0.35
     static let setFadeDuration: TimeInterval = 0.35
     static let letterRevealDuration: TimeInterval = 0.25
     /// Brief beat after the final connector appears, before the word read-back.

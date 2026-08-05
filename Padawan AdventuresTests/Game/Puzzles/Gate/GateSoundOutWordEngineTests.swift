@@ -124,6 +124,19 @@ struct GateSoundOutWordEngineTests {
         #expect(engine.currentGrapheme == "c")
     }
 
+    @Test func shuffleCurrentChoicesReordersWithoutLosingTheAnswer() throws {
+        var engine = makeEngine(choiceCountMin: 3, choiceCountMax: 3, words: ["cat"], seed: 3)
+        let beforeIDs = engine.currentChoices.map(\.id)
+        let beforeGraphemes = Set(engine.currentChoices.map(\.grapheme))
+        #expect(beforeIDs.count > 1)
+        engine.shuffleCurrentChoices()
+        #expect(Set(engine.currentChoices.map(\.id)) == Set(beforeIDs))
+        #expect(Set(engine.currentChoices.map(\.grapheme)) == beforeGraphemes)
+        #expect(engine.currentChoices.contains { $0.grapheme == "c" })
+        // Same seed + forced reshuffle should move at least one slot when n > 1.
+        #expect(engine.currentChoices.map(\.id) != beforeIDs)
+    }
+
     @Test func correctChoiceInInvalidSpotIsRejected() throws {
         var engine = makeEngine(words: ["cat"], seed: 1)
         let answer = try #require(engine.currentChoices.first { $0.grapheme == "c" })

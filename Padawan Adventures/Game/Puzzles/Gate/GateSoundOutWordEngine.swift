@@ -143,6 +143,20 @@ nonisolated struct GateSoundOutWordEngine {
         return .accepted
     }
 
+    /// Reorders the active capacitor set after a wrong drop. Same graphemes and ids; new slots.
+    /// Retries until the order changes when there is more than one choice.
+    mutating func shuffleCurrentChoices() {
+        guard let index = currentIndex, choiceSets.indices.contains(index) else { return }
+        var set = choiceSets[index]
+        guard set.count > 1 else { return }
+        let before = set.map(\.id)
+        for _ in 0..<8 {
+            set.shuffle(using: &rng)
+            if set.map(\.id) != before { break }
+        }
+        choiceSets[index] = set
+    }
+
     private func entry(for grapheme: String) -> GateGrapheme? {
         let key = grapheme.lowercased()
         return config.graphemes.first { $0.grapheme == key }
