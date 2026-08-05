@@ -143,7 +143,10 @@ struct PlanetStripScrollHints: View {
 
     var body: some View {
         GeometryReader { geo in
-            let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
+            let insets = ScreenLayout.insets(
+                size: geo.size,
+                safeArea: ScreenLayout.safeArea(fromProxy: geo.safeAreaInsets)
+            )
             HStack {
                 scrollHintArrow(systemName: "chevron.left", visible: canScrollLeft)
                     .accessibilityIdentifier("levelSelect.scrollLeftHint")

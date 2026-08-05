@@ -29,6 +29,17 @@ enum ScreenLayout {
     static func padding(for view: UIView) -> UIEdgeInsets {
         uiInsets(size: view.bounds.size, safeArea: view.safeAreaInsets)
     }
+
+    /// GeometryReader reports zero insets after `.ignoresSafeArea()`; fall back to the key window
+    /// so landscape Dynamic Island / home-indicator edges still inset chrome.
+    @MainActor
+    static func safeArea(fromProxy proxy: EdgeInsets) -> EdgeInsets {
+        if proxy.top > 0 || proxy.leading > 0 || proxy.bottom > 0 || proxy.trailing > 0 {
+            return proxy
+        }
+        guard let ui = AppWindow.key?.safeAreaInsets else { return proxy }
+        return EdgeInsets(top: ui.top, leading: ui.left, bottom: ui.bottom, trailing: ui.right)
+    }
 }
 
 /// Full-bleed app screen with shared edge padding applied once at the root.
@@ -59,7 +70,10 @@ struct AppScreen<Content: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
+            let insets = ScreenLayout.insets(
+                size: geo.size,
+                safeArea: ScreenLayout.safeArea(fromProxy: geo.safeAreaInsets)
+            )
             content()
                 .padding(insets)
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
@@ -97,7 +111,10 @@ extension View {
 private struct AppScreenContentPaddingModifier: ViewModifier {
     func body(content: Content) -> some View {
         GeometryReader { geo in
-            let insets = ScreenLayout.insets(size: geo.size, safeArea: geo.safeAreaInsets)
+            let insets = ScreenLayout.insets(
+                size: geo.size,
+                safeArea: ScreenLayout.safeArea(fromProxy: geo.safeAreaInsets)
+            )
             content
                 .padding(insets)
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .center)

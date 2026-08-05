@@ -51,4 +51,11 @@ struct ScreenLayoutTests {
     @Test func edgeInsetFractionIsTwoPointFivePercent() {
         #expect(ScreenLayout.edgeInsetFraction == 0.025)
     }
+
+    @Test @MainActor func prefersNonZeroProxySafeAreaOverWindowFallback() {
+        let proxy = EdgeInsets(top: 0, leading: 59, bottom: 0, trailing: 21)
+        let resolved = ScreenLayout.safeArea(fromProxy: proxy)
+        #expect(resolved.leading == 59)
+        #expect(resolved.trailing == 21)
+    }
 }
