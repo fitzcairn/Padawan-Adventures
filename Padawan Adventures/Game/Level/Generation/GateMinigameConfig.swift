@@ -200,6 +200,18 @@ nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
         case .ending: "\(word.dropLast())_"
         }
     }
+
+    /// True when `word` starts (or ends) with `grapheme`. Unlike `answerLetter(in:)`,
+    /// this handles multi-character graphemes such as `sh`.
+    func matches(grapheme: String, in word: String) -> Bool {
+        let key = grapheme.lowercased()
+        guard !key.isEmpty else { return false }
+        let subject = word.lowercased()
+        switch self {
+        case .starting: return subject.hasPrefix(key)
+        case .ending: return subject.hasSuffix(key)
+        }
+    }
 }
 
 /// Per-entry gate word-plug config: match each word's missing first or last letter (see `letterPosition`).
