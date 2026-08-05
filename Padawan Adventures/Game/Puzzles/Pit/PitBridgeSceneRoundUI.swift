@@ -64,6 +64,7 @@ extension PitBridgeScene {
 
     func showWordPrompt() {
         wordPromptNode?.removeFromParent()
+        blankLetterNode = nil
         let geo = geometry
         let root = SKNode()
         root.name = Self.wordPromptNodeName
@@ -71,6 +72,12 @@ extension PitBridgeScene {
         root.zPosition = Self.wordPromptZ
 
         let maxSide = max(geo.wordPromptMaxSide, 48)
+        let fontSize = max(maxSide * 0.28, 18)
+        let spelling = makeMaskedSpellingNode(fontSize: fontSize)
+        spelling.zPosition = 2
+        root.addChild(spelling)
+
+        let hitHeight: CGFloat
         if let image = GateWordPlugImageSprites.image(named: engine.currentImageName) {
             let texture = SKTexture(image: image)
             SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
@@ -81,18 +88,20 @@ extension PitBridgeScene {
             sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
             sprite.zPosition = 1
             root.addChild(sprite)
+
+            let gap = fontSize * 0.35
+            let totalHeight = sprite.size.height + gap + fontSize
+            sprite.position = CGPoint(x: 0, y: (totalHeight - sprite.size.height) * 0.5)
+            spelling.position = CGPoint(x: 0, y: -totalHeight * 0.5 + fontSize * 0.5)
+            hitHeight = totalHeight * 1.15
         } else {
-            let label = OutlinedLetterFactory.make(
-                text: engine.currentWord.uppercased(),
-                fontSize: max(maxSide * 0.45, 22),
-                disablesInteraction: true
-            )
-            label.zPosition = 1
-            root.addChild(label)
+            // No illustration — masked spelling is the prompt.
+            spelling.position = .zero
+            hitHeight = max(fontSize * 1.4, maxSide * 0.5)
         }
 
         // Invisible hit pad so taps are reliable even on thin sprites.
-        let hit = SKShapeNode(rectOf: CGSize(width: maxSide * 1.15, height: maxSide * 1.15))
+        let hit = SKShapeNode(rectOf: CGSize(width: maxSide * 1.15, height: hitHeight))
         hit.fillColor = .clear
         hit.strokeColor = .clear
         hit.zPosition = 0
@@ -101,6 +110,74 @@ extension PitBridgeScene {
 
         addChild(root)
         wordPromptNode = root
+    }
+
+    /// Prefix letters + a `_` blank for the ending sound, laid out under the illustration.
+    func makeMaskedSpellingNode(fontSize: CGFloat) -> SKNode {
+        let row = SKNode()
+        row.name = Self.wordSpellingNodeName
+        let word = engine.currentWord
+        let prefix = word.isEmpty ? "" : String(word.dropLast())
+        if !prefix.isEmpty {
+            let prefixNode = OutlinedLetterFactory.make(
+                text: prefix,
+                fontSize: fontSize,
+                disablesInteraction: true
+            )
+            prefixNode.name = "spellingPrefix"
+            row.addChild(prefixNode)
+        }
+        let blank = OutlinedLetterFactory.make(
+            text: "_",
+            fontSize: fontSize,
+            disablesInteraction: true
+        )
+        blank.name = Self.blankLetterNodeName
+        row.addChild(blank)
+        blankLetterNode = blank
+
+        // Horizontal pack: measure after children exist, then center the row.
+        let prefixNode = row.childNode(withName: "spellingPrefix")
+        let prefixWidth = prefixNode?.calculateAccumulatedFrame().width ?? 0
+        let blankWidth = blank.calculateAccumulatedFrame().width
+        let totalWidth = prefixWidth + blankWidth
+        prefixNode?.position = CGPoint(x: -totalWidth * 0.5 + prefixWidth * 0.5, y: 0)
+        blank.position = CGPoint(x: totalWidth * 0.5 - blankWidth * 0.5, y: 0)
+        return row
+    }
+
+    func setBlankLetterText(_ text: String) {
+        guard let blankLetterNode else { return }
+        for case let label as SKLabelNode in blankLetterNode.children {
+            label.text = text
+        }
+    }
+
+    func setBlankLetterFillColor(_ color: UIColor) {
+        guard let blankLetterNode else { return }
+        for case let label as SKLabelNode in blankLetterNode.children
+        where label.zPosition == SceneLayer.LabelStack.fill {
+            label.fontColor = color
+        }
+    }
+
+    func flashBlankLetter(
+        color: UIColor,
+        clearColor: UIColor = .white,
+        completion: (() -> Void)? = nil
+    ) {
+        guard let blankLetterNode else {
+            completion?()
+            return
+        }
+        let flash = SKAction.doubleFlash(
+            count: 1,
+            apply: { [weak self] in self?.setBlankLetterFillColor(color) },
+            clear: { [weak self] in self?.setBlankLetterFillColor(clearColor) }
+        )
+        blankLetterNode.run(flash) {
+            completion?()
+        }
     }
 
     func drawSlotBox(at center: CGPoint) {
@@ -260,13 +337,14 @@ extension PitBridgeScene {
         }
 
         isUserInteractionEnabled = false
+        let letter = (node.userData?["letter"] as? String) ?? ""
         switch result {
         case let .correct(slotIndex, won):
             // Jump clip replaces the Force-lift pose once the tile snaps into the slot.
-            handleCorrectDrop(node: node, id: id, slotIndex: slotIndex, won: won)
+            handleCorrectDrop(node: node, id: id, slotIndex: slotIndex, won: won, letter: letter)
         case .incorrect:
             resumePlayerIdle()
-            handleIncorrectDrop(node: node)
+            handleIncorrectDrop(node: node, letter: letter)
         }
     }
 

@@ -63,8 +63,8 @@ struct LevelConfigSnapshotTests {
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
-        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .spelling, .letterMatch])
-        #expect(level.gate.minigames.map(\.weight) == [1, 0, 0])
+        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .spelling, .letterMatch])
+        #expect(level.gate.minigames.map(\.weight) == [0, 1, 0, 0])
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")
             return
@@ -74,6 +74,12 @@ struct LevelConfigSnapshotTests {
         #expect(wordPlug.words.map(\.word) == [
             "bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand",
         ])
+        guard case .wordPlug(let endingSound) = level.gate.minigames[1] else {
+            Issue.record("expected ending-sound gate entry")
+            return
+        }
+        #expect(endingSound.letterPosition == .ending)
+        #expect(endingSound.words.map(\.word) == ["cloud", "dog", "lightbulb", "pencil", "wand"])
 
         #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
         #expect(level.pit.minigames.map(\.weight) == [0.5, 0.5])

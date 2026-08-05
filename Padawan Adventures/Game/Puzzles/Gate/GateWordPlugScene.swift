@@ -5,7 +5,7 @@ protocol GateWordPlugSceneDelegate: AnyObject {
     func gateWordPlugSceneDidWin(starsAwarded: Int)
 }
 
-/// SpriteKit gate word-plug puzzle: drag first-letter parts onto word sockets.
+/// SpriteKit gate word-plug puzzle: drag first-/last-letter parts onto word sockets.
 final class GateWordPlugScene: MinigameScene {
     weak var wordPlugDelegate: GateWordPlugSceneDelegate?
 

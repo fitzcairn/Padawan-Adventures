@@ -20,6 +20,7 @@ struct GateWordPlugMinigameEngineTests {
     private func makeEngine(
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
+        letterPosition: GateWordPlugLetterPosition = .starting,
         pool: [String] = ["cat", "dog", "star", "gate", "car"],
         letterPool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"],
         seed: UInt64 = 42
@@ -28,6 +29,7 @@ struct GateWordPlugMinigameEngineTests {
             config: .init(
                 wordCountMin: wordCountMin,
                 wordCountMax: wordCountMax,
+                letterPosition: letterPosition,
                 words: words(pool),
                 letters: letters(letterPool)
             ),
@@ -113,6 +115,43 @@ struct GateWordPlugMinigameEngineTests {
             #expect(slot.maskedText == "_\(slot.word.dropFirst())")
             #expect(slot.maskedText.first == "_")
         }
+    }
+
+    @Test func endingModeMasksLastLetter() {
+        let engine = makeEngine(
+            letterPosition: .ending,
+            pool: ["dog", "wand", "cloud"],
+            letterPool: ["d", "g", "l"],
+            seed: 7
+        )
+        for slot in engine.slots {
+            #expect(slot.maskedText == "\(slot.word.dropLast())_")
+            #expect(slot.maskedText.last == "_")
+            #expect(slot.letter == String(slot.word.suffix(1)))
+        }
+    }
+
+    @Test func endingModePluggingEverySlotWinsAndAwardsStars() {
+        var engine = makeEngine(
+            wordCountMin: 3,
+            wordCountMax: 3,
+            letterPosition: .ending,
+            pool: ["dog", "wand", "cloud"],
+            letterPool: ["d", "g", "l"],
+            seed: 5
+        )
+        #expect(engine.slots.count == 3)
+        for slot in engine.slots {
+            guard let token = engine.tray.first(where: {
+                $0.letter == slot.letter && !engine.isTokenPlugged($0.id)
+            }) else {
+                Issue.record("missing token for \(slot.letter)")
+                return
+            }
+            _ = engine.plug(letterID: token.id, intoSlotID: slot.id)
+        }
+        #expect(engine.outcome == .won(starsAwarded: engine.slots.count))
+        #expect(engine.isFrozen)
     }
 
     @Test func trayHasOneTokenPerSlotWithMatchingLetters() {

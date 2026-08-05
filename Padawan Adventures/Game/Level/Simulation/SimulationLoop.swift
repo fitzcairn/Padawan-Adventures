@@ -56,6 +56,13 @@ struct SimulationLoop: Sendable {
         self.enemyAI = EnemyAISystem(enemyConfig: enemyConfig, pathfinder: pathfinder)
     }
 
+    /// Freezes controls and enemy AI until the fight is resolved. Must be called by whoever
+    /// acts on `enemyContactID`; a tick that reports contact the caller ignores (pit and gate
+    /// entry outrank it) must not freeze, or the loop stays suspended once the world resumes.
+    mutating func beginEnemyEncounter() {
+        encounterActive = true
+    }
+
     mutating func removeEnemy(id: UUID, from world: inout GameWorld) {
         world.removeEntity(id: id)
         enemyStates[id] = nil
@@ -92,9 +99,7 @@ struct SimulationLoop: Sendable {
         result = runPositions(world: &world, movement: &movement, priorResult: result)
         result.enemyDisplayPoses = enemyDisplayPoses(world: world)
         result.enemyContactID = world.enemyInContactWithPlayer()?.id
-        if result.enemyContactID != nil {
-            encounterActive = true
-        } else {
+        if result.enemyContactID == nil {
             result.pickupContactID = world.pickupInContactWithPlayer()?.id
         }
         result.animationFrame = Int(tickCount % 4)

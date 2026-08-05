@@ -1137,6 +1137,84 @@ struct LevelConfigTests {
         #expect(!wp.letters.isEmpty)
     }
 
+    @Test func decodesGateEndingSoundMinigame() throws {
+        let yaml = """
+        name: Level 1
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: ending-sound-gate
+              min_word_count: 2
+              max_word_count: 2
+              words: [dog, wand]
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        guard case .wordPlug(let wp) = level.gate.minigames.first else {
+            Issue.record("expected ending-sound gate minigame")
+            return
+        }
+        #expect(level.gate.minigames.map(\.kind) == [.endingSoundPlug])
+        #expect(wp.letterPosition == .ending)
+        #expect(wp.words.map(\.word) == ["dog", "wand"])
+        #expect(!wp.letters.isEmpty)
+    }
+
+    @Test func rejectsGateEndingSoundWordWithoutPhonicsLetter() {
+        let yaml = """
+        name: Level 1
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: ending-sound-gate
+              words: [cat]
+        """
+        #expect(throws: WorldSeedError.invalidGateWordPlugLetters) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func allowsBothGateSoundMinigamesTogether() throws {
+        let yaml = """
+        name: Level 1
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: starting-sound-gate
+              words: [cat, dog]
+            - type: ending-sound-gate
+              words: [dog, wand]
+        """
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug])
+    }
+
     @Test func acceptsNonMultipleOfThreeGateWordPlugWordCount() throws {
         let yaml = """
         name: Level 1

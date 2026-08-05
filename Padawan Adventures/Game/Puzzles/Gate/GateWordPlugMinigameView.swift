@@ -26,10 +26,14 @@ struct GateWordPlugMinigameView: View {
         )
     }
 
+    private var rootID: String {
+        puzzleConfig.letterPosition == .ending ? "minigame.gate.ending_sound" : "minigame.gate.word_plug"
+    }
+
     var body: some View {
         MinigameShellView(
             scene: session.scene,
-            accessibilityRootID: "minigame.gate.word_plug",
+            accessibilityRootID: rootID,
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,

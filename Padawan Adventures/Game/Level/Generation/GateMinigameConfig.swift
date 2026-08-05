@@ -159,7 +159,29 @@ nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
     }
 }
 
-/// Per-entry gate word-plug config: match each word's missing first letter.
+/// Which letter of the word the player must plug in.
+nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
+    case starting
+    case ending
+
+    /// Lowercased answer letter; `nil` for an empty word.
+    func answerLetter(in word: String) -> String? {
+        switch self {
+        case .starting: word.first.map { String($0).lowercased() }
+        case .ending: word.last.map { String($0).lowercased() }
+        }
+    }
+
+    /// Console mask with the answer letter blanked: `_og` for starting, `do_` for ending.
+    func maskedText(for word: String) -> String {
+        switch self {
+        case .starting: "_\(word.dropFirst())"
+        case .ending: "\(word.dropLast())_"
+        }
+    }
+}
+
+/// Per-entry gate word-plug config: match each word's missing first or last letter (see `letterPosition`).
 /// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/phonics.yaml`.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Relative pick weight within `gate.minigames`.
@@ -168,6 +190,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     var wordCountMin: Int
     /// Inclusive upper bound for words per round (<= `maxWordsPerRound`).
     var wordCountMax: Int
+    /// Which letter the player supplies: word start (`starting-sound-gate`) or word end (`ending-sound-gate`).
+    var letterPosition: GateWordPlugLetterPosition
     var fx: SoundEffectTable
     /// Optional subset of shared word-catalog ids (`nil` = full catalog).
     var wordIDs: [String]?
@@ -194,6 +218,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         weight: Double = 1,
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
+        letterPosition: GateWordPlugLetterPosition = .starting,
         fx: SoundEffectTable = SoundEffectTable(),
         wordIDs: [String]? = nil,
         words: [GateWord],
@@ -203,6 +228,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         self.weight = weight
         self.wordCountMin = wordCountMin
         self.wordCountMax = wordCountMax
+        self.letterPosition = letterPosition
         self.fx = fx
         self.wordIDs = wordIDs?.map { $0.lowercased() }
         self.words = GateSpellingConfig.normalizedWords(words)
@@ -229,11 +255,14 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         }
         guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
         guard !letters.isEmpty else { throw WorldSeedError.invalidGateWordPlugLetters }
-        // Every word's first letter must have name + pronunciation audio.
+        // The answer letter must have name + pronunciation audio in phonics.yaml.
         let known = Set(letters.map(\.letter))
         for entry in words {
-            guard let first = entry.word.first,
-                  known.contains(String(first).lowercased()) else {
+            if letterPosition == .ending, entry.word.count < 2 {
+                throw WorldSeedError.invalidGateWordPlugLetters
+            }
+            guard let answer = letterPosition.answerLetter(in: entry.word),
+                  known.contains(answer) else {
                 throw WorldSeedError.invalidGateWordPlugLetters
             }
         }
@@ -245,6 +274,7 @@ nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIte
     case spelling = "spelling-image-gate"
     case letterMatch = "letter-sound-gate"
     case wordPlug = "starting-sound-gate"
+    case endingSoundPlug = "ending-sound-gate"
 }
 
 /// Gate kind + pick weight used during generation.
@@ -263,7 +293,8 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
         switch self {
         case .spelling: .spelling
         case .letterMatch: .letterMatch
-        case .wordPlug: .wordPlug
+        // Both word-plug YAML types share this case; the mode picks the kind.
+        case .wordPlug(let config): config.letterPosition == .ending ? .endingSoundPlug : .wordPlug
         }
     }
 

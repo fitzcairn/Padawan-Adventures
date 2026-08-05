@@ -68,6 +68,15 @@ struct PitBridgeMinigameEngineTests {
         #expect(engine.currentImageName == "sun")
         #expect(engine.currentSfx == "sfx_word_sun")
         #expect(engine.currentAnswer == "n")
+        #expect(engine.maskedPromptText == "su_")
+    }
+
+    @Test func maskedPromptTextBlanksLastLetter() {
+        let car = WordCatalog.imagedFallbackEntry(word: "car")
+        let engine = makeEngine(minWords: 1, maxWords: 1, words: [car], seed: 1)
+        #expect(engine.maskedPromptText == "ca_")
+        #expect(engine.maskedPromptText.last == "_")
+        #expect(String(engine.maskedPromptText.dropLast()) == String(engine.currentWord.dropLast()))
     }
 
     @Test func wrongAcceptLeavesStateUntouched() {

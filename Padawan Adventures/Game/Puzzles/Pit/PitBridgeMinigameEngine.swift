@@ -81,6 +81,12 @@ nonisolated struct PitBridgeMinigameEngine {
         return String(last)
     }
 
+    /// Current word with the final letter replaced by `_` (e.g. `ca_` for `car`).
+    var maskedPromptText: String {
+        guard !currentWord.isEmpty else { return "" }
+        return String(currentWord.dropLast()) + "_"
+    }
+
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
         self.config = config
         self.rng = rng

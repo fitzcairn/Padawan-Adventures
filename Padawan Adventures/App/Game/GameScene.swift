@@ -199,6 +199,7 @@ final class GameScene: SKScene {
 
             if let enemyID = result.enemyContactID {
                 isPausedForEncounter = true
+                simulationLoop.beginEnemyEncounter()
                 onEnemyContact?(enemyID)
                 break
             }

@@ -102,6 +102,9 @@ pit:
 # `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
 #   Its `words:` are ids that must resolve in words.yaml. Plays the starting-letter pronunciation
 #   when a plug is picked up. Word count snaps to a multiple of 3 in `min_word_count`...`max_word_count`.
+# `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
+#   LAST letter (`do_` for dog) and the socket sits to the right of the plate. Every word's last
+#   letter must resolve in phonics.yaml, so words ending in t/r/k/n (cat, star, book, sun) are out.
 # `spelling-image-gate`: arrange letter tokens to spell the prompted word. Stars = letters in the word.
 #   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
 # `letter-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = letters matched.
@@ -113,11 +116,19 @@ gate:
   minigame_probability: 1.0
   minigames:
     - type: starting-sound-gate
-      weight: 1.0
+      weight: 0.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
       words: [cat, dog, star, bath, dance, book, lightbulb, wand]
+      fx: { loop: gate-spelling-loop-arc }
+    - type: ending-sound-gate
+      weight: 1.0
+      # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
+      min_word_count: 2
+      max_word_count: 2
+      # Each word's LAST letter must exist in phonics.yaml.
+      words: [dog, wand, cloud, lightbulb, pencil]
       fx: { loop: gate-spelling-loop-arc }
     - type: spelling-image-gate
       weight: 0.0

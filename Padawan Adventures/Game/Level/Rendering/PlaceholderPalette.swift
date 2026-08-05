@@ -14,12 +14,15 @@ extension PlaceholderFactory {
     static let letterMatchGateColor = UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
     /// Word-plug gate.
     static let wordPlugGateColor = UIColor(red: 1.0, green: 0.78, blue: 0.35, alpha: 1)
+    /// Ending-sound word-plug gate.
+    static let endingSoundPlugGateColor = UIColor(red: 0.85, green: 0.55, blue: 1.0, alpha: 1)
 
     static func gateColor(for minigame: GateMinigameKind) -> UIColor {
         switch minigame {
         case .spelling: spellingGateColor
         case .letterMatch: letterMatchGateColor
         case .wordPlug: wordPlugGateColor
+        case .endingSoundPlug: endingSoundPlugGateColor
         }
     }
     /// Raised roof fill between wall tops.

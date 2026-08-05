@@ -15,12 +15,14 @@ nonisolated struct GateWordPlugMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var wordCountMin: Int
         var wordCountMax: Int
+        var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
         var letters: [GateLetter]
 
         init(from puzzle: GateWordPlugConfig) {
             wordCountMin = puzzle.wordCountMin
             wordCountMax = puzzle.wordCountMax
+            letterPosition = puzzle.letterPosition
             words = puzzle.words
             letters = puzzle.letters
         }
@@ -28,11 +30,13 @@ nonisolated struct GateWordPlugMinigameEngine {
         init(
             wordCountMin: Int = 3,
             wordCountMax: Int = 6,
+            letterPosition: GateWordPlugLetterPosition = .starting,
             words: [GateWord],
             letters: [GateLetter]
         ) {
             self.wordCountMin = wordCountMin
             self.wordCountMax = wordCountMax
+            self.letterPosition = letterPosition
             self.words = GateSpellingConfig.normalizedWords(words)
             self.letters = GateLetterMatchConfig.normalizedLetters(letters)
         }
@@ -109,15 +113,13 @@ nonisolated struct GateWordPlugMinigameEngine {
         let chosen = Array(pool.prefix(count))
 
         slots = chosen.map { entry in
-            let letter = String(entry.word.prefix(1)).lowercased()
-            let rest = String(entry.word.dropFirst())
-            return WordSlot(
+            WordSlot(
                 id: UUID(),
                 word: entry.word,
                 imageName: entry.image,
-                maskedText: "_\(rest)",
+                maskedText: config.letterPosition.maskedText(for: entry.word),
                 wordTrackID: entry.sfx,
-                letter: letter
+                letter: config.letterPosition.answerLetter(in: entry.word) ?? ""
             )
         }
 

@@ -118,8 +118,16 @@ extension GateWordPlugScene {
             let cellMinX = gridMinX + CGFloat(column) * (pairWidth + hGap)
             let rowCenterY = gridMinY + gridHeight - rectHeight * 0.5 - CGFloat(row) * (rectHeight + vGap)
 
-            let socketCenter = CGPoint(x: cellMinX + diameter * 0.5, y: rowCenterY)
-            let rectCenter = CGPoint(x: cellMinX + diameter + socketRectGap + rectWidth * 0.5, y: rowCenterY)
+            // Ending-sound rows put the socket beside the trailing blank: [plate] gap [socket].
+            let socketLeads = puzzleConfig.letterPosition == .starting
+            let socketCenter = CGPoint(
+                x: cellMinX + (socketLeads ? diameter * 0.5 : rectWidth + socketRectGap + diameter * 0.5),
+                y: rowCenterY
+            )
+            let rectCenter = CGPoint(
+                x: cellMinX + (socketLeads ? diameter + socketRectGap : 0) + rectWidth * 0.5,
+                y: rowCenterY
+            )
 
             let plateSize = CGSize(width: rectWidth, height: rectHeight)
             let plateTexture = GateWordPlugImageSprites.image(named: slot.imageName).map {

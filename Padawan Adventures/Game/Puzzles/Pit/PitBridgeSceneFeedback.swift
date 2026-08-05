@@ -2,9 +2,14 @@ import SpriteKit
 import UIKit
 
 extension PitBridgeScene {
-    func handleCorrectDrop(node: SKNode, id: UUID, slotIndex: Int, won: Bool) {
+    func handleCorrectDrop(node: SKNode, id: UUID, slotIndex: Int, won: Bool, letter: String) {
         let target = geometry.slotCenter(slotIndex)
         node.position = target
+        setBlankLetterText(letter)
+        flashBlankLetter(color: platformCorrectTint) { [weak self] in
+            // Keep the filled letter green until the next round replaces the prompt.
+            self?.setBlankLetterFillColor(self?.platformCorrectTint ?? .systemGreen)
+        }
         flashOverlay(on: node, color: platformCorrectTint) { [weak self] in
             guard let self else { return }
             self.playDucked(
@@ -42,7 +47,12 @@ extension PitBridgeScene {
         }
     }
 
-    func handleIncorrectDrop(node: SKNode) {
+    func handleIncorrectDrop(node: SKNode, letter: String) {
+        setBlankLetterText(letter)
+        flashBlankLetter(color: platformWrongTint) { [weak self] in
+            self?.setBlankLetterText("_")
+            self?.setBlankLetterFillColor(.white)
+        }
         flashOverlay(on: node, color: platformWrongTint) { [weak self] in
             guard let self else { return }
             self.playDucked(

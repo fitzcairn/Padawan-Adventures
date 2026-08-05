@@ -28,6 +28,8 @@ final class PitBridgeScene: MinigameScene {
     var placedTileNodes: [SKNode] = []
     var slotBoxNode: SKShapeNode?
     var wordPromptNode: SKNode?
+    /// Last-letter blank under the word illustration (`_` until a tile is dropped).
+    var blankLetterNode: SKNode?
     var draggedNode: SKNode?
     var dragOffset: CGPoint = .zero
     var dragStartPosition: CGPoint = .zero
@@ -57,6 +59,8 @@ final class PitBridgeScene: MinigameScene {
     static let springBackDuration: TimeInterval = 0.18
     static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
     static let wordPromptNodeName = "wordPrompt"
+    static let blankLetterNodeName = "blankLetter"
+    static let wordSpellingNodeName = "wordSpelling"
 
     init(
         size: CGSize,

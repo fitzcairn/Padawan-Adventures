@@ -79,21 +79,31 @@ nonisolated enum MinigameDecodeRegistry {
                 music: entry.music
             ))
         case GateMinigameKind.wordPlug.rawValue:
-            return .wordPlug(GateWordPlugConfig(
-                weight: entry.weight ?? 1,
-                wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,
-                wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
-                fx: entry.fx ?? SoundEffectTable(),
-                wordIDs: entry.words?.map { $0.lowercased() },
-                words: [],
-                letters: [],
-                music: entry.music
-            ))
+            return .wordPlug(Self.gateWordPlugConfig(from: entry, letterPosition: .starting))
+        case GateMinigameKind.endingSoundPlug.rawValue:
+            return .wordPlug(Self.gateWordPlugConfig(from: entry, letterPosition: .ending))
         default:
             throw WorldSeedError.decodeFailed(
                 "Unknown gate minigame type: '\(entry.type)'"
             )
         }
+    }
+
+    private static func gateWordPlugConfig(
+        from entry: GateMinigameDTO,
+        letterPosition: GateWordPlugLetterPosition
+    ) -> GateWordPlugConfig {
+        GateWordPlugConfig(
+            weight: entry.weight ?? 1,
+            wordCountMin: entry.wordCountMin ?? GateWordPlugConfig.fallback.wordCountMin,
+            wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
+            letterPosition: letterPosition,
+            fx: entry.fx ?? SoundEffectTable(),
+            wordIDs: entry.words?.map { $0.lowercased() },
+            words: [],
+            letters: [],
+            music: entry.music
+        )
     }
 
     // MARK: - Combat

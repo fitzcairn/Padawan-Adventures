@@ -17,6 +17,7 @@ extension PitBridgeScene {
         placedTileNodes = []
         slotBoxNode = nil
         wordPromptNode = nil
+        blankLetterNode = nil
 
         let geo = geometry
         addPad(rect: geo.leftPadRect, name: "leftPad")
