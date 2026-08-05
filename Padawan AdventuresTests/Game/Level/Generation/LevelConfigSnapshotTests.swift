@@ -81,13 +81,13 @@ struct LevelConfigSnapshotTests {
         #expect(endingSound.letterPosition == .ending)
         #expect(endingSound.words.map(\.word) == ["cloud", "dog", "lightbulb", "pencil", "wand"])
 
-        #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge, .startingSoundBridge])
+        #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
         #expect(level.pit.minigames.map(\.weight) == [0, 0, 1])
-        guard case .spelling(let spelling) = level.pit.minigames[0] else {
-            Issue.record("expected pit spelling entry")
+        guard case .soundOutWord(let soundOut) = level.pit.minigames[0] else {
+            Issue.record("expected pit sound-out-word entry")
             return
         }
-        #expect(spelling.words.map(\.word) == ["cat", "dog", "star"])
+        #expect(soundOut.words.map(\.word) == ["cat", "dog", "star", "sun"])
         guard case .bridge(let bridge) = level.pit.minigames[1] else {
             Issue.record("expected pit bridge entry")
             return

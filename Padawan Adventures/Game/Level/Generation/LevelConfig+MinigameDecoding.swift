@@ -66,7 +66,7 @@ private nonisolated struct CombatConfigDTO: Decodable {
 // MARK: - PitConfig Decodable (private DTO)
 
 extension PitConfig {
-    /// Decodes the `pit:` keyed block or falls back to spelling-only.
+    /// Decodes the `pit:` keyed block or falls back to sound-out-word only.
     nonisolated init(
         from decoder: Decoder,
         container: KeyedDecodingContainer<LevelConfig.CodingKeys>

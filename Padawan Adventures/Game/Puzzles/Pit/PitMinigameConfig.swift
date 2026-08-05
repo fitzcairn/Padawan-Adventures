@@ -2,8 +2,8 @@ import Foundation
 
 /// Discriminator for which pit minigame a pit contact runs. Raw values match YAML `type:`.
 nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
-    /// The original hop-the-letters spelling puzzle (`PitScene`).
-    case spelling = "spelling-image-pit"
+    /// Sound out the word one grapheme at a time (`PitSoundOutWordScene`).
+    case soundOutWord = "sound-out-word-pit"
     /// Drag lettered floor tiles into slots to bridge the pit (`PitBridgeScene`).
     case bridge = "ending-sound-pit"
     /// Same board, but the tile must match the word's first letter.
@@ -187,12 +187,12 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
 
 /// Discriminated union over the pit minigame entries in level YAML.
 nonisolated enum PitMinigameConfig: Equatable, Sendable {
-    case spelling(PitPuzzleConfig)
+    case soundOutWord(PitSoundOutWordConfig)
     case bridge(PitBridgeConfig)
 
     var kind: PitMinigameKind {
         switch self {
-        case .spelling: .spelling
+        case .soundOutWord: .soundOutWord
         // Both bridge YAML types share this case; the mode picks the kind.
         case .bridge(let config):
             config.letterPosition == .starting ? .startingSoundBridge : .bridge
@@ -202,7 +202,7 @@ nonisolated enum PitMinigameConfig: Equatable, Sendable {
     /// Relative pick weight; negatives are rejected by `PitConfig.validate()`.
     var weight: Double {
         switch self {
-        case .spelling(let config): config.weight
+        case .soundOutWord(let config): config.weight
         case .bridge(let config): config.weight
         }
     }
@@ -216,13 +216,13 @@ nonisolated struct PitConfig: Equatable, Sendable {
     var music: String?
     var minigames: [PitMinigameConfig]
 
-    /// Used when a level omits `pit:` entirely — spelling only, preserving old behaviour.
+    /// Used when a level omits `pit:` entirely — sound-out-word only.
     nonisolated static let fallback = PitConfig(
         fx: SoundEffectTable(events: [
             "jump": "pit-jump",
         ]),
         music: "pit",
-        minigames: [.spelling(.fallback)]
+        minigames: [.soundOutWord(.fallback)]
     )
 
     nonisolated init(fx: SoundEffectTable, music: String? = nil, minigames: [PitMinigameConfig]) {
@@ -253,16 +253,15 @@ nonisolated struct PitConfig: Equatable, Sendable {
     ) throws {
         for index in minigames.indices {
             switch minigames[index] {
-            case .spelling(var config):
+            case .soundOutWord(var config):
                 try config.resolveWords(from: wordCatalog)
-                minigames[index] = .spelling(config)
+                try config.resolveGraphemes(from: graphemeCatalog)
+                minigames[index] = .soundOutWord(config)
             case .bridge(var config):
                 try config.resolveWords(from: wordCatalog)
                 minigames[index] = .bridge(config)
             }
         }
-        // `graphemeCatalog` is reserved for `sound-out-word-pit` once that case lands.
-        _ = graphemeCatalog
     }
 
     func validate() throws {
@@ -280,7 +279,7 @@ nonisolated struct PitConfig: Equatable, Sendable {
                 )
             }
             switch entry {
-            case .spelling(let config): try config.validate()
+            case .soundOutWord(let config): try config.validate()
             case .bridge(let config): try config.validate()
             }
         }

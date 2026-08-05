@@ -73,8 +73,11 @@ combat:
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.jump` fires on every hop; `win` falls back to audio.yaml.
-# `spelling-image-pit`: hop the letter platforms to spell the word. Stars = graphemes in the word.
-#   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
+# `sound-out-word-pit`: sound out the word one grapheme at a time. Each grapheme fades in a
+#   set of blank tiles; drag Kam onto the one whose sound comes next. Stars = graphemes in the
+#   word. Its `words:` are ids that must resolve in words.yaml (each must have an image and be
+#   >= 2 graphemes), and every grapheme of every word must resolve in graphemes.yaml. Set size
+#   is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
 #   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
 #   shows that image and plays the word's sfx. Pool must hold at least `max_word_count`
@@ -86,10 +89,11 @@ pit:
   music: pit
   fx: { jump: pit-jump }
   minigames:
-    - type: spelling-image-pit
+    - type: sound-out-word-pit
       weight: 0.0
-      padding_grapheme_count: 6
-      words: [cat, dog, star]
+      min_choice_count: 3
+      max_choice_count: 3
+      words: [cat, dog, sun, star]
     - type: ending-sound-pit
       weight: 0.0
       min_word_count: 3

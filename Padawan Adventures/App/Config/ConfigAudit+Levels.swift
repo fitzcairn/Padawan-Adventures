@@ -138,7 +138,7 @@ extension ConfigAudit {
         for (idx, minigame) in level.pit.minigames.enumerated() {
             let ids: [String]?
             switch minigame {
-            case .spelling(let c): ids = c.wordIDs
+            case .soundOutWord(let c): ids = c.wordIDs
             case .bridge(let c): ids = c.wordIDs
             }
             for id in ids ?? [] where words.word(named: id) == nil {

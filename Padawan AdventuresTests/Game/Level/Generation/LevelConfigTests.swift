@@ -42,8 +42,8 @@ struct LevelConfigTests {
         pit:
           music: pit
           minigames:
-            - type: spelling-image-pit
-              words: [cat, dog, star]
+            - type: sound-out-word-pit
+              words: [cat, dog, sun, star]
         """
 
     /// Base YAML without gate/pit blocks so inheritance tests can append their own.
@@ -612,7 +612,9 @@ struct LevelConfigTests {
     }
 
     @Test func inheritsGateConfigFromBase() throws {
-        let catalog = try WordCatalog.decode(from: """
+        // Custom ids for the gate entry, plus the fallback catalog so the omitted
+        // pit block (PitConfig.fallback → sound-out-word-pit) can still resolve.
+        let custom = try WordCatalog.decode(from: """
         words:
           moon:
             sfx: sfx_word_moon
@@ -628,6 +630,7 @@ struct LevelConfigTests {
               su: sfx_word_sun_su
               sun: sfx_word_sun_sun
         """)
+        let catalog = WordCatalog(words: WordCatalog.fallback.words + custom.words)
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
@@ -653,7 +656,9 @@ struct LevelConfigTests {
     }
 
     @Test func childCanOverrideInheritedGateWordIDs() throws {
-        let catalog = try WordCatalog.decode(from: """
+        // Custom ids for the gate entry, plus the fallback catalog so the omitted
+        // pit block (PitConfig.fallback → sound-out-word-pit) can still resolve.
+        let custom = try WordCatalog.decode(from: """
         words:
           moon:
             sfx: sfx_word_moon
@@ -677,6 +682,7 @@ struct LevelConfigTests {
               bea: sfx_word_beam_bea
               beam: sfx_word_beam_beam
         """)
+        let catalog = WordCatalog(words: WordCatalog.fallback.words + custom.words)
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
@@ -780,13 +786,13 @@ struct LevelConfigTests {
         })
     }
 
-    /// First `type: spelling-image-pit` entry in a level's pit config.
-    private func pitSpelling(_ level: LevelConfig) throws -> PitPuzzleConfig {
+    /// First `type: sound-out-word-pit` entry in a level's pit config.
+    private func pitSoundOutWord(_ level: LevelConfig) throws -> PitSoundOutWordConfig {
         for minigame in level.pit.minigames {
-            if case .spelling(let config) = minigame { return config }
+            if case .soundOutWord(let config) = minigame { return config }
         }
-        Issue.record("expected a pit spelling entry")
-        throw WorldSeedError.decodeFailed("missing pit spelling entry")
+        Issue.record("expected a pit sound-out-word entry")
+        throw WorldSeedError.decodeFailed("missing pit sound-out-word entry")
     }
 
     @Test func bundleBaseLevelProvidesPitDefaults() throws {
@@ -797,10 +803,11 @@ struct LevelConfigTests {
         #expect(tython.pit.fx.trackID(for: "win") == nil)
         #expect(tython.pit.fx.trackID(for: "lose") == nil)
         #expect(tython.pit.fx.trackID(for: "jump") == "pit-jump")
-        let spelling = try pitSpelling(tython)
-        #expect(spelling.numPaddingLetters == 6)
-        #expect(spelling.words.map(\.word) == ["cat", "dog", "star"])
-        #expect(spelling.words.contains {
+        let soundOut = try pitSoundOutWord(tython)
+        #expect(soundOut.choiceCountMin == 3)
+        #expect(soundOut.choiceCountMax == 3)
+        #expect(soundOut.words.map(\.word) == ["cat", "dog", "star", "sun"])
+        #expect(soundOut.words.contains {
             $0.word == "star"
                 && $0.spelling == "sfx_word_star"
                 && $0.progressiveTrack(forPrefix: "sta") == "sfx_word_star_sta"
@@ -822,7 +829,7 @@ struct LevelConfigTests {
         pit:
           fx: { win: sfx_pit_win_alt, lose: sfx_pit_lose_alt }
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               words: [cat]
         gate:
           fx: { opened: sfx_gate_opened }
@@ -859,12 +866,12 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               words: [star, car]
         """
         let level = try LevelConfig.decode(from: yaml)
-        let spelling = try pitSpelling(level)
-        #expect(spelling.words.map(\.word) == ["car", "star"])
+        let soundOut = try pitSoundOutWord(level)
+        #expect(soundOut.words.map(\.word) == ["car", "star"])
     }
 
     @Test func rejectsEmptyPitWords() {
@@ -880,10 +887,10 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               words: []
         """
-        #expect(throws: WorldSeedError.invalidPitWords) {
+        #expect(throws: WorldSeedError.invalidPitSoundOutWordWords) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -901,10 +908,10 @@ struct LevelConfigTests {
             pit_probability: 0
         pit:
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               words: [not_a_real_word]
         """
-        #expect(throws: WorldSeedError.invalidPitWords) {
+        #expect(throws: WorldSeedError.invalidPitSoundOutWordWords) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1750,14 +1757,14 @@ struct LevelConfigTests {
 
     """
 
-    @Test func defaultsToSpellingOnlyWhenPitBlockOmitted() throws {
+    @Test func defaultsToSoundOutWordOnlyWhenPitBlockOmitted() throws {
         let level = try LevelConfig.decode(from: Self.pitLevelPrefix)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
         #expect(level.pit.fx.trackID(for: "lose") == nil)
-        #expect(level.pit.minigames.map(\.kind) == [.spelling])
-        let spelling = try pitSpelling(level)
-        #expect(spelling.weight == 1)
-        #expect(!spelling.words.isEmpty)
+        #expect(level.pit.minigames.map(\.kind) == [.soundOutWord])
+        let soundOut = try pitSoundOutWord(level)
+        #expect(soundOut.weight == 1)
+        #expect(!soundOut.words.isEmpty)
     }
 
     @Test func decodesPitMinigamesFromYAML() throws {
@@ -1765,9 +1772,10 @@ struct LevelConfigTests {
         pit:
           fx: { jump: pit-jump }
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               weight: 0.0
-              padding_grapheme_count: 6
+              min_choice_count: 3
+              max_choice_count: 3
               words: [cat, dog, star]
             - type: ending-sound-pit
               weight: 1.0
@@ -1776,13 +1784,14 @@ struct LevelConfigTests {
               words: [car, dog, trash, sun, star, book]
         """)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
-        #expect(level.pit.minigames.map(\.kind) == [.spelling, .bridge])
-        if case .spelling(let spelling) = level.pit.minigames[0] {
-            #expect(spelling.weight == 0)
-            #expect(spelling.numPaddingLetters == 6)
-            #expect(spelling.words.map(\.word) == ["cat", "dog", "star"])
+        #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge])
+        if case .soundOutWord(let soundOut) = level.pit.minigames[0] {
+            #expect(soundOut.weight == 0)
+            #expect(soundOut.choiceCountMin == 3)
+            #expect(soundOut.choiceCountMax == 3)
+            #expect(soundOut.words.map(\.word) == ["cat", "dog", "star"])
         } else {
-            Issue.record("expected spelling entry")
+            Issue.record("expected sound-out-word entry")
         }
         if case .bridge(let bridge) = level.pit.minigames[1] {
             #expect(bridge.weight == 1)
@@ -1871,7 +1880,7 @@ struct LevelConfigTests {
 
         pit:
           minigames:
-            - type: spelling-image-pit
+            - type: sound-out-word-pit
               words: [cat]
         """
         let child = """
@@ -1893,7 +1902,7 @@ struct LevelConfigTests {
         let config = PitConfig(
             fx: .empty,
             minigames: [
-                .spelling(PitPuzzleConfig(weight: 0, words: PitPuzzleConfig.fallback.words)),
+                .soundOutWord(PitSoundOutWordConfig(weight: 0, words: PitSoundOutWordConfig.fallback.words, graphemes: PitSoundOutWordConfig.fallback.graphemes)),
                 .bridge(PitBridgeConfig(weight: 1)),
             ]
         )
@@ -1907,7 +1916,7 @@ struct LevelConfigTests {
         let config = PitConfig(
             fx: .empty,
             minigames: [
-                .spelling(PitPuzzleConfig(weight: 1, words: PitPuzzleConfig.fallback.words)),
+                .soundOutWord(PitSoundOutWordConfig(weight: 1, words: PitSoundOutWordConfig.fallback.words, graphemes: PitSoundOutWordConfig.fallback.graphemes)),
                 .bridge(PitBridgeConfig(weight: 1)),
                 .bridge(PitBridgeConfig(weight: 1, letterPosition: .starting)),
             ]
@@ -1924,12 +1933,12 @@ struct LevelConfigTests {
         let config = PitConfig(
             fx: .empty,
             minigames: [
-                .spelling(PitPuzzleConfig(weight: 0, words: PitPuzzleConfig.fallback.words)),
+                .soundOutWord(PitSoundOutWordConfig(weight: 0, words: PitSoundOutWordConfig.fallback.words, graphemes: PitSoundOutWordConfig.fallback.graphemes)),
                 .bridge(PitBridgeConfig(weight: 0)),
             ]
         )
         var rng = PitSeededGenerator(seed: 3)
-        #expect(try config.pickMinigame(using: &rng).kind == .spelling)
+        #expect(try config.pickMinigame(using: &rng).kind == .soundOutWord)
     }
 
     @Test func pickPitMinigameThrowsWhenMinigamesEmpty() {
@@ -2106,7 +2115,7 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.pit.minigames.map(\.kind) == [.spelling, .bridge, .startingSoundBridge])
+        #expect(tython.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
         #expect(tython.pit.minigames.map(\.weight) == [0, 0, 1])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.letterPosition == .ending)

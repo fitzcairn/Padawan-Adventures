@@ -150,13 +150,17 @@ nonisolated enum MinigameDecodeRegistry {
 
     static func decodePitMinigame(from entry: PitMinigameDTO) throws -> PitMinigameConfig {
         switch entry.type {
-        case PitMinigameKind.spelling.rawValue:
-            return .spelling(PitPuzzleConfig(
+        case PitMinigameKind.soundOutWord.rawValue:
+            return .soundOutWord(PitSoundOutWordConfig(
                 weight: entry.weight ?? 1,
-                numPaddingLetters: entry.numPaddingLetters
-                    ?? PitPuzzleConfig.fallback.numPaddingLetters,
-                wordIDs: entry.words?.map { $0.lowercased() },
-                words: []
+                choiceCountMin: entry.choiceCountMin
+                    ?? PitSoundOutWordConfig.fallback.choiceCountMin,
+                choiceCountMax: entry.choiceCountMax
+                    ?? PitSoundOutWordConfig.fallback.choiceCountMax,
+                wordIDs: entry.words?.map { $0.lowercased() }
+                    ?? PitSoundOutWordConfig.defaultWordIDs,
+                words: [],
+                graphemes: []
             ))
         case PitMinigameKind.bridge.rawValue:
             return .bridge(Self.pitBridgeConfig(from: entry, letterPosition: .ending))
@@ -208,8 +212,9 @@ nonisolated struct CombatMinigameDTO: Decodable {
 nonisolated struct PitMinigameDTO: Decodable {
     var type: String
     var weight: Double?
-    var numPaddingLetters: Int?
-    /// Catalog ids for `spelling`, plain words for `bridge`.
+    var choiceCountMin: Int?
+    var choiceCountMax: Int?
+    /// Catalog ids for sound-out-word and bridge pit minigames.
     var words: [String]?
     var minWords: Int?
     var maxWords: Int?
@@ -217,7 +222,8 @@ nonisolated struct PitMinigameDTO: Decodable {
     enum CodingKeys: String, CodingKey {
         case type
         case weight
-        case numPaddingLetters = "padding_grapheme_count"
+        case choiceCountMin = "min_choice_count"
+        case choiceCountMax = "max_choice_count"
         case words
         case minWords = "min_word_count"
         case maxWords = "max_word_count"

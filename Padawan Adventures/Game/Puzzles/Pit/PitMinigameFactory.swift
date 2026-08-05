@@ -6,19 +6,19 @@ enum PitMinigameFactory {
         config: PitMinigameConfig,
         pitFx: SoundEffectTable,
         playerFx: SoundEffectTable,
-        hudConfig: HudConfig,
+        hudConfig _: HudConfig,
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
+        // HUD lives in the scene prompt for sound-out-word; keep the param for callers.
         switch config {
-        case .spelling(let spelling):
-            PitMinigameView(
-                puzzleConfig: spelling,
+        case .soundOutWord(let soundOut):
+            PitSoundOutWordMinigameView(
+                soundOutConfig: soundOut,
                 pitFx: pitFx,
-                hudConfig: hudConfig,
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,

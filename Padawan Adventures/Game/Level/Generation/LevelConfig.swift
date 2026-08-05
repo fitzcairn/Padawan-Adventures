@@ -1,56 +1,6 @@
 import Foundation
 import Yams
 
-/// Per-entry pit spelling-hop settings under `pit.minigames` with `type: spelling-image-pit`.
-/// Vocabulary lives in shared `Resources/Config/Vocab/words.yaml`; levels may optionally subset via `words: [id, …]`.
-nonisolated struct PitPuzzleConfig: Equatable, Sendable {
-    /// Relative pick weight within `pit.minigames`.
-    var weight: Double
-    /// Extra random letters beyond the chosen word (total sprites = word length + this).
-    var numPaddingLetters: Int
-    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
-    var words: [GateWord]
-
-    nonisolated static let fallback = PitPuzzleConfig(
-        numPaddingLetters: 6,
-        words: WordCatalog.fallback.words.filter { ["cat", "dog", "star"].contains($0.word) }
-    )
-
-    nonisolated init(
-        weight: Double = 1,
-        numPaddingLetters: Int = 6,
-        wordIDs: [String]? = nil,
-        words: [GateWord]
-    ) {
-        self.weight = weight
-        self.numPaddingLetters = numPaddingLetters
-        self.wordIDs = wordIDs?.map { $0.lowercased() }
-        self.words = GateWord.normalized(words)
-    }
-
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        do {
-            // `nil` wordIDs → full shared catalog (same as gate); YAML subsets via `words: [id, …]`.
-            words = try catalog.resolve(ids: wordIDs)
-        } catch WorldSeedError.invalidGateWords {
-            throw WorldSeedError.invalidPitWords
-        }
-    }
-
-    func validate() throws {
-        guard numPaddingLetters >= 0 else {
-            throw WorldSeedError.invalidPitWords
-        }
-        try CatalogValidators.validateWordEntries(
-            words,
-            emptyError: .invalidPitWords,
-            invalidEntryError: .invalidPitWords
-        )
-    }
-}
-
 /// Per-level map size and generation settings loaded from `Levels/_defaults.yaml` / `Levels/<id>/level.yaml`.
 nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default SF Symbol used when a level omits `artifact:`.
