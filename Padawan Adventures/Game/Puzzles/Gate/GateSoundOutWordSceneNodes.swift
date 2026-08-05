@@ -4,14 +4,15 @@ import UIKit
 extension GateSoundOutWordScene {
     // MARK: - Capacitors
 
-    /// Capacitor sprite plus an optional grapheme on its top face. Blank choices pass
-    /// `grapheme: nil` and reveal the glyph later via `revealGrapheme(on:_:)`.
+    /// Capacitor sprite plus a face overlay: blank choices show `play` (swapping to
+    /// `play.fill` while their sound plays); placed capacitors show the grapheme.
+    /// Correct drops crossfade the play icon → letter via `revealGrapheme(on:_:)`.
     func makeCapacitorNode(name: String, diameter: CGFloat, grapheme: String?) -> SKNode {
         let root = SKNode()
         root.name = name
         root.zPosition = 20
 
-        var labelOffsetY: CGFloat = 0
+        var faceOffsetY: CGFloat = 0
         var spriteHeight = diameter
         if let texture = GateSpellingCapacitorSprites.load(),
            let capacitor = GateSpellingCapacitorSprites.sprite(texture: texture, side: diameter) {
@@ -19,7 +20,7 @@ extension GateSoundOutWordScene {
             root.addChild(capacitor)
             spriteHeight = capacitor.size.height
             // Top-face center, then 7% of sprite height top padding (shift glyph down).
-            labelOffsetY = GateSpellingCapacitorSprites.letterOffsetY(for: spriteHeight)
+            faceOffsetY = GateSpellingCapacitorSprites.letterOffsetY(for: spriteHeight)
                 - spriteHeight * 0.07
         } else {
             let circle = SKShapeNode(circleOfRadius: diameter * 0.5)
@@ -29,33 +30,111 @@ extension GateSoundOutWordScene {
             circle.zPosition = 0
             circle.name = "capacitorFallback"
             root.addChild(circle)
-            labelOffsetY = -spriteHeight * 0.07
+            faceOffsetY = -spriteHeight * 0.07
         }
 
-        let label = OutlinedLetterFactory.make(
-            text: grapheme ?? "",
-            fontSize: capacitorGlyphFontSize(for: diameter),
-            style: .capacitorFace,
-            disablesInteraction: true
-        )
-        label.name = Self.capacitorGlyphName
-        label.position = CGPoint(x: 0, y: labelOffsetY)
-        label.zPosition = 1
-        label.alpha = grapheme == nil ? 0 : 1
-        root.addChild(label)
+        let facePosition = CGPoint(x: 0, y: faceOffsetY)
+        if let grapheme {
+            let label = OutlinedLetterFactory.make(
+                text: grapheme,
+                fontSize: capacitorGlyphFontSize(for: diameter),
+                style: .capacitorFace,
+                disablesInteraction: true
+            )
+            label.name = Self.capacitorGlyphName
+            label.position = facePosition
+            label.zPosition = 1
+            root.addChild(label)
+        } else if let play = makePlayIconNode(side: capacitorPlayIconSide(for: diameter)) {
+            // play / play.fill are optically left-heavy; nudge so they read centered.
+            play.position = CGPoint(x: facePosition.x + diameter * 0.03, y: facePosition.y)
+            play.zPosition = 1
+            root.addChild(play)
+        }
 
         return root
     }
 
     static let capacitorGlyphName = "capacitorGlyph"
+    static let capacitorPlayIconName = "capacitorPlayIcon"
+    static let capacitorPlayIconActionKey = "capacitorPlayIconPulse"
 
     func capacitorGlyphFontSize(for diameter: CGFloat) -> CGFloat {
         diameter * 0.5 * 1.35 * 0.85 * 0.95 * 0.95
     }
 
-    /// Swaps the blank face for the real grapheme and fades it in.
+    func capacitorPlayIconSide(for diameter: CGFloat) -> CGFloat {
+        capacitorGlyphFontSize(for: diameter) * 0.85
+    }
+
+    /// White SF Symbol baked into a texture (SKTexture ignores UIImage tints).
+    func bakePlayIconTexture(systemName: String, side: CGFloat) -> SKTexture? {
+        let pointSize = max(side, 1)
+        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
+        guard let symbol = UIImage(systemName: systemName, withConfiguration: config) else {
+            return nil
+        }
+        let size = CGSize(width: pointSize, height: pointSize)
+        let image = UIGraphicsImageRenderer(size: size).image { _ in
+            symbol
+                .withTintColor(.white, renderingMode: .alwaysOriginal)
+                .draw(in: CGRect(origin: .zero, size: size))
+        }
+        return SKTexture(image: image)
+    }
+
+    /// Idle + filled play textures for `side`, reused across the choice set.
+    func playIconTexturePair(side: CGFloat) -> (idle: SKTexture, filled: SKTexture)? {
+        if let cached = playIconTextures, abs(cached.side - side) < 0.5 {
+            return (cached.idle, cached.filled)
+        }
+        guard let idle = bakePlayIconTexture(systemName: "play", side: side),
+              let filled = bakePlayIconTexture(systemName: "play.fill", side: side) else {
+            return nil
+        }
+        playIconTextures = (side, idle, filled)
+        return (idle, filled)
+    }
+
+    /// Idle `play` icon; swapped to `play.fill` for the duration of a letter-sound tap.
+    func makePlayIconNode(side: CGFloat) -> SKSpriteNode? {
+        guard let textures = playIconTexturePair(side: side) else { return nil }
+        let node = SKSpriteNode(
+            texture: textures.idle,
+            size: CGSize(width: side, height: side)
+        )
+        node.name = Self.capacitorPlayIconName
+        node.isUserInteractionEnabled = false
+        return node
+    }
+
+    /// Shows `play.fill` while `trackID` plays, then restores the idle `play` outline.
+    func pulsePlayIcon(on root: SKNode, forTrackID trackID: String) {
+        guard let icon = root.childNode(withName: Self.capacitorPlayIconName) as? SKSpriteNode
+        else { return }
+        let side = max(icon.size.width, icon.size.height)
+        guard let textures = playIconTexturePair(side: side) else { return }
+        icon.removeAction(forKey: Self.capacitorPlayIconActionKey)
+        icon.texture = textures.filled
+        icon.run(
+            SKAction.sequence([
+                SKAction.wait(
+                    forDuration: SoundEffectsController.shared.cueDuration(of: trackID)
+                ),
+                SKAction.run { [weak icon] in icon?.texture = textures.idle },
+            ]),
+            withKey: Self.capacitorPlayIconActionKey
+        )
+    }
+
+    /// Crossfades the play cue into the grapheme that capacitor was hiding.
     func revealGrapheme(on root: SKNode, _ grapheme: String) {
-        guard let blank = root.childNode(withName: Self.capacitorGlyphName) else { return }
+        let play = root.childNode(withName: Self.capacitorPlayIconName)
+        play?.removeAction(forKey: Self.capacitorPlayIconActionKey)
+        let existingGlyph = root.childNode(withName: Self.capacitorGlyphName)
+        // Face center is local (0, y); play icons may be optically nudged on x.
+        let faceY = play?.position.y ?? existingGlyph?.position.y ?? 0
+
         let stack = OutlinedLetterFactory.make(
             text: grapheme,
             fontSize: capacitorGlyphFontSize(for: laidOutDiameter),
@@ -63,12 +142,20 @@ extension GateSoundOutWordScene {
             disablesInteraction: true
         )
         stack.name = Self.capacitorGlyphName
-        stack.position = blank.position
-        stack.zPosition = blank.zPosition
+        stack.position = CGPoint(x: 0, y: faceY)
+        stack.zPosition = 1
         stack.alpha = 0
-        blank.removeFromParent()
+        existingGlyph?.removeFromParent()
         root.addChild(stack)
-        stack.run(SKAction.fadeIn(withDuration: Self.letterRevealDuration))
+
+        let duration = Self.letterRevealDuration
+        if let play {
+            play.run(SKAction.sequence([
+                SKAction.fadeOut(withDuration: duration),
+                SKAction.removeFromParent(),
+            ]))
+        }
+        stack.run(SKAction.fadeIn(withDuration: duration))
     }
 
     func makeEndpointNode(radius: CGFloat, name: String) -> SKNode {

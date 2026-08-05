@@ -27,12 +27,16 @@ extension GateSoundOutWordScene {
     }
 
     /// Letter sound ("buh") for the grapheme hidden behind a blank capacitor.
+    /// Swaps that capacitor's idle `play` icon to `play.fill` for the clip duration.
     func playChoiceSound(choiceID: UUID) {
         guard let choice = engine.currentChoices.first(where: { $0.id == choiceID }),
               let trackID = engine.soundTrackID(for: choice.grapheme) else {
             return
         }
         SoundEffectsController.shared.play(trackID: trackID)
+        if let node = choiceNodes[choiceID] {
+            pulsePlayIcon(on: node, forTrackID: trackID)
+        }
     }
 
     func playCorrectSound() {

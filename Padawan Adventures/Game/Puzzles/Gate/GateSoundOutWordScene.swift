@@ -43,6 +43,8 @@ final class GateSoundOutWordScene: MinigameScene {
     var choiceNodes: [UUID: SKNode] = [:]
     var choiceHome: [UUID: CGPoint] = [:]
     var connectorSegments: [ElectricConnector] = []
+    /// Cached white `play` / `play.fill` textures for the current choice-icon side.
+    var playIconTextures: (side: CGFloat, idle: SKTexture, filled: SKTexture)?
 
     // MARK: State
 
