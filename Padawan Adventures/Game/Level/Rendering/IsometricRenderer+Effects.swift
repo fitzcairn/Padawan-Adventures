@@ -91,11 +91,11 @@ extension IsometricRenderer {
         worldRoot.run(.sequence(steps), withKey: "worldShake")
     }
 
-    func fadeWorld(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+    func fadeWorld(duration: TimeInterval = WorldFade.duration, completion: @escaping () -> Void) {
         fadeWorldOut(duration: duration, completion: completion)
     }
 
-    func fadeWorldOut(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+    func fadeWorldOut(duration: TimeInterval = WorldFade.duration, completion: @escaping () -> Void) {
         worldRoot.removeAction(forKey: "worldFade")
         worldRoot.run(.sequence([
             .fadeOut(withDuration: duration),
@@ -103,7 +103,7 @@ extension IsometricRenderer {
         ]), withKey: "worldFade")
     }
 
-    func fadeWorldIn(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+    func fadeWorldIn(duration: TimeInterval = WorldFade.duration, completion: @escaping () -> Void) {
         worldRoot.removeAction(forKey: "worldFade")
         worldRoot.alpha = 0
         worldRoot.isHidden = false

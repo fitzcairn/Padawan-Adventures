@@ -23,7 +23,7 @@ final class GameEncounterCoordinator {
         music: MusicCue,
         memoryLabel: String,
         @ViewBuilder makeView: @escaping (_ finish: @escaping (MinigameOutcome) -> Void) -> Content,
-        onOutcome: @escaping (_ outcome: MinigameOutcome?, _ done: @escaping () -> Void) -> Void
+        onOutcome: @escaping (_ outcome: MinigameOutcome?, _ returnToWorld: OverlayReturn) -> Void
     ) {
         // World one-shots (notice, footsteps, etc.) can still be audible when the
         // overlay starts — clear them so minigame / combat audio owns the mix.
@@ -43,9 +43,9 @@ final class GameEncounterCoordinator {
                     })
                 }
             },
-            onResolved: { done in
+            onResolved: { returnToWorld in
                 MemoryProbe.mark("minigame-dismiss-\(memoryLabel)")
-                onOutcome(outcomeBox.outcome, done)
+                onOutcome(outcomeBox.outcome, returnToWorld)
             }
         )
     }

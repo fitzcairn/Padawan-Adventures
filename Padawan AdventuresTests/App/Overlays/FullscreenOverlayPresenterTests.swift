@@ -11,35 +11,49 @@ struct FullscreenOverlayPresenterTests {
         }
     }
 
+    private func makePresenter(
+        fadeWorldOut: @escaping (_ duration: TimeInterval, _ completion: @escaping () -> Void) -> Void = { _, completion in completion() },
+        fadeWorldIn: @escaping (_ duration: TimeInterval, _ completion: @escaping () -> Void) -> Void = { _, completion in completion() },
+        present: @escaping (UIViewController) -> Void = { _ in },
+        dismiss: @escaping (UIViewController, @escaping () -> Void) -> Void = { _, completion in completion() }
+    ) -> FullscreenOverlayPresenter {
+        FullscreenOverlayPresenter(dependencies: .init(
+            fadeWorldOut: fadeWorldOut,
+            fadeWorldIn: fadeWorldIn,
+            present: present,
+            dismiss: dismiss
+        ))
+    }
+
+    private func finishHost(_ host: FullscreenOverlayHost) {
+        let animationsEnabled = UIView.areAnimationsEnabled
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(animationsEnabled) }
+        host.loadViewIfNeeded()
+        host.finish()
+    }
+
     @Test func reentrancyIgnoresSecondPresentWhileBusy() {
         var fadeCompletions: [() -> Void] = []
         var presentedCount = 0
-        var dismissedCount = 0
 
-        let presenter = FullscreenOverlayPresenter(dependencies: .init(
-            fadeWorldOut: { completion in fadeCompletions.append(completion) },
-            present: { _ in presentedCount += 1 },
-            dismiss: { _, completion in
-                dismissedCount += 1
-                completion()
-            }
-        ))
+        let presenter = makePresenter(
+            fadeWorldOut: { _, completion in fadeCompletions.append(completion) },
+            present: { _ in presentedCount += 1 }
+        )
 
-        var resolveCount = 0
         presenter.present(
             fadeWorldOut: true,
             makeViewController: { makeHost() },
-            onResolved: { done in
-                resolveCount += 1
-                done()
+            onResolved: { returnToWorld in
+                returnToWorld.crossfadeToWorld { $0() }
             }
         )
         presenter.present(
             fadeWorldOut: true,
             makeViewController: { makeHost() },
-            onResolved: { done in
-                resolveCount += 1
-                done()
+            onResolved: { returnToWorld in
+                returnToWorld.crossfadeToWorld { $0() }
             }
         )
 
@@ -49,28 +63,31 @@ struct FullscreenOverlayPresenterTests {
 
         fadeCompletions[0]()
         #expect(presentedCount == 1)
-        #expect(fadeCompletions.count == 1)
-        #expect(resolveCount == 0)
-        #expect(dismissedCount == 0)
     }
 
     @Test func fadeThenPresentWaitsForFadeCompletion() {
         var fadeCompletion: (() -> Void)?
+        var fadeOutDuration: TimeInterval?
         var presented = false
 
-        let presenter = FullscreenOverlayPresenter(dependencies: .init(
-            fadeWorldOut: { completion in fadeCompletion = completion },
-            present: { _ in presented = true },
-            dismiss: { _, completion in completion() }
-        ))
+        let presenter = makePresenter(
+            fadeWorldOut: { duration, completion in
+                fadeOutDuration = duration
+                fadeCompletion = completion
+            },
+            present: { _ in presented = true }
+        )
 
         presenter.present(
             fadeWorldOut: true,
             makeViewController: { makeHost() },
-            onResolved: { done in done() }
+            onResolved: { returnToWorld in
+                returnToWorld.crossfadeToWorld { $0() }
+            }
         )
 
         #expect(fadeCompletion != nil)
+        #expect(fadeOutDuration == WorldFade.duration)
         #expect(!presented)
 
         fadeCompletion?()
@@ -81,11 +98,10 @@ struct FullscreenOverlayPresenterTests {
         var fadeCalled = false
         var presented = false
 
-        let presenter = FullscreenOverlayPresenter(dependencies: .init(
-            fadeWorldOut: { _ in fadeCalled = true },
-            present: { _ in presented = true },
-            dismiss: { _, completion in completion() }
-        ))
+        let presenter = makePresenter(
+            fadeWorldOut: { _, _ in fadeCalled = true },
+            present: { _ in presented = true }
+        )
 
         presenter.present(
             fadeWorldOut: false,
@@ -94,7 +110,9 @@ struct FullscreenOverlayPresenterTests {
                     YouWinView(onFinished: finish)
                 }
             },
-            onResolved: { done in done() }
+            onResolved: { returnToWorld in
+                returnToWorld.dismissWhileCovered { $0() }
+            }
         )
 
         #expect(!fadeCalled)
@@ -102,19 +120,26 @@ struct FullscreenOverlayPresenterTests {
         #expect(presenter.isBusy)
     }
 
-    @Test func finishOrderingDismissesThenResolvesThenUnlocks() {
+    @Test func crossfadeToWorldFadesWorldInThenDismissesAndUnlocks() {
         enum Step: Equatable {
             case present
-            case dismiss
             case resolve
+            case worldFadeIn
+            case dismiss
             case unlocked
         }
 
         var steps: [Step] = []
         var presentedVC: FullscreenOverlayHost?
 
-        let presenter = FullscreenOverlayPresenter(dependencies: .init(
-            fadeWorldOut: { completion in completion() },
+        var fadeInDuration: TimeInterval?
+        let presenter = makePresenter(
+            fadeWorldOut: { _, completion in completion() },
+            fadeWorldIn: { duration, completion in
+                fadeInDuration = duration
+                steps.append(.worldFadeIn)
+                completion()
+            },
             present: { viewController in
                 steps.append(.present)
                 presentedVC = viewController as? FullscreenOverlayHost
@@ -123,24 +148,69 @@ struct FullscreenOverlayPresenterTests {
                 steps.append(.dismiss)
                 completion()
             }
-        ))
+        )
 
         presenter.present(
             fadeWorldOut: true,
             makeViewController: { makeHost() },
-            onResolved: { done in
+            onResolved: { returnToWorld in
                 steps.append(.resolve)
-                done()
-                steps.append(.unlocked)
+                returnToWorld.crossfadeToWorld { done in
+                    done()
+                    steps.append(.unlocked)
+                }
             }
         )
 
         #expect(steps == [.present])
         #expect(presenter.isBusy)
 
-        presentedVC?.finish()
+        let host = try! #require(presentedVC)
+        finishHost(host)
 
-        #expect(steps == [.present, .dismiss, .resolve, .unlocked])
+        #expect(steps == [.present, .resolve, .worldFadeIn, .dismiss, .unlocked])
+        #expect(fadeInDuration == WorldFade.duration)
+        #expect(!presenter.isBusy)
+    }
+
+    @Test func dismissWhileCoveredSkipsWorldFadeIn() {
+        var worldFadeInCalled = false
+        var presentedVC: FullscreenOverlayHost?
+        var dismissed = false
+
+        let presenter = makePresenter(
+            fadeWorldOut: { _, completion in completion() },
+            fadeWorldIn: { _, completion in
+                worldFadeInCalled = true
+                completion()
+            },
+            present: { viewController in
+                presentedVC = viewController as? FullscreenOverlayHost
+            },
+            dismiss: { _, completion in
+                dismissed = true
+                completion()
+            }
+        )
+
+        var unlocked = false
+        presenter.present(
+            fadeWorldOut: true,
+            makeViewController: { makeHost() },
+            onResolved: { returnToWorld in
+                returnToWorld.dismissWhileCovered { done in
+                    done()
+                    unlocked = true
+                }
+            }
+        )
+
+        let host = try! #require(presentedVC)
+        finishHost(host)
+
+        #expect(!worldFadeInCalled)
+        #expect(dismissed)
+        #expect(unlocked)
         #expect(!presenter.isBusy)
     }
 
@@ -148,29 +218,28 @@ struct FullscreenOverlayPresenterTests {
         var presentedVC: FullscreenOverlayHost?
         var resolveCount = 0
 
-        let presenter = FullscreenOverlayPresenter(dependencies: .init(
-            fadeWorldOut: { completion in completion() },
+        let presenter = makePresenter(
+            fadeWorldOut: { _, completion in completion() },
             present: { viewController in
                 presentedVC = viewController as? FullscreenOverlayHost
-            },
-            dismiss: { _, completion in completion() }
-        ))
-
-        presenter.present(
-            fadeWorldOut: false,
-            makeViewController: { makeHost() },
-            onResolved: { done in
-                resolveCount += 1
-                done()
             }
         )
 
-        presentedVC?.finish()
+        presenter.present(
+            fadeWorldOut: true,
+            makeViewController: { makeHost() },
+            onResolved: { returnToWorld in
+                resolveCount += 1
+                returnToWorld.dismissWhileCovered { $0() }
+            }
+        )
+
+        let host = try! #require(presentedVC)
+        finishHost(host)
         #expect(resolveCount == 1)
         #expect(!presenter.isBusy)
 
-        // A second finish after unlock should not re-trigger the old resolve closure.
-        presentedVC?.finish()
+        host.finish()
         #expect(resolveCount == 1)
     }
 }

@@ -18,12 +18,11 @@ final class GameViewController: LandscapeHostingController {
     private lazy var cachedHudConfig: HudConfig = Self.loadHudConfig()
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
-        fadeWorldOut: { [weak self] completion in
-            if let scene = self?.gameScene {
-                scene.fadeSimulationOut(completion: completion)
-            } else {
-                completion()
-            }
+        fadeWorldOut: { [weak self] duration, completion in
+            self?.fadeLevelChrome(visible: false, duration: duration, completion: completion)
+        },
+        fadeWorldIn: { [weak self] duration, completion in
+            self?.fadeLevelChrome(visible: true, duration: duration, completion: completion)
         }
     )
     private lazy var encounterCoordinator = GameEncounterCoordinator(
@@ -196,10 +195,6 @@ final class GameViewController: LandscapeHostingController {
             scene.deductEnergy()
             hud?.removeBolt()
         }
-        // World HUD is a UIKit overlay (not faded with SpriteKit). Hide it for the whole
-        // combat session so it cannot flash between combat dismiss and defeat / world-in.
-        setWorldHUDHidden(true)
-
         let typeID = scene.currentWorld.entity(id: enemyID)?.enemyTypeID
         let enemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
             ?? EnemyConfig.fallback.type(named: "spider")
@@ -273,9 +268,9 @@ final class GameViewController: LandscapeHostingController {
                     onFinished: finish
                 )
             },
-            onOutcome: { [weak self] outcome, done in
+            onOutcome: { [weak self] outcome, returnToWorld in
                 guard let self, let scene = self.gameScene else {
-                    done()
+                    returnToWorld.dismissWhileCovered { $0() }
                     return
                 }
                 switch outcome {
@@ -283,27 +278,88 @@ final class GameViewController: LandscapeHostingController {
                     BackgroundMusicController.shared.apply(
                         MusicCue.parse(self.session.selectedLevelMusic)
                     )
-                    scene.resolveEnemyEncounter(enemyID: enemyID) {
-                        // Reveal the level HUD before the coin count-up so sparkles are visible.
-                        self.setWorldHUDHidden(false)
-                        Task {
-                            await self.session.recordStat { $0.enemiesKilled += 1 }
-                            await self.awardLevelStars(count: starsAwarded)
+                    let defeatNode = scene.prepareEnemyEncounterWin(enemyID: enemyID)
+                    returnToWorld.crossfadeToWorld { done in
+                        // HUD is already fading in with the world via `fadeLevelChrome`.
+                        scene.revealEnemyEncounterWin(defeatNode: defeatNode) {
+                            Task {
+                                await self.session.recordStat { $0.enemiesKilled += 1 }
+                                await self.awardLevelStars(count: starsAwarded)
+                            }
+                            done()
                         }
-                        done()
                     }
                 case .lost, .abandoned, .none:
-                    // Keep world HUD hidden; presentDefeat silences then restores level music.
+                    // HUD stays faded with the world; presentDefeat restores both together.
                     // Combat does not offer leave; `.abandoned` is included for exhaustiveness.
-                    done()
-                    self.presentDefeat()
+                    returnToWorld.dismissWhileCovered { done in
+                        done()
+                        self.presentDefeat()
+                    }
                 }
             }
         )
     }
 
-    private func setWorldHUDHidden(_ hidden: Bool) {
-        hud?.isHidden = hidden
+    /// Fades the SpriteKit world and UIKit HUD together so level chrome returns in lockstep.
+    private func fadeLevelChrome(
+        visible: Bool,
+        duration: TimeInterval,
+        completion: @escaping () -> Void
+    ) {
+        var remaining = 2
+        let arrive = {
+            remaining -= 1
+            guard remaining == 0 else { return }
+            completion()
+        }
+
+        if let scene = gameScene {
+            if visible {
+                scene.fadeSimulationIn(duration: duration, completion: arrive)
+            } else {
+                scene.fadeSimulationOut(duration: duration, completion: arrive)
+            }
+        } else {
+            arrive()
+        }
+
+        fadeWorldHUD(visible: visible, duration: duration, completion: arrive)
+    }
+
+    private func fadeWorldHUD(
+        visible: Bool,
+        duration: TimeInterval,
+        completion: @escaping () -> Void
+    ) {
+        guard let hud else {
+            completion()
+            return
+        }
+
+        if visible {
+            hud.isHidden = false
+            hud.alpha = 0
+            hud.isUserInteractionEnabled = true
+        }
+
+        guard duration > 0, UIView.areAnimationsEnabled else {
+            hud.alpha = visible ? 1 : 0
+            hud.isHidden = !visible
+            hud.isUserInteractionEnabled = visible
+            completion()
+            return
+        }
+
+        UIView.animate(withDuration: duration, animations: {
+            hud.alpha = visible ? 1 : 0
+        }, completion: { _ in
+            if !visible {
+                hud.isHidden = true
+            }
+            hud.isUserInteractionEnabled = visible
+            completion()
+        })
     }
 
     private static func loadHudConfig() -> HudConfig {
@@ -360,9 +416,9 @@ final class GameViewController: LandscapeHostingController {
                     onFinished: finish
                 )
             },
-            onOutcome: { [weak self] outcome, done in
+            onOutcome: { [weak self] outcome, returnToWorld in
                 guard let self, let scene = self.gameScene else {
-                    done()
+                    returnToWorld.dismissWhileCovered { $0() }
                     return
                 }
                 BackgroundMusicController.shared.apply(
@@ -374,17 +430,28 @@ final class GameViewController: LandscapeHostingController {
                         await self.session.recordStat { $0.pitsCrossed += 1 }
                         await self.awardLevelStars(count: starsAwarded)
                     }
-                    scene.resolvePitWin(completion: done)
+                    scene.preparePitWin()
+                    returnToWorld.crossfadeToWorld { done in
+                        scene.revealPitWin(completion: done)
+                    }
                 case .abandoned:
-                    scene.resolvePitTimeout(approach: approach, completion: done)
+                    scene.preparePitTimeout(approach: approach)
+                    returnToWorld.crossfadeToWorld { done in
+                        scene.revealPitTimeout(completion: done)
+                    }
                 case .lost, .none:
                     scene.deductHealth()
                     self.hud?.removeHeart()
                     if DefeatRules.isDefeatedByPit(health: scene.currentWorld.healthCount) {
-                        done()
-                        self.presentDefeat()
+                        returnToWorld.dismissWhileCovered { done in
+                            done()
+                            self.presentDefeat()
+                        }
                     } else {
-                        scene.resolvePitTimeout(approach: approach, completion: done)
+                        scene.preparePitTimeout(approach: approach)
+                        returnToWorld.crossfadeToWorld { done in
+                            scene.revealPitTimeout(completion: done)
+                        }
                     }
                 }
             }
@@ -396,7 +463,6 @@ final class GameViewController: LandscapeHostingController {
     @MainActor
     private func presentDefeat() {
         BackgroundMusicController.shared.applyScreen(named: "defeat")
-        setWorldHUDHidden(true)
         overlayPresenter.present(
             fadeWorldOut: true,
             makeViewController: {
@@ -404,17 +470,19 @@ final class GameViewController: LandscapeHostingController {
                     DefeatView(onFinished: finish)
                 }
             },
-            onResolved: { [weak self] done in
+            onResolved: { [weak self] returnToWorld in
                 guard let self, let scene = self.gameScene else {
-                    done()
+                    returnToWorld.dismissWhileCovered { $0() }
                     return
                 }
-                scene.restoreFromContinuePoint {
-                    BackgroundMusicController.shared.apply(
-                        MusicCue.parse(self.session.selectedLevelMusic)
-                    )
-                    self.setWorldHUDHidden(false)
-                    done()
+                scene.prepareRestoreFromContinuePoint()
+                returnToWorld.crossfadeToWorld { done in
+                    scene.revealRestoreFromContinuePoint {
+                        BackgroundMusicController.shared.apply(
+                            MusicCue.parse(self.session.selectedLevelMusic)
+                        )
+                        done()
+                    }
                 }
             }
         )
@@ -430,7 +498,17 @@ final class GameViewController: LandscapeHostingController {
             Task {
                 await self.session.recordStat { $0.gatesOpened += 1 }
             }
-            scene.resolveGateEncounter(at: coord)
+            // Same world+HUD fade timing as minigame returns (no overlay crossfade).
+            fadeLevelChrome(visible: false, duration: WorldFade.duration) { [weak self] in
+                guard let self else { return }
+                let prepared = scene.prepareGateEncounter(at: coord)
+                self.fadeLevelChrome(visible: true, duration: WorldFade.duration) {
+                    scene.revealGateEncounter(
+                        gateNode: prepared.gateNode,
+                        openedCoords: prepared.openedCoords
+                    )
+                }
+            }
             return
         }
 
@@ -451,9 +529,9 @@ final class GameViewController: LandscapeHostingController {
                     onFinished: finish
                 )
             },
-            onOutcome: { [weak self] outcome, done in
+            onOutcome: { [weak self] outcome, returnToWorld in
                 guard let self, let scene = self.gameScene else {
-                    done()
+                    returnToWorld.dismissWhileCovered { $0() }
                     return
                 }
                 BackgroundMusicController.shared.apply(
@@ -465,9 +543,19 @@ final class GameViewController: LandscapeHostingController {
                         await self.session.recordStat { $0.gatesOpened += 1 }
                         await self.awardLevelStars(count: starsAwarded)
                     }
-                    scene.resolveGateEncounter(at: coord, completion: done)
+                    let prepared = scene.prepareGateEncounter(at: coord)
+                    returnToWorld.crossfadeToWorld { done in
+                        scene.revealGateEncounter(
+                            gateNode: prepared.gateNode,
+                            openedCoords: prepared.openedCoords,
+                            completion: done
+                        )
+                    }
                 case .abandoned, .lost, .none:
-                    scene.resolveGateTimeout(approach: approach, completion: done)
+                    scene.prepareGateTimeout(approach: approach)
+                    returnToWorld.crossfadeToWorld { done in
+                        scene.revealGateTimeout(completion: done)
+                    }
                 }
             }
         )
@@ -506,18 +594,20 @@ final class GameViewController: LandscapeHostingController {
                         )
                     }
                 },
-                onResolved: { [weak self] done in
-                    guard let self else {
+                onResolved: { [weak self] returnToWorld in
+                    returnToWorld.dismissWhileCovered { done in
+                        guard let self else {
+                            done()
+                            return
+                        }
+                        self.runExitHandler.exitToLevelSelect(
+                            completedLevel: true,
+                            gameScene: self.gameScene,
+                            session: self.session,
+                            hostWindow: self.view.window
+                        )
                         done()
-                        return
                     }
-                    self.runExitHandler.exitToLevelSelect(
-                        completedLevel: true,
-                        gameScene: self.gameScene,
-                        session: self.session,
-                        hostWindow: self.view.window
-                    )
-                    done()
                 }
             )
         }

@@ -70,8 +70,30 @@ final class FullscreenOverlayHost: LandscapeHostingController {
         duration: TimeInterval = contentFadeDuration,
         completion: @escaping () -> Void
     ) {
+        Self.animateAlpha(contentContainer, to: 0, duration: duration, completion: completion)
+    }
+
+    /// Fades the entire host view (chrome + content) for overlay→world crossfades.
+    func fadeOutHost(
+        duration: TimeInterval,
+        completion: @escaping () -> Void
+    ) {
+        Self.animateAlpha(view, to: 0, duration: duration, completion: completion)
+    }
+
+    private static func animateAlpha(
+        _ view: UIView,
+        to alpha: CGFloat,
+        duration: TimeInterval,
+        completion: @escaping () -> Void
+    ) {
+        guard duration > 0, UIView.areAnimationsEnabled else {
+            view.alpha = alpha
+            completion()
+            return
+        }
         UIView.animate(withDuration: duration, animations: {
-            self.contentContainer.alpha = 0
+            view.alpha = alpha
         }, completion: { _ in
             completion()
         })

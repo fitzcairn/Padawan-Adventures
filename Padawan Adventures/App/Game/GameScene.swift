@@ -212,7 +212,18 @@ final class GameScene: SKScene {
     }
 
     /// Fades the simulation world out (e.g. before an encounter overlay).
-    func fadeSimulationOut(duration: TimeInterval = 0.35, completion: @escaping () -> Void) {
+    func fadeSimulationOut(
+        duration: TimeInterval = WorldFade.duration,
+        completion: @escaping () -> Void
+    ) {
         renderer.fadeWorldOut(duration: duration, completion: completion)
+    }
+
+    /// Fades the simulation world in (e.g. during overlay→world crossfade).
+    func fadeSimulationIn(
+        duration: TimeInterval = WorldFade.duration,
+        completion: @escaping () -> Void
+    ) {
+        renderer.fadeWorldIn(duration: duration, completion: completion)
     }
 }

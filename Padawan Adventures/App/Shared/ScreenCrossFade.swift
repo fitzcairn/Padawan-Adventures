@@ -6,6 +6,12 @@ enum ScreenCrossFade {
     nonisolated static let duration: TimeInterval = 0.3
 }
 
+/// Shared SpriteKit world fade used when entering/leaving encounters and overlays.
+enum WorldFade {
+    /// Nonisolated so it can be used as a default argument (those are always nonisolated).
+    nonisolated static let duration: TimeInterval = 0.35
+}
+
 extension AppWindow {
     /// Cross-dissolves to a new root view controller (flow ↔ gameplay).
     @MainActor
