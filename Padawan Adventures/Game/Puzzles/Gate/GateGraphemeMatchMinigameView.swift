@@ -29,6 +29,7 @@ struct GateGraphemeMatchMinigameView: View {
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,
+            onLeave: session.showUnlocked ? nil : { session.confirmLeave(onFinished: onFinished) },
             hud: { EmptyView() },
             overlay: {
                 if session.showUnlocked {
@@ -81,6 +82,12 @@ final class GateGraphemeMatchSessionController: ObservableObject, GateGraphemeMa
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))
+    }
+
+    func confirmLeave(onFinished: (MinigameOutcome) -> Void) {
+        guard !didFinish else { return }
+        didFinish = true
+        onFinished(.abandoned)
     }
 
     func gateGraphemeMatchSceneDidWin(starsAwarded: Int) {

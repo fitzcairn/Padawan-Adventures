@@ -24,7 +24,7 @@ fx:
 sprite:
   root: Sprites/Player
   chroma: black
-  height_fraction: 1.2
+  height_fraction: 1.08
   # Percent of scaled height; nudges sprite toward bottom of screen (feet into tile).
   anchor_correction_percent: 7
   animations:

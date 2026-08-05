@@ -248,6 +248,8 @@ extension PitSoundOutWordScene {
         move.timingMode = .easeOut
         playerNode.run(move) { [weak self] in
             guard let self else { return }
+            // Always face right once standing on a tile.
+            self.playerFacingLeft = false
             self.resumePlayerIdle()
             self.evaluate(candidateIndex: candidateIndex)
         }

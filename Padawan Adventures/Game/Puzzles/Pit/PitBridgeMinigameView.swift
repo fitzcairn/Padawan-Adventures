@@ -57,6 +57,7 @@ struct PitBridgeMinigameView: View {
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,
+            onLeave: session.showWon ? nil : { session.confirmLeave(onFinished: onFinished) },
             hud: { EmptyView() },
             overlay: {
                 if session.showWon {
@@ -141,6 +142,12 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))
+    }
+
+    func confirmLeave(onFinished: (MinigameOutcome) -> Void) {
+        guard !didFinish else { return }
+        didFinish = true
+        onFinished(.abandoned)
     }
 
     func pitBridgeSceneDidWin(starsAwarded: Int) {

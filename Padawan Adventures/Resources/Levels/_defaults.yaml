@@ -90,7 +90,7 @@ pit:
   fx: { jump: pit-jump }
   minigames:
     - type: sound-out-word-pit
-      weight: 0.0
+      weight: 1.0
       min_choice_count: 3
       max_choice_count: 3
       words: [cat, dog, sun, star]
@@ -100,7 +100,7 @@ pit:
       max_word_count: 5
       words: [car, dog, trash, sun, star, book]
     - type: starting-sound-pit
-      weight: 1.0
+      weight: 0.0
       min_word_count: 3
       max_word_count: 5
       words: [car, dog, trash, sun, star, book]
@@ -150,7 +150,7 @@ gate:
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4
-      words: [cat, dog, star, gate, car]
+      words: [cat, dog, star, car]
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
       weight: 0.0

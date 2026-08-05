@@ -189,6 +189,10 @@ extension GateSoundOutWordScene {
             style: .proportional,
             disablesInteraction: true
         )
+        // Center alignment boxes each glyph on its own bounds; baseline keeps the word level.
+        for case let label as SKLabelNode in node.children {
+            label.verticalAlignmentMode = .baseline
+        }
         node.name = "promptLetter:\(index)"
         node.zPosition = 30
         return node
@@ -267,16 +271,14 @@ extension GateSoundOutWordScene {
         return nil
     }
 
-    func promptLetterIndex(at point: CGPoint) -> Int? {
-        for (index, node) in promptLetterNodes.enumerated() {
-            // Thin glyphs need a forgiving target for small fingers.
-            let frame = node.calculateAccumulatedFrame().insetBy(
-                dx: -promptFontSize * 0.15,
-                dy: -promptFontSize * 0.15
-            )
-            if frame.contains(point) { return index }
+    /// True when `point` hits the prompt word (any letter, with a little padding).
+    func isPromptWordTap(_ point: CGPoint) -> Bool {
+        guard !promptLetterNodes.isEmpty else { return false }
+        var frame = promptLetterNodes[0].calculateAccumulatedFrame()
+        for node in promptLetterNodes.dropFirst() {
+            frame = frame.union(node.calculateAccumulatedFrame())
         }
-        return nil
+        return frame.insetBy(dx: -promptFontSize * 0.15, dy: -promptFontSize * 0.2).contains(point)
     }
 
     func isPictureTap(_ point: CGPoint) -> Bool {

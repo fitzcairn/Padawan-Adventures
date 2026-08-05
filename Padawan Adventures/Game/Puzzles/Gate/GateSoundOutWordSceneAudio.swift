@@ -21,8 +21,9 @@ extension GateSoundOutWordScene {
         SoundEffectsController.shared.play(trackID: trackID)
     }
 
-    func playPromptLetterName(at index: Int) {
-        guard let grapheme = engine.grapheme(at: index) else { return }
+    /// Letter name for the grapheme the player is currently working on.
+    func playCurrentPromptLetterName() {
+        guard let grapheme = engine.currentGrapheme else { return }
         playGraphemeName(grapheme)
     }
 

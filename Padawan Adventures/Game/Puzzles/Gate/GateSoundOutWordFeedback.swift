@@ -4,10 +4,22 @@ import UIKit
 extension GateSoundOutWordScene {
     // MARK: - Round flow
 
-    /// Opens the round: prompt the first grapheme and fade its capacitor set in.
+    /// Opens the round: say the whole word, then prompt the first grapheme.
     func beginRound() {
         updatePromptColors()
-        promptCurrentGrapheme(fadeInChoices: true)
+        inputLocked = true
+        playWordSound()
+        let wordDuration = SoundEffectsController.shared.cueDuration(of: engine.wordTrackID)
+        removeAction(forKey: Self.promptActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: wordDuration),
+                SKAction.run { [weak self] in
+                    self?.promptCurrentGrapheme(fadeInChoices: true)
+                },
+            ]),
+            withKey: Self.promptActionKey
+        )
     }
 
     /// Flashes the active grapheme white/orange (leaving orange), says its name, and fades

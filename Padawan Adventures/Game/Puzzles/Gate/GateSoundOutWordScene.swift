@@ -139,8 +139,9 @@ final class GateSoundOutWordScene: MinigameScene {
             return
         }
 
-        if let index = promptLetterIndex(at: point) {
-            playPromptLetterName(at: index)
+        if isPromptWordTap(point) {
+            // Word taps always name the active (orange) letter, not whichever glyph was hit.
+            playCurrentPromptLetterName()
             return
         }
 

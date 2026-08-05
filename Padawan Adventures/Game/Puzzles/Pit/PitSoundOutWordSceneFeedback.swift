@@ -99,6 +99,9 @@ extension PitSoundOutWordScene {
             self.isJumping = true
             self.jumpPlayer(to: self.dragStartPosition) {
                 self.isJumping = false
+                // Face right once standing on the previous tile again.
+                self.playerFacingLeft = false
+                self.resumePlayerIdle()
                 if let grapheme = self.engine.currentGrapheme,
                    let trackID = self.engine.nameTrackID(for: grapheme) {
                     SoundEffectsController.shared.play(trackID: trackID)

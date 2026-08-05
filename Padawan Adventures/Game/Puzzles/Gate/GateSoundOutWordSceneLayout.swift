@@ -56,7 +56,7 @@ extension GateSoundOutWordScene {
     /// Minimum center-to-center spacing so neighbouring capacitors don't overlap.
     var minCenterDistance: CGFloat { laidOutDiameter + capacitorGap }
 
-    /// Prompt row height (picture + word) reserved at the top of the scene.
+    /// Prompt typography (word under the picture).
     var promptFontSize: CGFloat {
         min(44, size.height * 0.115)
     }
@@ -68,16 +68,25 @@ extension GateSoundOutWordScene {
         return ScreenLayout.uiInsets(size: hostSize, safeArea: safeArea).top
     }
 
-    var promptRowHeight: CGFloat { promptFontSize * 1.6 }
+    /// Picture side length when one is available.
+    var promptPictureSide: CGFloat { promptFontSize * 1.6 }
 
-    /// Center Y of the prompt row, measured from the top of the scene.
-    var promptCenterY: CGFloat {
-        size.height - promptTopInset - promptRowHeight * 0.5
+    /// Vertical gap between the picture and the word under it.
+    var promptPictureWordGap: CGFloat { promptFontSize * 0.35 }
+
+    /// Total height of the stacked picture + word block.
+    var promptStackHeight: CGFloat {
+        let font = AppFont.uiKit(size: promptFontSize)
+        let wordHeight = font.capHeight
+        if engine.targetEntry.image?.isEmpty == false {
+            return promptPictureSide + promptPictureWordGap + wordHeight
+        }
+        return wordHeight
     }
 
-    /// Highest Y a dragged capacitor center may reach without covering the prompt row.
+    /// Highest Y a dragged capacitor center may reach without covering the prompt stack.
     func maxPlayableCenterY(for radius: CGFloat) -> CGFloat {
-        max(size.height - promptTopInset - promptRowHeight - radius, radius)
+        max(size.height - promptTopInset - promptStackHeight - radius, radius)
     }
 
     /// Midpoint between the left screen edge and the left side of the play area.
@@ -175,28 +184,36 @@ extension GateSoundOutWordScene {
         rightEndpointNode = right
     }
 
-    /// Word picture and the word itself, centered as one group at the top of the scene.
+    /// Picture on top, word underneath — both horizontally centered at the top of the scene.
     private func buildPromptRow() {
         let fontSize = promptFontSize
+        let font = AppFont.uiKit(size: fontSize)
         let letters = engine.targetGraphemes
         let widths = letters.map { promptLetterWidth($0, fontSize: fontSize) }
         let wordWidth = widths.reduce(0, +)
+        let centerX = size.width * 0.5
+        let stackTop = size.height - promptTopInset
+        let stackHeight = promptStackHeight
+        let stackMidY = stackTop - stackHeight * 0.5
 
-        let picture = makePictureNode(side: promptRowHeight)
-        let gap = picture == nil ? 0 : fontSize * 0.55
-        let pictureWidth = picture?.size.width ?? 0
-        var cursorX = (size.width - (pictureWidth + gap + wordWidth)) * 0.5
-
+        let picture = makePictureNode(side: promptPictureSide)
+        let letterBaselineY: CGFloat
         if let picture {
-            picture.position = CGPoint(x: cursorX + pictureWidth * 0.5, y: promptCenterY)
+            let pictureCenterY = stackTop - picture.size.height * 0.5
+            picture.position = CGPoint(x: centerX, y: pictureCenterY)
             addChild(picture)
             pictureNode = picture
-            cursorX += pictureWidth + gap
+            // Baseline under the picture, with the word's cap-height sitting in the gap band.
+            letterBaselineY = stackTop - picture.size.height - promptPictureWordGap - font.capHeight
+        } else {
+            // No illustration — center the word block in the reserved stack.
+            letterBaselineY = stackMidY - font.capHeight * 0.5
         }
 
+        var cursorX = centerX - wordWidth * 0.5
         for (index, letter) in letters.enumerated() {
             let node = makePromptLetterNode(letter, fontSize: fontSize, index: index)
-            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: promptCenterY)
+            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: letterBaselineY)
             addChild(node)
             promptLetterNodes.append(node)
             cursorX += widths[index]

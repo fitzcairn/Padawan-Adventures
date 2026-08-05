@@ -9,6 +9,8 @@ struct MinigameShellView<Scene: SKScene, HUD: View, Overlay: View>: View {
     let updateSceneSize: (CGSize) -> Void
     var onAppear: (() -> Void)?
     var includesHUDLayer: Bool = true
+    /// When set, shows the level-HUD flee control (bottom-trailing) to leave without completing.
+    var onLeave: (() -> Void)? = nil
     @ViewBuilder var hud: HUD
     @ViewBuilder var overlay: Overlay
 
@@ -27,6 +29,12 @@ struct MinigameShellView<Scene: SKScene, HUD: View, Overlay: View>: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
                         .allowsHitTesting(false)
+                }
+
+                if let onLeave {
+                    MinigameLeaveButtonHost(onLeave: onLeave)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .ignoresSafeArea()
                 }
 
                 overlay

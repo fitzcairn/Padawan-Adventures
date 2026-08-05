@@ -49,6 +49,7 @@ struct PitSoundOutWordMinigameView: View {
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,
+            onLeave: session.showWon ? nil : { session.confirmLeave(onFinished: onFinished) },
             hud: { EmptyView() },
             overlay: {
                 if session.showWon {
@@ -133,6 +134,12 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
         guard !didFinish else { return }
         didFinish = true
         onFinished(.won(starsAwarded: starsAwarded))
+    }
+
+    func confirmLeave(onFinished: (MinigameOutcome) -> Void) {
+        guard !didFinish else { return }
+        didFinish = true
+        onFinished(.abandoned)
     }
 
     func pitSoundOutWordSceneDidWin(word: String, starsAwarded: Int) {

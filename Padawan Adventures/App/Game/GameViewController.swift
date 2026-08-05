@@ -295,8 +295,9 @@ final class GameViewController: LandscapeHostingController {
                         }
                         done()
                     }
-                case .lost, .none:
+                case .lost, .abandoned, .none:
                     // Keep world HUD hidden; presentDefeat silences then restores level music.
+                    // Combat does not offer leave; `.abandoned` is included for exhaustiveness.
                     done()
                     self.presentDefeat()
                 }
@@ -376,6 +377,8 @@ final class GameViewController: LandscapeHostingController {
                         await self.awardLevelStars(count: starsAwarded)
                     }
                     scene.resolvePitWin(completion: done)
+                case .abandoned:
+                    scene.resolvePitTimeout(approach: approach, completion: done)
                 case .lost, .none:
                     scene.deductHealth()
                     self.hud?.removeHeart()
@@ -463,7 +466,7 @@ final class GameViewController: LandscapeHostingController {
                         await self.awardLevelStars(count: starsAwarded)
                     }
                     scene.resolveGateEncounter(at: coord, completion: done)
-                case .lost, .none:
+                case .abandoned, .lost, .none:
                     scene.resolveGateTimeout(approach: approach, completion: done)
                 }
             }
