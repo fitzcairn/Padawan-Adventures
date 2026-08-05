@@ -4,7 +4,7 @@ import Foundation
 /// Speaks a queue of phrases via system TTS (placeholder until recorded VO).
 /// Used by the pit bridge minigame for letter-tile name cues while dragging.
 @MainActor
-final class PhonicsSpeaker: NSObject {
+final class GraphemeSpeaker: NSObject {
     /// Gap after each phrase so a repeated letter reads as separate sounds.
     static let phraseGapSeconds: TimeInterval = 0.35
 
@@ -75,7 +75,7 @@ final class PhonicsSpeaker: NSObject {
     }
 }
 
-extension PhonicsSpeaker: AVSpeechSynthesizerDelegate {
+extension GraphemeSpeaker: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didFinish utterance: AVSpeechUtterance

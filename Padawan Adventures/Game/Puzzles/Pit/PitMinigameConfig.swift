@@ -19,7 +19,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     /// Inclusive upper bound on words per session; the pool must be at least this large.
     var maxWords: Int
     /// Which letter the player supplies: word end (`ending-sound-pit`) or start (`starting-sound-pit`).
-    var letterPosition: GateWordPlugLetterPosition
+    var letterPosition: GateWordPlugGraphemePosition
     /// Optional subset of shared catalog ids (`nil` / omitted YAML → `defaultWordIDs`).
     var wordIDs: [String]?
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
@@ -40,7 +40,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         weight: Double = 1,
         minWords: Int = defaultMinWords,
         maxWords: Int = defaultMaxWords,
-        letterPosition: GateWordPlugLetterPosition = .ending,
+        letterPosition: GateWordPlugGraphemePosition = .ending,
         wordIDs: [String]? = defaultWordIDs,
         words: [GateWord] = []
     ) {
@@ -51,7 +51,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         self.wordIDs = wordIDs?.map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         }
-        self.words = GateSpellingConfig.normalizedWords(words)
+        self.words = GateWord.normalized(words)
     }
 
     mutating func resolveWords(from catalog: WordCatalog) throws {

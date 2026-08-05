@@ -2,11 +2,11 @@ import Foundation
 import Testing
 @testable import Padawan_Adventures
 
-struct GateLetterMatchMinigameEngineTests {
-    private func letters(_ values: [String]) -> [GateLetter] {
+struct GateGraphemeMatchMinigameEngineTests {
+    private func letters(_ values: [String]) -> [GateGrapheme] {
         values.map {
-            GateLetter(
-                letter: $0,
+            GateGrapheme(
+                grapheme: $0,
                 pronunciation: "sfx_grapheme_\($0)_pronunciation",
                 name: "sfx_grapheme_\($0)_name"
             )
@@ -14,16 +14,16 @@ struct GateLetterMatchMinigameEngineTests {
     }
 
     private func makeEngine(
-        letterCountMin: Int = 2,
-        letterCountMax: Int = 4,
+        graphemeCountMin: Int = 2,
+        graphemeCountMax: Int = 4,
         pool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h"],
         seed: UInt64 = 42
-    ) -> GateLetterMatchMinigameEngine {
-        var engine = GateLetterMatchMinigameEngine(
+    ) -> GateGraphemeMatchMinigameEngine {
+        var engine = GateGraphemeMatchMinigameEngine(
             config: .init(
-                letterCountMin: letterCountMin,
-                letterCountMax: letterCountMax,
-                letters: letters(pool)
+                graphemeCountMin: graphemeCountMin,
+                graphemeCountMax: graphemeCountMax,
+                graphemes: letters(pool)
             ),
             rng: SeededGenerator(seed: seed)
         )
@@ -32,8 +32,8 @@ struct GateLetterMatchMinigameEngineTests {
     }
 
     @Test func constructsInactive() {
-        let engine = GateLetterMatchMinigameEngine(
-            config: .init(letters: letters(["a"]))
+        let engine = GateGraphemeMatchMinigameEngine(
+            config: .init(graphemes: letters(["a"]))
         )
         #expect(!engine.isActive)
         #expect(engine.letters.isEmpty)
@@ -41,7 +41,7 @@ struct GateLetterMatchMinigameEngineTests {
     }
 
     @Test func beginPicksLettersAndTarget() {
-        let engine = makeEngine(letterCountMin: 2, letterCountMax: 4, seed: 7)
+        let engine = makeEngine(graphemeCountMin: 2, graphemeCountMax: 4, seed: 7)
         #expect(engine.isActive)
         #expect(engine.letters.count >= 2)
         #expect(engine.letters.count <= 4)
@@ -50,16 +50,16 @@ struct GateLetterMatchMinigameEngineTests {
     }
 
     @Test func beginIsDeterministicForSeed() {
-        let a = makeEngine(letterCountMin: 2, letterCountMax: 4, seed: 99)
-        let b = makeEngine(letterCountMin: 2, letterCountMax: 4, seed: 99)
-        #expect(a.letters.map(\.letter) == b.letters.map(\.letter))
+        let a = makeEngine(graphemeCountMin: 2, graphemeCountMax: 4, seed: 99)
+        let b = makeEngine(graphemeCountMin: 2, graphemeCountMax: 4, seed: 99)
+        #expect(a.letters.map(.grapheme) == b.letters.map(.grapheme))
         #expect(a.currentTarget?.letter == b.currentTarget?.letter)
     }
 
-    @Test func letterCountMinMaxEqualSelectsExactCount() {
+    @Test func graphemeCountMinMaxEqualSelectsExactCount() {
         let engine = makeEngine(
-            letterCountMin: 1,
-            letterCountMax: 1,
+            graphemeCountMin: 1,
+            graphemeCountMax: 1,
             pool: ["a", "b", "c"],
             seed: 1
         )
@@ -68,8 +68,8 @@ struct GateLetterMatchMinigameEngineTests {
 
     @Test func letterCountRangeClampedToPoolSize() {
         let engine = makeEngine(
-            letterCountMin: 3,
-            letterCountMax: 5,
+            graphemeCountMin: 3,
+            graphemeCountMax: 5,
             pool: ["a", "b", "c"],
             seed: 2
         )
@@ -79,8 +79,8 @@ struct GateLetterMatchMinigameEngineTests {
     @Test func letterCountStaysWithinConfiguredRange() {
         for seed in UInt64(1)...40 {
             let engine = makeEngine(
-                letterCountMin: 2,
-                letterCountMax: 4,
+                graphemeCountMin: 2,
+                graphemeCountMax: 4,
                 pool: ["a", "b", "c", "d", "e", "f"],
                 seed: seed
             )
@@ -91,8 +91,8 @@ struct GateLetterMatchMinigameEngineTests {
 
     @Test func correctTapGreensAndAdvancesTowardWin() {
         var engine = makeEngine(
-            letterCountMin: 2,
-            letterCountMax: 2,
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
             pool: ["a", "b"],
             seed: 5
         )
@@ -103,12 +103,12 @@ struct GateLetterMatchMinigameEngineTests {
         }
 
         let events = engine.tapLetter(id: firstTarget.id)
-        #expect(events.contains(GateLetterMatchEngineEvent.playName(trackID: firstTarget.nameTrackID)))
-        #expect(events.contains(GateLetterMatchEngineEvent.correctMatch(id: firstTarget.id)))
-        #expect(events.contains(GateLetterMatchEngineEvent.playYay))
-        #expect(events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
+        #expect(events.contains(GateGraphemeMatchEngineEvent.playName(trackID: firstTarget.nameTrackID)))
+        #expect(events.contains(GateGraphemeMatchEngineEvent.correctMatch(id: firstTarget.id)))
+        #expect(events.contains(GateGraphemeMatchEngineEvent.playYay))
+        #expect(events.contains(GateGraphemeMatchEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.contains(firstTarget.id))
-        #expect(!events.contains(GateLetterMatchEngineEvent.won))
+        #expect(!events.contains(GateGraphemeMatchEngineEvent.won))
         #expect(engine.currentTargetID != firstTarget.id)
 
         guard let secondTarget = engine.currentTarget else {
@@ -116,16 +116,16 @@ struct GateLetterMatchMinigameEngineTests {
             return
         }
         let winEvents = engine.tapLetter(id: secondTarget.id)
-        #expect(winEvents.contains(GateLetterMatchEngineEvent.won))
-        #expect(!winEvents.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
+        #expect(winEvents.contains(GateGraphemeMatchEngineEvent.won))
+        #expect(!winEvents.contains(GateGraphemeMatchEngineEvent.playTargetPronunciation))
         #expect(engine.outcome == .won(starsAwarded: 2))
         #expect(engine.isFrozen)
     }
 
     @Test func incorrectTapDoesNotAutoReplayTarget() {
         var engine = makeEngine(
-            letterCountMin: 2,
-            letterCountMax: 2,
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
             pool: ["a", "b"],
             seed: 5
         )
@@ -136,24 +136,24 @@ struct GateLetterMatchMinigameEngineTests {
         }
 
         let events = engine.tapLetter(id: wrong.id)
-        #expect(events.contains(GateLetterMatchEngineEvent.playName(trackID: wrong.nameTrackID)))
+        #expect(events.contains(GateGraphemeMatchEngineEvent.playName(trackID: wrong.nameTrackID)))
         #expect(
             events.contains(
-                GateLetterMatchEngineEvent.incorrectMatch(
+                GateGraphemeMatchEngineEvent.incorrectMatch(
                     id: wrong.id,
                     pronunciationTrackID: wrong.pronunciationTrackID
                 )
             )
         )
-        #expect(!events.contains(GateLetterMatchEngineEvent.playTargetPronunciation))
+        #expect(!events.contains(GateGraphemeMatchEngineEvent.playTargetPronunciation))
         #expect(engine.matchedIDs.isEmpty)
         #expect(engine.currentTargetID == target.id)
     }
 
     @Test func tapIgnoredAfterFrozen() {
         var engine = makeEngine(
-            letterCountMin: 1,
-            letterCountMax: 1,
+            graphemeCountMin: 1,
+            graphemeCountMax: 1,
             pool: ["a"],
             seed: 1
         )
@@ -165,8 +165,8 @@ struct GateLetterMatchMinigameEngineTests {
 
     @Test func matchedLetterCannotBeTappedAgain() {
         var engine = makeEngine(
-            letterCountMin: 2,
-            letterCountMax: 2,
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
             pool: ["a", "b"],
             seed: 5
         )

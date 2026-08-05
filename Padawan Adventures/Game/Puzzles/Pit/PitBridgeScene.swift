@@ -18,7 +18,7 @@ final class PitBridgeScene: MinigameScene {
     let playerSpriteConfig: SpriteConfig?
 
     var engine: PitBridgeMinigameEngine
-    let speaker = PhonicsSpeaker()
+    let speaker = GraphemeSpeaker()
     var placementRNG = SystemRandomNumberGenerator()
 
     var playerNode: SKNode?

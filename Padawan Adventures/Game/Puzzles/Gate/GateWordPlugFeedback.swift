@@ -89,7 +89,7 @@ extension GateWordPlugScene {
         guard !events.isEmpty else { return }
 
         if events.contains(where: {
-            if case .playLetterName = $0 { return true }
+            if case .playGraphemeName = $0 { return true }
             return false
         }) {
             runLetterTapFeedback(events)
@@ -114,7 +114,7 @@ extension GateWordPlugScene {
         switch event {
         case let .playWordSound(trackID):
             SoundEffectsController.shared.play(trackID: trackID)
-        case let .playLetterName(trackID), let .playLetterSound(trackID):
+        case let .playGraphemeName(trackID), let .playGraphemeSound(trackID):
             SoundEffectsController.shared.play(trackID: trackID)
         case .playCorrect:
             playCorrectSound()
@@ -135,7 +135,7 @@ extension GateWordPlugScene {
         var steps: [SKAction] = []
         for event in events {
             switch event {
-            case let .playLetterName(trackID), let .playLetterSound(trackID):
+            case let .playGraphemeName(trackID), let .playGraphemeSound(trackID):
                 appendTrackSteps(to: &steps, trackID: trackID)
             default:
                 break

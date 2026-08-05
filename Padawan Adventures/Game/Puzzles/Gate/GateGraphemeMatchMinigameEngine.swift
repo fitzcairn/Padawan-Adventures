@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum GateLetterMatchEngineEvent: Equatable, Sendable {
+nonisolated enum GateGraphemeMatchEngineEvent: Equatable, Sendable {
     case playTargetPronunciation
     case playName(trackID: String)
     case playYay
@@ -10,28 +10,28 @@ nonisolated enum GateLetterMatchEngineEvent: Equatable, Sendable {
 }
 
 /// Pure gate letter-match puzzle session rules (letter pick, match loop).
-nonisolated struct GateLetterMatchMinigameEngine {
+nonisolated struct GateGraphemeMatchMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        var letterCountMin: Int
-        var letterCountMax: Int
-        var letters: [GateLetter]
+        var graphemeCountMin: Int
+        var graphemeCountMax: Int
+        var graphemes: [GateGrapheme]
 
-        init(from puzzle: GateLetterMatchConfig) {
-            letterCountMin = puzzle.letterCountMin
-            letterCountMax = puzzle.letterCountMax
+        init(from puzzle: GateGraphemeMatchConfig) {
+            graphemeCountMin = puzzle.graphemeCountMin
+            graphemeCountMax = puzzle.graphemeCountMax
             letters = puzzle.letters
         }
 
         init(
-            letterCountMin: Int = 4,
-            letterCountMax: Int = 8,
-            letters: [GateLetter]
+            graphemeCountMin: Int = 4,
+            graphemeCountMax: Int = 8,
+            graphemes: [GateGrapheme]
         ) {
-            self.letterCountMin = letterCountMin
-            self.letterCountMax = letterCountMax
-            self.letters = letters.map {
-                GateLetter(
-                    letter: $0.letter.lowercased(),
+            self.graphemeCountMin = graphemeCountMin
+            self.graphemeCountMax = graphemeCountMax
+            self.graphemes = letters.map {
+                GateGrapheme(
+                    grapheme: $0.grapheme.lowercased(),
                     pronunciation: $0.pronunciation,
                     name: $0.name
                 )
@@ -64,7 +64,7 @@ nonisolated struct GateLetterMatchMinigameEngine {
 
     var currentTarget: LetterToken? {
         guard let currentTargetID else { return nil }
-        return letters.first { $0.id == currentTargetID }
+        return graphemes.first { $0.id == currentTargetID }
     }
 
     var targetPronunciationTrackID: String {
@@ -86,7 +86,7 @@ nonisolated struct GateLetterMatchMinigameEngine {
     }
 
     /// Handle a tap on a letter tile. Ignores matched / unknown / frozen taps.
-    mutating func tapLetter(id: UUID) -> [GateLetterMatchEngineEvent] {
+    mutating func tapLetter(id: UUID) -> [GateGraphemeMatchEngineEvent] {
         guard isActive, !isFrozen, outcome == nil else { return [] }
         guard !matchedIDs.contains(id),
               let token = letters.first(where: { $0.id == id }),
@@ -94,7 +94,7 @@ nonisolated struct GateLetterMatchMinigameEngine {
             return []
         }
 
-        var events: [GateLetterMatchEngineEvent] = [
+        var events: [GateGraphemeMatchEngineEvent] = [
             .playName(trackID: token.nameTrackID),
         ]
 
@@ -121,12 +121,12 @@ nonisolated struct GateLetterMatchMinigameEngine {
     }
 
     private mutating func pickRoundLetters() -> [LetterToken] {
-        let pool = config.letters
+        let pool = config.graphemes
         guard !pool.isEmpty else { return [] }
 
         let count = Self.sampleLetterCount(
-            minimum: config.letterCountMin,
-            maximum: config.letterCountMax,
+            minimum: config.graphemeCountMin,
+            maximum: config.graphemeCountMax,
             poolSize: pool.count,
             rng: &rng
         )
@@ -135,7 +135,7 @@ nonisolated struct GateLetterMatchMinigameEngine {
         return shuffled.prefix(count).map { entry in
             LetterToken(
                 id: UUID(),
-                letter: entry.letter.lowercased(),
+                letter: entry.grapheme.lowercased(),
                 pronunciationTrackID: entry.pronunciation,
                 nameTrackID: entry.name
             )

@@ -15,9 +15,9 @@ enum GateMinigameFactory {
                 hudConfig: hudConfig,
                 onFinished: onFinished
             )
-        case .letterMatch(let letterMatch):
-            GateLetterMatchMinigameView(
-                puzzleConfig: letterMatch,
+        case .graphemeMatch(let graphemeMatch):
+            GateGraphemeMatchMinigameView(
+                puzzleConfig: graphemeMatch,
                 onFinished: onFinished
             )
         case .wordPlug(let wordPlug):

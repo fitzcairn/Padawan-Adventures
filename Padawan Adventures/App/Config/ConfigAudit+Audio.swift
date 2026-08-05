@@ -34,7 +34,7 @@ extension ConfigAudit {
         levels: [LevelConfig],
         enemies: EnemyConfig,
         words: WordCatalog,
-        letters: LetterCatalog,
+        letters: GraphemeCatalog,
         audio: SoundSettings,
         screens: ScreensConfig?,
         player: PlayerConfig?
@@ -64,7 +64,7 @@ extension ConfigAudit {
                 case .spelling(let config):
                     fx = config.fx
                     music = config.music
-                case .letterMatch(let config):
+                case .graphemeMatch(let config):
                     fx = config.fx
                     music = config.music
                 case .wordPlug(let config):
@@ -110,18 +110,18 @@ extension ConfigAudit {
             }
         }
 
-        for letter in letters.letters {
+        for grapheme in letters.graphemes {
             references.append(
                 AudioReference(
-                    kind: "graphemes.\(letter.letter).pronunciation",
-                    basename: letter.pronunciation,
+                    kind: "graphemes.\(grapheme.grapheme).pronunciation",
+                    basename: grapheme.pronunciation,
                     tree: .fx
                 )
             )
             references.append(
                 AudioReference(
-                    kind: "graphemes.\(letter.letter).name",
-                    basename: letter.name,
+                    kind: "graphemes.\(grapheme.grapheme).name",
+                    basename: grapheme.name,
                     tree: .fx
                 )
             )

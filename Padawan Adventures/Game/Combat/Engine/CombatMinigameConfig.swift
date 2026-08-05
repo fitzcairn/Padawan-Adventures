@@ -12,32 +12,32 @@ nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseI
 nonisolated struct CombatSlashConfig: Equatable, Sendable {
     var weight: Double
     /// Multiplier on combat letter spawn frequency vs derived baseline (`1.0` = unchanged).
-    var letterSpawnMultiplier: Double
+    var graphemeSpawnMultiplier: Double
     /// Casing for combat projectile / cue letters.
-    var letterCase: CombatLetterCase
+    var graphemeCase: CombatGraphemeCase
     /// Letter-name prompt replay interval in seconds.
-    var letterSoundRepeatSeconds: Double
+    var graphemeSoundRepeatSeconds: Double
 
     nonisolated static let fallback = CombatSlashConfig(weight: 1)
 
     nonisolated init(
         weight: Double = 1,
-        letterSpawnMultiplier: Double = 1.0,
-        letterCase: CombatLetterCase = .upper,
-        letterSoundRepeatSeconds: Double = 3
+        graphemeSpawnMultiplier: Double = 1.0,
+        graphemeCase: CombatGraphemeCase = .upper,
+        graphemeSoundRepeatSeconds: Double = 3
     ) {
         self.weight = weight
-        self.letterSpawnMultiplier = letterSpawnMultiplier
-        self.letterCase = letterCase
-        self.letterSoundRepeatSeconds = letterSoundRepeatSeconds
+        self.graphemeSpawnMultiplier = graphemeSpawnMultiplier
+        self.graphemeCase = graphemeCase
+        self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
     }
 
     func validate() throws {
-        guard letterSpawnMultiplier > 0 else {
-            throw WorldSeedError.invalidCombatLetterSpawnRate(letterSpawnMultiplier)
+        guard graphemeSpawnMultiplier > 0 else {
+            throw WorldSeedError.invalidCombatGraphemeSpawnRate(graphemeSpawnMultiplier)
         }
-        guard letterSoundRepeatSeconds > 0 else {
-            throw WorldSeedError.invalidLetterSoundRepeat(letterSoundRepeatSeconds)
+        guard graphemeSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidGraphemeSoundRepeat(graphemeSoundRepeatSeconds)
         }
     }
 }
@@ -51,10 +51,10 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     var orbTravelSeconds: Double
     /// Optional subset of shared catalog ids (`nil` = first `defaultRingCount` catalog entries).
     /// Order is meaningful: left to right on screen.
-    var letterIDs: [String]?
-    /// Resolved letters in `letterIDs` order. Populated via `resolveLetters(from:)`.
+    var graphemeIDs: [String]?
+    /// Resolved letters in `graphemeIDs` order. Populated via `resolveGraphemes(from:)`.
     /// Count (2…6) is the number of deflection circles drawn.
-    var letters: [GateLetter]
+    var graphemes: [GateGrapheme]
 
     static let defaultMonsterHP = 5
     static let defaultOrbTravelSeconds: Double = 3
@@ -67,33 +67,33 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
 
     nonisolated static let fallback = CombatDeflectConfig(
         weight: 1,
-        letterIDs: ["a", "b", "c"],
-        letters: Array(LetterCatalog.fallback.letters.prefix(defaultRingCount))
+        graphemeIDs: ["a", "b", "c"],
+        graphemes: Array(GraphemeCatalog.fallback.graphemes.prefix(defaultRingCount))
     )
 
     nonisolated init(
         weight: Double = 1,
         monsterHP: Int = defaultMonsterHP,
         orbTravelSeconds: Double = defaultOrbTravelSeconds,
-        letterIDs: [String]? = nil,
-        letters: [GateLetter] = []
+        graphemeIDs: [String]? = nil,
+        graphemes: [GateGrapheme] = []
     ) {
         self.weight = weight
         self.monsterHP = monsterHP
         self.orbTravelSeconds = orbTravelSeconds
-        self.letterIDs = letterIDs?.map { $0.lowercased() }
-        self.letters = letters
+        self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
+        self.graphemes = letters
     }
 
-    /// Resolves `letterIDs` against the shared catalog, preserving YAML order.
+    /// Resolves `graphemeIDs` against the shared catalog, preserving YAML order.
     /// Gate letter-match sorts its letters; ring order here is positional, so it must not.
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        let ids = letterIDs ?? catalog.letters.prefix(Self.defaultRingCount).map(\.letter)
-        var resolved: [GateLetter] = []
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+        let ids = graphemeIDs ?? catalog.graphemes.prefix(Self.defaultRingCount).map(.grapheme)
+        var resolved: [GateGrapheme] = []
         resolved.reserveCapacity(ids.count)
         for id in ids {
-            guard let entry = catalog.letter(named: id) else {
-                throw WorldSeedError.invalidCombatDeflectLetters
+            guard let entry = catalog.grapheme(named: id) else {
+                throw WorldSeedError.invalidCombatDeflectGraphemes
             }
             resolved.append(entry)
         }
@@ -108,13 +108,13 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
             throw WorldSeedError.invalidCombatOrbTravelSeconds(orbTravelSeconds)
         }
         guard (Self.minRingCount...Self.maxRingCount).contains(letters.count) else {
-            throw WorldSeedError.invalidCombatDeflectLetters
+            throw WorldSeedError.invalidCombatDeflectGraphemes
         }
-        try CatalogValidators.validateLetterEntries(
-            letters,
+        try CatalogValidators.validateGraphemeEntries(
+            graphemes,
             requirePronunciation: false,
-            emptyError: .invalidCombatDeflectLetters,
-            invalidEntryError: .invalidCombatDeflectLetters
+            emptyError: .invalidCombatDeflectGraphemes,
+            invalidEntryError: .invalidCombatDeflectGraphemes
         )
     }
 }
@@ -170,10 +170,10 @@ nonisolated struct CombatConfig: Equatable, Sendable {
         return picked
     }
 
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
         for index in minigames.indices {
             if case .deflect(var config) = minigames[index] {
-                try config.resolveLetters(from: catalog)
+                try config.resolveGraphemes(from: catalog)
                 minigames[index] = .deflect(config)
             }
         }

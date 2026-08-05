@@ -112,9 +112,12 @@ pit:
 #   when a plug is picked up. Word count snaps to a multiple of 3 in `min_word_count`...`max_word_count`.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
 #   LAST letter (`do_` for dog) and the socket sits to the right of the plate. Every word's last
-#   letter must resolve in graphemes.yaml, so words ending in t/r/k/n (cat, star, book, sun) are out.
-# `spelling-image-gate`: arrange letter tokens to spell the prompted word. Stars = graphemes in the word.
-#   Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional image).
+#   grapheme must resolve in graphemes.yaml.
+# `sound-out-word-gate`: sound out the prompted word one grapheme at a time. Each grapheme offers a
+#   set of blank capacitors; drag the right one into the play area, left to right. Stars = graphemes
+#   in the word. Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional
+#   image), and every grapheme of every word must resolve in graphemes.yaml. Set size is
+#   `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
 #   Its `graphemes:` are ids that must resolve in graphemes.yaml. Round size is
 #   `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
@@ -138,9 +141,11 @@ gate:
       # Each word's LAST letter must exist in graphemes.yaml.
       words: [dog, wand, cloud, lightbulb, pencil]
       fx: { loop: gate-spelling-loop-arc }
-    - type: spelling-image-gate
+    - type: sound-out-word-gate
       weight: 0.0
-      padding_grapheme_count: 6
+      # Capacitors offered per grapheme: 2...6.
+      min_choice_count: 2
+      max_choice_count: 4
       words: [cat, dog, star, gate, car]
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate

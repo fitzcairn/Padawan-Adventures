@@ -1,20 +1,20 @@
 import SpriteKit
 import UIKit
 
-protocol GateLetterMatchSceneDelegate: AnyObject {
-    func gateLetterMatchSceneDidWin(starsAwarded: Int)
+protocol GateGraphemeMatchSceneDelegate: AnyObject {
+    func gateGraphemeMatchSceneDidWin(starsAwarded: Int)
 }
 
 /// SpriteKit gate letter-match puzzle: switch letter buttons.
-final class GateLetterMatchScene: MinigameScene {
-    weak var letterMatchDelegate: GateLetterMatchSceneDelegate?
+final class GateGraphemeMatchScene: MinigameScene {
+    weak var graphemeMatchDelegate: GateGraphemeMatchSceneDelegate?
 
-    let puzzleConfig: GateLetterMatchConfig
+    let puzzleConfig: GateGraphemeMatchConfig
 
-    var engine: GateLetterMatchMinigameEngine
+    var engine: GateGraphemeMatchMinigameEngine
     var letterNodes: [UUID: SKNode] = [:]
     var switchNodes: [UUID: SKSpriteNode] = [:]
-    var switchTextures: GateLetterMatchSwitchSprites.Textures?
+    var switchTextures: GateGraphemeMatchSwitchSprites.Textures?
     /// Side length used by the last `layoutLetterRow` (for hit-testing).
     var laidOutTileSide: CGFloat = 0
     var inputLocked = false
@@ -25,10 +25,10 @@ final class GateLetterMatchScene: MinigameScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GateLetterMatchConfig
+        puzzleConfig: GateGraphemeMatchConfig
     ) {
         self.puzzleConfig = puzzleConfig
-        self.engine = GateLetterMatchMinigameEngine(config: .init(from: puzzleConfig))
+        self.engine = GateGraphemeMatchMinigameEngine(config: .init(from: puzzleConfig))
         super.init(size: size)
     }
 

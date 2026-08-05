@@ -5,8 +5,8 @@ import Testing
 @MainActor
 struct GateSpriteCacheTests {
     @Test func switchTexturesAreCachedAcrossCalls() {
-        let first = GateLetterMatchSwitchSprites.load()
-        let second = GateLetterMatchSwitchSprites.load()
+        let first = GateGraphemeMatchSwitchSprites.load()
+        let second = GateGraphemeMatchSwitchSprites.load()
         #expect(first != nil)
         #expect(second != nil)
         #expect(first?.off === second?.off)
@@ -22,9 +22,9 @@ struct GateSpriteCacheTests {
     }
 
     @Test func nonMainBundleBypassesSwitchCache() {
-        let main = GateLetterMatchSwitchSprites.load()
+        let main = GateGraphemeMatchSwitchSprites.load()
         #expect(main != nil)
-        let other = GateLetterMatchSwitchSprites.load(bundle: Bundle(for: BundleToken.self))
+        let other = GateGraphemeMatchSwitchSprites.load(bundle: Bundle(for: BundleToken.self))
         // Test bundle has no switch art; must not return the cached .main textures.
         #expect(other == nil)
     }

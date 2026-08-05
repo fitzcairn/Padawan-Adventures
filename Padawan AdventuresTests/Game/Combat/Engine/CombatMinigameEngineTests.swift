@@ -9,7 +9,7 @@ struct CombatMinigameEngineTests {
         starsToWin: Int = 10,
         shotLetters: [String] = ["A", "B", "C"],
         meanInterval: Double? = 0.01,
-        letterSoundRepeatSeconds: Double = 3,
+        graphemeSoundRepeatSeconds: Double = 3,
         startingHealth: Int = 3,
         seed: UInt64 = 42
     ) -> CombatMinigameEngine {
@@ -20,7 +20,7 @@ struct CombatMinigameEngineTests {
                 starsToWin: starsToWin,
                 shotLetters: shotLetters,
                 meanShotIntervalSeconds: meanInterval,
-                letterSoundRepeatSeconds: letterSoundRepeatSeconds
+                graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds
             ),
             startingHealth: startingHealth,
             rng: CombatSeededGenerator(seed: seed)
@@ -131,7 +131,7 @@ struct CombatMinigameEngineTests {
         let config = CombatMinigameEngine.Config(
             from: type,
             letterSpawnRate: 0.7,
-            letterCase: .lower
+            graphemeCase: .lower
         )
         #expect(config.shotLetters == ["a", "b", "c"])
         let derived = CombatMinigameEngine.Config.derivedMeanShotInterval(
@@ -142,14 +142,14 @@ struct CombatMinigameEngineTests {
         )
         #expect(abs(config.meanShotIntervalSeconds - derived / 0.7) < 1e-9)
 
-        let both = CombatMinigameEngine.Config(from: type, letterCase: .both)
+        let both = CombatMinigameEngine.Config(from: type, graphemeCase: .both)
         #expect(both.shotLetters == ["a", "A", "b", "B", "c", "C"])
     }
 
     @Test func combatLetterCaseBuildsPools() {
-        #expect(CombatLetterCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
-        #expect(CombatLetterCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
-        #expect(CombatLetterCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
+        #expect(CombatGraphemeCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
+        #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
+        #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
     }
 
     @Test func sequenceCueThenSpawnsShareRequiredLetter() {
@@ -444,7 +444,7 @@ struct CombatMinigameEngineTests {
             pacing: 20,
             starsToWin: 99,
             meanInterval: 0.01,
-            letterSoundRepeatSeconds: 3,
+            graphemeSoundRepeatSeconds: 3,
             seed: 1
         )
 

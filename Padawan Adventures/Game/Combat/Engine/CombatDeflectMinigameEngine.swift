@@ -59,7 +59,7 @@ nonisolated enum CombatDeflectEvent: Equatable, Sendable {
 nonisolated struct CombatDeflectMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         /// Ring letters left to right (2…6 entries).
-        var letters: [GateLetter]
+        var graphemes: [GateGrapheme]
         /// Vocabulary used to pick a thrown word for each letter (typically the full catalog).
         var words: [GateWord]
         var monsterHP: Int
@@ -68,12 +68,12 @@ nonisolated struct CombatDeflectMinigameEngine {
         var ringCount: Int { letters.count }
 
         init(
-            letters: [GateLetter],
+            graphemes: [GateGrapheme],
             words: [GateWord] = WordCatalog.fallback.words,
             monsterHP: Int,
             orbTravelSeconds: Double
         ) {
-            self.letters = letters
+            self.graphemes = letters
             self.words = words
             self.monsterHP = max(monsterHP, 1)
             self.orbTravelSeconds = max(orbTravelSeconds, 0.2)
@@ -81,7 +81,7 @@ nonisolated struct CombatDeflectMinigameEngine {
 
         init(from deflect: CombatDeflectConfig, words: [GateWord] = WordCatalog.fallback.words) {
             self.init(
-                letters: deflect.letters,
+                letters: deflect.graphemes,
                 words: words,
                 monsterHP: deflect.monsterHP,
                 orbTravelSeconds: deflect.orbTravelSeconds
@@ -154,11 +154,11 @@ nonisolated struct CombatDeflectMinigameEngine {
     /// Picks a ring letter (excluding the last successful deflect), then a random imaged
     /// word from the catalog that begins with that letter.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
-        guard isActive, outcome == nil, activeOrb == nil, !config.letters.isEmpty else {
+        guard isActive, outcome == nil, activeOrb == nil, !config.graphemes.isEmpty else {
             return []
         }
-        let withWords = config.letters.indices.filter { index in
-            !config.words(startingWith: config.letters[index].letter).isEmpty
+        let withWords = config.graphemes.indices.filter { index in
+            !config.words(startingWith: config.graphemes[index].letter).isEmpty
         }
         // Prefer a different letter than the last deflect; if that empties the pool
         // (only one letter has imaged words), allow a repeat.
@@ -168,12 +168,12 @@ nonisolated struct CombatDeflectMinigameEngine {
         let candidates = excludingLast.isEmpty ? withWords : excludingLast
         guard let index = candidates.randomElement(using: &rng) else { return [] }
         let ring = CombatDeflectRing(index)
-        let entry = config.letters[index]
-        let wordChoices = config.words(startingWith: entry.letter)
+        let entry = config.graphemes[index]
+        let wordChoices = config.words(startingWith: entry.grapheme)
         guard let word = wordChoices.randomElement(using: &rng) else { return [] }
         let orb = Orb(
             id: UUID(),
-            letter: entry.letter,
+            letter: entry.grapheme,
             word: word.word,
             imageName: word.image,
             ring: ring,

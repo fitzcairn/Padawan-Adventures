@@ -30,52 +30,57 @@ nonisolated struct GateMinigameDTO: Decodable {
     var weight: Double?
     var fx: SoundEffectTable?
     var music: String?
-    var numPaddingLetters: Int?
     var words: [String]?
-    var letterCountMin: Int?
-    var letterCountMax: Int?
+    var graphemeCountMin: Int?
+    var graphemeCountMax: Int?
     var graphemes: [String]?
     var wordCountMin: Int?
     var wordCountMax: Int?
+    var choiceCountMin: Int?
+    var choiceCountMax: Int?
 
     enum CodingKeys: String, CodingKey {
         case type
         case weight
         case fx
         case music
-        case numPaddingLetters = "padding_grapheme_count"
         case words
-        case letterCountMin = "min_grapheme_count"
-        case letterCountMax = "max_grapheme_count"
+        case graphemeCountMin = "min_grapheme_count"
+        case graphemeCountMax = "max_grapheme_count"
         case graphemes
         case wordCountMin = "min_word_count"
         case wordCountMax = "max_word_count"
+        case choiceCountMin = "min_choice_count"
+        case choiceCountMax = "max_choice_count"
     }
 }
 
 nonisolated enum MinigameDecodeRegistry {
     static func decodeGateMinigame(from entry: GateMinigameDTO) throws -> GateMinigameConfig {
         switch entry.type {
-        case GateMinigameKind.spelling.rawValue:
-            return .spelling(GateSpellingConfig(
+        case GateMinigameKind.soundOutWord.rawValue:
+            return .soundOutWord(GateSoundOutWordConfig(
                 weight: entry.weight ?? 1,
                 fx: entry.fx ?? SoundEffectTable(),
-                numPaddingLetters: entry.numPaddingLetters
-                    ?? GateSpellingConfig.fallback.numPaddingLetters,
+                choiceCountMin: entry.choiceCountMin
+                    ?? GateSoundOutWordConfig.fallback.choiceCountMin,
+                choiceCountMax: entry.choiceCountMax
+                    ?? GateSoundOutWordConfig.fallback.choiceCountMax,
                 wordIDs: entry.words?.map { $0.lowercased() },
                 words: [],
+                letters: [],
                 music: entry.music
             ))
-        case GateMinigameKind.letterMatch.rawValue:
-            return .letterMatch(GateLetterMatchConfig(
+        case GateMinigameKind.graphemeMatch.rawValue:
+            return .graphemeMatch(GateGraphemeMatchConfig(
                 weight: entry.weight ?? 1,
-                letterCountMin: entry.letterCountMin
-                    ?? GateLetterMatchConfig.fallback.letterCountMin,
-                letterCountMax: entry.letterCountMax
-                    ?? GateLetterMatchConfig.fallback.letterCountMax,
+                graphemeCountMin: entry.graphemeCountMin
+                    ?? GateGraphemeMatchConfig.fallback.graphemeCountMin,
+                graphemeCountMax: entry.graphemeCountMax
+                    ?? GateGraphemeMatchConfig.fallback.graphemeCountMax,
                 fx: entry.fx ?? SoundEffectTable(),
-                letterIDs: entry.graphemes?.map { $0.lowercased() },
-                letters: [],
+                graphemeIDs: entry.graphemes?.map { $0.lowercased() },
+                graphemes: [],
                 music: entry.music
             ))
         case GateMinigameKind.wordPlug.rawValue:
@@ -91,7 +96,7 @@ nonisolated enum MinigameDecodeRegistry {
 
     private static func gateWordPlugConfig(
         from entry: GateMinigameDTO,
-        letterPosition: GateWordPlugLetterPosition
+        letterPosition: GateWordPlugGraphemePosition
     ) -> GateWordPlugConfig {
         GateWordPlugConfig(
             weight: entry.weight ?? 1,
@@ -101,7 +106,7 @@ nonisolated enum MinigameDecodeRegistry {
             fx: entry.fx ?? SoundEffectTable(),
             wordIDs: entry.words?.map { $0.lowercased() },
             words: [],
-            letters: [],
+            graphemes: [],
             music: entry.music
         )
     }
@@ -111,19 +116,19 @@ nonisolated enum MinigameDecodeRegistry {
     static func decodeCombatMinigame(from entry: CombatMinigameDTO) throws -> CombatMinigameConfig {
         switch entry.type {
         case CombatMinigameKind.slash.rawValue:
-            var letterCase: CombatLetterCase = .upper
-            if let rawCase = entry.letterCase {
+            var graphemeCase: CombatGraphemeCase = .upper
+            if let rawCase = entry.graphemeCase {
                 let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                guard let parsed = CombatLetterCase(rawValue: trimmed) else {
-                    throw WorldSeedError.invalidCombatLetterCase(rawCase)
+                guard let parsed = CombatGraphemeCase(rawValue: trimmed) else {
+                    throw WorldSeedError.invalidCombatGraphemeCase(rawCase)
                 }
-                letterCase = parsed
+                graphemeCase = parsed
             }
             return .slash(CombatSlashConfig(
                 weight: entry.weight ?? 1,
-                letterSpawnMultiplier: entry.letterSpawnMultiplier ?? 1.0,
-                letterCase: letterCase,
-                letterSoundRepeatSeconds: entry.letterSoundRepeatSeconds ?? 3
+                graphemeSpawnMultiplier: entry.graphemeSpawnMultiplier ?? 1.0,
+                graphemeCase: graphemeCase,
+                graphemeSoundRepeatSeconds: entry.graphemeSoundRepeatSeconds ?? 3
             ))
         case CombatMinigameKind.deflect.rawValue:
             return .deflect(CombatDeflectConfig(
@@ -131,8 +136,8 @@ nonisolated enum MinigameDecodeRegistry {
                 monsterHP: entry.monsterHP ?? CombatDeflectConfig.defaultMonsterHP,
                 orbTravelSeconds: entry.orbTravelSeconds
                     ?? CombatDeflectConfig.defaultOrbTravelSeconds,
-                letterIDs: entry.graphemes?.map { $0.lowercased() },
-                letters: []
+                graphemeIDs: entry.graphemes?.map { $0.lowercased() },
+                graphemes: []
             ))
         default:
             throw WorldSeedError.decodeFailed(
@@ -165,7 +170,7 @@ nonisolated enum MinigameDecodeRegistry {
 
     private static func pitBridgeConfig(
         from entry: PitMinigameDTO,
-        letterPosition: GateWordPlugLetterPosition
+        letterPosition: GateWordPlugGraphemePosition
     ) -> PitBridgeConfig {
         PitBridgeConfig(
             weight: entry.weight ?? 1,
@@ -184,9 +189,9 @@ nonisolated struct CombatMinigameDTO: Decodable {
     var monsterHP: Int?
     var orbTravelSeconds: Double?
     var graphemes: [String]?
-    var letterSpawnMultiplier: Double?
-    var letterCase: String?
-    var letterSoundRepeatSeconds: Double?
+    var graphemeSpawnMultiplier: Double?
+    var graphemeCase: String?
+    var graphemeSoundRepeatSeconds: Double?
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -194,9 +199,9 @@ nonisolated struct CombatMinigameDTO: Decodable {
         case monsterHP = "monster_hit_points"
         case orbTravelSeconds = "orb_travel_seconds"
         case graphemes
-        case letterSpawnMultiplier = "grapheme_spawn_multiplier"
-        case letterCase = "grapheme_case"
-        case letterSoundRepeatSeconds = "grapheme_sound_repeat_seconds"
+        case graphemeSpawnMultiplier = "grapheme_spawn_multiplier"
+        case graphemeCase = "grapheme_case"
+        case graphemeSoundRepeatSeconds = "grapheme_sound_repeat_seconds"
     }
 }
 

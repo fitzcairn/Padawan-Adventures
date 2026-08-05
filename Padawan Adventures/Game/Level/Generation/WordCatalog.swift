@@ -50,7 +50,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
     }
 
     nonisolated init(words: [GateWord]) {
-        self.words = GateSpellingConfig.normalizedWords(words)
+        self.words = GateWord.normalized(words)
     }
 
     func word(named id: String) -> GateWord? {
@@ -89,7 +89,7 @@ nonisolated struct WordCatalog: Equatable, Sendable {
             }
             resolved.append(entry)
         }
-        return GateSpellingConfig.normalizedWords(resolved)
+        return GateWord.normalized(resolved)
     }
 
     func validate() throws {

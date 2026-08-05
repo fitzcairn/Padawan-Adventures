@@ -564,22 +564,22 @@ struct ProceduralGeneratorTests {
             config.generation.room.gateProbability = 1.0
             config.gateMinigames = [
                 WeightedGateKind(kind: .spelling, weight: 1),
-                WeightedGateKind(kind: .letterMatch, weight: 1),
+                WeightedGateKind(kind: .graphemeMatch, weight: 1),
             ]
             #expect(config.gateMinigames.contains { $0.kind == .spelling })
-            #expect(config.gateMinigames.contains { $0.kind == .letterMatch })
+            #expect(config.gateMinigames.contains { $0.kind == .graphemeMatch })
             let world = try ProceduralGenerator().generate(from: config)
             for y in 0..<world.height {
                 for x in 0..<world.width {
                     guard let kind = world.tile(at: GridCoord(x: x, y: y, story: 0))?.gateMinigame
                     else { continue }
                     if kind == .spelling { sawSpelling = true }
-                    if kind == .letterMatch { sawLetterMatch = true }
+                    if kind == .graphemeMatch { sawLetterMatch = true }
                 }
             }
         }
         #expect(sawSpelling, "expected at least one spelling gate across seeds")
-        #expect(sawLetterMatch, "expected at least one letterMatch gate across seeds")
+        #expect(sawLetterMatch, "expected at least one graphemeMatch gate across seeds")
     }
 
     @Test func zeroWeightGateMinigameKindsAreNeverBaked() throws {
@@ -589,7 +589,7 @@ struct ProceduralGeneratorTests {
             config.gateMinigames = [
                 WeightedGateKind(kind: .wordPlug, weight: 1),
                 WeightedGateKind(kind: .spelling, weight: 0),
-                WeightedGateKind(kind: .letterMatch, weight: 0),
+                WeightedGateKind(kind: .graphemeMatch, weight: 0),
             ]
             let world = try ProceduralGenerator().generate(from: config)
             for y in 0..<world.height {

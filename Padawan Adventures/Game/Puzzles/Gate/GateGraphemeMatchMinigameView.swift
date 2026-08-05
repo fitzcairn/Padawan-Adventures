@@ -3,20 +3,20 @@ import SpriteKit
 import SwiftUI
 import UIKit
 
-struct GateLetterMatchMinigameView: View {
-    let puzzleConfig: GateLetterMatchConfig
+struct GateGraphemeMatchMinigameView: View {
+    let puzzleConfig: GateGraphemeMatchConfig
     let onFinished: (MinigameOutcome) -> Void
 
-    @StateObject private var session: GateLetterMatchSessionController
+    @StateObject private var session: GateGraphemeMatchSessionController
 
     init(
-        puzzleConfig: GateLetterMatchConfig,
+        puzzleConfig: GateGraphemeMatchConfig,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.onFinished = onFinished
         _session = StateObject(
-            wrappedValue: GateLetterMatchSessionController(
+            wrappedValue: GateGraphemeMatchSessionController(
                 puzzleConfig: puzzleConfig
             )
         )
@@ -25,7 +25,7 @@ struct GateLetterMatchMinigameView: View {
     var body: some View {
         MinigameShellView(
             scene: session.scene,
-            accessibilityRootID: "minigame.gate.letter_match",
+            accessibilityRootID: "minigame.gate.grapheme_match",
             ensureScene: session.ensureScene(size:),
             updateSceneSize: session.updateSceneSizeIfNeeded(_:),
             includesHUDLayer: false,
@@ -44,28 +44,28 @@ struct GateLetterMatchMinigameView: View {
 }
 
 @MainActor
-final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchSceneDelegate {
+final class GateGraphemeMatchSessionController: ObservableObject, GateGraphemeMatchSceneDelegate {
     @Published var showUnlocked = false
     @Published private(set) var starsAwarded = 0
-    @Published private(set) var scene: GateLetterMatchScene?
+    @Published private(set) var scene: GateGraphemeMatchScene?
 
-    private let puzzleConfig: GateLetterMatchConfig
+    private let puzzleConfig: GateGraphemeMatchConfig
     private var didFinish = false
-    private lazy var sceneHost = MinigameSceneHost<GateLetterMatchScene>(
+    private lazy var sceneHost = MinigameSceneHost<GateGraphemeMatchScene>(
         make: { [puzzleConfig] size in
-            GateLetterMatchScene(
+            GateGraphemeMatchScene(
                 size: size,
                 puzzleConfig: puzzleConfig
             )
         },
         onReady: { [weak self] created in
             guard let self else { return }
-            created.letterMatchDelegate = self
+            created.graphemeMatchDelegate = self
             self.scene = created
         }
     )
 
-    init(puzzleConfig: GateLetterMatchConfig) {
+    init(puzzleConfig: GateGraphemeMatchConfig) {
         self.puzzleConfig = puzzleConfig
     }
 
@@ -83,7 +83,7 @@ final class GateLetterMatchSessionController: ObservableObject, GateLetterMatchS
         onFinished(.won(starsAwarded: starsAwarded))
     }
 
-    func gateLetterMatchSceneDidWin(starsAwarded: Int) {
+    func gateGraphemeMatchSceneDidWin(starsAwarded: Int) {
         self.starsAwarded = starsAwarded
         showUnlocked = true
     }

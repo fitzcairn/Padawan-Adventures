@@ -25,7 +25,7 @@ nonisolated enum ConfigAudit {
         enemies: EnemyConfig,
         items: ItemsConfig,
         words: WordCatalog,
-        letters: LetterCatalog,
+        letters: GraphemeCatalog,
         audio: SoundSettings,
         screens: ScreensConfig?,
         player: PlayerConfig? = nil,

@@ -27,7 +27,7 @@ nonisolated struct PitPuzzleConfig: Equatable, Sendable {
         self.weight = weight
         self.numPaddingLetters = numPaddingLetters
         self.wordIDs = wordIDs?.map { $0.lowercased() }
-        self.words = GateSpellingConfig.normalizedWords(words)
+        self.words = GateWord.normalized(words)
     }
 
     mutating func resolveWords(from catalog: WordCatalog) throws {
@@ -364,7 +364,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         withExtension ext: String = "yaml",
         subdirectory: String? = LevelCatalog.subdirectory,
         wordCatalog: WordCatalog? = nil,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> LevelConfig {
         let path: ConfigPath
         if name == ConfigPath.levelDefaults.basename {
@@ -383,7 +383,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             fileLabel: path.description,
             levelID: levelID(forResourceNamed: name),
             wordCatalog: wordCatalog,
-            letterCatalog: letterCatalog
+            graphemeCatalog: graphemeCatalog
         )
     }
 
@@ -404,7 +404,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         fileLabel: String = "level",
         levelID: String? = nil,
         wordCatalog: WordCatalog? = nil,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> LevelConfig {
         do {
             let merged = try ConfigStore.rawTree(
@@ -416,10 +416,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             var level = try YAMLDecoder().decode(LevelConfig.self, from: yaml)
             if let levelID { level.applyDerivedAssets(levelID: levelID) }
             let words = try wordCatalog ?? Self.loadWordCatalog()
-            let letters = try letterCatalog ?? Self.loadLetterCatalog()
+            let letters = try graphemeCatalog ?? Self.loadGraphemeCatalog()
             try level.pit.resolveWords(from: words)
-            try level.gate.resolveMinigames(wordCatalog: words, letterCatalog: letters)
-            try level.combat.resolveLetters(from: letters)
+            try level.gate.resolveMinigames(wordCatalog: words, graphemeCatalog: letters)
+            try level.combat.resolveGraphemes(from: letters)
             try level.validate()
             return level
         } catch let error as ConfigError {
@@ -437,13 +437,13 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         from yaml: String,
         levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> LevelConfig {
         try decode(
             from: Data(yaml.utf8),
             levelID: levelID,
             wordCatalog: wordCatalog,
-            letterCatalog: letterCatalog
+            graphemeCatalog: graphemeCatalog
         )
     }
 
@@ -453,7 +453,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         parents: [String: String],
         levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> LevelConfig {
         try decode(
             from: Data(yaml.utf8),
@@ -466,7 +466,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             fileLabel: "level",
             levelID: levelID,
             wordCatalog: wordCatalog,
-            letterCatalog: letterCatalog
+            graphemeCatalog: graphemeCatalog
         )
     }
 
@@ -478,9 +478,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         }
     }
 
-    private static func loadLetterCatalog() throws -> LetterCatalog {
+    private static func loadGraphemeCatalog() throws -> GraphemeCatalog {
         do {
-            return try LetterCatalog.loadFromBundle()
+            return try GraphemeCatalog.loadFromBundle()
         } catch ConfigError.missingResource {
             return .fallback
         }

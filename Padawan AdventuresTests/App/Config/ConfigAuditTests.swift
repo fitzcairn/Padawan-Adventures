@@ -31,7 +31,7 @@ struct ConfigAuditTests {
         let words = try WordCatalog.loadFromBundle()
         try words.validate()
 
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         try letters.validate()
 
         let descriptors = LevelCatalog.loadFromBundle()
@@ -42,7 +42,7 @@ struct ConfigAuditTests {
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                letterCatalog: letters
+                graphemeCatalog: letters
             )
         }
 
@@ -50,7 +50,7 @@ struct ConfigAuditTests {
             named: "_defaults",
             subdirectory: LevelCatalog.subdirectory,
             wordCatalog: words,
-            letterCatalog: letters
+            graphemeCatalog: letters
         )
 
         for level in levels {
@@ -84,20 +84,20 @@ struct ConfigAuditTests {
     /// Orphans are silent — they only cost bundle size — so nothing else would catch them.
     @Test func everyBundledAudioFileIsReferencedByConfig() throws {
         let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         let levels = try LevelCatalog.loadFromBundle().map { descriptor in
             try LevelConfig.loadFromBundle(
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                letterCatalog: letters
+                graphemeCatalog: letters
             )
         }
         let defaults = try LevelConfig.loadFromBundle(
             named: "_defaults",
             subdirectory: LevelCatalog.subdirectory,
             wordCatalog: words,
-            letterCatalog: letters
+            graphemeCatalog: letters
         )
 
         // Must be the complete bundled config: a missing level makes its music look orphaned.
@@ -118,12 +118,12 @@ struct ConfigAuditTests {
     @Test func badFloorSetFailsAudit() throws {
         let app = try WorldLoader.loadConfigFromBundle()
         let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         var level = try LevelConfig.loadFromBundle(
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory,
             wordCatalog: words,
-            letterCatalog: letters
+            graphemeCatalog: letters
         )
         level.floor.set = "does-not-exist"
         #expect(throws: ConfigAuditError.self) {
@@ -144,12 +144,12 @@ struct ConfigAuditTests {
     @Test func badLetterSetFailsAudit() throws {
         let app = try WorldLoader.loadConfigFromBundle()
         let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         var level = try LevelConfig.loadFromBundle(
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory,
             wordCatalog: words,
-            letterCatalog: letters
+            graphemeCatalog: letters
         )
         level.letters.set = "does-not-exist"
         #expect(throws: ConfigAuditError.self) {

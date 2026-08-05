@@ -150,7 +150,7 @@ extension ConfigAudit {
             switch minigame {
             case .spelling(let c): ids = c.wordIDs
             case .wordPlug(let c): ids = c.wordIDs
-            case .letterMatch: ids = nil
+            case .graphemeMatch: ids = nil
             }
             for id in ids ?? [] where words.word(named: id) == nil {
                 problems.append("\(label).gate.minigames[\(idx)].words: unknown word id '\(id)'")
@@ -161,14 +161,14 @@ extension ConfigAudit {
 
     static func checkLetterIDs(
         level: LevelConfig,
-        letters: LetterCatalog,
+        letters: GraphemeCatalog,
         label: String
     ) -> [String] {
         var problems: [String] = []
         for (idx, minigame) in level.gate.minigames.enumerated() {
-            if case .letterMatch(let c) = minigame, let ids = c.letterIDs {
+            if case .graphemeMatch(let c) = minigame, let ids = c.graphemeIDs {
                 for id in ids {
-                    if letters.letter(named: id) == nil {
+                    if letters.grapheme(named: id) == nil {
                         problems.append(
                             "\(label).gate.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
                         )
@@ -177,8 +177,8 @@ extension ConfigAudit {
             }
         }
         for (idx, minigame) in level.combat.minigames.enumerated() {
-            if case .deflect(let c) = minigame, let ids = c.letterIDs {
-                for id in ids where letters.letter(named: id) == nil {
+            if case .deflect(let c) = minigame, let ids = c.graphemeIDs {
+                for id in ids where letters.grapheme(named: id) == nil {
                     problems.append(
                         "\(label).combat.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
                     )

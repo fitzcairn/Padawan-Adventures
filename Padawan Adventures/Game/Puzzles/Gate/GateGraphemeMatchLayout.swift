@@ -1,12 +1,12 @@
 import SpriteKit
 import UIKit
 
-extension GateLetterMatchScene {
+extension GateGraphemeMatchScene {
     // MARK: - Layout
 
     /// Fit bounds for the letter row — background image frame when available.
     var letterRowBounds: CGRect {
-        if let bg = GateMinigameBackground.letterMatchFrame(sceneSize: size), bg.width > 1 {
+        if let bg = GateMinigameBackground.graphemeMatchFrame(sceneSize: size), bg.width > 1 {
             return bg
         }
         // Aspect 3:1 landscape fallback, ~40% of screen area.
@@ -76,9 +76,9 @@ extension GateLetterMatchScene {
         removeAllChildren()
         letterNodes = [:]
         switchNodes = [:]
-        switchTextures = GateLetterMatchSwitchSprites.load()
+        switchTextures = GateGraphemeMatchSwitchSprites.load()
 
-        if let background = GateMinigameBackground.letterMatch(sceneSize: size) {
+        if let background = GateMinigameBackground.graphemeMatch(sceneSize: size) {
             background.alpha = 0.8
             addChild(background)
         }
@@ -103,7 +103,7 @@ extension GateLetterMatchScene {
         }
     }
 
-    func makeLetterNode(token: GateLetterMatchMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
+    func makeLetterNode(token: GateGraphemeMatchMinigameEngine.LetterToken, side: CGFloat) -> SKNode {
         let root = SKNode()
         root.name = "letter:\(token.id.uuidString)"
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
@@ -112,7 +112,7 @@ extension GateLetterMatchScene {
         let matched = engine.matchedIDs.contains(token.id)
         if let textures = switchTextures {
             let texture = matched ? textures.on : textures.off
-            if let switchNode = GateLetterMatchSwitchSprites.sprite(texture: texture, side: side) {
+            if let switchNode = GateGraphemeMatchSwitchSprites.sprite(texture: texture, side: side) {
                 switchNode.zPosition = 0
                 switchNode.name = "switch"
                 root.addChild(switchNode)

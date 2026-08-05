@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared letter name / pronunciation track basenames used across minigames.
-nonisolated enum LetterSoundCatalog {
+nonisolated enum GraphemeSoundCatalog {
     /// `sfx_grapheme_<lower>_name` for a single letter (e.g. `"B"` → `sfx_grapheme_b_name`).
     static func nameTrackID(for letter: String) -> String? {
         trackID(for: letter, suffix: "name")

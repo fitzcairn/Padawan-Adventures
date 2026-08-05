@@ -1160,10 +1160,10 @@ def collect_gate_ui_yaml(plan: BakePlan, *, config_name: str, category_prefix: s
         )
 
 
-def collect_gate_letter_match(plan: BakePlan) -> None:
+def collect_gate_grapheme_match(plan: BakePlan) -> None:
     """Bake gate letter-match UI sheets (switch off/on). No SpriteKit prep flip."""
     collect_gate_ui_yaml(
-        plan, config_name="gate_letter_match", category_prefix="gate_letter_match"
+        plan, config_name="gate_grapheme_match", category_prefix="gate_grapheme_match"
     )
 
 
@@ -1257,7 +1257,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     if bake_cutscene:
         collect_cutscene(plan)
     if bake_gate:
-        collect_gate_letter_match(plan)
+        collect_gate_grapheme_match(plan)
         collect_gate_word_plug(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None

@@ -1,9 +1,9 @@
 import SpriteKit
 
-extension GateLetterMatchScene {
+extension GateGraphemeMatchScene {
     // MARK: - Events
 
-    func handle(_ event: GateLetterMatchEngineEvent) {
+    func handle(_ event: GateGraphemeMatchEngineEvent) {
         switch event {
         case .playTargetPronunciation:
             playTargetPronunciation()
@@ -28,7 +28,7 @@ extension GateLetterMatchScene {
 
     /// Tap audio/visual chain (each cue starts when the previous finishes):
     /// switch → tapped letter → correct/error (+ light green / flash red) → next/current target.
-    func handleTapEvents(_ events: [GateLetterMatchEngineEvent]) {
+    func handleTapEvents(_ events: [GateGraphemeMatchEngineEvent]) {
         let nameTrack = events.compactMap { event -> String? in
             if case let .playName(trackID) = event { return trackID }
             return nil
@@ -60,7 +60,7 @@ extension GateLetterMatchScene {
     }
 
     func runTapFeedback(
-        events: [GateLetterMatchEngineEvent],
+        events: [GateGraphemeMatchEngineEvent],
         nameTrackID: String?,
         isCorrect: Bool,
         incorrectID: UUID? = nil
@@ -193,9 +193,9 @@ extension GateLetterMatchScene {
         isUserInteractionEnabled = false
         SoundEffectsController.shared.playCommon(event: "win")
         if case let .won(stars) = engine.outcome {
-            letterMatchDelegate?.gateLetterMatchSceneDidWin(starsAwarded: stars)
+            graphemeMatchDelegate?.gateGraphemeMatchSceneDidWin(starsAwarded: stars)
         } else {
-            letterMatchDelegate?.gateLetterMatchSceneDidWin(starsAwarded: engine.letters.count)
+            graphemeMatchDelegate?.gateGraphemeMatchSceneDidWin(starsAwarded: engine.letters.count)
         }
     }
 

@@ -74,7 +74,7 @@ struct GameSaveTests {
             .floor(isPit: true),
             .gate(minigame: .spelling),
             .wall,
-            .gate(minigame: .letterMatch),
+            .gate(minigame: .graphemeMatch),
         ]
 
         for kind in kinds {

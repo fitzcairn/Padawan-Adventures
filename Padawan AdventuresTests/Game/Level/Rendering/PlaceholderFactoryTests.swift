@@ -176,10 +176,10 @@ struct PlaceholderFactoryTests {
         #expect(sawGreenFamily)
     }
 
-    @Test func letterMatchGateUsesLightBlueColor() {
+    @Test func graphemeMatchGateUsesLightBlueColor() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(
-            for: Tile(kind: .gate(minigame: .letterMatch)),
+            for: Tile(kind: .gate(minigame: .graphemeMatch)),
             at: GridCoord(x: 0, y: 0, story: 0),
             config: config
         )
@@ -255,13 +255,13 @@ struct PlaceholderFactoryTests {
         #expect(solid == nil)
         #expect(gate == "gate|spelling-image-gate|\(WallFaceSet.all.rawValue)")
 
-        let letterMatch = PlaceholderFactory.wallIdentity(
-            for: Tile(kind: .gate(minigame: .letterMatch)),
+        let graphemeMatch = PlaceholderFactory.wallIdentity(
+            for: Tile(kind: .gate(minigame: .graphemeMatch)),
             at: a,
             in: world
         )
-        #expect(letterMatch == "gate|grapheme-sound-gate|\(WallFaceSet.all.rawValue)")
-        #expect(letterMatch != gate)
+        #expect(graphemeMatch == "gate|grapheme-sound-gate|\(WallFaceSet.all.rawValue)")
+        #expect(graphemeMatch != gate)
 
         // Face culling applies to gates (east opaque neighbor hides .right).
         world.setTile(Tile(kind: .wall), at: GridCoord(x: 2, y: 1, story: 0))

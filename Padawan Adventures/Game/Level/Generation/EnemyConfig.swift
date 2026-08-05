@@ -104,16 +104,16 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 
     static func decode(
         from data: Data,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> EnemyConfig {
         do {
-            let letters = try letterCatalog ?? Self.loadLetterCatalog()
+            let letters = try graphemeCatalog ?? Self.loadGraphemeCatalog()
             var tree = try ConfigStore.rawTree(
                 from: data,
                 parentDataNamed: nil,
                 fileLabel: "enemies.yaml"
             )
-            try resolveShotLetters(in: &tree, letterCatalog: letters)
+            try resolveShotLetters(in: &tree, graphemeCatalog: letters)
             let yaml = try Yams.dump(object: tree)
             let config = try YAMLDecoder().decode(EnemyConfigDTO.self, from: yaml).asEnemyConfig()
             try config.validate()
@@ -129,14 +129,14 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
 
     static func decode(
         from yaml: String,
-        letterCatalog: LetterCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil
     ) throws -> EnemyConfig {
-        try decode(from: Data(yaml.utf8), letterCatalog: letterCatalog)
+        try decode(from: Data(yaml.utf8), graphemeCatalog: graphemeCatalog)
     }
 
-    private static func loadLetterCatalog() throws -> LetterCatalog {
+    private static func loadGraphemeCatalog() throws -> GraphemeCatalog {
         do {
-            return try LetterCatalog.loadFromBundle()
+            return try GraphemeCatalog.loadFromBundle()
         } catch {
             return .fallback
         }
@@ -146,7 +146,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     /// through the letter catalog (`a` → key `A`, shoot track = letter `name`).
     private static func resolveShotLetters(
         in tree: inout [String: Any],
-        letterCatalog: LetterCatalog
+        graphemeCatalog: GraphemeCatalog
     ) throws {
         guard var enemies = ConfigStore.asStringKeyedDictionary(tree["enemies"] as Any?) else {
             return
@@ -163,7 +163,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
                 guard !id.isEmpty else {
                     throw EnemyConfigError.invalid("\(enemyID).shot_graphemes entries must be non-empty")
                 }
-                guard let letter = letterCatalog.letter(named: id) else {
+                guard let letter = graphemeCatalog.grapheme(named: id) else {
                     throw EnemyConfigError.invalid(
                         "\(enemyID).shot_graphemes.\(id) is not in the letter catalog"
                     )

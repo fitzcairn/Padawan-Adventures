@@ -1,7 +1,7 @@
 # Letter-match gate minigame UI sprites (baked via scripts/bake_sprites.py --gate).
 switch:
   sprite:
-    root: Sprites/Gate/letter_match
+    root: Sprites/Gate/grapheme_match
     # Exterior near-black only — keeps dark button recesses intact.
     background: flood_black:18
     # Source cells are ~1408×1536; bake down for button-sized SKTextures.

@@ -25,6 +25,26 @@ nonisolated struct GateWord: Equatable, Sendable {
         return track
     }
 
+    /// Lowercases words/prefix keys, trims track names, and sorts by word for deterministic RNG.
+    static func normalized(_ words: [GateWord]) -> [GateWord] {
+        words
+            .map { entry in
+                var progressive: [String: String] = [:]
+                for (key, value) in entry.progressive {
+                    progressive[key.lowercased()] = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                let image = entry.image?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                return GateWord(
+                    word: entry.word.lowercased(),
+                    image: (image?.isEmpty == false) ? image : nil,
+                    sfx: entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines),
+                    progressive: progressive
+                )
+            }
+            .sorted { $0.word < $1.word }
+    }
+
     /// Builds progressive prefix tracks as `<sfx>_<prefix>` (e.g. `sfx_word_star_st`).
     static func fallbackEntry(word: String, sfx: String? = nil) -> GateWord {
         let w = word.lowercased()

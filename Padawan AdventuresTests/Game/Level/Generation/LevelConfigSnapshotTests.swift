@@ -50,20 +50,20 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected slash combat entry")
             return
         }
-        #expect(slash.letterSpawnMultiplier == 0.7)
-        #expect(slash.letterCase == .lower)
-        #expect(slash.letterSoundRepeatSeconds == 3)
+        #expect(slash.graphemeSpawnMultiplier == 0.7)
+        #expect(slash.graphemeCase == .lower)
+        #expect(slash.graphemeSoundRepeatSeconds == 3)
         guard case .deflect(let deflect) = level.combat.minigames[1] else {
             Issue.record("expected deflect combat entry")
             return
         }
         #expect(deflect.monsterHP == 5)
         #expect(deflect.orbTravelSeconds == 3)
-        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
-        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .spelling, .letterMatch])
+        #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .spelling, .graphemeMatch])
         #expect(level.gate.minigames.map(\.weight) == [0, 1, 0, 0])
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")

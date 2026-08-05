@@ -18,8 +18,8 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
     var wordIDs: [String]?
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
     var words: [GateWord]
-    /// Resolved full letter catalog. Populated via `resolveLetters(from:)`.
-    var letters: [GateLetter]
+    /// Resolved full letter catalog. Populated via `resolveGraphemes(from:)`.
+    var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
@@ -33,7 +33,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         choiceCountMin: 2,
         choiceCountMax: 4,
         words: WordCatalog.fallback.words,
-        letters: LetterCatalog.fallback.letters,
+        graphemes: GraphemeCatalog.fallback.graphemes,
         music: "gate"
     )
 
@@ -44,7 +44,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         choiceCountMax: Int = 4,
         wordIDs: [String]? = nil,
         words: [GateWord],
-        letters: [GateLetter],
+        graphemes: [GateGrapheme],
         music: String? = nil
     ) {
         self.weight = weight
@@ -53,7 +53,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         self.choiceCountMax = choiceCountMax
         self.wordIDs = wordIDs?.map { $0.lowercased() }
         self.words = GateWord.normalized(words)
-        self.letters = GateLetterMatchConfig.normalizedLetters(letters)
+        self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
         self.music = music
     }
 
@@ -61,8 +61,8 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         words = try catalog.resolve(ids: wordIDs)
     }
 
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        letters = try catalog.resolve(ids: nil)
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+        graphemes = try catalog.resolve(ids: nil)
     }
 
     func validate() throws {
@@ -80,7 +80,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
             invalidEntryError: .invalidGateWords
         )
         // Every letter is spoken by name and by sound, so all of them need grapheme audio.
-        let known = Set(letters.map(\.letter))
+        let known = Set(letters.map(.grapheme))
         guard known.count >= choiceCountMax else {
             throw WorldSeedError.invalidGateSoundOutWordLetters
         }
@@ -94,93 +94,93 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
     }
 }
 /// A gate letter-match puzzle letter: glyph + pronunciation/name track basenames.
-nonisolated struct GateLetter: Equatable, Sendable {
-    var letter: String
+nonisolated struct GateGrapheme: Equatable, Sendable {
+    var grapheme: String
     var pronunciation: String
     var name: String
 }
 
 /// Per-entry gate letter-matching config.
 /// Letter FX lives in shared `Resources/Config/Catalogs/graphemes.yaml`; levels may optionally subset via `graphemes: [id, …]`.
-nonisolated struct GateLetterMatchConfig: Equatable, Sendable {
+nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     /// Relative pick weight within `gate.minigames`.
     var weight: Double
     /// Inclusive lower bound for letters chosen per round (clamped to the letter pool).
-    var letterCountMin: Int
+    var graphemeCountMin: Int
     /// Inclusive upper bound for letters chosen per round (clamped to the letter pool).
-    var letterCountMax: Int
+    var graphemeCountMax: Int
     /// In-puzzle FX (optional `correct` override for shared `sound.yaml`).
     var fx: SoundEffectTable
     /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var letterIDs: [String]?
-    /// Resolved letters (sorted). Populated via `resolveLetters(from:)`.
-    var letters: [GateLetter]
+    var graphemeIDs: [String]?
+    /// Resolved letters (sorted). Populated via `resolveGraphemes(from:)`.
+    var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
-    nonisolated static let fallback = GateLetterMatchConfig(
+    nonisolated static let fallback = GateGraphemeMatchConfig(
         weight: 1,
-        letterCountMin: 4,
-        letterCountMax: 8,
-        letters: LetterCatalog.fallback.letters,
+        graphemeCountMin: 4,
+        graphemeCountMax: 8,
+        graphemes: GraphemeCatalog.fallback.graphemes,
         music: "gate"
     )
 
     nonisolated init(
         weight: Double = 1,
-        letterCountMin: Int = 4,
-        letterCountMax: Int = 8,
+        graphemeCountMin: Int = 4,
+        graphemeCountMax: Int = 8,
         fx: SoundEffectTable = SoundEffectTable(),
-        letterIDs: [String]? = nil,
-        letters: [GateLetter],
+        graphemeIDs: [String]? = nil,
+        graphemes: [GateGrapheme],
         music: String? = nil
     ) {
         self.weight = weight
-        self.letterCountMin = letterCountMin
-        self.letterCountMax = letterCountMax
+        self.graphemeCountMin = graphemeCountMin
+        self.graphemeCountMax = graphemeCountMax
         self.fx = fx
-        self.letterIDs = letterIDs?.map { $0.lowercased() }
-        self.letters = Self.normalizedLetters(letters)
+        self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
+        self.graphemes = Self.normalizedGraphemes(graphemes)
         self.music = music
     }
 
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        letters = try catalog.resolve(ids: letterIDs)
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+        graphemes = try catalog.resolve(ids: graphemeIDs)
     }
 
     func validate() throws {
-        guard letterCountMin >= 1, letterCountMax >= letterCountMin else {
-            throw WorldSeedError.invalidGateLetterMatchLetterCountRange(
-                min: letterCountMin,
-                max: letterCountMax
+        guard graphemeCountMin >= 1, graphemeCountMax >= graphemeCountMin else {
+            throw WorldSeedError.invalidGateGraphemeMatchCountRange(
+                min: graphemeCountMin,
+                max: graphemeCountMax
             )
         }
-        guard !letters.isEmpty else {
-            throw WorldSeedError.invalidGateLetterMatchLetters
+        guard !graphemes.isEmpty else {
+            throw WorldSeedError.invalidGateGraphemeMatchGraphemes
         }
-        try CatalogValidators.validateLetterEntries(
-            letters,
+        try CatalogValidators.validateGraphemeEntries(
+            graphemes,
             requirePronunciation: true,
-            emptyError: .invalidGateLetterMatchLetters,
-            invalidEntryError: .invalidGateLetterMatchLetters
+            emptyError: .invalidGateGraphemeMatchGraphemes,
+            invalidEntryError: .invalidGateGraphemeMatchGraphemes
         )
     }
 
-    static func normalizedLetters(_ letters: [GateLetter]) -> [GateLetter] {
-        letters
+    static func normalizedGraphemes(_ graphemes: [GateGrapheme]) -> [GateGrapheme] {
+        graphemes
             .map {
-                GateLetter(
-                    letter: $0.letter.lowercased(),
+                GateGrapheme(
+                    grapheme: $0.grapheme.lowercased(),
                     pronunciation: $0.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines),
                     name: $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
             }
-            .sorted { $0.letter < $1.letter }
+            .sorted { $0.grapheme < $1.letter }
     }
 }
 
 /// Which letter of the word the player must plug in.
-nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
+nonisolated enum GateWordPlugGraphemePosition: String, Equatable, Sendable {
     case starting
     case ending
 
@@ -211,14 +211,14 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Inclusive upper bound for words per round (<= `maxWordsPerRound`).
     var wordCountMax: Int
     /// Which letter the player supplies: word start (`starting-sound-gate`) or word end (`ending-sound-gate`).
-    var letterPosition: GateWordPlugLetterPosition
+    var letterPosition: GateWordPlugGraphemePosition
     var fx: SoundEffectTable
     /// Optional subset of shared word-catalog ids (`nil` = full catalog).
     var wordIDs: [String]?
     /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
     var words: [GateWord]
-    /// Resolved full letter catalog. Populated via `resolveLetters(from:)`.
-    var letters: [GateLetter]
+    /// Resolved full letter catalog. Populated via `resolveGraphemes(from:)`.
+    var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
@@ -230,7 +230,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         wordCountMin: 3,
         wordCountMax: 6,
         words: WordCatalog.fallback.words,
-        letters: LetterCatalog.fallback.letters,
+        graphemes: GraphemeCatalog.fallback.graphemes,
         music: "gate"
     )
 
@@ -238,11 +238,11 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         weight: Double = 1,
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
-        letterPosition: GateWordPlugLetterPosition = .starting,
+        letterPosition: GateWordPlugGraphemePosition = .starting,
         fx: SoundEffectTable = SoundEffectTable(),
         wordIDs: [String]? = nil,
         words: [GateWord],
-        letters: [GateLetter],
+        graphemes: [GateGrapheme],
         music: String? = nil
     ) {
         self.weight = weight
@@ -251,8 +251,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         self.letterPosition = letterPosition
         self.fx = fx
         self.wordIDs = wordIDs?.map { $0.lowercased() }
-        self.words = GateSpellingConfig.normalizedWords(words)
-        self.letters = GateLetterMatchConfig.normalizedLetters(letters)
+        self.words = GateWord.normalized(words)
+        self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
         self.music = music
     }
 
@@ -260,8 +260,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         words = try catalog.resolve(ids: wordIDs)
     }
 
-    mutating func resolveLetters(from catalog: LetterCatalog) throws {
-        letters = try catalog.resolve(ids: nil)
+    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+        graphemes = try catalog.resolve(ids: nil)
     }
 
     func validate() throws {
@@ -274,16 +274,16 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
             )
         }
         guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
-        guard !letters.isEmpty else { throw WorldSeedError.invalidGateWordPlugLetters }
+        guard !graphemes.isEmpty else { throw WorldSeedError.invalidGateWordPlugGraphemes }
         // The answer letter must have name + pronunciation audio in graphemes.yaml.
-        let known = Set(letters.map(\.letter))
+        let known = Set(letters.map(.grapheme))
         for entry in words {
             if letterPosition == .ending, entry.word.count < 2 {
-                throw WorldSeedError.invalidGateWordPlugLetters
+                throw WorldSeedError.invalidGateWordPlugGraphemes
             }
             guard let answer = letterPosition.answerLetter(in: entry.word),
                   known.contains(answer) else {
-                throw WorldSeedError.invalidGateWordPlugLetters
+                throw WorldSeedError.invalidGateWordPlugGraphemes
             }
         }
     }
@@ -291,8 +291,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
 
 /// Discriminator for which gate puzzle a tile/strip runs. YAML raw values match minigame `type:`.
 nonisolated enum GateMinigameKind: String, Codable, Equatable, Sendable, CaseIterable {
-    case spelling = "spelling-image-gate"
-    case letterMatch = "grapheme-sound-gate"
+    case soundOutWord = "sound-out-word-gate"
+    case graphemeMatch = "grapheme-sound-gate"
     case wordPlug = "starting-sound-gate"
     case endingSoundPlug = "ending-sound-gate"
 }
@@ -305,14 +305,14 @@ nonisolated struct WeightedGateKind: Equatable, Sendable {
 
 /// Discriminated union over the gate minigame entries in level YAML.
 nonisolated enum GateMinigameConfig: Equatable, Sendable {
-    case spelling(GateSpellingConfig)
-    case letterMatch(GateLetterMatchConfig)
+    case soundOutWord(GateSoundOutWordConfig)
+    case graphemeMatch(GateGraphemeMatchConfig)
     case wordPlug(GateWordPlugConfig)
 
     var kind: GateMinigameKind {
         switch self {
-        case .spelling: .spelling
-        case .letterMatch: .letterMatch
+        case .soundOutWord: .soundOutWord
+        case .graphemeMatch: .graphemeMatch
         // Both word-plug YAML types share this case; the mode picks the kind.
         case .wordPlug(let config): config.letterPosition == .ending ? .endingSoundPlug : .wordPlug
         }
@@ -321,16 +321,16 @@ nonisolated enum GateMinigameConfig: Equatable, Sendable {
     /// Relative pick weight; negatives are rejected by `GateConfig.validate()`.
     var weight: Double {
         switch self {
-        case .spelling(let config): config.weight
-        case .letterMatch(let config): config.weight
+        case .soundOutWord(let config): config.weight
+        case .graphemeMatch(let config): config.weight
         case .wordPlug(let config): config.weight
         }
     }
 
     var music: String? {
         switch self {
-        case .spelling(let c): c.music
-        case .letterMatch(let c): c.music
+        case .soundOutWord(let c): c.music
+        case .graphemeMatch(let c): c.music
         case .wordPlug(let c): c.music
         }
     }
@@ -350,8 +350,8 @@ nonisolated struct GateConfig: Equatable, Sendable {
         fx: SoundEffectTable(events: ["opened": "gate-open"]),
         music: "gate",
         minigames: [
-            .spelling(.fallback),
-            .letterMatch(.fallback),
+            .soundOutWord(.fallback),
+            .graphemeMatch(.fallback),
         ],
         minigameChance: 0.6
     )
@@ -383,8 +383,8 @@ nonisolated struct GateConfig: Equatable, Sendable {
                 throw WorldSeedError.invalidGateMinigameWeight(minigame.weight)
             }
             switch minigame {
-            case .spelling(let c): try c.validate()
-            case .letterMatch(let c): try c.validate()
+            case .soundOutWord(let c): try c.validate()
+            case .graphemeMatch(let c): try c.validate()
             case .wordPlug(let c): try c.validate()
             }
         }
@@ -408,19 +408,20 @@ nonisolated struct GateConfig: Equatable, Sendable {
 
     mutating func resolveMinigames(
         wordCatalog: WordCatalog,
-        letterCatalog: LetterCatalog
+        graphemeCatalog: GraphemeCatalog
     ) throws {
         for i in minigames.indices {
             switch minigames[i] {
-            case .spelling(var config):
+            case .soundOutWord(var config):
                 try config.resolveWords(from: wordCatalog)
-                minigames[i] = .spelling(config)
-            case .letterMatch(var config):
-                try config.resolveLetters(from: letterCatalog)
-                minigames[i] = .letterMatch(config)
+                try config.resolveGraphemes(from: graphemeCatalog)
+                minigames[i] = .soundOutWord(config)
+            case .graphemeMatch(var config):
+                try config.resolveGraphemes(from: graphemeCatalog)
+                minigames[i] = .graphemeMatch(config)
             case .wordPlug(var config):
                 try config.resolveWords(from: wordCatalog)
-                try config.resolveLetters(from: letterCatalog)
+                try config.resolveGraphemes(from: graphemeCatalog)
                 minigames[i] = .wordPlug(config)
             }
         }

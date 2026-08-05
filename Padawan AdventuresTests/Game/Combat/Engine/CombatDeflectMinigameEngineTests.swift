@@ -2,10 +2,10 @@ import Testing
 @testable import Padawan_Adventures
 
 struct CombatDeflectMinigameEngineTests {
-    private func letters(_ values: [String]) -> [GateLetter] {
+    private func letters(_ values: [String]) -> [GateGrapheme] {
         values.map {
-            GateLetter(
-                letter: $0,
+            GateGrapheme(
+                grapheme: $0,
                 pronunciation: "sfx_grapheme_\($0)_pronunciation",
                 name: "sfx_grapheme_\($0)_name"
             )
@@ -39,7 +39,7 @@ struct CombatDeflectMinigameEngineTests {
     ) -> CombatDeflectMinigameEngine {
         var engine = CombatDeflectMinigameEngine(
             config: .init(
-                letters: letters(pool),
+                graphemes: letters(pool),
                 words: wordPool ?? words(for: pool),
                 monsterHP: monsterHP,
                 orbTravelSeconds: orbTravelSeconds
@@ -82,7 +82,7 @@ struct CombatDeflectMinigameEngineTests {
         #expect(travel == 3)
         #expect(["a", "b", "c"].contains(letter))
         // The orb's letter must be the letter on the ring that deflects it.
-        #expect(engine.config.letters[ring.rawValue].letter == letter)
+        #expect(engine.config.graphemes[ring.rawValue].letter == letter)
         #expect(word.hasPrefix(letter))
         #expect(imageName != nil)
         #expect(events[1] == .speakWord(trackID: "sfx_word_\(word)"))
@@ -140,7 +140,7 @@ struct CombatDeflectMinigameEngineTests {
     @Test func throwDoesNothingBeforeBeginOrAfterEnd() {
         var engine = CombatDeflectMinigameEngine(
             config: .init(
-                letters: letters(["a", "b", "c"]),
+                graphemes: letters(["a", "b", "c"]),
                 words: words(for: ["a", "b", "c"]),
                 monsterHP: 2,
                 orbTravelSeconds: 1
@@ -254,7 +254,7 @@ struct CombatDeflectMinigameEngineTests {
 
     @Test func configClampsDegenerateValues() {
         let config = CombatDeflectMinigameEngine.Config(
-            letters: letters(["a", "b", "c"]),
+            graphemes: letters(["a", "b", "c"]),
             words: words(for: ["a", "b", "c"]),
             monsterHP: 0,
             orbTravelSeconds: 0

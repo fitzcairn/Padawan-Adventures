@@ -9,9 +9,9 @@ struct CombatPresentationContext {
     let healthCount: Int
     let playerFx: SoundEffectTable
     let hudConfig: HudConfig
-    let letterSoundRepeatSeconds: Double
+    let graphemeSoundRepeatSeconds: Double
     let letterSpawnRate: Double
-    let letterCase: CombatLetterCase
+    let graphemeCase: CombatGraphemeCase
     let slashMaxSeconds: Double
     let slashMaxScreenWidthFraction: Double
     let spriteLibrary: SpriteLibrary
@@ -37,9 +37,9 @@ enum CombatMinigameFactory {
                 healthCount: context.healthCount,
                 playerFx: context.playerFx,
                 hudConfig: context.hudConfig,
-                letterSoundRepeatSeconds: context.letterSoundRepeatSeconds,
+                graphemeSoundRepeatSeconds: context.graphemeSoundRepeatSeconds,
                 letterSpawnRate: context.letterSpawnRate,
-                letterCase: context.letterCase,
+                graphemeCase: context.graphemeCase,
                 slashMaxSeconds: context.slashMaxSeconds,
                 slashMaxScreenWidthFraction: context.slashMaxScreenWidthFraction,
                 spriteLibrary: context.spriteLibrary,

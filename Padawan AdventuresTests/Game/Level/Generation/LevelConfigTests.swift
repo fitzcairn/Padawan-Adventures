@@ -409,8 +409,8 @@ struct LevelConfigTests {
             Issue.record("expected slash entry")
             return
         }
-        #expect(tythonSlash.letterSpawnMultiplier == 0.7)
-        #expect(tythonSlash.letterCase == .lower)
+        #expect(tythonSlash.graphemeSpawnMultiplier == 0.7)
+        #expect(tythonSlash.graphemeCase == .lower)
     }
 
     @Test func decodesCombatLetterSpawnRateAndCase() throws {
@@ -430,12 +430,12 @@ struct LevelConfigTests {
             Issue.record("expected slash entry")
             return
         }
-        #expect(slash.letterSpawnMultiplier == 0.5)
-        #expect(slash.letterCase == .both)
+        #expect(slash.graphemeSpawnMultiplier == 0.5)
+        #expect(slash.graphemeCase == .both)
     }
 
     @Test func rejectsInvalidCombatLetterSpawnRate() throws {
-        #expect(throws: WorldSeedError.invalidCombatLetterSpawnRate(0)) {
+        #expect(throws: WorldSeedError.invalidCombatGraphemeSpawnRate(0)) {
             try LevelConfig.decode(
                 from: """
                 inherits: base_level
@@ -841,8 +841,8 @@ struct LevelConfigTests {
         if case .spelling(let spelling) = level.gate.minigames.first {
             #expect(spelling.fx.trackID(for: "win") == "sfx_gate_win_alt")
         }
-        if case .letterMatch(let letterMatch) = level.gate.minigames.last {
-            #expect(letterMatch.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
+        if case .graphemeMatch(let graphemeMatch) = level.gate.minigames.last {
+            #expect(graphemeMatch.fx.trackID(for: "correct") == "sfx_wall_correct_alt")
         }
     }
 
@@ -909,7 +909,7 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func decodesGateLetterMatchConfigWithDefaultsWhenOmitted() throws {
+    @Test func decodesGateGraphemeMatchConfigWithDefaultsWhenOmitted() throws {
         let level = try LevelConfig.decode(from: """
         name: Level 1
         world:
@@ -925,7 +925,7 @@ struct LevelConfigTests {
         #expect(level.gate == GateConfig.fallback)
     }
 
-    @Test func decodesGateLetterMatchConfigFromYAML() throws {
+    @Test func decodesGateGraphemeMatchConfigFromYAML() throws {
         let yaml = """
         name: Level 1
         world:
@@ -946,21 +946,21 @@ struct LevelConfigTests {
               graphemes: [B, a]
         """
         let level = try LevelConfig.decode(from: yaml)
-        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+        guard case .graphemeMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
         }
-        #expect(lm.letterCountMin == 2)
-        #expect(lm.letterCountMax == 3)
-        #expect(lm.letterIDs == ["b", "a"])
-        #expect(lm.letters.map(\.letter) == ["a", "b"])
-        #expect(lm.letters.map(\.pronunciation) == [
+        #expect(lm.graphemeCountMin == 2)
+        #expect(lm.graphemeCountMax == 3)
+        #expect(lm.graphemeIDs == ["b", "a"])
+        #expect(lm.graphemes.map(.grapheme) == ["a", "b"])
+        #expect(lm.graphemes.map(\.pronunciation) == [
             "sfx_grapheme_a_pronunciation",
             "sfx_grapheme_b_pronunciation",
         ])
     }
 
-    @Test func inheritsGateLetterMatchConfigFromBase() throws {
+    @Test func inheritsGateGraphemeMatchConfigFromBase() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
@@ -979,16 +979,16 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": base]
         )
-        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+        guard case .graphemeMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
         }
-        #expect(lm.letterCountMin == 1)
-        #expect(lm.letterCountMax == 2)
-        #expect(lm.letters.map(\.letter) == ["a", "c"])
+        #expect(lm.graphemeCountMin == 1)
+        #expect(lm.graphemeCountMax == 2)
+        #expect(lm.graphemes.map(.grapheme) == ["a", "c"])
     }
 
-    @Test func childCanOverrideInheritedGateLetterMatchLetterIDs() throws {
+    @Test func childCanOverrideInheritedGateGraphemeMatchLetterIDs() throws {
         let base = Self.baseLevelYAMLWithoutPuzzles + """
 
         gate:
@@ -1009,14 +1009,14 @@ struct LevelConfigTests {
             from: child,
             parents: ["base_level": base]
         )
-        guard case .letterMatch(let lm) = level.gate.minigames.first else {
+        guard case .graphemeMatch(let lm) = level.gate.minigames.first else {
             Issue.record("expected letter_match minigame")
             return
         }
-        #expect(lm.letters.map(\.letter) == ["b"])
+        #expect(lm.graphemes.map(.grapheme) == ["b"])
     }
 
-    @Test func rejectsInvalidGateLetterMatchLetterCountRange() {
+    @Test func rejectsInvalidGateGraphemeMatchLetterCountRange() {
         let yaml = """
         name: Level 1
         world:
@@ -1036,12 +1036,12 @@ struct LevelConfigTests {
               max_grapheme_count: 2
               graphemes: [a]
         """
-        #expect(throws: WorldSeedError.invalidGateLetterMatchLetterCountRange(min: 4, max: 2)) {
+        #expect(throws: WorldSeedError.invalidGateGraphemeMatchCountRange(min: 4, max: 2)) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsEmptyGateLetterMatchLetters() {
+    @Test func rejectsEmptyGateGraphemeMatchLetters() {
         let yaml = """
         name: Level 1
         world:
@@ -1059,12 +1059,12 @@ struct LevelConfigTests {
             - type: grapheme-sound-gate
               graphemes: []
         """
-        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
+        #expect(throws: WorldSeedError.invalidGateGraphemeMatchGraphemes) {
             try LevelConfig.decode(from: yaml)
         }
     }
 
-    @Test func rejectsUnknownGateLetterMatchLetterID() {
+    @Test func rejectsUnknownGateGraphemeMatchLetterID() {
         let yaml = """
         name: Level 1
         world:
@@ -1082,7 +1082,7 @@ struct LevelConfigTests {
             - type: grapheme-sound-gate
               graphemes: [z]
         """
-        #expect(throws: WorldSeedError.invalidGateLetterMatchLetters) {
+        #expect(throws: WorldSeedError.invalidGateGraphemeMatchGraphemes) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1186,7 +1186,7 @@ struct LevelConfigTests {
             - type: ending-sound-gate
               words: [cat]
         """
-        #expect(throws: WorldSeedError.invalidGateWordPlugLetters) {
+        #expect(throws: WorldSeedError.invalidGateWordPlugGraphemes) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -1342,10 +1342,10 @@ struct LevelConfigTests {
         #expect(deflect.weight == 1)
         #expect(deflect.monsterHP == 4)
         #expect(deflect.orbTravelSeconds == 2.5)
-        #expect(deflect.letterIDs == ["c", "a", "b"])
+        #expect(deflect.graphemeIDs == ["c", "a", "b"])
         // Ring order is positional (left to right), so YAML order must survive decode.
-        #expect(deflect.letters.map(\.letter) == ["c", "a", "b"])
-        #expect(deflect.letters.map(\.name) == [
+        #expect(deflect.graphemes.map(.grapheme) == ["c", "a", "b"])
+        #expect(deflect.graphemes.map(\.name) == [
             "sfx_grapheme_c_name",
             "sfx_grapheme_a_name",
             "sfx_grapheme_b_name",
@@ -1365,7 +1365,7 @@ struct LevelConfigTests {
         #expect(deflect.weight == 1)
         #expect(deflect.monsterHP == CombatDeflectConfig.defaultMonsterHP)
         #expect(deflect.orbTravelSeconds == CombatDeflectConfig.defaultOrbTravelSeconds)
-        #expect(deflect.letters.count == CombatDeflectConfig.ringCount)
+        #expect(deflect.graphemes.count == CombatDeflectConfig.ringCount)
     }
 
     @Test func inheritsCombatBlockFromBase() throws {
@@ -1386,7 +1386,7 @@ struct LevelConfigTests {
             return
         }
         #expect(deflect.monsterHP == 7)
-        #expect(deflect.letters.map(\.letter) == ["a", "b", "c"])
+        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c"])
     }
 
     @Test func pickMinigameNeverChoosesAZeroWeightEntry() throws {
@@ -1506,7 +1506,7 @@ struct LevelConfigTests {
     }
 
     @Test func rejectsUnknownCombatDeflectLetterID() {
-        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
@@ -1517,7 +1517,7 @@ struct LevelConfigTests {
     }
 
     @Test func rejectsCombatDeflectLetterCountOutsideTwoToSix() {
-        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
@@ -1525,7 +1525,7 @@ struct LevelConfigTests {
                   graphemes: [a]
             """)
         }
-        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
@@ -1546,11 +1546,11 @@ struct LevelConfigTests {
             Issue.record("expected a deflect entry")
             return
         }
-        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
     }
 
     @Test func rejectsDuplicateCombatDeflectLetters() {
-        #expect(throws: WorldSeedError.invalidCombatDeflectLetters) {
+        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
             try LevelConfig.decode(from: Self.combatLevelPrefix + """
             combat:
               minigames:
@@ -1571,7 +1571,7 @@ struct LevelConfigTests {
         }
         #expect(deflect.monsterHP >= 1)
         #expect(deflect.orbTravelSeconds > 0)
-        #expect(deflect.letters.map(\.letter) == ["a", "b", "c", "d"])
+        #expect(deflect.graphemes.map(.grapheme) == ["a", "b", "c", "d"])
     }
 
     @Test func decodesSlashLetterSoundRepeatSeconds() throws {
@@ -1585,13 +1585,13 @@ struct LevelConfigTests {
             Issue.record("expected slash entry")
             return
         }
-        #expect(slash.letterSoundRepeatSeconds == 5)
+        #expect(slash.graphemeSoundRepeatSeconds == 5)
     }
 
     @Test func gateConfigLooksUpMinigameByKind() {
         let config = GateConfig.fallback
-        #expect(config.weightedMinigameKinds.map(\.kind) == [.spelling, .letterMatch])
-        guard case .letterMatch = config.minigame(for: .letterMatch) else {
+        #expect(config.weightedMinigameKinds.map(\.kind) == [.spelling, .graphemeMatch])
+        guard case .graphemeMatch = config.minigame(for: .graphemeMatch) else {
             Issue.record("expected letter_match config")
             return
         }
@@ -1603,7 +1603,7 @@ struct LevelConfigTests {
             fx: config.fx,
             minigames: [
                 .spelling(.fallback),
-                .letterMatch(.fallback),
+                .graphemeMatch(.fallback),
                 .spelling(.fallback),
             ]
         )

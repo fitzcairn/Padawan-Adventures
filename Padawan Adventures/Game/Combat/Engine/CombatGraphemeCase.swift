@@ -1,7 +1,7 @@
 import Foundation
 
 /// How combat projectile / cue letters are cased for a level.
-nonisolated enum CombatLetterCase: String, Codable, Equatable, Sendable, CaseIterable {
+nonisolated enum CombatGraphemeCase: String, Codable, Equatable, Sendable, CaseIterable {
     case lower
     case upper
     case both

@@ -47,7 +47,7 @@ struct BundleAudioLayoutTests {
         }
 
         let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         for letter in letters.letters {
             assertFX(letter.name)
             assertFX(letter.pronunciation)
@@ -59,7 +59,7 @@ struct BundleAudioLayoutTests {
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                letterCatalog: letters
+                graphemeCatalog: letters
             )
         }
         for level in levels {
@@ -82,7 +82,7 @@ struct BundleAudioLayoutTests {
                     if let music = config.music {
                         assertMusicCue(MusicCue.parse(music))
                     }
-                case .letterMatch(let config):
+                case .graphemeMatch(let config):
                     for (_, trackID) in config.fx.events {
                         assertFX(trackID)
                     }
@@ -142,14 +142,14 @@ struct BundleAudioLayoutTests {
             basenames.append(contentsOf: enemy.fx.events.values)
         }
         let words = try WordCatalog.loadFromBundle()
-        let letters = try LetterCatalog.loadFromBundle()
+        let letters = try GraphemeCatalog.loadFromBundle()
         let descriptors = LevelCatalog.loadFromBundle()
         for descriptor in descriptors {
             let level = try LevelConfig.loadFromBundle(
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory,
                 wordCatalog: words,
-                letterCatalog: letters
+                graphemeCatalog: letters
             )
             basenames.append(contentsOf: level.pit.fx.events.values)
             basenames.append(contentsOf: level.gate.fx.events.values)
@@ -157,7 +157,7 @@ struct BundleAudioLayoutTests {
                 switch minigame {
                 case .spelling(let config):
                     basenames.append(contentsOf: config.fx.events.values)
-                case .letterMatch(let config):
+                case .graphemeMatch(let config):
                     basenames.append(contentsOf: config.fx.events.values)
                 case .wordPlug(let config):
                     basenames.append(contentsOf: config.fx.events.values)

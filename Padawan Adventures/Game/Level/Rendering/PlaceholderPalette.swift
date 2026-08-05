@@ -11,7 +11,7 @@ extension PlaceholderFactory {
     /// Spelling gate (legacy single gate color).
     static let spellingGateColor = UIColor(red: 0.55, green: 0.9, blue: 0.55, alpha: 1)
     /// Letter-match gate.
-    static let letterMatchGateColor = UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
+    static let graphemeMatchGateColor = UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
     /// Word-plug gate.
     static let wordPlugGateColor = UIColor(red: 1.0, green: 0.78, blue: 0.35, alpha: 1)
     /// Ending-sound word-plug gate.
@@ -20,7 +20,7 @@ extension PlaceholderFactory {
     static func gateColor(for minigame: GateMinigameKind) -> UIColor {
         switch minigame {
         case .spelling: spellingGateColor
-        case .letterMatch: letterMatchGateColor
+        case .graphemeMatch: graphemeMatchGateColor
         case .wordPlug: wordPlugGateColor
         case .endingSoundPlug: endingSoundPlugGateColor
         }

@@ -2,8 +2,8 @@ import Foundation
 
 nonisolated enum GateWordPlugEngineEvent: Equatable, Sendable {
     case playWordSound(trackID: String)
-    case playLetterName(trackID: String)
-    case playLetterSound(trackID: String)
+    case playGraphemeName(trackID: String)
+    case playGraphemeSound(trackID: String)
     case correctPlug(slotID: UUID, letterID: UUID)
     case playCorrect
     case incorrectPlug(letterID: UUID)
@@ -15,9 +15,9 @@ nonisolated struct GateWordPlugMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var wordCountMin: Int
         var wordCountMax: Int
-        var letterPosition: GateWordPlugLetterPosition
+        var letterPosition: GateWordPlugGraphemePosition
         var words: [GateWord]
-        var letters: [GateLetter]
+        var graphemes: [GateGrapheme]
 
         init(from puzzle: GateWordPlugConfig) {
             wordCountMin = puzzle.wordCountMin
@@ -30,15 +30,15 @@ nonisolated struct GateWordPlugMinigameEngine {
         init(
             wordCountMin: Int = 3,
             wordCountMax: Int = 6,
-            letterPosition: GateWordPlugLetterPosition = .starting,
+            letterPosition: GateWordPlugGraphemePosition = .starting,
             words: [GateWord],
-            letters: [GateLetter]
+            graphemes: [GateGrapheme]
         ) {
             self.wordCountMin = wordCountMin
             self.wordCountMax = wordCountMax
             self.letterPosition = letterPosition
-            self.words = GateSpellingConfig.normalizedWords(words)
-            self.letters = GateLetterMatchConfig.normalizedLetters(letters)
+            self.words = GateWord.normalized(words)
+            self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
         }
     }
 
@@ -123,7 +123,7 @@ nonisolated struct GateWordPlugMinigameEngine {
             )
         }
 
-        let letterByGlyph = Dictionary(uniqueKeysWithValues: config.letters.map { ($0.letter, $0) })
+        let letterByGlyph = Dictionary(uniqueKeysWithValues: config.graphemes.map { ($0.grapheme, $0) })
         tray = slots.map { slot in
             if let entry = letterByGlyph[slot.letter] {
                 return LetterToken(
@@ -133,9 +133,9 @@ nonisolated struct GateWordPlugMinigameEngine {
                     pronunciationTrackID: entry.pronunciation
                 )
             }
-            let name = LetterSoundCatalog.nameTrackID(for: slot.letter)
+            let name = GraphemeSoundCatalog.nameTrackID(for: slot.letter)
                 ?? "sfx_grapheme_\(slot.letter)_name"
-            let pronunciation = LetterSoundCatalog.pronunciationTrackID(for: slot.letter)
+            let pronunciation = GraphemeSoundCatalog.pronunciationTrackID(for: slot.letter)
                 ?? "sfx_grapheme_\(slot.letter)_pronunciation"
             return LetterToken(
                 id: UUID(),
@@ -162,7 +162,7 @@ nonisolated struct GateWordPlugMinigameEngine {
     mutating func tapLetter(id: UUID) -> [GateWordPlugEngineEvent] {
         guard isActive, !isFrozen else { return [] }
         guard let token = token(id: id), !isTokenPlugged(id) else { return [] }
-        return [.playLetterSound(trackID: token.pronunciationTrackID)]
+        return [.playGraphemeSound(trackID: token.pronunciationTrackID)]
     }
 
     mutating func plug(letterID: UUID, intoSlotID: UUID) -> [GateWordPlugEngineEvent] {

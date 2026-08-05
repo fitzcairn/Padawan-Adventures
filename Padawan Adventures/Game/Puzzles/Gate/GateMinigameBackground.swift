@@ -12,7 +12,7 @@ enum GateMinigameBackground {
     @discardableResult
     static func preloadTextures(bundle: Bundle = .main) -> [SKTexture] {
         let specs = [
-            ("letter_match-bg", "Sprites/Gate/letter_match"),
+            ("grapheme_match-bg", "Sprites/Gate/grapheme_match"),
             ("spelling-bg", "Sprites/Gate/spelling"),
             ("word_plug_bg", "Sprites/Gate/word_plug"),
         ]
@@ -29,9 +29,9 @@ enum GateMinigameBackground {
         return loaded
     }
 
-    /// Letter-match art under `Sprites/Gate/letter_match/letter_match-bg.png`.
-    static func letterMatch(sceneSize: CGSize) -> SKSpriteNode? {
-        makeNode(named: "letter_match-bg", root: "Sprites/Gate/letter_match", sceneSize: sceneSize)
+    /// Letter-match art under `Sprites/Gate/grapheme_match/grapheme_match-bg.png`.
+    static func graphemeMatch(sceneSize: CGSize) -> SKSpriteNode? {
+        makeNode(named: "grapheme_match-bg", root: "Sprites/Gate/grapheme_match", sceneSize: sceneSize)
     }
 
     /// Spelling art under `Sprites/Gate/spelling/spelling-bg.png`.
@@ -45,10 +45,10 @@ enum GateMinigameBackground {
     }
 
     /// Scene-space frame of the letter-match background (width-fit, centered).
-    static func letterMatchFrame(sceneSize: CGSize, bundle: Bundle = .main) -> CGRect? {
+    static func graphemeMatchFrame(sceneSize: CGSize, bundle: Bundle = .main) -> CGRect? {
         frame(
-            named: "letter_match-bg",
-            root: "Sprites/Gate/letter_match",
+            named: "grapheme_match-bg",
+            root: "Sprites/Gate/grapheme_match",
             sceneSize: sceneSize,
             bundle: bundle
         )

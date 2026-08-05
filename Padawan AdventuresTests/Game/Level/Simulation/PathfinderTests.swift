@@ -150,13 +150,13 @@ struct PathfinderTests {
     @Test func openGateClearsOnlySameMinigameKind() {
         var world = TestWorldFactory.emptyFloor(width: 5, height: 3)
         let spelling = GridCoord(x: 1, y: 1, story: 0)
-        let letterMatch = GridCoord(x: 2, y: 1, story: 0)
+        let graphemeMatch = GridCoord(x: 2, y: 1, story: 0)
         world.setTile(Tile(kind: .gate(minigame: .spelling)), at: spelling)
-        world.setTile(Tile(kind: .gate(minigame: .letterMatch)), at: letterMatch)
+        world.setTile(Tile(kind: .gate(minigame: .graphemeMatch)), at: graphemeMatch)
 
         let opened = world.openGate(at: spelling)
         #expect(opened == [spelling])
         #expect(world.tile(at: spelling)?.isGate == false)
-        #expect(world.tile(at: letterMatch)?.gateMinigame == .letterMatch)
+        #expect(world.tile(at: graphemeMatch)?.gateMinigame == .graphemeMatch)
     }
 }

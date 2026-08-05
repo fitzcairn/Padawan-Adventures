@@ -148,8 +148,8 @@ extension AppSession {
             return loaded
         }
 
-        let letterCatalog = ConfigStore.loadOrFallback("graphemes", fallback: LetterCatalog.fallback) {
-            let loaded = try LetterCatalog.loadFromBundle()
+        let graphemeCatalog = ConfigStore.loadOrFallback("graphemes", fallback: GraphemeCatalog.fallback) {
+            let loaded = try GraphemeCatalog.loadFromBundle()
             try loaded.validate()
             return loaded
         }
@@ -271,7 +271,7 @@ extension AppSession {
                     named: descriptor.resourceName,
                     subdirectory: LevelCatalog.subdirectory,
                     wordCatalog: wordCatalog,
-                    letterCatalog: letterCatalog
+                    graphemeCatalog: graphemeCatalog
                 )
             }
         } catch {
@@ -309,7 +309,7 @@ extension AppSession {
         if let capacitor = GateSpellingCapacitorSprites.load() {
             gateTextures.append(capacitor)
         }
-        if let switches = GateLetterMatchSwitchSprites.load() {
+        if let switches = GateGraphemeMatchSwitchSprites.load() {
             gateTextures.append(switches.off)
             gateTextures.append(switches.on)
         }
@@ -340,7 +340,7 @@ extension AppSession {
                 enemies: enemyConfig,
                 items: itemsConfig,
                 words: wordCatalog,
-                letters: letterCatalog,
+                letters: graphemeCatalog,
                 audio: soundSettings,
                 screens: screensConfig,
                 player: playerConfig

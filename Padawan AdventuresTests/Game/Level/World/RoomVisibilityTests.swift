@@ -52,7 +52,7 @@ struct RoomVisibilityTests {
         let near = GridCoord(x: 1, y: 0, story: 0)
         let far = GridCoord(x: 4, y: 0, story: 0)
         world.setTile(Tile(kind: .gate(minigame: .spelling)), at: near)
-        world.setTile(Tile(kind: .gate(minigame: .letterMatch)), at: far)
+        world.setTile(Tile(kind: .gate(minigame: .graphemeMatch)), at: far)
         world.setPlayerPosition(GridCoord(x: 0, y: 0, story: 0))
 
         let result = RoomVisibility.compute(in: world, story: 0, from: world.playerPosition)

@@ -28,22 +28,22 @@ nonisolated enum CatalogValidators {
         }
     }
 
-    static func validateLetterEntries(
-        _ letters: [GateLetter],
+    static func validateGraphemeEntries(
+        _ graphemes: [GateGrapheme],
         requirePronunciation: Bool,
         emptyError: WorldSeedError,
         invalidEntryError: WorldSeedError
     ) throws {
-        guard !letters.isEmpty else {
+        guard !graphemes.isEmpty else {
             throw emptyError
         }
         let letterSet = CharacterSet.letters
         var seen = Set<String>()
-        for entry in letters {
-            guard entry.letter.count == 1,
-                  entry.letter.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
+        for entry in graphemes {
+            guard entry.grapheme.count == 1,
+                  entry.grapheme.unicodeScalars.allSatisfy({ letterSet.contains($0) }),
                   !entry.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  seen.insert(entry.letter).inserted else {
+                  seen.insert(entry.grapheme).inserted else {
                 throw invalidEntryError
             }
             if requirePronunciation {

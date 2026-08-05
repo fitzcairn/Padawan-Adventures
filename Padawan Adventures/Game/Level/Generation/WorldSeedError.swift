@@ -11,7 +11,8 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidRoomPitSize(mean: Double, max: Int)
     case invalidGateProbability(Double)
     case invalidGateMinigameChance(Double)
-    case invalidGatePaddingLetters(Int)
+    case invalidGateSoundOutWordChoiceRange(min: Int, max: Int)
+    case invalidGateSoundOutWordLetters
     case invalidGateWords
     case invalidPitWords
     case invalidPitMinigameWeight(Double)
@@ -19,17 +20,17 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case duplicateGateMinigameKind(GateMinigameKind)
     case invalidPitBridgeWordRange(min: Int, max: Int)
     case invalidPitBridgeWords
-    case invalidLetterSoundRepeat(Double)
-    case invalidCombatLetterSpawnRate(Double)
-    case invalidCombatLetterCase(String)
+    case invalidGraphemeSoundRepeat(Double)
+    case invalidCombatGraphemeSpawnRate(Double)
+    case invalidCombatGraphemeCase(String)
     case invalidCombatMinigameWeight(Double)
     case invalidCombatMonsterHP(Int)
     case invalidCombatOrbTravelSeconds(Double)
-    case invalidCombatDeflectLetters
-    case invalidGateLetterMatchLetterCountRange(min: Int, max: Int)
-    case invalidGateLetterMatchLetters
+    case invalidCombatDeflectGraphemes
+    case invalidGateGraphemeMatchCountRange(min: Int, max: Int)
+    case invalidGateGraphemeMatchGraphemes
     case invalidGateWordPlugWordCountRange(min: Int, max: Int)
-    case invalidGateWordPlugLetters
+    case invalidGateWordPlugGraphemes
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)

@@ -66,9 +66,9 @@ final class CombatScene: MinigameScene {
         enemyType: EnemyTypeConfig,
         playerFx: SoundEffectTable,
         startingHealth: Int,
-        letterSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds,
+        graphemeSoundRepeatSeconds: Double = CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds,
         letterSpawnRate: Double = CombatMinigameEngine.Config.defaultLetterSpawnRate,
-        letterCase: CombatLetterCase = .upper,
+        graphemeCase: CombatGraphemeCase = .upper,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -89,9 +89,9 @@ final class CombatScene: MinigameScene {
         self.engine = CombatMinigameEngine(
             config: .init(
                 from: enemyType,
-                letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+                graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
                 letterSpawnRate: letterSpawnRate,
-                letterCase: letterCase
+                graphemeCase: graphemeCase
             ),
             startingHealth: startingHealth
         )

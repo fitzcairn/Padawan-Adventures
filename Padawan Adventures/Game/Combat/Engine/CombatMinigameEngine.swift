@@ -25,26 +25,26 @@ nonisolated struct CombatMinigameEngine {
         var starsToWin: Int
         var shotLetters: [String]
         /// Seconds between letter-name cue replays while a sequence is active.
-        var letterSoundRepeatSeconds: Double
+        var graphemeSoundRepeatSeconds: Double
 
         /// Assumed fraction of matching shots the player successfully slashes.
         static let defaultAssumedPlayerHitRate: Double = 0.5
-        static let defaultLetterSoundRepeatSeconds: Double = 3
+        static let defaultGraphemeSoundRepeatSeconds: Double = 3
         /// Multiplier on spawn frequency vs derived baseline (`1.0` = unchanged).
         static let defaultLetterSpawnRate: Double = 1.0
 
         init(
             from type: EnemyTypeConfig,
-            letterSoundRepeatSeconds: Double = defaultLetterSoundRepeatSeconds,
+            graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             letterSpawnRate: Double = defaultLetterSpawnRate,
-            letterCase: CombatLetterCase = .upper
+            graphemeCase: CombatGraphemeCase = .upper
         ) {
-            let letters = letterCase.shotLetterPool(from: type.shotLetters)
+            let letters = graphemeCase.shotLetterPool(from: type.shotLetters)
             shotPacingSeconds = type.shotPacingSeconds
             shotTravelSeconds = type.shotTravelSeconds
             starsToWin = type.starsToWin
             shotLetters = letters
-            self.letterSoundRepeatSeconds = max(letterSoundRepeatSeconds, 0.05)
+            self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
             let derived = Self.derivedMeanShotInterval(
                 shotPacingSeconds: type.shotPacingSeconds,
                 shotTravelSeconds: type.shotTravelSeconds,
@@ -61,14 +61,14 @@ nonisolated struct CombatMinigameEngine {
             starsToWin: Int,
             shotLetters: [String] = ["A", "B", "C"],
             meanShotIntervalSeconds: Double? = nil,
-            letterSoundRepeatSeconds: Double = defaultLetterSoundRepeatSeconds,
+            graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             letterSpawnRate: Double = defaultLetterSpawnRate
         ) {
             self.shotPacingSeconds = shotPacingSeconds
             self.shotTravelSeconds = shotTravelSeconds
             self.starsToWin = starsToWin
             self.shotLetters = shotLetters
-            self.letterSoundRepeatSeconds = max(letterSoundRepeatSeconds, 0.05)
+            self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
             if let meanShotIntervalSeconds {
                 self.meanShotIntervalSeconds = meanShotIntervalSeconds
             } else {
@@ -181,7 +181,7 @@ nonisolated struct CombatMinigameEngine {
         elapsed += dt
 
         if !sequenceRequiredLetter.isEmpty, elapsed >= nextCueReplayAt {
-            nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
+            nextCueReplayAt = elapsed + config.graphemeSoundRepeatSeconds
             events.append(.sequenceCue(requiredLetter: sequenceRequiredLetter))
         }
 
@@ -283,7 +283,7 @@ nonisolated struct CombatMinigameEngine {
     private mutating func beginNewSequence(_ events: inout [CombatEngineEvent]) {
         let required = randomDifferentShotLetter(excluding: sequenceRequiredLetter)
         sequenceRequiredLetter = required
-        nextCueReplayAt = elapsed + config.letterSoundRepeatSeconds
+        nextCueReplayAt = elapsed + config.graphemeSoundRepeatSeconds
         events.append(.sequenceCue(requiredLetter: required))
     }
 

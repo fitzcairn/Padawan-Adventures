@@ -229,20 +229,20 @@ final class GameViewController: LandscapeHostingController {
         } else {
             slash = nil
         }
-        let letterSoundRepeatSeconds = slash?.letterSoundRepeatSeconds
-            ?? CombatMinigameEngine.Config.defaultLetterSoundRepeatSeconds
-        let letterSpawnRate = slash?.letterSpawnMultiplier
+        let graphemeSoundRepeatSeconds = slash?.graphemeSoundRepeatSeconds
+            ?? CombatMinigameEngine.Config.defaultGraphemeSoundRepeatSeconds
+        let letterSpawnRate = slash?.graphemeSpawnMultiplier
             ?? CombatMinigameEngine.Config.defaultLetterSpawnRate
-        let letterCase = slash?.letterCase ?? .upper
+        let graphemeCase = slash?.graphemeCase ?? .upper
 
         let context = CombatPresentationContext(
             enemyType: enemyType,
             healthCount: healthCount,
             playerFx: playerFx,
             hudConfig: hudConfig,
-            letterSoundRepeatSeconds: letterSoundRepeatSeconds,
+            graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
             letterSpawnRate: letterSpawnRate,
-            letterCase: letterCase,
+            graphemeCase: graphemeCase,
             slashMaxSeconds: slashMaxSeconds,
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
             spriteLibrary: session.spriteLibrary,

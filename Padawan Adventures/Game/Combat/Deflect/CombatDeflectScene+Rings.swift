@@ -37,7 +37,7 @@ extension CombatDeflectScene {
     }
 
     func letter(for ring: CombatDeflectRing) -> String? {
-        let letters = engine.config.letters
+        let letters = engine.config.graphemes
         guard ring.index >= 0, ring.index < letters.count else { return nil }
         return letters[ring.index].letter
     }
