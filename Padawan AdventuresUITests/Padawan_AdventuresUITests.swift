@@ -20,13 +20,15 @@ final class Padawan_AdventuresUITests: XCTestCase {
 
         let tapToStart = app.staticTexts["loading.status"]
         XCTAssertTrue(
-            tapToStart.waitForExistence(timeout: 10),
+            tapToStart.waitForExistence(timeout: 30),
             "Expected loading status after launch"
         )
+        // Bootstrap warms every level's treasure + enemy sprites plus the expanded
+        // phonics catalog; cold simulator runs routinely exceed 10s.
         let ready = NSPredicate(format: "label == %@", "Tap to start")
         let readyExpectation = XCTNSPredicateExpectation(predicate: ready, object: tapToStart)
         XCTAssertEqual(
-            XCTWaiter.wait(for: [readyExpectation], timeout: 10),
+            XCTWaiter.wait(for: [readyExpectation], timeout: 60),
             .completed,
             "Expected tap-to-start after loading"
         )

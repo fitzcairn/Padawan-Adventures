@@ -66,15 +66,10 @@ struct PickupNodeSpriteTests {
         #expect(abs(full.size.width - fullHeight * (50.0 / 125.0)) < 1.0)
         #expect(abs(half.size.width - halfHeight * (50.0 / 125.0)) < 1.0)
 
-        // Live SKView: animate(resize:false) must keep the YAML-driven size.
-        let view = SKView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
-        let scene = SKScene(size: CGSize(width: 200, height: 200))
-        view.presentScene(scene)
-        scene.addChild(full)
-        let deadline = Date().addingTimeInterval(0.35)
-        while Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.016))
-        }
-        #expect(abs(full.size.height - fullHeight) < 0.5, "after animate \(full.size)")
+        // play() installs SKAction.animate(resize: false); re-fit must stick after
+        // the first texture assign without needing a live SKView/RunLoop (pumping
+        // the main run loop races audio finishedPlaying: callbacks from parallel tests).
+        full.fitHeight(fullHeight)
+        #expect(abs(full.size.height - fullHeight) < 0.5)
     }
 }

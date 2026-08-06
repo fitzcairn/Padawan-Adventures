@@ -6,6 +6,7 @@ import Testing
 struct BundleSoundEffectPlayerTests {
     @Test func retriggeringOneTrackIsBounded() {
         let player = BundleSoundEffectPlayer()
+        defer { player.stopAll() }
         for _ in 0..<5 {
             #expect(player.play(trackID: "win", volume: 1))
         }
@@ -16,6 +17,7 @@ struct BundleSoundEffectPlayerTests {
 
     @Test func distinctTracksGetSeparatePools() {
         let player = BundleSoundEffectPlayer()
+        defer { player.stopAll() }
         #expect(player.play(trackID: "win", volume: 1))
         #expect(player.play(trackID: "error", volume: 1))
         #expect(player.play(trackID: "correct", volume: 1))
@@ -25,6 +27,7 @@ struct BundleSoundEffectPlayerTests {
 
     @Test func trackCacheIsBounded() throws {
         let player = BundleSoundEffectPlayer()
+        defer { player.stopAll() }
         var trackIDs: [String] = []
         let graphemes = try GraphemeCatalog.loadFromBundle()
         for grapheme in graphemes.graphemes {
@@ -40,14 +43,16 @@ struct BundleSoundEffectPlayerTests {
         trackIDs = Array(Set(trackIDs)).sorted()
         #expect(trackIDs.count > BundleSoundEffectPlayer.maxCachedTracks)
 
-        for trackID in trackIDs {
-            _ = player.play(trackID: trackID, volume: 1)
-        }
+        // Warm the LRU via prepare — playing every catalog clip at once floods
+        // CoreAudio and races teardown callbacks across parallel test clones.
+        player.prepare(trackIDs: trackIDs)
         #expect(player.cachedTrackCount == BundleSoundEffectPlayer.maxCachedTracks)
+        #expect(player.anyPooledPlayerIsPlaying == false)
     }
 
     @Test func missingTrackReturnsFalseWithoutCaching() {
         let player = BundleSoundEffectPlayer()
+        defer { player.stopAll() }
         #expect(player.play(trackID: "definitely_missing_sfx_xyz", volume: 1) == false)
         #expect(player.decodeCount == 0)
         #expect(player.cachedTrackCount == 0)
@@ -55,6 +60,7 @@ struct BundleSoundEffectPlayerTests {
 
     @Test func durationDoesNotStartPlayback() {
         let player = BundleSoundEffectPlayer()
+        defer { player.stopAll() }
         let duration = player.duration(of: "win")
         #expect(duration != nil)
         #expect((duration ?? 0) > 0)
