@@ -83,12 +83,14 @@ struct CombatMinigameEngineTests {
             maxDecoyCount: 2,
             graphemeCase: .lower
         )
-        #expect(config.shotLetters == ["a", "b", "c"])
+        #expect(config.shotLetters == ["a", "i", "n", "p", "s", "t"])
         #expect(config.minDecoyCount == 1)
         #expect(config.maxDecoyCount == 2)
 
         let both = CombatMinigameEngine.Config(from: type, graphemeCase: .both)
-        #expect(both.shotLetters == ["a", "A", "b", "B", "c", "C"])
+        #expect(both.shotLetters == [
+            "a", "A", "i", "I", "n", "N", "p", "P", "s", "S", "t", "T",
+        ])
     }
 
     @Test func waveCompositionHasOneTargetAndValidDecoys() throws {

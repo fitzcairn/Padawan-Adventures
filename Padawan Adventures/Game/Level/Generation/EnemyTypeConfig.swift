@@ -110,12 +110,42 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         sprite = try container.decodeIfPresent(String.self, forKey: .sprite)
     }
 
-    /// Fallback A/B/C letter-name shots used by hand-built configs / tests.
-    static let fallbackShotTypes: [String: EnemyShotTypeConfig] = [
-        "A": EnemyShotTypeConfig(trackBasename: "sfx_letter_a_name"),
-        "B": EnemyShotTypeConfig(trackBasename: "sfx_letter_b_name"),
-        "C": EnemyShotTypeConfig(trackBasename: "sfx_letter_c_name"),
-    ]
+    /// Level-1 letters used when YAML omits `shot_types` (hand-built configs / tests).
+    /// Runtime fights overwrite this from `LevelVocabularyPool.letters`.
+    static let fallbackShotTypes: [String: EnemyShotTypeConfig] = shotTypes(
+        fromLetters: ["s", "a", "t", "p", "i", "n"]
+    )
+
+    /// Uppercase-keyed shot map from single-character graphemes (`a` → `"A"` + name track).
+    static func shotTypes(from pool: LevelVocabularyPool) -> [String: EnemyShotTypeConfig] {
+        var out: [String: EnemyShotTypeConfig] = [:]
+        for entry in pool.allGraphemes where entry.grapheme.count == 1 {
+            let track = entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !track.isEmpty else { continue }
+            out[entry.grapheme.uppercased()] = EnemyShotTypeConfig(trackBasename: track)
+        }
+        return out
+    }
+
+    /// Builds shot types for explicit lowercase letter ids (fallback / tests).
+    static func shotTypes(fromLetters letters: [String]) -> [String: EnemyShotTypeConfig] {
+        var out: [String: EnemyShotTypeConfig] = [:]
+        for raw in letters {
+            let id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard id.count == 1 else { continue }
+            out[id.uppercased()] = EnemyShotTypeConfig(trackBasename: "sfx_letter_\(id)_name")
+        }
+        return out
+    }
+
+    /// Copy with slash shot pool replaced by the level's single-character letters.
+    func withShotTypes(from pool: LevelVocabularyPool) -> EnemyTypeConfig {
+        let synthesized = Self.shotTypes(from: pool)
+        guard !synthesized.isEmpty else { return self }
+        var copy = self
+        copy.shotTypes = synthesized
+        return copy
+    }
 
     /// Stable letter keys for combat random selection.
     var shotLetters: [String] {

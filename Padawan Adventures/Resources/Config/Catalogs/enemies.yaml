@@ -1,7 +1,7 @@
 # Enemy type definitions. Level YAML spawn config references keys under `enemies:`.
-# Empty entries inherit `defaults:`. `shot_graphemes` resolve through Catalogs/graphemes.yaml:
-# each id's uppercased form becomes the shotTypes key, and that letter's `name` track
-# becomes the shoot FX (e.g. a → shotTypes["A"].fx.shoot == sfx_letter_a_name).
+# Empty entries inherit `defaults:`. Slash shot letters come from the level's
+# vocabulary.letters at fight time (single-character graphemes, keyed uppercase,
+# shoot FX = that letter's `name` track in graphemes.yaml).
 
 slash_max_seconds: 0.5
 # Max combat slash path length as a fraction of scene width (0.20 = 20%).
@@ -250,7 +250,6 @@ defaults:
   # Straight-line flight time for a wave projectile; sets the equal-speed baseline.
   shot_travel_seconds: 8
   stars_to_win: 5
-  shot_graphemes: [a, b, c]
 
 # Each type inherits everything from `defaults:`; any same-name key here wins.
 # `fx.notice` plays once, the first time that enemy gets line of sight on the player.

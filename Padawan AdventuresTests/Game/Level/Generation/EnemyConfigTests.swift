@@ -15,7 +15,6 @@ struct EnemyConfigTests {
             shot_pacing_seconds: 10
             shot_travel_seconds: 1.5
             stars_to_win: 10
-            shot_graphemes: [a, b, c]
             fx:
               notice: enemy-spider
           scout:
@@ -23,7 +22,6 @@ struct EnemyConfigTests {
             color: "#00FF00"
             tiles_per_second: 2.0
             forget_seconds: 1.5
-            shot_graphemes: [a]
         """
 
         let config = try EnemyConfig.decode(from: yaml)
@@ -38,14 +36,12 @@ struct EnemyConfigTests {
         #expect(config.type(named: "spider")?.shotTravelSeconds == 1.5)
         #expect(config.type(named: "spider")?.starsToWin == 10)
         #expect(config.type(named: "spider")?.fx.trackID(for: "notice") == "enemy-spider")
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
-        #expect(config.type(named: "spider")?.shotTypes["B"]?.fx.trackID(for: "shoot") == "sfx_letter_b_name")
-        #expect(config.type(named: "spider")?.shotTypes["C"]?.fx.trackID(for: "shoot") == "sfx_letter_c_name")
+        #expect(config.type(named: "spider")?.shotTypes == EnemyTypeConfig.fallbackShotTypes)
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.shotPacingSeconds == 10)
         #expect(config.type(named: "scout")?.starsToWin == 10)
         #expect(config.type(named: "scout")?.fx == .empty)
-        #expect(config.type(named: "scout")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "scout")?.shotTypes == EnemyTypeConfig.fallbackShotTypes)
         try config.validate()
     }
 
@@ -61,7 +57,7 @@ struct EnemyConfigTests {
         #expect(spider?.shotPacingSeconds == 10)
         #expect(spider?.shotTravelSeconds == 3.2)
         #expect(spider?.starsToWin == 10)
-        #expect(spider?.shotLetters == ["A", "B", "C"])
+        #expect(spider?.shotLetters == ["A", "I", "N", "P", "S", "T"])
     }
 
     @Test func decodesSlashMaxSeconds() throws {
@@ -73,7 +69,6 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            shot_graphemes: [a]
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxSeconds == 0.75)
@@ -88,7 +83,6 @@ struct EnemyConfigTests {
             color: "#FF0000"
             tiles_per_second: 1.0
             forget_seconds: 3.0
-            shot_graphemes: [a]
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.slashMaxScreenWidthFraction == 0.12)
@@ -105,7 +99,6 @@ struct EnemyConfigTests {
           shot_pacing_seconds: 30
           shot_travel_seconds: 8
           stars_to_win: 5
-          shot_graphemes: [a, b, c]
           fx:
             notice: enemy-spider
         enemies:
@@ -116,7 +109,7 @@ struct EnemyConfigTests {
         """
         let config = try EnemyConfig.decode(from: yaml)
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "spider")?.shotTypes == EnemyTypeConfig.fallbackShotTypes)
         #expect(config.type(named: "scout")?.letter == "S")
         #expect(config.type(named: "scout")?.tilesPerSecond == 2.0)
         #expect(config.type(named: "scout")?.starsToWin == 5)
@@ -154,7 +147,7 @@ struct EnemyConfigTests {
         #expect(config.type(named: "grunt") == nil)
         #expect(config.type(named: "spider") != nil)
         #expect(config.enemies.count == 10)
-        #expect(config.type(named: "spider")?.shotTypes["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(config.type(named: "spider")?.shotTypes == EnemyTypeConfig.fallbackShotTypes)
         #expect(config.type(named: "spider")?.shotPacingSeconds == 30)
     }
 
@@ -172,7 +165,6 @@ struct EnemyConfigTests {
           color: "#FF0000"
           tiles_per_second: 0.5
           forget_seconds: 3.0
-          shot_graphemes: [a]
         enemies:
           spider: { sprite: spider }
         """
@@ -209,7 +201,6 @@ struct EnemyConfigTests {
           forget_seconds: 3.0
           shot_pacing_seconds: 30
           stars_to_win: 5
-          shot_graphemes: [a, b, c]
         enemies:
           dino:
             sprite: dino
@@ -267,6 +258,46 @@ struct EnemyConfigTests {
                 )
             }
         }
+    }
+
+    @Test func synthesizeShotTypesFromLevelLetters() throws {
+        let tython = try LevelConfig.loadFromBundle(
+            named: "1-tython",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        let shots = EnemyTypeConfig.shotTypes(from: tython.vocabulary)
+        #expect(shots.keys.sorted() == ["A", "I", "N", "P", "S", "T"])
+        #expect(shots["S"]?.fx.trackID(for: "shoot") == "sfx_letter_s_name")
+        #expect(shots["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+
+        let base = EnemyTypeConfig(
+            letter: "E",
+            color: "#FF0000",
+            tilesPerSecond: 1,
+            forgetSeconds: 3,
+            shotTypes: ["Z": EnemyShotTypeConfig(trackBasename: "sfx_letter_z_name")]
+        )
+        let applied = base.withShotTypes(from: tython.vocabulary)
+        #expect(applied.shotLetters == ["A", "I", "N", "P", "S", "T"])
+        #expect(applied.shotTypes["Z"] == nil)
+    }
+
+    @Test func synthesizeShotTypesSkipsMultiLetterGraphemes() {
+        let pool = LevelVocabularyPool(tiers: [
+            .init(
+                order: 1,
+                weight: 1,
+                words: [],
+                graphemes: [
+                    GateGrapheme(grapheme: "s", pronunciation: "p", name: "sfx_letter_s_name"),
+                    GateGrapheme(grapheme: "st", pronunciation: "p", name: "sfx_grapheme_st_name"),
+                    GateGrapheme(grapheme: "a", pronunciation: "p", name: "sfx_letter_a_name"),
+                ]
+            ),
+        ])
+        let shots = EnemyTypeConfig.shotTypes(from: pool)
+        #expect(shots.keys.sorted() == ["A", "S"])
+        #expect(shots["ST"] == nil)
     }
 
     @Test func validateRejectsEmptyShotTypes() {

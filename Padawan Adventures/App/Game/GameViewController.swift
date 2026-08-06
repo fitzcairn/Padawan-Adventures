@@ -196,7 +196,7 @@ final class GameViewController: LandscapeHostingController {
             hud?.removeBolt()
         }
         let typeID = scene.currentWorld.entity(id: enemyID)?.enemyTypeID
-        let enemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
+        let baseEnemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
             ?? EnemyConfig.fallback.type(named: "spider")
             ?? EnemyTypeConfig(
                 letter: "E",
@@ -204,6 +204,8 @@ final class GameViewController: LandscapeHostingController {
                 tilesPerSecond: 1,
                 forgetSeconds: 3
             )
+        // Slash shots use the level's single-character letter pool, not enemies.yaml.
+        let enemyType = baseEnemyType.withShotTypes(from: session.selectedLevel.vocabulary)
         let enemySprite = typeID.flatMap { session.enemyConfig.spriteConfig(for: $0) }
         let combatSprite = session.playerConfig.combatSprite
         let healthCount = scene.currentWorld.healthCount

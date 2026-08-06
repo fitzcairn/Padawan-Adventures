@@ -102,18 +102,13 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         return try decode(from: data)
     }
 
-    static func decode(
-        from data: Data,
-        graphemeCatalog: GraphemeCatalog? = nil
-    ) throws -> EnemyConfig {
+    static func decode(from data: Data) throws -> EnemyConfig {
         do {
-            let letters = try graphemeCatalog ?? Self.loadGraphemeCatalog()
-            var tree = try ConfigStore.rawTree(
+            let tree = try ConfigStore.rawTree(
                 from: data,
                 parentDataNamed: nil,
                 fileLabel: "enemies.yaml"
             )
-            try resolveShotLetters(in: &tree, graphemeCatalog: letters)
             let yaml = try Yams.dump(object: tree)
             let config = try YAMLDecoder().decode(EnemyConfigDTO.self, from: yaml).asEnemyConfig()
             try config.validate()
@@ -127,55 +122,8 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         }
     }
 
-    static func decode(
-        from yaml: String,
-        graphemeCatalog: GraphemeCatalog? = nil
-    ) throws -> EnemyConfig {
-        try decode(from: Data(yaml.utf8), graphemeCatalog: graphemeCatalog)
-    }
-
-    private static func loadGraphemeCatalog() throws -> GraphemeCatalog {
-        do {
-            return try GraphemeCatalog.loadFromBundle()
-        } catch {
-            return .fallback
-        }
-    }
-
-    /// Replaces each enemy's `shot_graphemes: [a, b, …]` with a `shot_types` map resolved
-    /// through the letter catalog (`a` → key `A`, shoot track = letter `name`).
-    private static func resolveShotLetters(
-        in tree: inout [String: Any],
-        graphemeCatalog: GraphemeCatalog
-    ) throws {
-        guard var enemies = ConfigStore.asStringKeyedDictionary(tree["enemies"] as Any?) else {
-            return
-        }
-        for (enemyID, entryValue) in enemies {
-            guard var entry = ConfigStore.asStringKeyedDictionary(entryValue) else { continue }
-            guard let rawLetters = entry["shot_graphemes"] as? [Any] else {
-                // Allow hand-built YAML that already has shot_types (tests).
-                continue
-            }
-            var shotTypes: [String: Any] = [:]
-            for raw in rawLetters {
-                let id = String(describing: raw).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                guard !id.isEmpty else {
-                    throw EnemyConfigError.invalid("\(enemyID).shot_graphemes entries must be non-empty")
-                }
-                guard let letter = graphemeCatalog.grapheme(named: id) else {
-                    throw EnemyConfigError.invalid(
-                        "\(enemyID).shot_graphemes.\(id) is not in the letter catalog"
-                    )
-                }
-                let key = id.uppercased()
-                shotTypes[key] = ["fx": letter.name]
-            }
-            entry.removeValue(forKey: "shot_graphemes")
-            entry["shot_types"] = shotTypes
-            enemies[enemyID] = entry
-        }
-        tree["enemies"] = enemies
+    static func decode(from yaml: String) throws -> EnemyConfig {
+        try decode(from: Data(yaml.utf8))
     }
 }
 
