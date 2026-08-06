@@ -11,8 +11,13 @@ const HP_Q = 0.707;
 const SUBTRACT_ALPHA = 2.0;
 const FLOOR_BETA = 0.05;
 const TRIM_WINDOW_MS = 10;
-const TRIM_PAD_MS = 30;
-const FADE_MS = 15;
+/** Keep a tiny pad so plosive attacks / releases aren't clipped. */
+const TRIM_PAD_MS = 8;
+/** Drop leading/trailing windows below this fraction of peak amplitude. */
+const TRIM_PEAK_FRAC = 0.08;
+/** Drop leading/trailing windows below this multiple of the noise floor. */
+const TRIM_NOISE_MULT = 6;
+const FADE_MS = 12;
 const PEAK_TARGET = 0.89;
 const QUIET_PEAK = 1e-4;
 
@@ -41,7 +46,9 @@ export function cleanup(samples, noiseSamples, sampleRate) {
   reverseInPlace(noise);
 
   out = spectralSubtract(out, noise);
-  const noiseRms = rmsOf(noise);
+  // Prefer the cleaned signal's own edge floor so residual denoise hiss
+  // doesn't keep pre/post-roll blank time after the RMS gate.
+  const noiseRms = Math.max(rmsOf(noise), edgeNoiseRms(out, sampleRate));
   out = trimSilence(out, sampleRate, noiseRms);
   applyFades(out, sampleRate, FADE_MS);
 
@@ -277,32 +284,57 @@ function peakOf(samples) {
   return peak;
 }
 
+/** RMS of the quieter edge (first or last ~80 ms) of the cleaned buffer. */
+function edgeNoiseRms(samples, sampleRate) {
+  const n = Math.min(samples.length, Math.round((sampleRate * 80) / 1000));
+  if (n <= 0) return 0;
+  let head = 0;
+  let tail = 0;
+  for (let i = 0; i < n; i++) {
+    head += samples[i] * samples[i];
+    const t = samples[samples.length - 1 - i];
+    tail += t * t;
+  }
+  return Math.sqrt(Math.min(head, tail) / n);
+}
+
+/**
+ * Remove leading and trailing blank time. Uses RMS windows to find the
+ * voiced span, then tightens to the first/last sample above threshold.
+ */
 function trimSilence(samples, sampleRate, noiseRms) {
   if (samples.length === 0) return samples;
   const win = Math.max(1, Math.round((sampleRate * TRIM_WINDOW_MS) / 1000));
   const pad = Math.round((sampleRate * TRIM_PAD_MS) / 1000);
   const peak = peakOf(samples);
-  const threshold = Math.max(noiseRms * 3, peak * 0.02);
+  const threshold = Math.max(noiseRms * TRIM_NOISE_MULT, peak * TRIM_PEAK_FRAC, 1e-4);
 
-  let first = -1;
-  let last = -1;
+  let firstWin = -1;
+  let lastWin = -1;
   for (let start = 0; start < samples.length; start += win) {
     const end = Math.min(samples.length, start + win);
     let sum = 0;
     for (let i = start; i < end; i++) sum += samples[i] * samples[i];
     const rms = Math.sqrt(sum / (end - start));
     if (rms >= threshold) {
-      if (first < 0) first = start;
-      last = end;
+      if (firstWin < 0) firstWin = start;
+      lastWin = end;
     }
   }
-  if (first < 0) {
+  if (firstWin < 0) {
     // All silence — keep a short center slice so encodeWav still has content.
     return samples.slice(0, Math.min(samples.length, win));
   }
+
+  // Sample-accurate tighten inside the first/last active windows.
+  let first = firstWin;
+  while (first < lastWin && Math.abs(samples[first]) < threshold) first += 1;
+  let last = lastWin - 1;
+  while (last > first && Math.abs(samples[last]) < threshold) last -= 1;
+
   const a = Math.max(0, first - pad);
-  const b = Math.min(samples.length, last + pad);
-  return samples.subarray(a, b);
+  const b = Math.min(samples.length, last + 1 + pad);
+  return samples.slice(a, b);
 }
 
 function applyFades(samples, sampleRate, fadeMs) {

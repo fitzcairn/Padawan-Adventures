@@ -100,8 +100,8 @@ Browser-side, before save:
 1. DC-offset removal
 2. Zero-phase 80 Hz high-pass
 3. STFT spectral subtraction (noise profile from 500 ms *before* the press)
-4. RMS silence trim with 30 ms padding
-5. 15 ms raised-cosine fades
+4. Trim leading and trailing blank time (RMS gate + sample-accurate edges, ~8 ms pad)
+5. 12 ms raised-cosine fades
 6. Peak normalize to ≈ −1 dBFS
 
 Mic browser processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) is disabled so this pipeline owns the result.
