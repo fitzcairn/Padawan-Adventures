@@ -7,6 +7,9 @@ order: 7
 color: "#E65100"
 artifact: flame.fill
 treasure: connector
+vocab:
+  graphemes: [ff, ll, ss, zz]
+  words: [puff, hill, kiss, buzz]
 world:
   enemies:
     types: [lava_lizard]

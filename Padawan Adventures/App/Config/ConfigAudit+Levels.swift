@@ -129,61 +129,58 @@ extension ConfigAudit {
         return checkSpriteConfig(sprite, label: "\(label).treasure.sprite", bundle: bundle)
     }
 
+    /// Every word in the level's cumulative vocabulary resolves in `words.yaml`,
+    /// reconstructs from its graphemes, and those graphemes sit in the pool.
     static func checkWordIDs(
         level: LevelConfig,
         words: WordCatalog,
         label: String
     ) -> [String] {
         var problems: [String] = []
-        for (idx, minigame) in level.pit.minigames.enumerated() {
-            let ids: [String]?
-            switch minigame {
-            case .soundOutWord(let c): ids = c.wordIDs
-            case .bridge(let c): ids = c.wordIDs
+        let poolGraphemes = Set(level.vocabulary.allGraphemes.map(\.grapheme))
+        for entry in level.vocabulary.allWords {
+            guard let catalogEntry = words.word(named: entry.word) else {
+                problems.append("\(label).vocab.words: unknown word id '\(entry.word)'")
+                continue
             }
-            for id in ids ?? [] where words.word(named: id) == nil {
-                problems.append("\(label).pit.minigames[\(idx)].words: unknown word id '\(id)'")
+            if catalogEntry.graphemes.joined() != entry.word {
+                problems.append(
+                    "\(label).vocab.words: '\(entry.word)' graphemes do not reconstruct the word"
+                )
             }
-        }
-        for (idx, minigame) in level.gate.minigames.enumerated() {
-            let ids: [String]?
-            switch minigame {
-            case .soundOutWord(let c): ids = c.wordIDs
-            case .wordPlug(let c): ids = c.wordIDs
-            case .graphemeMatch: ids = nil
-            }
-            for id in ids ?? [] where words.word(named: id) == nil {
-                problems.append("\(label).gate.minigames[\(idx)].words: unknown word id '\(id)'")
+            for grapheme in entry.graphemes where !poolGraphemes.contains(grapheme) {
+                problems.append(
+                    "\(label).vocab.words: '\(entry.word)' uses grapheme '\(grapheme)' outside the cumulative pool"
+                )
             }
         }
         return problems
     }
 
+    /// Every grapheme in the level's cumulative vocabulary resolves in `graphemes.yaml`.
     static func checkLetterIDs(
         level: LevelConfig,
         letters: GraphemeCatalog,
         label: String
     ) -> [String] {
-        var problems: [String] = []
-        for (idx, minigame) in level.gate.minigames.enumerated() {
-            if case .graphemeMatch(let c) = minigame, let ids = c.graphemeIDs {
-                for id in ids {
-                    if letters.grapheme(named: id) == nil {
-                        problems.append(
-                            "\(label).gate.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
-                        )
-                    }
-                }
+        level.vocabulary.allGraphemes.compactMap { entry in
+            guard letters.grapheme(named: entry.grapheme) != nil else {
+                return "\(label).vocab.graphemes: unknown letter id '\(entry.grapheme)'"
             }
+            return nil
         }
-        for (idx, minigame) in level.combat.minigames.enumerated() {
-            if case .deflect(let c) = minigame, let ids = c.graphemeIDs {
-                for id in ids where letters.grapheme(named: id) == nil {
-                    problems.append(
-                        "\(label).combat.minigames[\(idx)].graphemes: unknown letter id '\(id)'"
-                    )
-                }
-            }
+    }
+
+    /// Ids declared in more than one level's `vocab:` block (lowest order wins at runtime).
+    static func checkDuplicateVocabularyIDs(
+        vocabularyCatalog: LevelVocabularyCatalog
+    ) -> [String] {
+        var problems: [String] = []
+        for id in vocabularyCatalog.duplicateWordIDs {
+            problems.append("vocab.words: '\(id)' is declared at more than one level")
+        }
+        for id in vocabularyCatalog.duplicateGraphemeIDs {
+            problems.append("vocab.graphemes: '\(id)' is declared at more than one level")
         }
         return problems
     }

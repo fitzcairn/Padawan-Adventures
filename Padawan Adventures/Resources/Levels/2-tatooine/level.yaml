@@ -7,6 +7,9 @@ order: 2
 color: "#D4A017"
 artifact: sun.max.fill
 treasure: control-ring
+vocab:
+  graphemes: [m, d, g, o, c, k]
+  words: [kam, dog, cat, mad, pig, dad, mat, map, dig, can, pot, mop, kid]
 world:
   enemies:
     types: [centipede]

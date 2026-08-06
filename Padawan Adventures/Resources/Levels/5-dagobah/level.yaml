@@ -8,6 +8,9 @@ order: 5
 color: "#556B2F"
 artifact: drop.fill
 treasure: lower-grip
+vocab:
+  graphemes: [st, sn, sp, fl, pl, sl, tr, fr, br, sh, cr]
+  words: [stop, snap, spot, flag, plum, slip, frog, tris, brush, crab, vest]
 world:
   enemies:
     types: [snake, treant]

@@ -8,6 +8,9 @@ order: 6
 color: "#607D8B"
 artifact: building.2.fill
 treasure: power-cell
+vocab:
+  graphemes: [nd, mp, nt]
+  words: [sand, pond, jump, camp, fast, nest, tent, ant]
 world:
   enemies:
     types: [drone, robot]

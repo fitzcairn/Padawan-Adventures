@@ -59,10 +59,9 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     /// Which grapheme the ring must match: word start (`starting-sound-combat`)
     /// or word end (`ending-sound-combat`).
     var letterPosition: GateWordPlugLetterPosition
-    /// Optional subset of shared catalog ids (`nil` = first `defaultRingCount` catalog entries).
-    /// Order is meaningful: left to right on screen.
-    var graphemeIDs: [String]?
-    /// Resolved letters in `graphemeIDs` order. Populated via `resolveGraphemes(from:)`.
+    /// How many deflection rings to draw (`minRingCount`...`maxRingCount`).
+    var ringCount: Int
+    /// Resolved letters in pool order. Populated via `resolve(from:)`.
     /// Count (2…6) is the number of deflection circles drawn.
     var graphemes: [GateGrapheme]
 
@@ -70,15 +69,17 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     static let defaultOrbTravelSeconds: Double = 3
     static let minRingCount = 2
     static let maxRingCount = 6
-    /// Used when YAML omits `graphemes:` (and for the code fallback).
-    static let defaultRingCount = 3
-    /// Back-compat alias for the default letter / ring count.
-    static let ringCount = defaultRingCount
+    /// Used when YAML omits `ring_count:` (and for the code fallback).
+    static let defaultRingCount = 4
 
     nonisolated static let fallback = CombatDeflectConfig(
         weight: 1,
-        graphemeIDs: ["a", "b", "c"],
-        graphemes: Array(GraphemeCatalog.fallback.graphemes.prefix(defaultRingCount))
+        ringCount: defaultRingCount,
+        graphemes: Array(
+            GraphemeCatalog.fallback.graphemes
+                .filter { $0.grapheme.count == 1 }
+                .prefix(defaultRingCount)
+        )
     )
 
     nonisolated init(
@@ -86,30 +87,22 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         monsterHP: Int = defaultMonsterHP,
         orbTravelSeconds: Double = defaultOrbTravelSeconds,
         letterPosition: GateWordPlugLetterPosition = .starting,
-        graphemeIDs: [String]? = nil,
+        ringCount: Int = defaultRingCount,
         graphemes: [GateGrapheme] = []
     ) {
         self.weight = weight
         self.monsterHP = monsterHP
         self.orbTravelSeconds = orbTravelSeconds
         self.letterPosition = letterPosition
-        self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
+        self.ringCount = ringCount
         self.graphemes = graphemes
     }
 
-    /// Resolves `graphemeIDs` against the shared catalog, preserving YAML order.
-    /// Gate letter-match sorts its letters; ring order here is positional, so it must not.
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        let ids = graphemeIDs ?? catalog.graphemes.prefix(Self.defaultRingCount).map(\.grapheme)
-        var resolved: [GateGrapheme] = []
-        resolved.reserveCapacity(ids.count)
-        for id in ids {
-            guard let entry = catalog.grapheme(named: id) else {
-                throw WorldSeedError.invalidCombatDeflectGraphemes
-            }
-            resolved.append(entry)
-        }
-        graphemes = resolved
+    /// Takes the first `ringCount` single-character graphemes from the pool (stable order).
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        let singles = pool.allGraphemes.filter { $0.grapheme.count == 1 }
+        let count = min(max(ringCount, 0), singles.count)
+        graphemes = Array(singles.prefix(count))
     }
 
     func validate() throws {
@@ -184,10 +177,10 @@ nonisolated struct CombatConfig: Equatable, Sendable {
         return picked
     }
 
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
+    mutating func resolveGraphemes(from pool: LevelVocabularyPool) throws {
         for index in minigames.indices {
             if case .deflect(var config) = minigames[index] {
-                try config.resolveGraphemes(from: catalog)
+                try config.resolve(from: pool)
                 minigames[index] = .deflect(config)
             }
         }

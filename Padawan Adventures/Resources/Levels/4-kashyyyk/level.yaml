@@ -8,6 +8,9 @@ order: 4
 color: "#1B5E20"
 artifact: tree.fill
 treasure: activation-switch
+vocab:
+  graphemes: [j, v, w, x, y, z, qu]
+  words: [jam, vet, web, fox, zip, padawan, quit, quiz]
 world:
   enemies:
     types: [spider, moth]

@@ -29,11 +29,24 @@ nonisolated enum ConfigAudit {
         audio: SoundSettings,
         screens: ScreensConfig?,
         player: PlayerConfig? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil,
         bundle: Bundle = .main
     ) throws {
         _ = app
 
         var problems: [String] = []
+
+        let vocabCatalog: LevelVocabularyCatalog
+        if let vocabularyCatalog {
+            vocabCatalog = vocabularyCatalog
+        } else {
+            do {
+                vocabCatalog = try LevelVocabularyCatalog.loadFromBundle()
+            } catch {
+                vocabCatalog = .fallback
+            }
+        }
+        problems.append(contentsOf: checkDuplicateVocabularyIDs(vocabularyCatalog: vocabCatalog))
 
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"

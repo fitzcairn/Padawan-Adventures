@@ -5,6 +5,12 @@
 
 name: Level
 
+# Level 1 curriculum (inherited by `_defaults` consumers and `1-tython`).
+# Later levels replace this block wholesale with their own `vocab:`.
+vocab:
+  graphemes: [s, a, t, p, i, n]
+  words: [at, it, in, an, sat, sit, pat, tap, pan, nap, pin, sip]
+
 # Map layout, spawn rates, and exploration music.
 world:
   # Background music track basename (Resources/Audio/Music/<name>.mp3).
@@ -47,19 +53,22 @@ world:
     energy:
       spawn_probability_per_room: 0.8
 
+  vocabulary:
+    # P(draw from the current level's set); earlier levels split the rest geometrically.
+    current_level_probability: 0.75
+
 # Combat minigames (one is picked per encounter, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
+# Vocabulary for letter rings comes from the level's top-level `vocab:` block (cumulative).
 # `grapheme-sound-combat`: wave-based swipe-to-slash arena. Each wave speaks one grapheme
 #   name and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
 #   fanned, equal-speed curves. Slash the matching letter to score; slashing a decoy, or
 #   letting any letter reach you, costs one heart. Letter pool and flight time come from
 #   enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word image; tap the ring for that word's first
-#   grapheme. Its `graphemes:` map left -> right onto evenly spaced rings (2–6) and must resolve
-#   in graphemes.yaml; each needs ≥1 imaged word in words.yaml that starts with it.
+#   grapheme. `ring_count` (2–6) picks that many single graphemes from the level pool.
 #   Stars = orbs deflected.
-# `ending-sound-combat`: same arena, but the ring must match the word's last grapheme, so each
-#   of its `graphemes:` needs ≥1 imaged word that ends with it.
+# `ending-sound-combat`: same arena, but the ring must match the word's last grapheme.
 combat:
   music: combat
   minigames:
@@ -75,28 +84,26 @@ combat:
       weight: 0.5
       monster_hit_points: 5
       orb_travel_seconds: 4.0
-      graphemes: [a, b, c, d]
+      ring_count: 4
     - type: ending-sound-combat
       weight: 0.0
       monster_hit_points: 5
       orb_travel_seconds: 4.0
-      graphemes: [t, d, n, r]
+      ring_count: 4
 
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.jump` fires on every hop; `win` falls back to audio.yaml.
+# Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
 # `sound-out-word-pit`: sound out the word one grapheme at a time. Each grapheme fades in a
 #   set of blank tiles; drag Kam onto the one whose sound comes next. Stars = graphemes in the
-#   word. Its `words:` are ids that must resolve in words.yaml (each must have an image and be
-#   >= 2 graphemes), and every grapheme of every word must resolve in graphemes.yaml. Set size
-#   is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
+#   word. Words are imaged entries from the level pool whose graphemes are all in the pool.
+#   Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
-#   Its `words:` are catalog ids from words.yaml (each must have an image). The prompt
-#   shows that image and plays the word's sfx. Pool must hold at least `max_word_count`
-#   entries. Stars = words placed.
+#   Words are imaged pool entries (>= 2 graphemes). The prompt shows that image and plays the
+#   word's sfx. Pool must hold at least `max_word_count` entries. Stars = words placed.
 # `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
-#   FIRST letter (`_og` for dog). Same `words:` rules: catalog ids with images, >= 2 graphemes,
-#   pool at least `max_word_count` entries. Stars = words placed.
+#   FIRST letter (`_og` for dog). Same pool rules. Stars = words placed.
 pit:
   music: pit
   fx: { jump: pit-jump }
@@ -105,17 +112,14 @@ pit:
       weight: 1.0
       min_choice_count: 3
       max_choice_count: 3
-      words: [cat, dog, sun, sat]
     - type: ending-sound-pit
       weight: 0.0
       min_word_count: 3
       max_word_count: 5
-      words: [cat, dog, sun, sat, hat, bed]
     - type: starting-sound-pit
       weight: 0.0
       min_word_count: 3
       max_word_count: 5
-      words: [cat, dog, sun, sat, hat, bed]
 
 # Gate minigames (triggered on gate tile contact).
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
@@ -123,20 +127,17 @@ pit:
 # `minigame_probability` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
 # Weights pick the kind baked onto each gate tile at generation time (weight 0 = never).
 # Duplicate `type:` entries are rejected.
+# Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
 # `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
-#   Its `words:` are ids that must resolve in words.yaml. Plays the starting-letter pronunciation
-#   when a plug is picked up. Word count snaps to a multiple of 3 in `min_word_count`...`max_word_count`.
+#   Plays the starting-letter pronunciation when a plug is picked up. Word count snaps to a
+#   multiple of 3 in `min_word_count`...`max_word_count`.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
-#   LAST letter (`do_` for dog) and the socket sits to the right of the plate. Every word's last
-#   grapheme must resolve in graphemes.yaml.
+#   LAST letter (`do_` for dog) and the socket sits to the right of the plate.
 # `sound-out-word-gate`: sound out the prompted word one grapheme at a time. Each grapheme offers a
 #   set of blank capacitors; drag the right one into the play area, left to right. Stars = graphemes
-#   in the word. Its `words:` are ids that must resolve in words.yaml (each id has sfx + optional
-#   image), and every grapheme of every word must resolve in graphemes.yaml. Set size is
-#   `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
+#   in the word. Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
-#   Its `graphemes:` are ids that must resolve in graphemes.yaml. Round size is
-#   `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
+#   Round size is `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
 gate:
   music: gate
   fx: { opened: gate-open }
@@ -147,26 +148,21 @@ gate:
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
-      words: [cat, dog, sun, sat, hat, bed, pig, map]
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
       weight: 0.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
-      # Each word's LAST letter must exist in graphemes.yaml.
-      words: [dog, sun, hat, bed, map]
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
       weight: 1.0
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4
-      words: [cat, dog, sun, sat]
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
       weight: 0.0
       min_grapheme_count: 4
       max_grapheme_count: 8
-      graphemes: [a, b, c, d, e, f, g, h]
       fx: { switch_push: gate-grapheme_match-switch-push }

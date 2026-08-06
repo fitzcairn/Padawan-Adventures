@@ -3,6 +3,11 @@ import Testing
 
 /// Decode snapshots for every shipped level. Guards Phase 3c / Phase 4 registry work.
 struct LevelConfigSnapshotTests {
+    private static let level1Words = [
+        "an", "at", "in", "it", "nap", "pan", "pat", "pin", "sat", "sip", "sit", "tap",
+    ]
+    private static let level1Graphemes = ["s", "a", "t", "p", "i", "n"]
+
     @Test func everyShippedLevelDecodesWithDerivedArt() throws {
         let catalog = LevelCatalog.loadFromBundle()
         #expect(!catalog.isEmpty, "expected shipped levels in the bundle")
@@ -23,6 +28,8 @@ struct LevelConfigSnapshotTests {
             #expect(!level.combat.minigames.isEmpty)
             #expect(!level.gate.minigames.isEmpty)
             #expect(!level.pit.minigames.isEmpty)
+            #expect(!level.vocabulary.allWords.isEmpty)
+            #expect(!level.vocabulary.allGraphemes.isEmpty)
         }
     }
 
@@ -43,6 +50,10 @@ struct LevelConfigSnapshotTests {
         #expect(level.width == 20)
         #expect(level.roomCount == 5)
         #expect(level.enemies?.types == ["dino", "treant"])
+        #expect(level.currentLevelProbability == 0.75)
+        #expect(level.vocabulary.allWords.map(\.word) == Self.level1Words)
+        #expect(level.vocabulary.allGraphemes.map(\.grapheme) == ["s", "a", "t", "p", "i", "n"])
+        #expect(level.vocabulary.letters == Self.level1Graphemes)
 
         #expect(level.combat.minigames.map(\.kind) == [
             .slash, .startingSoundDeflect, .endingSoundDeflect,
@@ -63,7 +74,8 @@ struct LevelConfigSnapshotTests {
         #expect(deflect.letterPosition == .starting)
         #expect(deflect.monsterHP == 5)
         #expect(deflect.orbTravelSeconds == 4)
-        #expect(deflect.graphemes.map(\.grapheme) == ["a", "b", "c", "d"])
+        #expect(deflect.ringCount == 4)
+        #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
         guard case .deflect(let endingDeflect) = level.combat.minigames[2] else {
             Issue.record("expected ending-sound deflect combat entry")
             return
@@ -71,7 +83,8 @@ struct LevelConfigSnapshotTests {
         #expect(endingDeflect.letterPosition == .ending)
         #expect(endingDeflect.monsterHP == 5)
         #expect(endingDeflect.orbTravelSeconds == 4)
-        #expect(endingDeflect.graphemes.map(\.grapheme) == ["t", "d", "n", "r"])
+        #expect(endingDeflect.ringCount == 4)
+        #expect(endingDeflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
@@ -83,15 +96,13 @@ struct LevelConfigSnapshotTests {
         }
         #expect(wordPlug.wordCountMin == 2)
         #expect(wordPlug.wordCountMax == 2)
-        #expect(wordPlug.words.map(\.word) == [
-            "bed", "cat", "dog", "hat", "map", "pig", "sat", "sun",
-        ])
+        #expect(wordPlug.words.map(\.word) == Self.level1Words)
         guard case .wordPlug(let endingSound) = level.gate.minigames[1] else {
             Issue.record("expected ending-sound gate entry")
             return
         }
         #expect(endingSound.letterPosition == .ending)
-        #expect(endingSound.words.map(\.word) == ["bed", "dog", "hat", "map", "sun"])
+        #expect(endingSound.words.map(\.word) == Self.level1Words)
 
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
         #expect(level.pit.minigames.map(\.weight) == [1, 0, 0])
@@ -99,21 +110,18 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected pit sound-out-word entry")
             return
         }
-        #expect(soundOut.words.map(\.word) == ["cat", "dog", "sat", "sun"])
+        #expect(soundOut.words.map(\.word) == Self.level1Words)
         guard case .bridge(let bridge) = level.pit.minigames[1] else {
             Issue.record("expected pit bridge entry")
             return
         }
         #expect(bridge.letterPosition == .ending)
-        #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
-        #expect(Set(bridge.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
+        #expect(bridge.words.map(\.word) == Self.level1Words)
         guard case .bridge(let starting) = level.pit.minigames[2] else {
             Issue.record("expected pit starting-sound bridge entry")
             return
         }
         #expect(starting.letterPosition == .starting)
-        #expect(starting.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
-        #expect(Set(starting.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
-
+        #expect(starting.words.map(\.word) == Self.level1Words)
     }
 }

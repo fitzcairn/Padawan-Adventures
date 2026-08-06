@@ -11,7 +11,7 @@ nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIter
 }
 
 /// Per-entry config for the bridge-building pit game.
-/// `words:` are shared catalog ids from `words.yaml` (must resolve to imaged entries).
+/// Words come from the level's cumulative `vocab:` pool (imaged entries).
 nonisolated struct PitBridgeConfig: Equatable, Sendable {
     var weight: Double
     /// Inclusive lower bound on words (and therefore bridge tiles) per session.
@@ -20,20 +20,18 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     var maxWords: Int
     /// Which letter the player supplies: word end (`ending-sound-pit`) or start (`starting-sound-pit`).
     var letterPosition: GateWordPlugLetterPosition
-    /// Optional subset of shared catalog ids (`nil` / omitted YAML → `defaultWordIDs`).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    /// Resolved vocabulary (sorted by word). Populated via `resolve(from:)`.
     var words: [GateWord]
 
     static let defaultMinWords = 2
     static let defaultMaxWords = 4
-    /// Catalog ids with illustrations — used when YAML omits `words:`.
-    static let defaultWordIDs = ["cat", "dog", "sun", "sat", "hat", "bed"]
 
     nonisolated static let fallback = PitBridgeConfig(
         weight: 1,
-        wordIDs: defaultWordIDs,
-        words: WordCatalog.fallback.words.filter { defaultWordIDs.contains($0.word) }
+        words: WordCatalog.fallback.words.filter {
+            $0.graphemes.count >= 2
+                && ($0.image?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+        }
     )
 
     nonisolated init(
@@ -41,24 +39,27 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         minWords: Int = defaultMinWords,
         maxWords: Int = defaultMaxWords,
         letterPosition: GateWordPlugLetterPosition = .ending,
-        wordIDs: [String]? = defaultWordIDs,
         words: [GateWord] = []
     ) {
         self.weight = weight
         self.minWords = minWords
         self.maxWords = maxWords
         self.letterPosition = letterPosition
-        self.wordIDs = wordIDs?.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        }
         self.words = GateWord.normalized(words)
     }
 
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        do {
-            words = try catalog.resolve(ids: wordIDs)
-        } catch WorldSeedError.invalidGateWords {
-            throw WorldSeedError.invalidPitBridgeWords
+    /// Imaged words with ≥2 graphemes whose answer letter is in the pool.
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        let known = Set(pool.allGraphemes.map(\.grapheme))
+        words = pool.allWords.filter { entry in
+            guard entry.graphemes.count >= 2,
+                  let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !image.isEmpty,
+                  let answer = letterPosition.answerLetter(in: entry.word),
+                  known.contains(answer) else {
+                return false
+            }
+            return true
         }
     }
 
@@ -66,7 +67,6 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         guard minWords >= 1, maxWords >= minWords else {
             throw WorldSeedError.invalidPitBridgeWordRange(min: minWords, max: maxWords)
         }
-        // A session picks up to `maxWords` distinct words, so the pool must cover it.
         guard words.count >= maxWords else {
             throw WorldSeedError.invalidPitBridgeWords
         }
@@ -88,31 +88,29 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
 }
 
 /// Per-entry config for the pit sound-out-word game.
-/// `words:` are shared catalog ids from `words.yaml` (must resolve to imaged entries).
-/// Graphemes always come from the full `Catalogs/graphemes.yaml`, which supplies the
-/// name/pronunciation audio and the decoy pool.
+/// Words come from the level's cumulative `vocab:` pool (imaged entries).
+/// Graphemes come from the same pool (name/pronunciation audio + decoys).
 nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
     var weight: Double
     /// Inclusive lower bound on tiles offered per grapheme.
     var choiceCountMin: Int
     /// Inclusive upper bound on tiles offered per grapheme.
     var choiceCountMax: Int
-    var wordIDs: [String]?
     var words: [GateWord]
-    /// Resolved full grapheme catalog. Populated via `resolveGraphemes(from:)`.
+    /// Resolved grapheme pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
 
     /// One correct tile plus at least one decoy.
     static let minChoiceCount = 2
     /// Wider fans stop fitting between the pads on phone-sized scenes.
     static let maxChoiceCount = 6
-    /// Catalog ids with illustrations — used when YAML omits `words:`.
-    static let defaultWordIDs = ["cat", "dog", "sun", "sat"]
 
     nonisolated static let fallback = PitSoundOutWordConfig(
         weight: 1,
-        wordIDs: defaultWordIDs,
-        words: WordCatalog.fallback.words.filter { defaultWordIDs.contains($0.word) },
+        words: WordCatalog.fallback.words.filter {
+            $0.graphemes.count >= 2
+                && ($0.image?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+        },
         graphemes: GraphemeCatalog.fallback.graphemes
     )
 
@@ -120,30 +118,29 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
         weight: Double = 1,
         choiceCountMin: Int = 3,
         choiceCountMax: Int = 3,
-        wordIDs: [String]? = defaultWordIDs,
         words: [GateWord] = [],
         graphemes: [GateGrapheme] = []
     ) {
         self.weight = weight
         self.choiceCountMin = choiceCountMin
         self.choiceCountMax = choiceCountMax
-        self.wordIDs = wordIDs?.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        }
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
     }
 
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        do {
-            words = try catalog.resolve(ids: wordIDs)
-        } catch WorldSeedError.invalidGateWords {
-            throw WorldSeedError.invalidPitSoundOutWordWords
+    /// Imaged pool words whose graphemes are all in the pool; graphemes = full pool.
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        let known = Set(pool.allGraphemes.map(\.grapheme))
+        words = pool.allWords.filter { entry in
+            guard let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !image.isEmpty,
+                  entry.graphemes.count >= 2,
+                  entry.graphemes.allSatisfy({ known.contains($0.lowercased()) }) else {
+                return false
+            }
+            return true
         }
-    }
-
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        graphemes = try catalog.resolve(ids: nil)
+        graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
     func validate() throws {
@@ -160,7 +157,6 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
             emptyError: .invalidPitSoundOutWordWords,
             invalidEntryError: .invalidPitSoundOutWordWords
         )
-        // The picture is the prompt, so every word needs an illustration.
         var seen = Set<String>()
         for entry in words {
             guard entry.word.count >= 2,
@@ -170,7 +166,6 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
                 throw WorldSeedError.invalidPitSoundOutWordWords
             }
         }
-        // Every grapheme is spoken by name and by sound, so all of them need audio.
         let known = Set(graphemes.map(\.grapheme))
         guard known.count >= choiceCountMax else {
             throw WorldSeedError.invalidPitSoundOutWordGraphemes
@@ -247,18 +242,14 @@ nonisolated struct PitConfig: Equatable, Sendable {
         return picked
     }
 
-    mutating func resolveMinigames(
-        wordCatalog: WordCatalog,
-        graphemeCatalog: GraphemeCatalog
-    ) throws {
+    mutating func resolveMinigames(from pool: LevelVocabularyPool) throws {
         for index in minigames.indices {
             switch minigames[index] {
             case .soundOutWord(var config):
-                try config.resolveWords(from: wordCatalog)
-                try config.resolveGraphemes(from: graphemeCatalog)
+                try config.resolve(from: pool)
                 minigames[index] = .soundOutWord(config)
             case .bridge(var config):
-                try config.resolveWords(from: wordCatalog)
+                try config.resolve(from: pool)
                 minigames[index] = .bridge(config)
             }
         }

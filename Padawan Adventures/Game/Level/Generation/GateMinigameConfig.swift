@@ -2,9 +2,7 @@ import Foundation
 
 /// Per-entry gate sound-out-word config: sound out the prompted word one letter at a time,
 /// dragging the right capacitor out of each offered set.
-/// Vocabulary lives in shared `Resources/Config/Catalogs/words.yaml`; levels may optionally
-/// subset via `words: [id, …]`. Letters always come from the full `Catalogs/graphemes.yaml`,
-/// which supplies the name/pronunciation audio and the decoy pool.
+/// Vocabulary comes from the level's cumulative `vocab:` pool.
 nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
     /// Relative pick weight within `gate.minigames`.
     var weight: Double
@@ -14,11 +12,9 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
     var choiceCountMin: Int
     /// Inclusive upper bound on capacitors offered per letter.
     var choiceCountMax: Int
-    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    /// Resolved vocabulary (sorted by word). Populated via `resolve(from:)`.
     var words: [GateWord]
-    /// Resolved full letter catalog. Populated via `resolveGraphemes(from:)`.
+    /// Resolved letter pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
@@ -42,7 +38,6 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         fx: SoundEffectTable = SoundEffectTable(),
         choiceCountMin: Int = 2,
         choiceCountMax: Int = 4,
-        wordIDs: [String]? = nil,
         words: [GateWord],
         graphemes: [GateGrapheme],
         music: String? = nil
@@ -51,18 +46,18 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         self.fx = fx
         self.choiceCountMin = choiceCountMin
         self.choiceCountMax = choiceCountMax
-        self.wordIDs = wordIDs?.map { $0.lowercased() }
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
         self.music = music
     }
 
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        words = try catalog.resolve(ids: wordIDs)
-    }
-
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        graphemes = try catalog.resolve(ids: nil)
+    /// Any pool words whose graphemes are all in the pool; graphemes = full pool.
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        let known = Set(pool.allGraphemes.map(\.grapheme))
+        words = pool.allWords.filter { entry in
+            entry.graphemes.allSatisfy { known.contains($0.lowercased()) }
+        }
+        graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
     func validate() throws {
@@ -79,7 +74,6 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
             emptyError: .invalidGateWords,
             invalidEntryError: .invalidGateWords
         )
-        // Every letter is spoken by name and by sound, so all of them need grapheme audio.
         let known = Set(graphemes.map(\.grapheme))
         guard known.count >= choiceCountMax else {
             throw WorldSeedError.invalidGateSoundOutWordLetters
@@ -102,7 +96,7 @@ nonisolated struct GateGrapheme: Equatable, Sendable {
 }
 
 /// Per-entry gate letter-matching config.
-/// Letter FX lives in shared `Resources/Config/Catalogs/graphemes.yaml`; levels may optionally subset via `graphemes: [id, …]`.
+/// Letters come from the level's cumulative `vocab:` pool.
 nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     /// Relative pick weight within `gate.minigames`.
     var weight: Double
@@ -112,9 +106,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     var graphemeCountMax: Int
     /// In-puzzle FX (optional `correct` override for shared `sound.yaml`).
     var fx: SoundEffectTable
-    /// Optional subset of shared catalog ids (`nil` = use the full catalog).
-    var graphemeIDs: [String]?
-    /// Resolved letters (sorted). Populated via `resolveGraphemes(from:)`.
+    /// Resolved letters (sorted). Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
@@ -132,7 +124,6 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         graphemeCountMin: Int = 4,
         graphemeCountMax: Int = 8,
         fx: SoundEffectTable = SoundEffectTable(),
-        graphemeIDs: [String]? = nil,
         graphemes: [GateGrapheme],
         music: String? = nil
     ) {
@@ -140,13 +131,12 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         self.graphemeCountMin = graphemeCountMin
         self.graphemeCountMax = graphemeCountMax
         self.fx = fx
-        self.graphemeIDs = graphemeIDs?.map { $0.lowercased() }
         self.graphemes = Self.normalizedGraphemes(graphemes)
         self.music = music
     }
 
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        graphemes = try catalog.resolve(ids: graphemeIDs)
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        graphemes = Self.normalizedGraphemes(pool.allGraphemes)
     }
 
     func validate() throws {
@@ -215,7 +205,7 @@ nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
 }
 
 /// Per-entry gate word-plug config: match each word's missing first or last letter (see `letterPosition`).
-/// Words come from `Catalogs/words.yaml`; letters always come from the full `Catalogs/graphemes.yaml`.
+/// Words and letters come from the level's cumulative `vocab:` pool.
 nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Relative pick weight within `gate.minigames`.
     var weight: Double
@@ -226,11 +216,9 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     /// Which letter the player supplies: word start (`starting-sound-gate`) or word end (`ending-sound-gate`).
     var letterPosition: GateWordPlugLetterPosition
     var fx: SoundEffectTable
-    /// Optional subset of shared word-catalog ids (`nil` = full catalog).
-    var wordIDs: [String]?
-    /// Resolved vocabulary (sorted by word). Populated via `resolveWords(from:)`.
+    /// Resolved vocabulary (sorted by word). Populated via `resolve(from:)`.
     var words: [GateWord]
-    /// Resolved full letter catalog. Populated via `resolveGraphemes(from:)`.
+    /// Resolved letter pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
@@ -253,7 +241,6 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         wordCountMax: Int = 6,
         letterPosition: GateWordPlugLetterPosition = .starting,
         fx: SoundEffectTable = SoundEffectTable(),
-        wordIDs: [String]? = nil,
         words: [GateWord],
         graphemes: [GateGrapheme],
         music: String? = nil
@@ -263,18 +250,25 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         self.wordCountMax = wordCountMax
         self.letterPosition = letterPosition
         self.fx = fx
-        self.wordIDs = wordIDs?.map { $0.lowercased() }
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
         self.music = music
     }
 
-    mutating func resolveWords(from catalog: WordCatalog) throws {
-        words = try catalog.resolve(ids: wordIDs)
-    }
-
-    mutating func resolveGraphemes(from catalog: GraphemeCatalog) throws {
-        graphemes = try catalog.resolve(ids: nil)
+    /// Imaged words with ≥2 graphemes whose answer letter is in the pool.
+    mutating func resolve(from pool: LevelVocabularyPool) throws {
+        let known = Set(pool.allGraphemes.map(\.grapheme))
+        words = pool.allWords.filter { entry in
+            guard entry.graphemes.count >= 2,
+                  let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !image.isEmpty,
+                  let answer = letterPosition.answerLetter(in: entry.word),
+                  known.contains(answer) else {
+                return false
+            }
+            return true
+        }
+        graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
     func validate() throws {
@@ -286,9 +280,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
                 max: wordCountMax
             )
         }
-        guard !words.isEmpty else { throw WorldSeedError.invalidGateWords }
+        guard words.count >= wordCountMax else { throw WorldSeedError.invalidGateWords }
         guard !graphemes.isEmpty else { throw WorldSeedError.invalidGateWordPlugGraphemes }
-        // The answer letter must have name + pronunciation audio in graphemes.yaml.
         let known = Set(graphemes.map(\.grapheme))
         for entry in words {
             if letterPosition == .ending, entry.word.count < 2 {
@@ -419,22 +412,17 @@ nonisolated struct GateConfig: Equatable, Sendable {
         minigames.first { $0.kind == kind }
     }
 
-    mutating func resolveMinigames(
-        wordCatalog: WordCatalog,
-        graphemeCatalog: GraphemeCatalog
-    ) throws {
+    mutating func resolveMinigames(from pool: LevelVocabularyPool) throws {
         for i in minigames.indices {
             switch minigames[i] {
             case .soundOutWord(var config):
-                try config.resolveWords(from: wordCatalog)
-                try config.resolveGraphemes(from: graphemeCatalog)
+                try config.resolve(from: pool)
                 minigames[i] = .soundOutWord(config)
             case .graphemeMatch(var config):
-                try config.resolveGraphemes(from: graphemeCatalog)
+                try config.resolve(from: pool)
                 minigames[i] = .graphemeMatch(config)
             case .wordPlug(var config):
-                try config.resolveWords(from: wordCatalog)
-                try config.resolveGraphemes(from: graphemeCatalog)
+                try config.resolve(from: pool)
                 minigames[i] = .wordPlug(config)
             }
         }

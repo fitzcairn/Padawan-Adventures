@@ -30,10 +30,8 @@ nonisolated struct GateMinigameDTO: Decodable {
     var weight: Double?
     var fx: SoundEffectTable?
     var music: String?
-    var words: [String]?
     var graphemeCountMin: Int?
     var graphemeCountMax: Int?
-    var graphemes: [String]?
     var wordCountMin: Int?
     var wordCountMax: Int?
     var choiceCountMin: Int?
@@ -44,10 +42,8 @@ nonisolated struct GateMinigameDTO: Decodable {
         case weight
         case fx
         case music
-        case words
         case graphemeCountMin = "min_grapheme_count"
         case graphemeCountMax = "max_grapheme_count"
-        case graphemes
         case wordCountMin = "min_word_count"
         case wordCountMax = "max_word_count"
         case choiceCountMin = "min_choice_count"
@@ -66,7 +62,6 @@ nonisolated enum MinigameDecodeRegistry {
                     ?? GateSoundOutWordConfig.fallback.choiceCountMin,
                 choiceCountMax: entry.choiceCountMax
                     ?? GateSoundOutWordConfig.fallback.choiceCountMax,
-                wordIDs: entry.words?.map { $0.lowercased() },
                 words: [],
                 graphemes: [],
                 music: entry.music
@@ -79,7 +74,6 @@ nonisolated enum MinigameDecodeRegistry {
                 graphemeCountMax: entry.graphemeCountMax
                     ?? GateGraphemeMatchConfig.fallback.graphemeCountMax,
                 fx: entry.fx ?? SoundEffectTable(),
-                graphemeIDs: entry.graphemes?.map { $0.lowercased() },
                 graphemes: [],
                 music: entry.music
             ))
@@ -104,7 +98,6 @@ nonisolated enum MinigameDecodeRegistry {
             wordCountMax: entry.wordCountMax ?? GateWordPlugConfig.fallback.wordCountMax,
             letterPosition: letterPosition,
             fx: entry.fx ?? SoundEffectTable(),
-            wordIDs: entry.words?.map { $0.lowercased() },
             words: [],
             graphemes: [],
             music: entry.music
@@ -154,7 +147,7 @@ nonisolated enum MinigameDecodeRegistry {
             orbTravelSeconds: entry.orbTravelSeconds
                 ?? CombatDeflectConfig.defaultOrbTravelSeconds,
             letterPosition: letterPosition,
-            graphemeIDs: entry.graphemes?.map { $0.lowercased() },
+            ringCount: entry.ringCount ?? CombatDeflectConfig.defaultRingCount,
             graphemes: []
         )
     }
@@ -170,8 +163,6 @@ nonisolated enum MinigameDecodeRegistry {
                     ?? PitSoundOutWordConfig.fallback.choiceCountMin,
                 choiceCountMax: entry.choiceCountMax
                     ?? PitSoundOutWordConfig.fallback.choiceCountMax,
-                wordIDs: entry.words?.map { $0.lowercased() }
-                    ?? PitSoundOutWordConfig.defaultWordIDs,
                 words: [],
                 graphemes: []
             ))
@@ -194,7 +185,6 @@ nonisolated enum MinigameDecodeRegistry {
             minWords: entry.minWords ?? PitBridgeConfig.defaultMinWords,
             maxWords: entry.maxWords ?? PitBridgeConfig.defaultMaxWords,
             letterPosition: letterPosition,
-            wordIDs: entry.words?.map { $0.lowercased() } ?? PitBridgeConfig.defaultWordIDs,
             words: []
         )
     }
@@ -205,7 +195,7 @@ nonisolated struct CombatMinigameDTO: Decodable {
     var weight: Double?
     var monsterHP: Int?
     var orbTravelSeconds: Double?
-    var graphemes: [String]?
+    var ringCount: Int?
     var minDecoyCount: Int?
     var maxDecoyCount: Int?
     var graphemeCase: String?
@@ -216,7 +206,7 @@ nonisolated struct CombatMinigameDTO: Decodable {
         case weight
         case monsterHP = "monster_hit_points"
         case orbTravelSeconds = "orb_travel_seconds"
-        case graphemes
+        case ringCount = "ring_count"
         case minDecoyCount = "min_decoy_count"
         case maxDecoyCount = "max_decoy_count"
         case graphemeCase = "grapheme_case"
@@ -229,8 +219,6 @@ nonisolated struct PitMinigameDTO: Decodable {
     var weight: Double?
     var choiceCountMin: Int?
     var choiceCountMax: Int?
-    /// Catalog ids for sound-out-word and bridge pit minigames.
-    var words: [String]?
     var minWords: Int?
     var maxWords: Int?
 
@@ -239,7 +227,6 @@ nonisolated struct PitMinigameDTO: Decodable {
         case weight
         case choiceCountMin = "min_choice_count"
         case choiceCountMax = "max_choice_count"
-        case words
         case minWords = "min_word_count"
         case maxWords = "max_word_count"
     }

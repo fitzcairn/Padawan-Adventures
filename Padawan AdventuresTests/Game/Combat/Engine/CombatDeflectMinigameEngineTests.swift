@@ -356,6 +356,6 @@ struct CombatDeflectMinigameEngineTests {
     @Test func ringIndicesMapLeftToRight() {
         let rings = CombatDeflectRing.all(count: 3)
         #expect(rings.map(\.index) == [0, 1, 2])
-        #expect(rings.count == CombatDeflectConfig.defaultRingCount)
+        #expect(rings.count == 3)
     }
 }

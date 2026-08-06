@@ -21,14 +21,26 @@ nonisolated enum LevelCatalog {
     private static let logger = Logger(subsystem: "PadawanAdventures", category: "LevelCatalog")
 
     static func loadFromBundle(
-        withExtension ext: String = "yaml"
+        withExtension ext: String = "yaml",
+        wordCatalog: WordCatalog? = nil,
+        graphemeCatalog: GraphemeCatalog? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil
     ) -> [LevelDescriptor] {
+        let sharedVocabulary: LevelVocabularyCatalog?
+        if let vocabularyCatalog {
+            sharedVocabulary = vocabularyCatalog
+        } else {
+            sharedVocabulary = try? LevelVocabularyCatalog.loadFromBundle()
+        }
         return levelIDs().compactMap { resourceName -> LevelDescriptor? in
             do {
                 let level = try LevelConfig.loadFromBundle(
                     named: resourceName,
                     withExtension: ext,
-                    subdirectory: subdirectory
+                    subdirectory: subdirectory,
+                    wordCatalog: wordCatalog,
+                    graphemeCatalog: graphemeCatalog,
+                    vocabularyCatalog: sharedVocabulary
                 )
                 return LevelDescriptor(
                     resourceName: resourceName,

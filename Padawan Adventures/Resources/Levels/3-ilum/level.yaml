@@ -7,6 +7,9 @@ order: 3
 color: "#81D4FA"
 artifact: snowflake
 treasure: central-grip
+vocab:
+  graphemes: [e, u, r, h, b, f, l]
+  words: [run, bed, bug, sun, hat]
 world:
   enemies:
     types: [ice_monster]

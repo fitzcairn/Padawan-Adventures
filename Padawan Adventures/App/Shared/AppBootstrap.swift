@@ -154,6 +154,13 @@ extension AppSession {
             return loaded
         }
 
+        let vocabularyCatalog = ConfigStore.loadOrFallback(
+            "vocabulary",
+            fallback: LevelVocabularyCatalog.fallback
+        ) {
+            try LevelVocabularyCatalog.loadFromBundle()
+        }
+
         await report(0.10)
 
         let (playerStore, saveService) = Self.makePersistenceStores()
@@ -162,7 +169,11 @@ extension AppSession {
         await report(configEnd)
 
         let backgroundLibrary = BackgroundLibrary()
-        let levelDescriptors = LevelCatalog.loadFromBundle()
+        let levelDescriptors = LevelCatalog.loadFromBundle(
+            wordCatalog: wordCatalog,
+            graphemeCatalog: graphemeCatalog,
+            vocabularyCatalog: vocabularyCatalog
+        )
 
         // 1) Level-select planet art (+ upright UIImages for first paint).
         let uiEntries = levelDescriptors.compactMap { level -> (String, SpriteConfig)? in
@@ -271,7 +282,8 @@ extension AppSession {
                     named: descriptor.resourceName,
                     subdirectory: LevelCatalog.subdirectory,
                     wordCatalog: wordCatalog,
-                    graphemeCatalog: graphemeCatalog
+                    graphemeCatalog: graphemeCatalog,
+                    vocabularyCatalog: vocabularyCatalog
                 )
             }
         } catch {
@@ -343,7 +355,8 @@ extension AppSession {
                 letters: graphemeCatalog,
                 audio: soundSettings,
                 screens: screensConfig,
-                player: playerConfig
+                player: playerConfig,
+                vocabularyCatalog: vocabularyCatalog
             )
         } catch {
             GameLogger.fault(.config, "ConfigAudit failed: \(error)")

@@ -36,6 +36,12 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var floor: Floor
     /// Per-level baked letter glyph set (`Levels/{set}/{set}-letters-*`).
     var letters: Letters
+    /// Cumulative vocabulary pool for this level's order (weighted toward current level).
+    var vocabulary: LevelVocabularyPool
+    /// Declared `vocab:` block after inheritance (nil when omitted).
+    var vocab: LevelVocabularySpec?
+    /// `world.vocabulary.current_level_probability` used to weight pool tiers.
+    var currentLevelProbability: Double
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -49,6 +55,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case gate
         case combat
         case letters
+        case vocab
     }
 
     private enum WorldKeys: String, CodingKey {
@@ -60,6 +67,11 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case floor
         case enemies
         case pickups
+        case vocabulary
+    }
+
+    private enum VocabularyKeys: String, CodingKey {
+        case currentLevelProbability = "current_level_probability"
     }
 
     /// Art set for `LevelConfig.fallback`, used only when the bundled config cannot
@@ -122,7 +134,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         gate: .fallback,
         combat: .fallback,
         floor: fallbackFloor,
-        letters: fallbackLetters
+        letters: fallbackLetters,
+        vocabulary: .fallback,
+        vocab: nil,
+        currentLevelProbability: 0.75
     )
 
     /// World interaction FX synthesized from gate config (`gate_opened`).
@@ -152,7 +167,10 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         gate: GateConfig = .fallback,
         combat: CombatConfig = .fallback,
         floor: Floor = LevelConfig.fallbackFloor,
-        letters: Letters = LevelConfig.fallbackLetters
+        letters: Letters = LevelConfig.fallbackLetters,
+        vocabulary: LevelVocabularyPool = .fallback,
+        vocab: LevelVocabularySpec? = nil,
+        currentLevelProbability: Double = 0.75
     ) {
         self.name = name
         self.order = order
@@ -172,6 +190,9 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.combat = combat
         self.floor = floor
         self.letters = letters
+        self.vocabulary = vocabulary
+        self.vocab = vocab
+        self.currentLevelProbability = currentLevelProbability
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -196,11 +217,26 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         enemies = try world.decodeIfPresent(EnemiesSpawnConfig.self, forKey: .enemies)
         pickups = try world.decodeIfPresent(PickupsSpawnConfig.self, forKey: .pickups)
         floor = try world.decodeIfPresent(Floor.self, forKey: .floor) ?? Floor(set: "")
+        if world.contains(.vocabulary) {
+            let vocabularyKeys = try world.nestedContainer(
+                keyedBy: VocabularyKeys.self,
+                forKey: .vocabulary
+            )
+            currentLevelProbability = try vocabularyKeys.decodeIfPresent(
+                Double.self,
+                forKey: .currentLevelProbability
+            ) ?? 0.75
+        } else {
+            currentLevelProbability = 0.75
+        }
 
         pit = try PitConfig(from: decoder, container: container)
         gate = try GateConfig(from: decoder, container: container)
         combat = try CombatConfig(from: decoder, container: container)
         letters = try container.decodeIfPresent(Letters.self, forKey: .letters) ?? Letters(set: "")
+        vocab = try container.decodeIfPresent(LevelVocabularySpec.self, forKey: .vocab)
+        // Filled after decode from `LevelVocabularyCatalog.pool(...)`.
+        vocabulary = .empty
     }
 
     func validate() throws {
@@ -314,7 +350,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         withExtension ext: String = "yaml",
         subdirectory: String? = LevelCatalog.subdirectory,
         wordCatalog: WordCatalog? = nil,
-        graphemeCatalog: GraphemeCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil
     ) throws -> LevelConfig {
         let path: ConfigPath
         if name == ConfigPath.levelDefaults.basename {
@@ -333,7 +370,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             fileLabel: path.description,
             levelID: levelID(forResourceNamed: name),
             wordCatalog: wordCatalog,
-            graphemeCatalog: graphemeCatalog
+            graphemeCatalog: graphemeCatalog,
+            vocabularyCatalog: vocabularyCatalog
         )
     }
 
@@ -347,14 +385,15 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 
     /// Decodes YAML, resolving `inherits:` via `parentDataNamed` when provided (or required).
-    /// Shared catalogs resolve gate words / wall letters from bundled YAML (or fallbacks).
+    /// Shared catalogs resolve the level vocabulary pool from bundled YAML (or fallbacks).
     static func decode(
         from data: Data,
         parentDataNamed: ((String) throws -> Data)? = nil,
         fileLabel: String = "level",
         levelID: String? = nil,
         wordCatalog: WordCatalog? = nil,
-        graphemeCatalog: GraphemeCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil
     ) throws -> LevelConfig {
         do {
             let merged = try ConfigStore.rawTree(
@@ -367,9 +406,16 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             if let levelID { level.applyDerivedAssets(levelID: levelID) }
             let words = try wordCatalog ?? Self.loadWordCatalog()
             let letters = try graphemeCatalog ?? Self.loadGraphemeCatalog()
-            try level.pit.resolveMinigames(wordCatalog: words, graphemeCatalog: letters)
-            try level.gate.resolveMinigames(wordCatalog: words, graphemeCatalog: letters)
-            try level.combat.resolveGraphemes(from: letters)
+            let vocabCatalog = try vocabularyCatalog ?? Self.loadVocabularyCatalog()
+            level.vocabulary = try vocabCatalog.pool(
+                forOrder: level.order,
+                probability: level.currentLevelProbability,
+                wordCatalog: words,
+                graphemeCatalog: letters
+            )
+            try level.pit.resolveMinigames(from: level.vocabulary)
+            try level.gate.resolveMinigames(from: level.vocabulary)
+            try level.combat.resolveGraphemes(from: level.vocabulary)
             try level.validate()
             return level
         } catch let error as ConfigError {
@@ -387,13 +433,15 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         from yaml: String,
         levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
-        graphemeCatalog: GraphemeCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil
     ) throws -> LevelConfig {
         try decode(
             from: Data(yaml.utf8),
             levelID: levelID,
             wordCatalog: wordCatalog,
-            graphemeCatalog: graphemeCatalog
+            graphemeCatalog: graphemeCatalog,
+            vocabularyCatalog: vocabularyCatalog
         )
     }
 
@@ -403,7 +451,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         parents: [String: String],
         levelID: String = offlineFallbackSet,
         wordCatalog: WordCatalog? = nil,
-        graphemeCatalog: GraphemeCatalog? = nil
+        graphemeCatalog: GraphemeCatalog? = nil,
+        vocabularyCatalog: LevelVocabularyCatalog? = nil
     ) throws -> LevelConfig {
         try decode(
             from: Data(yaml.utf8),
@@ -416,7 +465,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
             fileLabel: "level",
             levelID: levelID,
             wordCatalog: wordCatalog,
-            graphemeCatalog: graphemeCatalog
+            graphemeCatalog: graphemeCatalog,
+            vocabularyCatalog: vocabularyCatalog
         )
     }
 
@@ -431,6 +481,14 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     private static func loadGraphemeCatalog() throws -> GraphemeCatalog {
         do {
             return try GraphemeCatalog.loadFromBundle()
+        } catch ConfigError.missingResource {
+            return .fallback
+        }
+    }
+
+    private static func loadVocabularyCatalog() throws -> LevelVocabularyCatalog {
+        do {
+            return try LevelVocabularyCatalog.loadFromBundle()
         } catch ConfigError.missingResource {
             return .fallback
         }

@@ -8,6 +8,9 @@ order: 8
 color: "#A1887F"
 artifact: circle.hexagongrid.fill
 treasure: pommel
+vocab:
+  graphemes: [ai, ay, ee, ea, oa, ow, igh, bl]
+  words: [rain, train, play, day, see, tree, sea, read, boat, coat, snow, blow, night, high]
 world:
   enemies:
     types: [centipede, snake]
