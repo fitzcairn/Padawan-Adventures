@@ -12,9 +12,9 @@ enum GateMinigameBackground {
     @discardableResult
     static func preloadTextures(bundle: Bundle = .main) -> [SKTexture] {
         let specs = [
-            ("grapheme_match-bg", "Sprites/Gate/grapheme_match"),
-            ("spelling-bg", "Sprites/Gate/spelling"),
-            ("word_plug_bg", "Sprites/Gate/word_plug"),
+            ("grapheme_match-bg", "Sprites/Gate/GraphemeSoundGate"),
+            ("spelling-bg", "Sprites/Gate/SoundOutWordGate"),
+            ("word_plug_bg", "Sprites/Gate/StartingSoundGate"),
         ]
         var loaded: [SKTexture] = []
         for (name, root) in specs {
@@ -29,26 +29,26 @@ enum GateMinigameBackground {
         return loaded
     }
 
-    /// Letter-match art under `Sprites/Gate/grapheme_match/grapheme_match-bg.png`.
+    /// Letter-match art under `Sprites/Gate/GraphemeSoundGate/grapheme_match-bg.png`.
     static func graphemeMatch(sceneSize: CGSize) -> SKSpriteNode? {
-        makeNode(named: "grapheme_match-bg", root: "Sprites/Gate/grapheme_match", sceneSize: sceneSize)
+        makeNode(named: "grapheme_match-bg", root: "Sprites/Gate/GraphemeSoundGate", sceneSize: sceneSize)
     }
 
-    /// Spelling art under `Sprites/Gate/spelling/spelling-bg.png`.
+    /// Sound-out-word art under `Sprites/Gate/SoundOutWordGate/spelling-bg.png`.
     static func spelling(sceneSize: CGSize) -> SKSpriteNode? {
-        makeNode(named: "spelling-bg", root: "Sprites/Gate/spelling", sceneSize: sceneSize)
+        makeNode(named: "spelling-bg", root: "Sprites/Gate/SoundOutWordGate", sceneSize: sceneSize)
     }
 
-    /// Word-plug art under `Sprites/Gate/word_plug/word_plug_bg.png`.
+    /// Starting/ending-sound art under `Sprites/Gate/StartingSoundGate/word_plug_bg.png`.
     static func wordPlug(sceneSize: CGSize) -> SKSpriteNode? {
-        makeNode(named: "word_plug_bg", root: "Sprites/Gate/word_plug", sceneSize: sceneSize)
+        makeNode(named: "word_plug_bg", root: "Sprites/Gate/StartingSoundGate", sceneSize: sceneSize)
     }
 
     /// Scene-space frame of the letter-match background (width-fit, centered).
     static func graphemeMatchFrame(sceneSize: CGSize, bundle: Bundle = .main) -> CGRect? {
         frame(
             named: "grapheme_match-bg",
-            root: "Sprites/Gate/grapheme_match",
+            root: "Sprites/Gate/GraphemeSoundGate",
             sceneSize: sceneSize,
             bundle: bundle
         )

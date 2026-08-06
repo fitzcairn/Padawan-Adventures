@@ -1,7 +1,7 @@
 # Word-plug gate minigame UI sprites (baked via scripts/bake_sprites.py --gate).
 sockets:
   sprite:
-    root: Sprites/Gate/word_plug
+    root: Sprites/Gate/StartingSoundGate
     # Exterior near-black only — keeps dark socket recesses intact.
     background: flood_black:18
     bake_scale: 0.5
@@ -15,7 +15,7 @@ sockets:
 
 plugs:
   sprite:
-    root: Sprites/Gate/word_plug
+    root: Sprites/Gate/StartingSoundGate
     background: flood_black:18
     bake_scale: 0.5
     trim: true

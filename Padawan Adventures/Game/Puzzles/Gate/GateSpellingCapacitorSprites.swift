@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-/// Capacitor token art for the spelling gate minigame (`Sprites/Gate/spelling/capacitor.png`).
+/// Capacitor token art for the sound-out-word gate minigame (`Sprites/Gate/SoundOutWordGate/capacitor.png`).
 @MainActor
 enum GateSpellingCapacitorSprites {
     private static var cached: SKTexture?
@@ -14,7 +14,7 @@ enum GateSpellingCapacitorSprites {
             didAttemptLoad = true
         }
 
-        let root = "Sprites/Gate/spelling"
+        let root = "Sprites/Gate/SoundOutWordGate"
         let url: URL
         do {
             url = try SpriteSheetLoader.resourceURL(

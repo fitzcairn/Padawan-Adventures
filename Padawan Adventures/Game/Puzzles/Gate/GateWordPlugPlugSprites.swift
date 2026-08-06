@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-/// Baked plug cap variants for word-plug letter tokens (`Sprites/Gate/word_plug/plugs-*`).
+/// Baked plug cap variants for word-plug letter tokens (`Sprites/Gate/StartingSoundGate/plugs-*`).
 @MainActor
 enum GateWordPlugPlugSprites {
     private static var cached: [SKTexture]?
@@ -14,7 +14,7 @@ enum GateWordPlugPlugSprites {
             didAttemptLoad = true
         }
 
-        let root = "Sprites/Gate/word_plug"
+        let root = "Sprites/Gate/StartingSoundGate"
         let sheetName = "plugs-spritesheet"
         let atlasName = "plugs-atlas"
 

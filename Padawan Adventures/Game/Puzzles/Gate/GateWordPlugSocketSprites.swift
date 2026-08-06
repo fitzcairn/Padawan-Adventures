@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-/// Baked socket faceplate variants for word-plug (`Sprites/Gate/word_plug/sockets-*`).
+/// Baked socket faceplate variants for word-plug (`Sprites/Gate/StartingSoundGate/sockets-*`).
 @MainActor
 enum GateWordPlugSocketSprites {
     private static var cached: [SKTexture]?
@@ -14,7 +14,7 @@ enum GateWordPlugSocketSprites {
             didAttemptLoad = true
         }
 
-        let root = "Sprites/Gate/word_plug"
+        let root = "Sprites/Gate/StartingSoundGate"
         let sheetName = "sockets-spritesheet"
         let atlasName = "sockets-atlas"
 

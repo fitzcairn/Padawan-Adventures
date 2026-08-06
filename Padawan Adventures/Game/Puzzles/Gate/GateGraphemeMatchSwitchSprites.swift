@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-/// Off/on switch textures for letter-match buttons (`Sprites/Gate/grapheme_match/switch-*`).
+/// Off/on switch textures for letter-match buttons (`Sprites/Gate/GraphemeSoundGate/switch-*`).
 @MainActor
 enum GateGraphemeMatchSwitchSprites {
     struct Textures {
@@ -19,7 +19,7 @@ enum GateGraphemeMatchSwitchSprites {
             didAttemptLoad = true
         }
 
-        let root = "Sprites/Gate/grapheme_match"
+        let root = "Sprites/Gate/GraphemeSoundGate"
         let sheetName = "switch-spritesheet"
         let atlasName = "switch-atlas"
 
