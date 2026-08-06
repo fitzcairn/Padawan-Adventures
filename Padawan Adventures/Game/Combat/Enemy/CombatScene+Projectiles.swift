@@ -5,10 +5,9 @@ extension CombatScene {
         guard let enemyNode, let playerNode else { return }
         let origin = bodyCenter(of: enemyNode, height: enemySpriteHeight)
         let target = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        // One speed for the whole wave, derived from the straight-line reference time,
-        // so a longer fanned path costs proportionally more time rather than more speed.
-        let referenceDistance = max(hypot(target.x - origin.x, target.y - origin.y), 1)
-        let baseSpeed = Double(referenceDistance) / max(engine.config.shotTravelSeconds, 0.05)
+        // All letters share the same travel window (`shot_travel_seconds`); speed scales with
+        // each sprite's own path length so longer fans move faster and still arrive on time.
+        let travelSeconds = max(engine.config.shotTravelSeconds, 0.05)
         let laneCount = max(shots.count, 1)
 
         for shot in shots {
@@ -16,13 +15,24 @@ extension CombatScene {
             // Stagger spawn X immediately so neighbors are not stacked under one swipe.
             let start = CGPoint(x: origin.x + lane * size.width * 0.18, y: origin.y)
             let drop = start.y - target.y
-            // Cubic initial tangent points at c1 — keep c1 almost level with start so the
-            // first motion is a hard horizontal fan-out before diving toward the player.
-            let c1 = CGPoint(x: start.x + lane * size.width * 0.58, y: start.y - drop * 0.04)
-            // Converge late; keep a little residual lateral so paths don't re-cross early.
-            let c2 = CGPoint(x: target.x + lane * size.width * 0.12, y: start.y - drop * 0.62)
-            let length = cubicBezierLength(start: start, c1: c1, c2: c2, end: target)
-            let duration = max(Double(length) / (baseSpeed * shot.speedJitter), 0.2)
+            // Per-lane vertical bias: outer lanes take higher / lower arcs so dive timing
+            // (accel/decel along Y) spreads sprites apart, not only sideways.
+            let verticalFan = lane * size.height * 0.14
+            let earlyDrop = 0.03 + abs(lane) * 0.10
+            let midDrop = min(max(0.48 + lane * 0.22, 0.28), 0.78)
+            // Cubic initial tangent points at c1 — keep early motion mostly horizontal fan-out.
+            let c1 = CGPoint(
+                x: start.x + lane * size.width * 0.58,
+                y: start.y - drop * earlyDrop + verticalFan
+            )
+            // Converge late; keep residual lateral + vertical so paths don't re-cross early.
+            let c2 = CGPoint(
+                x: target.x + lane * size.width * 0.12,
+                y: start.y - drop * midDrop + verticalFan * 0.35
+            )
+            // Fixed travel window (± speed jitter). Parameterizing by t over that duration
+            // makes along-path speed proportional to each sprite's path length.
+            let duration = max(travelSeconds / shot.speedJitter, 0.2)
 
             let node = makeShotNode(letter: shot.letter, id: shot.id)
             node.position = start
