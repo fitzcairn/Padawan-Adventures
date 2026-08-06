@@ -26,7 +26,7 @@ const state = {
   selectedId: null,
   recordingId: null,
   autosave: false,
-  takes: new Map(), // id -> { wav: Blob, at: number, sampleRate: number }
+  takes: new Map(), // id -> { wav: Blob, at: number, sampleRate: number, dirty: boolean }
   statuses: new Map(), // id -> { text, kind }
 };
 
@@ -268,10 +268,16 @@ function stopRecording() {
         return;
       }
       const wav = encodeWav(samples, audioCtx.sampleRate);
-      const take = { id: rowId, wav, at: Date.now(), sampleRate: audioCtx.sampleRate };
+      const take = {
+        id: rowId,
+        wav,
+        at: Date.now(),
+        sampleRate: audioCtx.sampleRate,
+        dirty: true,
+      };
       state.takes.set(rowId, take);
       await idbPutTake(take);
-      updatePlayRecordingButtons();
+      updateTakeActionButtons();
       await playBlob(wav);
       if (state.autosave) {
         await saveTake(rowId);
@@ -347,10 +353,21 @@ async function playTake(rowId) {
   await playBlob(take.wav);
 }
 
+function takeIsDirty(take) {
+  return Boolean(take && take.dirty);
+}
+
+function canSaveTake(rowId) {
+  return takeIsDirty(state.takes.get(rowId));
+}
+
 async function saveTake(rowId) {
   const take = state.takes.get(rowId);
   if (!take) {
     setStatus(rowId, "error: no recording", "error");
+    return;
+  }
+  if (!takeIsDirty(take)) {
     return;
   }
   setStatus(rowId, "saving…", "busy");
@@ -370,7 +387,11 @@ async function saveTake(rowId) {
       row.mtime = payload.mtime;
       row.size = payload.size;
     }
+    take.dirty = false;
+    state.takes.set(rowId, take);
+    await idbPutTake(take);
     setStatus(rowId, "saved", "ok");
+    updateTakeActionButtons();
     updateRowMeta(rowId);
     applyFilters();
   } catch (err) {
@@ -528,13 +549,13 @@ function renderTable() {
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.textContent = "Save";
-    saveBtn.disabled = !state.takes.has(row.id);
+    saveBtn.disabled = !canSaveTake(row.id);
     saveBtn.className = "save-btn";
     saveBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       state.selectedId = row.id;
       renderSelectionClasses();
-      saveTake(row.id);
+      if (canSaveTake(row.id)) saveTake(row.id);
     });
     tr.querySelector(".save-cell").appendChild(saveBtn);
 
@@ -552,14 +573,14 @@ function renderSelectionClasses() {
   }
 }
 
-function updatePlayRecordingButtons() {
+function updateTakeActionButtons() {
   for (const tr of els.tbody.querySelectorAll("tr.row")) {
     const id = tr.dataset.id;
-    const has = state.takes.has(id);
+    const take = state.takes.get(id);
     const playBtn = tr.querySelector(".play-take-btn");
     const saveBtn = tr.querySelector(".save-btn");
-    if (playBtn) playBtn.disabled = !has;
-    if (saveBtn) saveBtn.disabled = !has;
+    if (playBtn) playBtn.disabled = !take;
+    if (saveBtn) saveBtn.disabled = !takeIsDirty(take);
   }
 }
 
@@ -659,7 +680,9 @@ function wireEvents() {
     }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
-      if (state.selectedId) saveTake(state.selectedId);
+      if (state.selectedId && canSaveTake(state.selectedId)) {
+        saveTake(state.selectedId);
+      }
     }
   });
 
@@ -690,6 +713,8 @@ async function boot() {
   try {
     const takes = await idbLoadAllTakes();
     for (const take of takes) {
+      // Older cached takes lack `dirty`; treat missing as unsaved.
+      if (take.dirty === undefined) take.dirty = true;
       state.takes.set(take.id, take);
     }
   } catch (err) {
