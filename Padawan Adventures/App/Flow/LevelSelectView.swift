@@ -107,7 +107,8 @@ struct LevelSelectView: View {
                 MessageOverlay(
                     title: messageOverlay.title,
                     accessibilityRootID: messageOverlay.rootID,
-                    accessibilityTitleID: messageOverlay.titleID
+                    accessibilityTitleID: messageOverlay.titleID,
+                    speakStringID: messageOverlay.stringID
                 ) {
                     self.messageOverlay = nil
                 }
@@ -228,7 +229,7 @@ struct LevelSelectView: View {
                 AppCircularIconButton(
                     systemName: "chevron.backward",
                     accessibilityID: "levelSelect.back",
-                    accessibilityLabel: "Back"
+                    accessibilityLabel: Strings.text("button_back")
                 ) {
                     router.popOrShowMenu()
                 }
@@ -249,7 +250,7 @@ struct LevelSelectView: View {
                 AppCircularIconButton(
                     systemName: "lock.fill",
                     accessibilityID: "levelSelect.dadModeLock",
-                    accessibilityLabel: "Dad mode"
+                    accessibilityLabel: Strings.text("level_select_dad_mode")
                 ) {
                     showPassword = true
                 }

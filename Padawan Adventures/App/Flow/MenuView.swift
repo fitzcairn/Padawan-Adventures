@@ -48,15 +48,21 @@ struct MenuView: View {
             ZStack(alignment: .bottom) {
                 VStack(spacing: 24) {
                     AppTitleText(
-                        text: session.currentPlayerName.map { "Welcome, \($0)" } ?? "Welcome",
+                        text: session.currentPlayerName.map {
+                            Strings.text("menu_welcome_named", ["name": $0])
+                        } ?? Strings.text("menu_welcome"),
                         size: 24,
-                        weight: .semibold
+                        weight: .semibold,
+                        speakID: "menu_welcome_named"
                     )
                     .accessibilityIdentifier("menu.welcome")
 
                     VStack(spacing: 16) {
                         if showContinue {
-                            AppLargeButton(title: "CONTINUE", accessibilityID: "menu.continue") {
+                            AppLargeButton(
+                                title: Strings.text("menu_continue"),
+                                accessibilityID: "menu.continue"
+                            ) {
                                 // Mid-run save → jump back into the world; otherwise reopen
                                 // level select (where the player left after beating / quitting).
                                 switch session.continueDestination {
@@ -68,18 +74,27 @@ struct MenuView: View {
                             }
                         }
 
-                        AppLargeButton(title: "NEW GAME", accessibilityID: "menu.newGame") {
+                        AppLargeButton(
+                            title: Strings.text("menu_new_game"),
+                            accessibilityID: "menu.newGame"
+                        ) {
                             Task {
                                 await session.beginNewGame()
                                 router.navigate(to: .cutscene)
                             }
                         }
 
-                        AppLargeButton(title: "SETTINGS", accessibilityID: "menu.settings") {
+                        AppLargeButton(
+                            title: Strings.text("menu_settings"),
+                            accessibilityID: "menu.settings"
+                        ) {
                             router.navigate(to: .settings)
                         }
 
-                        AppLargeButton(title: "QUIT", accessibilityID: "menu.quit") {
+                        AppLargeButton(
+                            title: Strings.text("menu_quit"),
+                            accessibilityID: "menu.quit"
+                        ) {
                             exit(0)
                         }
                     }

@@ -14,10 +14,19 @@ Local web tool for recording voice-over clips for every word, letter, grapheme, 
 ./Tools/Record/record.sh
 ```
 
-This binds `127.0.0.1` on the first free port in 8765–8775, opens the browser, and serves the tool. Pass `--no-open` to skip opening a tab, or `--check` to print the inventory summary without serving:
+Before serving, `record.sh` runs `update.py` against `Resources/Config/Catalogs/`:
+
+1. `scripts/generate_word_tts_sfx.py` — missing word clips
+2. `scripts/generate_letter_tts_sfx.py` — missing letter clips
+3. `scripts/generate_grapheme_tts_sfx.py` — missing grapheme clips
+4. `placeholders.py` — missing UI beep placeholders from `strings.yaml`
+5. Prints the inventory summary
+
+Existing files are never overwritten. Then it binds `127.0.0.1` on the first free port in 8765–8775, opens the browser, and serves the tool. Pass `--no-open` to skip opening a tab, or `--check` to print the inventory summary without serving:
 
 ```bash
-python3 Tools/Record/serve.py --check
+python3 Tools/Record/update.py           # catalog sync only
+python3 Tools/Record/serve.py --check    # inventory summary only
 ```
 
 ## Usage
@@ -65,25 +74,24 @@ Shortcuts are ignored while the filter field is focused.
 
 Existing files are backed up to `Tools/Record/backups/<basename>.<timestamp>.m4a` before overwrite. That folder is gitignored.
 
-## UI voice-over and `audio.yaml`
-
-UI clips are not referenced by the game catalogs. On save, the server inserts an idempotent key into a managed region at the end of the `fx:` map in `Resources/Config/audio.yaml`:
-
-```yaml
-  # --- BEGIN recorded UI voice-over (managed by Tools/Record) ---
-  ui_voice_menu_continue: sfx_ui_menu_continue
-  # --- END recorded UI voice-over ---
-```
-
-On startup the server prunes any managed key whose `.m4a` is missing, so a `git checkout` of audio files cannot leave a dangling reference that would fail `ConfigAudit`.
-
-Wiring these events into SwiftUI playback is out of scope for this tool; once a key exists it is playable via `SoundEffectsController.play(event:)`.
+UI clips are referenced by `sfx:` in `Resources/Config/Catalogs/strings.yaml`. The app plays them via `Strings.speak(id)`.
 
 ## Inventory sources
 
 - Words: `Resources/Config/Catalogs/words.yaml`
 - Letters / graphemes: `Resources/Config/Catalogs/graphemes.yaml`
-- UI strings: `Tools/Record/ui_strings.yaml`
+- UI strings: `Resources/Config/Catalogs/strings.yaml`
+
+## Placeholder beeps
+
+Generate temporary sine beeps for any UI string that has no recording yet:
+
+```bash
+python3 Tools/Record/placeholders.py          # skip existing
+python3 Tools/Record/placeholders.py --force  # overwrite (backs up first)
+```
+
+Real recordings made through this tool overwrite the beeps.
 
 ## Cleanup pipeline
 

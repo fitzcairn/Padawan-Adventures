@@ -29,7 +29,7 @@ struct MinigameResultOverlay: View {
                     .contentShape(Rectangle())
                     .onTapGesture { finish() }
 
-                Text("You won \(starsAwarded) coins!")
+                Text(Strings.text("minigame_coins_won", ["coins": String(starsAwarded)]))
                     .font(AppFont.swiftUI(size: 36, weight: .bold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
@@ -57,6 +57,7 @@ struct MinigameResultOverlay: View {
         }
         .ignoresSafeArea()
         .accessibilityIdentifier("minigame.result.won.root")
+        .onAppear { Strings.speak("minigame_coins_won") }
         .task {
             let holdNanos = UInt64(Self.holdSeconds * 1_000_000_000)
             try? await Task.sleep(nanoseconds: holdNanos)

@@ -20,7 +20,7 @@ extension GameHUDView {
 
         let button = UIButton(configuration: configuration)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.accessibilityLabel = "Flee the planet!"
+        button.accessibilityLabel = Strings.text("hud_flee")
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: fleeButtonSize),
             button.heightAnchor.constraint(equalToConstant: fleeButtonSize),

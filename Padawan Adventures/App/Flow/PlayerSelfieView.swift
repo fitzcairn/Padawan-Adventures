@@ -14,7 +14,7 @@ final class PlayerSelfieModel {
     }
 
     var playerName: String {
-        session.currentPlayerName ?? "Padawan"
+        session.currentPlayerName ?? Strings.text("player_default_name")
     }
 
     func startCamera() async {
@@ -22,7 +22,7 @@ final class PlayerSelfieModel {
             try await camera.prepare()
             errorMessage = nil
         } catch {
-            errorMessage = "Camera unavailable"
+            errorMessage = Strings.text("selfie_camera_unavailable")
         }
     }
 
@@ -75,9 +75,10 @@ struct PlayerSelfieView: View {
         AppScreen {
             VStack(spacing: 16) {
                 AppTitleText(
-                    text: "Smile, \(model.playerName)!",
+                    text: Strings.text("selfie_title", ["name": model.playerName]),
                     size: 28,
-                    weight: .semibold
+                    weight: .semibold,
+                    speakID: "selfie_title"
                 )
                 .accessibilityIdentifier("playerSelfie.title")
 
@@ -100,7 +101,7 @@ struct PlayerSelfieView: View {
                 Spacer(minLength: 0)
 
                 AppLargeButton(
-                    title: "Click!",
+                    title: Strings.text("selfie_capture"),
                     accessibilityID: "playerSelfie.click"
                 ) {
                     Task {

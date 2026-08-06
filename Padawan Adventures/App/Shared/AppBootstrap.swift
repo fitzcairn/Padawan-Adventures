@@ -154,6 +154,12 @@ extension AppSession {
             return loaded
         }
 
+        let stringCatalog = ConfigStore.loadOrFallback("strings", fallback: StringCatalog.fallback) {
+            let loaded = try StringCatalog.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        }
+
         let vocabularyCatalog = ConfigStore.loadOrFallback(
             "vocabulary",
             fallback: LevelVocabularyCatalog.fallback
@@ -356,7 +362,8 @@ extension AppSession {
                 audio: soundSettings,
                 screens: screensConfig,
                 player: playerConfig,
-                vocabularyCatalog: vocabularyCatalog
+                vocabularyCatalog: vocabularyCatalog,
+                strings: stringCatalog
             )
         } catch {
             GameLogger.fault(.config, "ConfigAudit failed: \(error)")

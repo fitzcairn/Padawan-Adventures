@@ -32,7 +32,7 @@ struct InventoryRackView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("levelSelect.inventory")
-        .accessibilityLabel("Inventory")
+        .accessibilityLabel(Strings.text("level_select_inventory"))
     }
 
     private func refreshInventoryIcons(ids: [String]) -> [String: UIImage] {

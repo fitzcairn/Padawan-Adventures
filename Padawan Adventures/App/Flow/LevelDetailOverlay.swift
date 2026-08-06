@@ -21,7 +21,12 @@ struct LevelDetailOverlay: View {
                     .accessibilityIdentifier("levelSelect.detail.title")
 
                 HStack(spacing: 8) {
-                    Text("Your highest score: \(highestStars)")
+                    Text(
+                        Strings.text(
+                            "level_detail_highest_score",
+                            ["stars": String(highestStars)]
+                        )
+                    )
                         .font(AppFont.swiftUI(size: 20, weight: .semibold))
                         .foregroundStyle(.white)
                         .appCopyShadow()
@@ -31,7 +36,7 @@ struct LevelDetailOverlay: View {
                 .accessibilityIdentifier("levelSelect.detail.highestScore")
 
                 AppLargeButton(
-                    title: "Try again?",
+                    title: Strings.text("level_detail_try_again"),
                     accessibilityID: "levelSelect.detail.tryAgain",
                     soundEvent: "takeoff",
                     action: onStart
@@ -39,7 +44,7 @@ struct LevelDetailOverlay: View {
                 .frame(maxWidth: 280)
 
                 AppLargeButton(
-                    title: "No thanks!",
+                    title: Strings.text("level_detail_no_thanks"),
                     accessibilityID: "levelSelect.detail.noThanks",
                     action: onDismiss
                 )

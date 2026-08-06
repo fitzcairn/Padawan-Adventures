@@ -1,0 +1,219 @@
+# UI copy for every screen, keyed by string id.
+# Per string:
+#   text:    copy shown on screen (required). {braces} mark runtime substitutions.
+#   sfx:     voice-over basename under Resources/Audio/FX/UI/ (required, sfx_ui_<id>)
+#   context: where it appears, <= 10 words (required; shown by Tools/Record)
+#   spoken:  brace-free form to record when text has substitutions (optional)
+# Rebuild to pick up changes.
+strings:
+  button_back:
+    text: "Back"
+    sfx: sfx_ui_button_back
+    context: "Shared back button on several screens"
+  button_cancel:
+    text: "Cancel"
+    sfx: sfx_ui_button_cancel
+    context: "Shared cancel button in alerts"
+  button_ok:
+    text: "OK"
+    sfx: sfx_ui_button_ok
+    context: "Shared confirm button in alerts"
+  button_delete:
+    text: "Delete"
+    sfx: sfx_ui_button_delete
+    context: "Destructive delete confirmation button"
+  button_new:
+    text: "New"
+    sfx: sfx_ui_button_new
+    context: "Create-player button on player select"
+  loading_loading:
+    text: "Loading..."
+    sfx: sfx_ui_loading_loading
+    context: "Loading screen status while bootstrapping"
+  loading_tap_to_start:
+    text: "Tap to start"
+    sfx: sfx_ui_loading_tap_to_start
+    context: "Loading screen status when ready"
+  preparing_takeoff:
+    text: "PREPARING FOR TAKEOFF..."
+    sfx: sfx_ui_preparing_takeoff
+    context: "Preparing screen status during world load"
+  preparing_error_title:
+    text: "COULD NOT LOAD ENEMIES"
+    sfx: sfx_ui_preparing_error_title
+    context: "Preparing screen error title"
+  preparing_error_body:
+    text: "Sprite sheets failed to load. Try again from level select."
+    sfx: sfx_ui_preparing_error_body
+    context: "Preparing screen error body"
+  menu_welcome:
+    text: "Welcome"
+    sfx: sfx_ui_menu_welcome
+    context: "Main menu greeting without a player"
+  menu_welcome_named:
+    text: "Welcome, {name}"
+    spoken: "Welcome"
+    sfx: sfx_ui_menu_welcome_named
+    context: "Main menu greeting with a player name"
+  menu_continue:
+    text: "CONTINUE"
+    sfx: sfx_ui_menu_continue
+    context: "Main menu button resuming saved progress"
+  menu_new_game:
+    text: "NEW GAME"
+    sfx: sfx_ui_menu_new_game
+    context: "Main menu button starting a new game"
+  menu_settings:
+    text: "SETTINGS"
+    sfx: sfx_ui_menu_settings
+    context: "Main menu button opening settings"
+  menu_quit:
+    text: "QUIT"
+    sfx: sfx_ui_menu_quit
+    context: "Main menu button quitting the app"
+  cutscene_tap_to_skip:
+    text: "Tap to skip"
+    sfx: sfx_ui_cutscene_tap_to_skip
+    context: "Cutscene skip hint overlay"
+  player_select_title:
+    text: "Select Player"
+    sfx: sfx_ui_player_select_title
+    context: "Player select screen title"
+  player_select_empty:
+    text: "No players yet. Tap New to create one."
+    sfx: sfx_ui_player_select_empty
+    context: "Empty player list message"
+  player_new_title:
+    text: "New Player"
+    sfx: sfx_ui_player_new_title
+    context: "New-player alert title"
+  player_new_message:
+    text: "Enter a unique player name."
+    sfx: sfx_ui_player_new_message
+    context: "New-player alert message"
+  player_name_placeholder:
+    text: "Player name"
+    sfx: sfx_ui_player_name_placeholder
+    context: "New-player text field placeholder"
+  player_delete_title:
+    text: "Delete Player"
+    sfx: sfx_ui_player_delete_title
+    context: "Delete confirmation alert title"
+  player_delete_message:
+    text: "Delete \"{name}\" and all saved progress? This cannot be undone."
+    spoken: "Delete this player and all saved progress? This cannot be undone."
+    sfx: sfx_ui_player_delete_message
+    context: "Delete confirmation alert message"
+  player_name_taken_title:
+    text: "Name Already Taken"
+    sfx: sfx_ui_player_name_taken_title
+    context: "Duplicate-name alert title"
+  player_name_taken_message:
+    text: "Player names must be unique. Choose a different name."
+    sfx: sfx_ui_player_name_taken_message
+    context: "Duplicate-name alert message"
+  player_default_name:
+    text: "Padawan"
+    sfx: sfx_ui_player_default_name
+    context: "Fallback player name for selfie title"
+  selfie_title:
+    text: "Smile, {name}!"
+    spoken: "Smile!"
+    sfx: sfx_ui_selfie_title
+    context: "Selfie screen title"
+  selfie_capture:
+    text: "Click!"
+    sfx: sfx_ui_selfie_capture
+    context: "Selfie capture button"
+  selfie_camera_unavailable:
+    text: "Camera unavailable"
+    sfx: sfx_ui_selfie_camera_unavailable
+    context: "Selfie camera error message"
+  settings_title:
+    text: "Settings"
+    sfx: sfx_ui_settings_title
+    context: "Settings screen title"
+  settings_sound_effects:
+    text: "Sound Effects"
+    sfx: sfx_ui_settings_sound_effects
+    context: "Settings volume row label"
+  settings_music:
+    text: "Music"
+    sfx: sfx_ui_settings_music
+    context: "Settings music checkbox label"
+  level_select_dad_mode:
+    text: "Dad mode"
+    sfx: sfx_ui_level_select_dad_mode
+    context: "Level select dad-mode lock button"
+  level_select_inventory:
+    text: "Inventory"
+    sfx: sfx_ui_level_select_inventory
+    context: "Level select inventory rack label"
+  level_locked:
+    text: "Complete the current level first!"
+    sfx: sfx_ui_level_locked
+    context: "Locked-planet message overlay"
+  dad_mode_unlocked:
+    text: "Dad mode unlocked!"
+    sfx: sfx_ui_dad_mode_unlocked
+    context: "Dad mode success overlay"
+  level_detail_highest_score:
+    text: "Your highest score: {stars}"
+    spoken: "Your highest score"
+    sfx: sfx_ui_level_detail_highest_score
+    context: "Level detail highest-score row"
+  level_detail_try_again:
+    text: "Try again?"
+    sfx: sfx_ui_level_detail_try_again
+    context: "Level detail start button"
+  level_detail_no_thanks:
+    text: "No thanks!"
+    sfx: sfx_ui_level_detail_no_thanks
+    context: "Level detail dismiss button"
+  dad_mode_enter_password:
+    text: "Enter password"
+    sfx: sfx_ui_dad_mode_enter_password
+    context: "Dad mode password screen title"
+  dad_mode_incorrect:
+    text: "Incorrect"
+    sfx: sfx_ui_dad_mode_incorrect
+    context: "Wrong-password feedback"
+  you_win:
+    text: "You win!"
+    sfx: sfx_ui_you_win
+    context: "Level-complete overlay title"
+  you_win_high_score:
+    text: "New high score: {score}!"
+    spoken: "New high score!"
+    sfx: sfx_ui_you_win_high_score
+    context: "Level-complete high-score line"
+  minigame_coins_won:
+    text: "You won {coins} coins!"
+    spoken: "You won some coins!"
+    sfx: sfx_ui_minigame_coins_won
+    context: "Minigame win overlay"
+  defeated:
+    text: "Defeated"
+    sfx: sfx_ui_defeated
+    context: "Death or defeat overlay"
+  hud_flee:
+    text: "Flee the planet!"
+    sfx: sfx_ui_hud_flee
+    context: "World HUD flee button label"
+  hud_leave:
+    text: "Leave"
+    sfx: sfx_ui_hud_leave
+    context: "Minigame leave button label"
+  control_checked:
+    text: "checked"
+    sfx: sfx_ui_control_checked
+    context: "Checkbox accessibility value when on"
+  control_unchecked:
+    text: "unchecked"
+    sfx: sfx_ui_control_unchecked
+    context: "Checkbox accessibility value when off"
+  control_percent:
+    text: "{percent} percent"
+    spoken: "percent"
+    sfx: sfx_ui_control_percent
+    context: "Slider and progress accessibility value"

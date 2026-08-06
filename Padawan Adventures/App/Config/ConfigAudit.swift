@@ -30,6 +30,7 @@ nonisolated enum ConfigAudit {
         screens: ScreensConfig?,
         player: PlayerConfig? = nil,
         vocabularyCatalog: LevelVocabularyCatalog? = nil,
+        strings: StringCatalog? = nil,
         bundle: Bundle = .main
     ) throws {
         _ = app
@@ -47,6 +48,17 @@ nonisolated enum ConfigAudit {
             }
         }
         problems.append(contentsOf: checkDuplicateVocabularyIDs(vocabularyCatalog: vocabCatalog))
+
+        let stringCatalog: StringCatalog
+        if let strings {
+            stringCatalog = strings
+        } else {
+            do {
+                stringCatalog = try StringCatalog.loadFromBundle()
+            } catch {
+                stringCatalog = .fallback
+            }
+        }
 
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"
@@ -71,7 +83,8 @@ nonisolated enum ConfigAudit {
             letters: letters,
             audio: audio,
             screens: screens,
-            player: player
+            player: player,
+            strings: stringCatalog
         ) {
             switch reference.tree {
             case .music:

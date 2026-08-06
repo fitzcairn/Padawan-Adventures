@@ -108,7 +108,8 @@ struct ConfigAuditTests {
             letters: letters,
             audio: try SoundSettings.loadFromBundle(),
             screens: try ScreensConfig.loadFromBundle(),
-            player: try PlayerConfig.loadFromBundle()
+            player: try PlayerConfig.loadFromBundle(),
+            strings: try StringCatalog.loadFromBundle()
         )
         #expect(!references.isEmpty)
         let orphans = ConfigAudit.checkOrphanAudio(references: references)

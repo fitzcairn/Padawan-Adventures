@@ -5,6 +5,7 @@ struct MessageOverlay: View {
     let title: String
     var accessibilityRootID: String = "messageOverlay.root"
     var accessibilityTitleID: String = "messageOverlay.title"
+    var speakStringID: String? = nil
     let onFinished: () -> Void
 
     var body: some View {
@@ -18,6 +19,11 @@ struct MessageOverlay: View {
                 .multilineTextAlignment(.center)
                 .appCopyShadow()
                 .accessibilityIdentifier(accessibilityTitleID)
+        }
+        .onAppear {
+            if let speakStringID {
+                Strings.speak(speakStringID)
+            }
         }
     }
 }

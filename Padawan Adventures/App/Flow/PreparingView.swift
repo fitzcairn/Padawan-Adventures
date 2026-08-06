@@ -12,16 +12,16 @@ struct PreparingView: View {
         AppScreen {
             if loadFailed {
                 LoadingScreenScaffold(
-                    statusText: "COULD NOT LOAD ENEMIES",
+                    statusText: Strings.text("preparing_error_title"),
                     statusAccessibilityID: "preparing.status",
                     extra: {
                         AppTitleText(
-                            text: "Sprite sheets failed to load. Try again from level select.",
+                            text: Strings.text("preparing_error_body"),
                             size: 18,
                             weight: .regular
                         )
                         .accessibilityIdentifier("preparing.error")
-                        AppLargeButton(title: "Back", accessibilityID: "preparing.back") {
+                        AppLargeButton(title: Strings.text("button_back"), accessibilityID: "preparing.back") {
                             router.popOrShowMenu()
                         }
                         .frame(maxWidth: 280)
@@ -29,7 +29,7 @@ struct PreparingView: View {
                 )
             } else {
                 LoadingScreenScaffold(
-                    statusText: "PREPARING FOR TAKEOFF...",
+                    statusText: Strings.text("preparing_takeoff"),
                     statusAccessibilityID: "preparing.status",
                     progress: progress,
                     progressAccessibilityID: "preparing.progress"

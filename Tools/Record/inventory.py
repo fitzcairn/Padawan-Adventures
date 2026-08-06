@@ -1,4 +1,4 @@
-"""Build the recording-tool row list from catalogs and ui_strings.yaml.
+"""Build the recording-tool row list from catalogs and strings.yaml.
 
 Python 3.9+, stdlib only. No PyYAML.
 """
@@ -62,18 +62,24 @@ def _strip_quotes(value: str) -> str:
     return value
 
 
-def parse_ui_strings(path: Path) -> list[dict[str, str]]:
-    """Parse the flat `- id:` / `text:` / `context:` list in ui_strings.yaml."""
+def parse_strings_catalog(path: Path) -> list[dict[str, str]]:
+    """Parse Config/Catalogs/strings.yaml into [{id, text, sfx, context, spoken}, ...]."""
     entries: list[dict[str, str]] = []
     current: dict[str, str] | None = None
+    in_strings = False
     for line in path.read_text(encoding="utf-8").splitlines():
-        start = re.match(r"^- id:\s*(\S+)\s*$", line)
-        if start:
+        if re.match(r"^strings:\s*$", line):
+            in_strings = True
+            continue
+        if not in_strings:
+            continue
+        key = re.match(r"^  ([a-z0-9_]+):\s*$", line)
+        if key:
             if current is not None:
                 entries.append(current)
-            current = {"id": start.group(1)}
+            current = {"id": key.group(1)}
             continue
-        field = re.match(r"^  (text|context):\s*(.+?)\s*$", line)
+        field = re.match(r"^    (text|sfx|context|spoken):\s*(.+?)\s*$", line)
         if field and current is not None:
             current[field.group(1)] = _strip_quotes(field.group(2))
     if current is not None:
@@ -176,15 +182,17 @@ def all_rows() -> list[dict]:
             )
         )
 
-    for entry in parse_ui_strings(TOOL_DIR / "ui_strings.yaml"):
+    for entry in parse_strings_catalog(CATALOGS / "strings.yaml"):
         ui_id = entry["id"]
+        basename = entry.get("sfx") or f"sfx_ui_{ui_id}"
+        display = entry.get("spoken") or entry.get("text") or ui_id
         rows.append(
             _row(
                 row_id=f"ui.{ui_id}",
                 group="UI",
-                text=entry["text"],
-                context=entry["context"],
-                basename=f"sfx_ui_{ui_id}",
+                text=display,
+                context=entry.get("context") or "",
+                basename=basename,
             )
         )
 

@@ -11,14 +11,14 @@ struct YouWinView: View {
             onFinished: onFinished
         ) {
             VStack(spacing: 12) {
-                Text("You win!")
+                Text(Strings.text("you_win"))
                     .font(AppFont.swiftUI(size: 44, weight: .bold))
                     .foregroundStyle(.white)
                     .appCopyShadow()
                     .accessibilityIdentifier("youWin.title")
 
                 if didBeatPreviousScore {
-                    Text("New high score: \(newScore)!")
+                    Text(Strings.text("you_win_high_score", ["score": String(newScore)]))
                         .font(AppFont.swiftUI(size: 22, weight: .semibold))
                         .foregroundStyle(.orange)
                         .appCopyShadow()
@@ -26,5 +26,6 @@ struct YouWinView: View {
                 }
             }
         }
+        .onAppear { Strings.speak("you_win") }
     }
 }

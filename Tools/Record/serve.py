@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -23,19 +22,13 @@ from pathlib import Path
 
 from inventory import (
     FX,
-    REPO_ROOT,
     TOOL_DIR,
     all_rows,
     check as inventory_check,
     rows_by_id,
-    target_path_for_basename,
 )
 
-AUDIO_YAML = REPO_ROOT / "Padawan Adventures" / "Resources" / "Config" / "audio.yaml"
 BACKUPS_DIR = TOOL_DIR / "backups"
-
-BEGIN_MARKER = "  # --- BEGIN recorded UI voice-over (managed by Tools/Record) ---"
-END_MARKER = "  # --- END recorded UI voice-over ---"
 
 HOST = "127.0.0.1"
 PORT_START = 8765
@@ -83,139 +76,6 @@ def _refresh_row_meta(row: dict) -> dict:
         row["mtime"] = None
         row["size"] = None
     return row
-
-
-# ---------------------------------------------------------------------------
-# audio.yaml managed-region editing
-# ---------------------------------------------------------------------------
-
-
-def _find_fx_block(lines: list[str]) -> tuple[int, int]:
-    """Return [start, end) indices of the fx: map body lines (not including `fx:`)."""
-    fx_line = None
-    for i, line in enumerate(lines):
-        if re.match(r"^fx:\s*$", line):
-            fx_line = i
-            break
-    if fx_line is None:
-        raise RuntimeError(f"audio.yaml has no fx: block: {AUDIO_YAML}")
-
-    end = len(lines)
-    for i in range(fx_line + 1, len(lines)):
-        line = lines[i]
-        if line.strip() == "":
-            continue
-        if line.lstrip().startswith("#"):
-            # Comments inside the block are fine; a root-level comment ends it.
-            if not line.startswith(" ") and not line.startswith("\t"):
-                end = i
-                break
-            continue
-        if not (line.startswith("  ") or line.startswith("\t")):
-            end = i
-            break
-    return fx_line + 1, end
-
-
-def _parse_managed_region(
-    lines: list[str], body_start: int, body_end: int
-) -> tuple[int | None, int | None, dict[str, str]]:
-    """Find BEGIN/END markers inside the fx body; return key map."""
-    begin_i = end_i = None
-    for i in range(body_start, body_end):
-        if lines[i].rstrip() == BEGIN_MARKER.rstrip():
-            begin_i = i
-        elif lines[i].rstrip() == END_MARKER.rstrip():
-            end_i = i
-    keys: dict[str, str] = {}
-    if begin_i is not None and end_i is not None and end_i > begin_i:
-        for i in range(begin_i + 1, end_i):
-            m = re.match(r"^  (ui_voice_[a-z0-9_]+):\s*(\S+)\s*$", lines[i])
-            if m:
-                keys[m.group(1)] = m.group(2)
-    return begin_i, end_i, keys
-
-
-def _write_audio_yaml(lines: list[str]) -> None:
-    text = "\n".join(lines)
-    if not text.endswith("\n"):
-        text += "\n"
-    AUDIO_YAML.write_text(text, encoding="utf-8")
-
-
-def _ui_voice_key(row: dict) -> str:
-    # row id is "ui.<id>"; key is ui_voice_<id>
-    ui_id = row["id"].split(".", 1)[1]
-    return f"ui_voice_{ui_id}"
-
-
-def ensure_ui_voice_key(row: dict) -> None:
-    """Insert ui_voice_<id>: <basename> into the managed region (sorted, idempotent)."""
-    if row["group"] != "UI":
-        return
-    key = _ui_voice_key(row)
-    basename = row["basename"]
-    lines = AUDIO_YAML.read_text(encoding="utf-8").splitlines()
-    body_start, body_end = _find_fx_block(lines)
-    begin_i, end_i, keys = _parse_managed_region(lines, body_start, body_end)
-
-    if keys.get(key) == basename:
-        return
-    keys[key] = basename
-    region_lines = [BEGIN_MARKER]
-    for k in sorted(keys):
-        region_lines.append(f"  {k}: {keys[k]}")
-    region_lines.append(END_MARKER)
-
-    if begin_i is not None and end_i is not None and end_i > begin_i:
-        lines = lines[:begin_i] + region_lines + lines[end_i + 1 :]
-    else:
-        # Append the region at the end of the fx body.
-        insert_at = body_end
-        # Ensure a blank line before the region if the previous line isn't blank.
-        if insert_at > 0 and lines[insert_at - 1].strip() != "":
-            region_lines = [""] + region_lines
-        lines = lines[:insert_at] + region_lines + lines[insert_at:]
-
-    _write_audio_yaml(lines)
-
-
-def prune_ui_voice_keys() -> None:
-    """Drop managed keys whose sfx_ui_*.m4a files are missing; remove empty region."""
-    if not AUDIO_YAML.is_file():
-        return
-    lines = AUDIO_YAML.read_text(encoding="utf-8").splitlines()
-    try:
-        body_start, body_end = _find_fx_block(lines)
-    except RuntimeError:
-        return
-    begin_i, end_i, keys = _parse_managed_region(lines, body_start, body_end)
-    if begin_i is None or end_i is None:
-        return
-
-    kept: dict[str, str] = {}
-    for key, basename in keys.items():
-        path = target_path_for_basename(basename)
-        if path.is_file():
-            kept[key] = basename
-
-    if kept == keys:
-        return
-
-    if not kept:
-        # Remove the region, including a preceding blank line if present.
-        start = begin_i
-        if start > 0 and lines[start - 1].strip() == "":
-            start -= 1
-        lines = lines[:start] + lines[end_i + 1 :]
-    else:
-        region_lines = [BEGIN_MARKER]
-        for k in sorted(kept):
-            region_lines.append(f"  {k}: {kept[k]}")
-        region_lines.append(END_MARKER)
-        lines = lines[:begin_i] + region_lines + lines[end_i + 1 :]
-
-    _write_audio_yaml(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -274,9 +134,6 @@ def save_wav_for_row(row: dict, wav_bytes: bytes) -> dict:
 
         os.replace(str(tmp_m4a_path), str(target))
         tmp_m4a_path = None  # owned by target now
-
-        if row["group"] == "UI":
-            ensure_ui_voice_key(row)
 
         return _refresh_row_meta(row)
     finally:
@@ -454,9 +311,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return inventory_check()
-
-    # Drop dangling ui_voice_* keys before serving so ConfigAudit stays green.
-    prune_ui_voice_keys()
 
     # Ensure FX/UI exists for new UI clips.
     (FX / "UI").mkdir(parents=True, exist_ok=True)

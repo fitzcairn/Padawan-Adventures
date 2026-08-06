@@ -42,7 +42,7 @@ struct CutsceneView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
-            AppTitleText(text: "Tap to Skip", size: 15, weight: .regular)
+            AppTitleText(text: Strings.text("cutscene_tap_to_skip"), size: 15, weight: .regular)
                 .accessibilityIdentifier("cutscene.skip")
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .padding(.bottom, 6)

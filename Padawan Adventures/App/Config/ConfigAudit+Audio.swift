@@ -35,7 +35,8 @@ extension ConfigAudit {
         letters: GraphemeCatalog,
         audio: SoundSettings,
         screens: ScreensConfig?,
-        player: PlayerConfig?
+        player: PlayerConfig?,
+        strings: StringCatalog
     ) -> [AudioReference] {
         var references: [AudioReference] = []
 
@@ -96,6 +97,12 @@ extension ConfigAudit {
         for word in words.words {
             references.append(
                 AudioReference(kind: "words.\(word.word).sfx", basename: word.sfx, tree: .fx)
+            )
+        }
+
+        for (id, entry) in strings.entries.sorted(by: { $0.key < $1.key }) {
+            references.append(
+                AudioReference(kind: "strings.\(id).sfx", basename: entry.sfx, tree: .fx)
             )
         }
 

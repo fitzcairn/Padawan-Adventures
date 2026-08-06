@@ -4,13 +4,17 @@ enum LevelSelectMessage: Equatable {
     case completeCurrentFirst
     case dadModeUnlocked
 
-    var title: String {
+    var stringID: String {
         switch self {
         case .completeCurrentFirst:
-            return "Complete the current level first!"
+            return "level_locked"
         case .dadModeUnlocked:
-            return "Dad mode unlocked!"
+            return "dad_mode_unlocked"
         }
+    }
+
+    var title: String {
+        Strings.text(stringID)
     }
 
     var rootID: String {

@@ -16,7 +16,12 @@ struct SettingsView: View {
 
         AppScreen {
             VStack(spacing: 24) {
-                AppTitleText(text: "Settings", size: 28, weight: .semibold)
+                AppTitleText(
+                    text: Strings.text("settings_title"),
+                    size: 28,
+                    weight: .semibold,
+                    speakID: "settings_title"
+                )
                     .accessibilityIdentifier("settings.title")
 
                 Spacer()
@@ -25,7 +30,7 @@ struct SettingsView: View {
                     // No mute toggle: letter/word cues are gameplay-critical, so SFX
                     // stay enabled and only volume is adjustable.
                     volumeRow(
-                        label: "Sound Effects",
+                        label: Strings.text("settings_sound_effects"),
                         labelID: "settings.soundEffects.label",
                         sliderValue: Binding(
                             get: { Double(preferences.soundEffectsVolume) },
@@ -35,7 +40,7 @@ struct SettingsView: View {
                     )
 
                     settingsRow(
-                        checkboxLabel: "Music",
+                        checkboxLabel: Strings.text("settings_music"),
                         checkboxID: "settings.music.enabled",
                         isOn: $preferences.musicEnabled,
                         sliderValue: Binding(
@@ -49,7 +54,10 @@ struct SettingsView: View {
 
                 Spacer()
 
-                AppLargeButton(title: "Back", accessibilityID: "settings.back") {
+                AppLargeButton(
+                    title: Strings.text("button_back"),
+                    accessibilityID: "settings.back"
+                ) {
                     router.popOrShowMenu()
                 }
                 .frame(maxWidth: 280)

@@ -44,6 +44,8 @@ struct AppTitleText: View {
     var size: CGFloat = 28
     var weight: Font.Weight = .semibold
     var color: Color = AppChrome.primaryTextColor
+    /// When set, tapping the title plays this string's voice-over clip.
+    var speakID: String? = nil
 
     var body: some View {
         Text(text)
@@ -52,6 +54,21 @@ struct AppTitleText: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .appCopyShadow()
+            .modifier(OptionalSpeakOnTap(speakID: speakID))
+    }
+}
+
+private struct OptionalSpeakOnTap: ViewModifier {
+    let speakID: String?
+
+    func body(content: Content) -> some View {
+        if let speakID {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture { Strings.speak(speakID) }
+        } else {
+            content
+        }
     }
 }
 
@@ -160,7 +177,9 @@ struct AppCheckbox: View {
         .disabled(!isEnabled)
         .accessibilityIdentifier(accessibilityID ?? label)
         .accessibilityAddTraits(.isButton)
-        .accessibilityValue(isOn ? "checked" : "unchecked")
+        .accessibilityValue(
+            isOn ? Strings.text("control_checked") : Strings.text("control_unchecked")
+        )
     }
 }
 
@@ -211,7 +230,14 @@ struct AppSlider: View {
         .opacity(isEnabled ? 1 : disabledOpacity)
         .allowsHitTesting(isEnabled)
         .accessibilityIdentifier(accessibilityID ?? "slider")
-        .accessibilityValue(Text("\(Int((normalized(value) * 100).rounded())) percent"))
+        .accessibilityValue(
+            Text(
+                Strings.text(
+                    "control_percent",
+                    ["percent": String(Int((normalized(value) * 100).rounded()))]
+                )
+            )
+        )
     }
 
     private func normalized(_ value: Double) -> Double {
@@ -242,6 +268,13 @@ struct AppProgressBar: View {
         StarWarsConsoleProgressBar(progress: progress)
             .frame(height: height)
             .accessibilityIdentifier(accessibilityID ?? "progress.bar")
-            .accessibilityValue(Text("\(Int((min(1, max(0, progress)) * 100).rounded())) percent"))
+            .accessibilityValue(
+                Text(
+                    Strings.text(
+                        "control_percent",
+                        ["percent": String(Int((min(1, max(0, progress)) * 100).rounded()))]
+                    )
+                )
+            )
     }
 }

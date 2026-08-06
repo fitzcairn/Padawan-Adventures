@@ -21,7 +21,7 @@ struct DadModePasswordView: View {
             VStack(spacing: 24) {
                 Spacer(minLength: 0)
 
-                Text("Enter password")
+                Text(Strings.text("dad_mode_enter_password"))
                     .font(AppFont.swiftUI(size: 28, weight: .semibold))
                     .foregroundStyle(AppChrome.primaryTextColor)
                     .appCopyShadow()
@@ -41,7 +41,7 @@ struct DadModePasswordView: View {
                 .accessibilityIdentifier("dadModePassword.slots")
 
                 if showIncorrect {
-                    Text("incorrect")
+                    Text(Strings.text("dad_mode_incorrect"))
                         .font(AppFont.swiftUI(size: 18, weight: .semibold))
                         .foregroundStyle(.red)
                         .appCopyShadow()
@@ -62,7 +62,11 @@ struct DadModePasswordView: View {
 
                 Spacer(minLength: 0)
 
-                AppLargeButton(title: "Cancel", accessibilityID: "dadModePassword.cancel", action: onCancel)
+                AppLargeButton(
+                    title: Strings.text("button_cancel"),
+                    accessibilityID: "dadModePassword.cancel",
+                    action: onCancel
+                )
                     .frame(maxWidth: 280)
             }
         }

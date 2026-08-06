@@ -124,14 +124,19 @@ struct PlayerSelectView: View {
         AppScreen {
             if isContentReady {
                 VStack(spacing: 16) {
-                    AppTitleText(text: "Select Player", size: 28, weight: .semibold)
+                    AppTitleText(
+                        text: Strings.text("player_select_title"),
+                        size: 28,
+                        weight: .semibold,
+                        speakID: "player_select_title"
+                    )
                         .accessibilityIdentifier("playerSelect.title")
 
                     ScrollView {
                         VStack(spacing: 12) {
                             if model.playerNames.isEmpty {
                                 AppTitleText(
-                                    text: "No players yet. Tap New to create one.",
+                                    text: Strings.text("player_select_empty"),
                                     size: 16,
                                     weight: .regular,
                                     color: AppChrome.secondaryTextColor
@@ -149,7 +154,10 @@ struct PlayerSelectView: View {
                     .frame(maxWidth: .infinity)
                     .frame(maxHeight: .infinity)
 
-                    AppLargeButton(title: "New", accessibilityID: "playerSelect.new") {
+                    AppLargeButton(
+                        title: Strings.text("button_new"),
+                        accessibilityID: "playerSelect.new"
+                    ) {
                         model.beginCreatePlayer()
                     }
                     .disabled(model.isCreatingAvatar)
@@ -167,13 +175,13 @@ struct PlayerSelectView: View {
             await model.reloadPlayers()
             isContentReady = true
         }
-        .alert("New Player", isPresented: $model.isShowingNewPlayerAlert) {
-            TextField("Player name", text: $model.newPlayerName)
+        .alert(Strings.text("player_new_title"), isPresented: $model.isShowingNewPlayerAlert) {
+            TextField(Strings.text("player_name_placeholder"), text: $model.newPlayerName)
                 .textInputAutocapitalization(.words)
-            Button("Cancel", role: .cancel) {
+            Button(Strings.text("button_cancel"), role: .cancel) {
                 playMenuSound("button_click")
             }
-            Button("OK") {
+            Button(Strings.text("button_ok")) {
                 playMenuSound("button_click")
                 Task {
                     switch await model.createPlayer() {
@@ -187,29 +195,35 @@ struct PlayerSelectView: View {
                 }
             }
         } message: {
-            Text("Enter a unique player name.")
+            Text(Strings.text("player_new_message"))
         }
-        .alert("Delete Player", isPresented: $model.isShowingDeleteConfirm) {
-            Button("Cancel", role: .cancel) {
+        .alert(Strings.text("player_delete_title"), isPresented: $model.isShowingDeleteConfirm) {
+            Button(Strings.text("button_cancel"), role: .cancel) {
                 playMenuSound("button_click")
                 model.playerPendingDelete = nil
             }
-            Button("Delete", role: .destructive) {
+            Button(Strings.text("button_delete"), role: .destructive) {
                 playMenuSound("button_click")
                 Task { await model.deletePendingPlayer() }
             }
         } message: {
             Text(
-                "Delete \"\(model.playerPendingDelete ?? "")\" and all saved progress? This cannot be undone."
+                Strings.text(
+                    "player_delete_message",
+                    ["name": model.playerPendingDelete ?? ""]
+                )
             )
         }
-        .alert("Name Already Taken", isPresented: $model.isShowingDuplicateNameAlert) {
-            Button("OK") {
+        .alert(
+            Strings.text("player_name_taken_title"),
+            isPresented: $model.isShowingDuplicateNameAlert
+        ) {
+            Button(Strings.text("button_ok")) {
                 playMenuSound("button_click")
                 model.retryAfterDuplicate()
             }
         } message: {
-            Text("Player names must be unique. Choose a different name.")
+            Text(Strings.text("player_name_taken_message"))
         }
     }
 

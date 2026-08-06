@@ -42,7 +42,7 @@ final class MinigameLeaveHUDView: UIView {
         isUserInteractionEnabled = true
         translatesAutoresizingMaskIntoConstraints = true
 
-        leaveButton.accessibilityLabel = "Leave"
+        leaveButton.accessibilityLabel = Strings.text("hud_leave")
         leaveButton.accessibilityIdentifier = "minigame.leave"
         leaveButton.addTarget(self, action: #selector(leaveTapped), for: .touchUpInside)
         addSubview(leaveButton)

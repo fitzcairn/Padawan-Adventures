@@ -36,4 +36,4 @@ Record voice-over for words, letters, graphemes, and UI strings with the local w
 python3 Tools/Record/serve.py --check    # inventory summary only
 ```
 
-See [Tools/Record/README.md](Tools/Record/README.md) for keyboard shortcuts, cleanup details, and how UI clips sync into `Resources/Config/audio.yaml`.
+See [Tools/Record/README.md](Tools/Record/README.md) for keyboard shortcuts, cleanup details, and how UI clips are sourced from `Resources/Config/Catalogs/strings.yaml`.

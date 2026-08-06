@@ -55,7 +55,9 @@ struct LoadingView: View {
                 VStack(spacing: 28) {
                     Spacer(minLength: 0)
                     LoadingScreenScaffold(
-                        statusText: isReady ? "Tap to start" : "Loading...",
+                        statusText: isReady
+                            ? Strings.text("loading_tap_to_start")
+                            : Strings.text("loading_loading"),
                         statusAccessibilityID: "loading.status",
                         progress: isReady ? nil : progress,
                         progressAccessibilityID: isReady ? nil : "loading.progress"
@@ -68,6 +70,7 @@ struct LoadingView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isReady else { return }
+                Strings.speak("loading_tap_to_start")
                 // Drop the 25 MB kam / yoda clips — only this screen animates them.
                 // `logo` stays resident for MenuView.
                 kamFrames = []
