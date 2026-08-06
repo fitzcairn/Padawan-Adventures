@@ -1,5 +1,10 @@
 import AppKit
 
+/// WARNING: Do not run this against the current artwork. Word sprites are now
+/// sliced from `word-images.png` via `scripts/slice_word_sprite_sheet.py`.
+/// Running this script will overwrite those illustrations with SF Symbol /
+/// text placeholders and prune anything not in the catalog.
+///
 /// Generate 100×100 white PNGs with transparent backgrounds into
 /// Resources/Sprites/Words/.
 /// Usage: swift scripts/generate_word_images.swift [word ...]
