@@ -96,14 +96,8 @@ final class CombatDeflectScene: MinigameScene {
         self.enemySprite = enemySprite
         self.wallHeight = max(wallHeight, 1)
         self.isoSquash = isoSquash
-        let words: [GateWord]
-        if let catalog = try? WordCatalog.loadFromBundle() {
-            words = catalog.words
-        } else {
-            words = WordCatalog.fallback.words
-        }
         self.engine = CombatDeflectMinigameEngine(
-            config: .init(from: deflectConfig, words: words),
+            config: .init(from: deflectConfig),
             startingHealth: startingHealth
         )
         super.init(size: size)

@@ -82,10 +82,10 @@ nonisolated struct CombatDeflectMinigameEngine {
             self.letterPosition = letterPosition
         }
 
-        init(from deflect: CombatDeflectConfig, words: [GateWord] = WordCatalog.fallback.words) {
+        init(from deflect: CombatDeflectConfig) {
             self.init(
                 graphemes: deflect.graphemes,
-                words: words,
+                words: deflect.words.isEmpty ? WordCatalog.fallback.words : deflect.words,
                 monsterHP: deflect.monsterHP,
                 orbTravelSeconds: deflect.orbTravelSeconds,
                 letterPosition: deflect.letterPosition

@@ -61,9 +61,11 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     var letterPosition: GateWordPlugLetterPosition
     /// How many deflection rings to draw (`minRingCount`...`maxRingCount`).
     var ringCount: Int
-    /// Resolved letters in pool order. Populated via `resolve(from:)`.
+    /// Resolved ring graphemes in pool order. Populated via `resolve(from:)`.
     /// Count (2…6) is the number of deflection circles drawn.
     var graphemes: [GateGrapheme]
+    /// Imaged vocabulary used to throw orbs. Populated via `resolve(from:)`.
+    var words: [GateWord]
 
     static let defaultMonsterHP = 5
     static let defaultOrbTravelSeconds: Double = 3
@@ -79,7 +81,8 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
             GraphemeCatalog.fallback.graphemes
                 .filter { $0.grapheme.count == 1 }
                 .prefix(defaultRingCount)
-        )
+        ),
+        words: WordCatalog.fallback.words.filter { $0.image.map { !$0.isEmpty } == true }
     )
 
     nonisolated init(
@@ -88,7 +91,8 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         orbTravelSeconds: Double = defaultOrbTravelSeconds,
         letterPosition: GateWordPlugLetterPosition = .starting,
         ringCount: Int = defaultRingCount,
-        graphemes: [GateGrapheme] = []
+        graphemes: [GateGrapheme] = [],
+        words: [GateWord] = []
     ) {
         self.weight = weight
         self.monsterHP = monsterHP
@@ -96,13 +100,24 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         self.letterPosition = letterPosition
         self.ringCount = ringCount
         self.graphemes = graphemes
+        self.words = GateWord.normalized(words)
     }
 
-    /// Takes the first `ringCount` single-character graphemes from the pool (stable order).
+    /// Rings are graphemes that have ≥1 imaged word matching `letterPosition`.
+    /// Count is clamped to `min(ringCount, candidates.count)` with a floor of `minRingCount`.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
-        let singles = pool.allGraphemes.filter { $0.grapheme.count == 1 }
-        let count = min(max(ringCount, 0), singles.count)
-        graphemes = Array(singles.prefix(count))
+        let imaged = pool.allWords.filter { entry in
+            entry.image.map { !$0.isEmpty } == true
+        }
+        words = GateWord.normalized(imaged)
+        let candidates = pool.allGraphemes.filter { grapheme in
+            imaged.contains { letterPosition.matches(grapheme: grapheme.grapheme, in: $0) }
+        }
+        guard candidates.count >= Self.minRingCount else {
+            throw WorldSeedError.invalidCombatDeflectGraphemes
+        }
+        let count = min(max(ringCount, Self.minRingCount), candidates.count, Self.maxRingCount)
+        graphemes = Array(candidates.prefix(count))
     }
 
     func validate() throws {

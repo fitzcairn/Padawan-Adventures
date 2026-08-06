@@ -1375,8 +1375,8 @@ struct LevelConfigTests {
                   ring_count: 3
             """,
             vocabularyCatalog: Self.vocabCatalog(
-                words: ["cat"],
-                graphemes: ["c", "a", "b"]
+                words: ["sat", "tap", "pan"],
+                graphemes: ["s", "a", "t", "p", "n"]
             )
         )
 
@@ -1396,9 +1396,8 @@ struct LevelConfigTests {
         #expect(deflect.orbTravelSeconds == 2.5)
         #expect(deflect.letterPosition == .ending)
         #expect(deflect.ringCount == 3)
-        // First ringCount singles from the padded test pool (declaration order).
-        #expect(deflect.graphemes.count == 3)
-        #expect(Set(deflect.graphemes.map(\.grapheme)).isSubset(of: Set(["c", "a", "b", "s", "t", "n", "p", "i", "d", "e", "f"])))
+        // Ending rings are pool graphemes with ≥1 imaged match (t/p/n here).
+        #expect(deflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
     }
 
 
@@ -1415,8 +1414,9 @@ struct LevelConfigTests {
         #expect(deflect.weight == 1)
         #expect(deflect.monsterHP == CombatDeflectConfig.defaultMonsterHP)
         #expect(deflect.orbTravelSeconds == CombatDeflectConfig.defaultOrbTravelSeconds)
-        #expect(deflect.graphemes.count == CombatDeflectConfig.defaultRingCount)
         #expect(deflect.ringCount == CombatDeflectConfig.defaultRingCount)
+        // Ending-sound on the Level-1 pool only has t/p/n candidates.
+        #expect(deflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
     }
 
     @Test func decodesStartingSoundCombat() throws {
@@ -1424,7 +1424,6 @@ struct LevelConfigTests {
         combat:
           minigames:
             - type: starting-sound-combat
-              graphemes: [a, b, c]
         """)
         #expect(level.combat.minigames.map(\.kind) == [.startingSoundDeflect])
         guard case .deflect(let deflect) = level.combat.minigames.first else {
@@ -1439,7 +1438,6 @@ struct LevelConfigTests {
         combat:
           minigames:
             - type: ending-sound-combat
-              graphemes: [t, d, n, r]
         """)
         #expect(level.combat.minigames.map(\.kind) == [.endingSoundDeflect])
         guard case .deflect(let deflect) = level.combat.minigames.first else {
@@ -1477,8 +1475,8 @@ struct LevelConfigTests {
             from: "inherits: base_level\nname: Level 2\norder: 1",
             parents: ["base_level": base],
             vocabularyCatalog: Self.vocabCatalog(
-                words: ["cat"],
-                graphemes: ["a", "b", "c"]
+                words: ["sat", "tap", "pan"],
+                graphemes: ["s", "a", "t", "p", "n"]
             )
         )
         guard case .deflect(let deflect) = level.combat.minigames.first else {
@@ -1487,7 +1485,7 @@ struct LevelConfigTests {
         }
         #expect(deflect.monsterHP == 7)
         #expect(deflect.ringCount == 3)
-        #expect(deflect.graphemes.count == 3)
+        #expect(deflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
     }
 
 
@@ -1629,18 +1627,16 @@ struct LevelConfigTests {
 
     
     
-    @Test func rejectsCombatDeflectLetterCountOutsideTwoToSix() throws {
-        var tooFew = CombatDeflectConfig(ringCount: 1, graphemes: [])
+    @Test func clampsCombatDeflectRingCountToCandidateBounds() throws {
+        var tooFew = CombatDeflectConfig(letterPosition: .starting, ringCount: 1)
         try tooFew.resolve(from: LevelVocabularyPool.fallback)
-        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
-            try tooFew.validate()
-        }
+        #expect(tooFew.graphemes.count >= CombatDeflectConfig.minRingCount)
+        try tooFew.validate()
 
-        var tooMany = CombatDeflectConfig(ringCount: 7, graphemes: [])
+        var tooMany = CombatDeflectConfig(letterPosition: .starting, ringCount: 7)
         try tooMany.resolve(from: LevelVocabularyPool.fallback)
-        #expect(throws: WorldSeedError.invalidCombatDeflectGraphemes) {
-            try tooMany.validate()
-        }
+        #expect(tooMany.graphemes.count <= CombatDeflectConfig.maxRingCount)
+        try tooMany.validate()
     }
 
 
@@ -1652,12 +1648,12 @@ struct LevelConfigTests {
             order: 1
             combat:
               minigames:
-                - type: ending-sound-combat
+                - type: starting-sound-combat
                   ring_count: 4
             """,
             vocabularyCatalog: Self.vocabCatalog(
-                words: ["cat"],
-                graphemes: ["a", "b", "c", "d"]
+                words: ["at", "bed", "cat", "dad"],
+                graphemes: ["a", "b", "c", "d", "t", "e"]
             )
         )
         guard case .deflect(let deflect) = level.combat.minigames.first else {

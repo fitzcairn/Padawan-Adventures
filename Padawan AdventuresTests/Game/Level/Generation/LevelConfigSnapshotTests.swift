@@ -84,7 +84,8 @@ struct LevelConfigSnapshotTests {
         #expect(endingDeflect.monsterHP == 5)
         #expect(endingDeflect.orbTravelSeconds == 4)
         #expect(endingDeflect.ringCount == 4)
-        #expect(endingDeflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
+        // Level 1 ending candidates are t/p/n only; ring_count clamps to 3.
+        #expect(endingDeflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
 
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
