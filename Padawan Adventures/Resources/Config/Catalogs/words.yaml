@@ -6,70 +6,303 @@
 #   graphemes: ordered units that concatenate to the word id (required)
 
 words:
-  apple:
-    image: apple
-    sfx: sfx_word_apple
-    graphemes: [a, p, p, l, e]
-  bath:
-    image: bath
-    sfx: sfx_word_bath
-    graphemes: [b, a, t, h]
+  an:
+    image: an
+    sfx: sfx_word_an
+    graphemes: [a, n]
+  ant:
+    image: ant
+    sfx: sfx_word_ant
+    graphemes: [a, nt]
+  at:
+    image: at
+    sfx: sfx_word_at
+    graphemes: [a, t]
+  bed:
+    image: bed
+    sfx: sfx_word_bed
+    graphemes: [b, e, d]
+  blow:
+    image: blow
+    sfx: sfx_word_blow
+    graphemes: [bl, ow]
   boat:
     image: boat
     sfx: sfx_word_boat
-    graphemes: [b, o, a, t]
-  book:
-    image: book
-    sfx: sfx_word_book
-    graphemes: [b, o, o, k]
-  car:
-    image: car
-    sfx: sfx_word_car
-    graphemes: [c, a, r]
+    graphemes: [b, oa, t]
+  brush:
+    image: brush
+    sfx: sfx_word_brush
+    graphemes: [br, u, sh]
+  bug:
+    image: bug
+    sfx: sfx_word_bug
+    graphemes: [b, u, g]
+  buzz:
+    image: buzz
+    sfx: sfx_word_buzz
+    graphemes: [b, u, zz]
+  camp:
+    image: camp
+    sfx: sfx_word_camp
+    graphemes: [c, a, mp]
+  can:
+    image: can
+    sfx: sfx_word_can
+    graphemes: [c, a, n]
   cat:
     image: cat
     sfx: sfx_word_cat
     graphemes: [c, a, t]
-  cloud:
-    image: cloud
-    sfx: sfx_word_cloud
-    graphemes: [c, l, o, u, d]
-  dance:
-    image: dance
-    sfx: sfx_word_dance
-    graphemes: [d, a, n, c, e]
+  coat:
+    image: coat
+    sfx: sfx_word_coat
+    graphemes: [c, oa, t]
+  crab:
+    image: crab
+    sfx: sfx_word_crab
+    graphemes: [cr, a, b]
+  dad:
+    image: dad
+    sfx: sfx_word_dad
+    graphemes: [d, a, d]
+  day:
+    image: day
+    sfx: sfx_word_day
+    graphemes: [d, ay]
+  dig:
+    image: dig
+    sfx: sfx_word_dig
+    graphemes: [d, i, g]
   dog:
     image: dog
     sfx: sfx_word_dog
     graphemes: [d, o, g]
-  gate:
-    sfx: sfx_word_gate
-    graphemes: [g, a, t, e]
-  house:
-    image: house
-    sfx: sfx_word_house
-    graphemes: [h, o, u, s, e]
-  lightbulb:
-    image: lightbulb
-    sfx: sfx_word_lightbulb
-    graphemes: [l, i, g, h, t, b, u, l, b]
-  pencil:
-    image: pencil
-    sfx: sfx_word_pencil
-    graphemes: [p, e, n, c, i, l]
-  star:
-    image: star
-    sfx: sfx_word_star
-    graphemes: [s, t, a, r]
+  fast:
+    image: fast
+    sfx: sfx_word_fast
+    graphemes: [f, a, st]
+  flag:
+    image: flag
+    sfx: sfx_word_flag
+    graphemes: [fl, a, g]
+  fox:
+    image: fox
+    sfx: sfx_word_fox
+    graphemes: [f, o, x]
+  frog:
+    image: frog
+    sfx: sfx_word_frog
+    graphemes: [fr, o, g]
+  hat:
+    image: hat
+    sfx: sfx_word_hat
+    graphemes: [h, a, t]
+  high:
+    image: high
+    sfx: sfx_word_high
+    graphemes: [h, igh]
+  hill:
+    image: hill
+    sfx: sfx_word_hill
+    graphemes: [h, i, ll]
+  in:
+    image: in
+    sfx: sfx_word_in
+    graphemes: [i, n]
+  it:
+    image: it
+    sfx: sfx_word_it
+    graphemes: [i, t]
+  jam:
+    image: jam
+    sfx: sfx_word_jam
+    graphemes: [j, a, m]
+  jump:
+    image: jump
+    sfx: sfx_word_jump
+    graphemes: [j, u, mp]
+  kam:
+    image: kam
+    sfx: sfx_word_kam
+    graphemes: [k, a, m]
+  kid:
+    image: kid
+    sfx: sfx_word_kid
+    graphemes: [k, i, d]
+  kiss:
+    image: kiss
+    sfx: sfx_word_kiss
+    graphemes: [k, i, ss]
+  mad:
+    image: mad
+    sfx: sfx_word_mad
+    graphemes: [m, a, d]
+  map:
+    image: map
+    sfx: sfx_word_map
+    graphemes: [m, a, p]
+  mat:
+    image: mat
+    sfx: sfx_word_mat
+    graphemes: [m, a, t]
+  mop:
+    image: mop
+    sfx: sfx_word_mop
+    graphemes: [m, o, p]
+  nap:
+    image: nap
+    sfx: sfx_word_nap
+    graphemes: [n, a, p]
+  nest:
+    image: nest
+    sfx: sfx_word_nest
+    graphemes: [n, e, st]
+  night:
+    image: night
+    sfx: sfx_word_night
+    graphemes: [n, igh, t]
+  padawan:
+    image: padawan
+    sfx: sfx_word_padawan
+    graphemes: [p, a, d, a, w, a, n]
+  pan:
+    image: pan
+    sfx: sfx_word_pan
+    graphemes: [p, a, n]
+  pat:
+    image: pat
+    sfx: sfx_word_pat
+    graphemes: [p, a, t]
+  pig:
+    image: pig
+    sfx: sfx_word_pig
+    graphemes: [p, i, g]
+  pin:
+    image: pin
+    sfx: sfx_word_pin
+    graphemes: [p, i, n]
+  play:
+    image: play
+    sfx: sfx_word_play
+    graphemes: [pl, ay]
+  plum:
+    image: plum
+    sfx: sfx_word_plum
+    graphemes: [pl, u, m]
+  pond:
+    image: pond
+    sfx: sfx_word_pond
+    graphemes: [p, o, nd]
+  pot:
+    image: pot
+    sfx: sfx_word_pot
+    graphemes: [p, o, t]
+  puff:
+    image: puff
+    sfx: sfx_word_puff
+    graphemes: [p, u, ff]
+  quit:
+    image: quit
+    sfx: sfx_word_quit
+    graphemes: [qu, i, t]
+  quiz:
+    image: quiz
+    sfx: sfx_word_quiz
+    graphemes: [qu, i, z]
+  rain:
+    image: rain
+    sfx: sfx_word_rain
+    graphemes: [r, ai, n]
+  read:
+    image: read
+    sfx: sfx_word_read
+    graphemes: [r, ea, d]
+  run:
+    image: run
+    sfx: sfx_word_run
+    graphemes: [r, u, n]
+  sand:
+    image: sand
+    sfx: sfx_word_sand
+    graphemes: [s, a, nd]
+  sat:
+    image: sat
+    sfx: sfx_word_sat
+    graphemes: [s, a, t]
+  sea:
+    image: sea
+    sfx: sfx_word_sea
+    graphemes: [s, ea]
+  see:
+    image: see
+    sfx: sfx_word_see
+    graphemes: [s, ee]
+  sip:
+    image: sip
+    sfx: sfx_word_sip
+    graphemes: [s, i, p]
+  sit:
+    image: sit
+    sfx: sfx_word_sit
+    graphemes: [s, i, t]
+  slip:
+    image: slip
+    sfx: sfx_word_slip
+    graphemes: [sl, i, p]
+  snap:
+    image: snap
+    sfx: sfx_word_snap
+    graphemes: [sn, a, p]
+  snow:
+    image: snow
+    sfx: sfx_word_snow
+    graphemes: [sn, ow]
+  spot:
+    image: spot
+    sfx: sfx_word_spot
+    graphemes: [sp, o, t]
+  stop:
+    image: stop
+    sfx: sfx_word_stop
+    graphemes: [st, o, p]
   sun:
     image: sun
     sfx: sfx_word_sun
     graphemes: [s, u, n]
-  trash:
-    image: trash
-    sfx: sfx_word_trash
-    graphemes: [t, r, a, s, h]
-  wand:
-    image: wand
-    sfx: sfx_word_wand
-    graphemes: [w, a, n, d]
+  tap:
+    image: tap
+    sfx: sfx_word_tap
+    graphemes: [t, a, p]
+  tent:
+    image: tent
+    sfx: sfx_word_tent
+    graphemes: [t, e, nt]
+  train:
+    image: train
+    sfx: sfx_word_train
+    graphemes: [tr, ai, n]
+  tree:
+    image: tree
+    sfx: sfx_word_tree
+    graphemes: [tr, ee]
+  tris:
+    image: tris
+    sfx: sfx_word_tris
+    graphemes: [tr, i, s]
+  vest:
+    image: vest
+    sfx: sfx_word_vest
+    graphemes: [v, e, st]
+  vet:
+    image: vet
+    sfx: sfx_word_vet
+    graphemes: [v, e, t]
+  web:
+    image: web
+    sfx: sfx_word_web
+    graphemes: [w, e, b]
+  zip:
+    image: zip
+    sfx: sfx_word_zip
+    graphemes: [z, i, p]

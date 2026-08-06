@@ -28,7 +28,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     static let defaultMinWords = 2
     static let defaultMaxWords = 4
     /// Catalog ids with illustrations — used when YAML omits `words:`.
-    static let defaultWordIDs = ["car", "dog", "trash", "sun", "star", "book"]
+    static let defaultWordIDs = ["cat", "dog", "sun", "sat", "hat", "bed"]
 
     nonisolated static let fallback = PitBridgeConfig(
         weight: 1,
@@ -107,7 +107,7 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
     /// Wider fans stop fitting between the pads on phone-sized scenes.
     static let maxChoiceCount = 6
     /// Catalog ids with illustrations — used when YAML omits `words:`.
-    static let defaultWordIDs = ["cat", "dog", "sun", "star"]
+    static let defaultWordIDs = ["cat", "dog", "sun", "sat"]
 
     nonisolated static let fallback = PitSoundOutWordConfig(
         weight: 1,

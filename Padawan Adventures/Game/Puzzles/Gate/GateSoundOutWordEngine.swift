@@ -57,7 +57,7 @@ nonisolated struct GateSoundOutWordEngine {
     let config: Config
     private(set) var isActive = false
     private(set) var targetWord = ""
-    private(set) var targetEntry: GateWord = .fallbackEntry(word: "gate")
+    private(set) var targetEntry: GateWord = .fallbackEntry(word: "cat")
     /// One set per grapheme of the target word, in spelling order.
     private(set) var choiceSets: [[Choice]] = []
     /// Graphemes already placed; doubles as the index of the active set.
@@ -106,7 +106,7 @@ nonisolated struct GateSoundOutWordEngine {
         placedCount = 0
         let picked = SpellingMinigameCore.pickTargetEntry(
             from: config.words,
-            fallbackWord: "gate",
+            fallbackWord: "cat",
             using: &rng
         )
         targetEntry = picked

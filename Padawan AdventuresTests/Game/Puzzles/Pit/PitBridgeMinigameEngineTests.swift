@@ -3,7 +3,7 @@ import Testing
 @testable import Padawan_Adventures
 
 struct PitBridgeMinigameEngineTests {
-    private let poolIDs = ["car", "dog", "trash", "sun", "star", "book"]
+    private let poolIDs = ["cat", "dog", "sun", "sat", "hat", "bed"]
 
     private var pool: [GateWord] {
         poolIDs.map { WordCatalog.imagedFallbackEntry(word: $0) }
@@ -74,8 +74,8 @@ struct PitBridgeMinigameEngineTests {
     }
 
     @Test func maskedPromptTextBlanksLastLetter() {
-        let car = WordCatalog.imagedFallbackEntry(word: "car")
-        let engine = makeEngine(minWords: 1, maxWords: 1, words: [car], seed: 1)
+        let can = WordCatalog.imagedFallbackEntry(word: "can")
+        let engine = makeEngine(minWords: 1, maxWords: 1, words: [can], seed: 1)
         #expect(engine.maskedPromptText == "ca_")
         #expect(engine.maskedPromptText.last == "_")
         #expect(String(engine.maskedPromptText.dropLast()) == String(engine.currentWord.dropLast()))

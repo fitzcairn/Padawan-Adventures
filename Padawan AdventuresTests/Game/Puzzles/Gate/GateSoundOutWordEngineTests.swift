@@ -58,8 +58,8 @@ struct GateSoundOutWordEngineTests {
     }
 
     @Test func everyChoiceSetHoldsTheAnswerPlusDistinctDecoys() {
-        let engine = makeEngine(choiceCountMin: 3, choiceCountMax: 3, words: ["star"], seed: 11)
-        #expect(engine.choiceSets.count == 4)
+        let engine = makeEngine(choiceCountMin: 3, choiceCountMax: 3, words: ["sat"], seed: 11)
+        #expect(engine.choiceSets.count == 3)
 
         for (index, set) in engine.choiceSets.enumerated() {
             let answer = engine.grapheme(at: index)
@@ -72,7 +72,7 @@ struct GateSoundOutWordEngineTests {
     }
 
     @Test func choiceSetSizesStayInsideConfiguredRange() {
-        let engine = makeEngine(choiceCountMin: 2, choiceCountMax: 4, words: ["gate"], seed: 5)
+        let engine = makeEngine(choiceCountMin: 2, choiceCountMax: 4, words: ["map"], seed: 5)
         for set in engine.choiceSets {
             #expect(set.count >= 2)
             #expect(set.count <= 4)
@@ -91,8 +91,8 @@ struct GateSoundOutWordEngineTests {
     }
 
     @Test func beginIsDeterministicForSeed() {
-        let a = makeEngine(words: ["star", "gate", "car"], seed: 99)
-        let b = makeEngine(words: ["star", "gate", "car"], seed: 99)
+        let a = makeEngine(words: ["sat", "map", "can"], seed: 99)
+        let b = makeEngine(words: ["sat", "map", "can"], seed: 99)
         #expect(a.targetWord == b.targetWord)
         #expect(a.wordTrackID == b.wordTrackID)
         #expect(a.choiceSets.map { $0.map(\.grapheme) } == b.choiceSets.map { $0.map(\.grapheme) })

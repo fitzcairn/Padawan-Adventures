@@ -84,14 +84,14 @@ struct LevelConfigSnapshotTests {
         #expect(wordPlug.wordCountMin == 2)
         #expect(wordPlug.wordCountMax == 2)
         #expect(wordPlug.words.map(\.word) == [
-            "bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand",
+            "bed", "cat", "dog", "hat", "map", "pig", "sat", "sun",
         ])
         guard case .wordPlug(let endingSound) = level.gate.minigames[1] else {
             Issue.record("expected ending-sound gate entry")
             return
         }
         #expect(endingSound.letterPosition == .ending)
-        #expect(endingSound.words.map(\.word) == ["cloud", "dog", "lightbulb", "pencil", "wand"])
+        #expect(endingSound.words.map(\.word) == ["bed", "dog", "hat", "map", "sun"])
 
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
         #expect(level.pit.minigames.map(\.weight) == [1, 0, 0])
@@ -99,21 +99,21 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected pit sound-out-word entry")
             return
         }
-        #expect(soundOut.words.map(\.word) == ["cat", "dog", "star", "sun"])
+        #expect(soundOut.words.map(\.word) == ["cat", "dog", "sat", "sun"])
         guard case .bridge(let bridge) = level.pit.minigames[1] else {
             Issue.record("expected pit bridge entry")
             return
         }
         #expect(bridge.letterPosition == .ending)
-        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-        #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+        #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
         guard case .bridge(let starting) = level.pit.minigames[2] else {
             Issue.record("expected pit starting-sound bridge entry")
             return
         }
         #expect(starting.letterPosition == .starting)
-        #expect(starting.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-        #expect(Set(starting.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+        #expect(starting.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+        #expect(Set(starting.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
 
     }
 }

@@ -34,7 +34,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: sound-out-word-gate
-              words: [cat, dog, star]
+              words: [cat, dog, sat]
               music: gate
             - type: grapheme-sound-gate
               graphemes: [a, b, c, d, e, f, g, h]
@@ -43,7 +43,7 @@ struct LevelConfigTests {
           music: pit
           minigames:
             - type: sound-out-word-pit
-              words: [cat, dog, sun, star]
+              words: [cat, dog, sun, sat]
         """
 
     /// Base YAML without gate/pit blocks so inheritance tests can append their own.
@@ -223,7 +223,7 @@ struct LevelConfigTests {
           fx: { opened: sfx_gate_opened }
           minigames:
             - type: sound-out-word-gate
-              words: [cat, dog, star]
+              words: [cat, dog, sat]
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -763,7 +763,7 @@ struct LevelConfigTests {
         let wordPlug = wordPlugConfigs[0]
         #expect(wordPlug.wordCountMin == 2)
         #expect(wordPlug.wordCountMax == 2)
-        #expect(wordPlug.words.map(\.word).contains("star"))
+        #expect(wordPlug.words.map(\.word).contains("sat"))
         #expect(wordPlug.words.contains {
             $0.word == "cat"
                 && $0.spelling == "sfx_word_cat"
@@ -791,11 +791,11 @@ struct LevelConfigTests {
         let soundOut = try pitSoundOutWord(tython)
         #expect(soundOut.choiceCountMin == 3)
         #expect(soundOut.choiceCountMax == 3)
-        #expect(soundOut.words.map(\.word) == ["cat", "dog", "star", "sun"])
+        #expect(soundOut.words.map(\.word) == ["cat", "dog", "sat", "sun"])
         #expect(soundOut.words.contains {
-            $0.word == "star"
-                && $0.spelling == "sfx_word_star"
-                && $0.graphemes == ["s", "t", "a", "r"]
+            $0.word == "sat"
+                && $0.spelling == "sfx_word_sat"
+                && $0.graphemes == ["s", "a", "t"]
         })
     }
 
@@ -852,11 +852,11 @@ struct LevelConfigTests {
         pit:
           minigames:
             - type: sound-out-word-pit
-              words: [star, car]
+              words: [sat, can]
         """
         let level = try LevelConfig.decode(from: yaml)
         let soundOut = try pitSoundOutWord(level)
-        #expect(soundOut.words.map(\.word) == ["car", "star"])
+        #expect(soundOut.words.map(\.word) == ["can", "sat"])
     }
 
     @Test func rejectsEmptyPitWords() {
@@ -1093,7 +1093,7 @@ struct LevelConfigTests {
         #expect(wp.wordCountMin == 2)
         #expect(wp.wordCountMax == 2)
         #expect(wp.words.map(\.word) == [
-            "bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand",
+            "bed", "cat", "dog", "hat", "map", "pig", "sat", "sun",
         ])
         #expect(tython.artifact == "leaf.fill")
     }
@@ -1147,7 +1147,7 @@ struct LevelConfigTests {
             - type: ending-sound-gate
               min_word_count: 2
               max_word_count: 2
-              words: [dog, wand]
+              words: [dog, hat]
         """
         let level = try LevelConfig.decode(from: yaml)
         guard case .wordPlug(let wp) = level.gate.minigames.first else {
@@ -1156,7 +1156,7 @@ struct LevelConfigTests {
         }
         #expect(level.gate.minigames.map(\.kind) == [.endingSoundPlug])
         #expect(wp.letterPosition == .ending)
-        #expect(wp.words.map(\.word) == ["dog", "wand"])
+        #expect(wp.words.map(\.word) == ["dog", "hat"])
         #expect(!wp.graphemes.isEmpty)
     }
 
@@ -1194,7 +1194,7 @@ struct LevelConfigTests {
             - type: starting-sound-gate
               words: [cat, dog]
             - type: ending-sound-gate
-              words: [dog, wand]
+              words: [dog, web]
         """
         let level = try LevelConfig.decode(from: yaml)
         #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug])
@@ -1806,12 +1806,12 @@ struct LevelConfigTests {
               weight: 0.0
               min_choice_count: 3
               max_choice_count: 3
-              words: [cat, dog, star]
+              words: [cat, dog, sat]
             - type: ending-sound-pit
               weight: 1.0
               min_word_count: 2
               max_word_count: 4
-              words: [car, dog, trash, sun, star, book]
+              words: [cat, dog, sun, sat, hat, bed]
         """)
         #expect(level.pit.fx.trackID(for: "jump") == "pit-jump")
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge])
@@ -1819,7 +1819,7 @@ struct LevelConfigTests {
             #expect(soundOut.weight == 0)
             #expect(soundOut.choiceCountMin == 3)
             #expect(soundOut.choiceCountMax == 3)
-            #expect(soundOut.words.map(\.word) == ["cat", "dog", "star"])
+            #expect(soundOut.words.map(\.word) == ["cat", "dog", "sat"])
         } else {
             Issue.record("expected sound-out-word entry")
         }
@@ -1827,8 +1827,8 @@ struct LevelConfigTests {
             #expect(bridge.weight == 1)
             #expect(bridge.minWords == 2)
             #expect(bridge.maxWords == 4)
-            #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-            #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+            #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+            #expect(Set(bridge.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
             #expect(bridge.words.allSatisfy { ($0.image?.isEmpty == false) })
         } else {
             Issue.record("expected bridge entry")
@@ -1861,7 +1861,7 @@ struct LevelConfigTests {
               weight: 1.0
               min_word_count: 3
               max_word_count: 5
-              words: [car, dog, trash, sun, star, book]
+              words: [cat, dog, sun, sat, hat, bed]
         """)
         #expect(level.pit.minigames.map(\.kind) == [.startingSoundBridge])
         guard case .bridge(let bridge) = level.pit.minigames.first else {
@@ -1872,8 +1872,8 @@ struct LevelConfigTests {
         #expect(bridge.weight == 1)
         #expect(bridge.minWords == 3)
         #expect(bridge.maxWords == 5)
-        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-        #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+        #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
     }
 
     @Test func inheritsPitBlockFromBase() throws {
@@ -1886,7 +1886,7 @@ struct LevelConfigTests {
               weight: 1
               min_word_count: 2
               max_word_count: 3
-              words: [car, dog, trash, sun]
+              words: [cat, dog, sun, sat]
         """
         let child = """
         inherits: base_level
@@ -1901,8 +1901,8 @@ struct LevelConfigTests {
             return
         }
         #expect(bridge.maxWords == 3)
-        #expect(bridge.wordIDs == ["car", "dog", "trash", "sun"])
-        #expect(Set(bridge.words.map(\.word)) == Set(["car", "dog", "sun", "trash"]))
+        #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat"])
+        #expect(Set(bridge.words.map(\.word)) == Set(["cat", "dog", "sat", "sun"]))
     }
 
     @Test func childCanOverrideInheritedPitMinigames() throws {
@@ -1919,7 +1919,7 @@ struct LevelConfigTests {
         pit:
           minigames:
             - type: ending-sound-pit
-              words: [car, dog, trash, sun, star, book]
+              words: [cat, dog, sun, sat, hat, bed]
         """
         let level = try LevelConfig.decode(
             from: child,
@@ -2086,7 +2086,7 @@ struct LevelConfigTests {
                 - type: ending-sound-pit
                   min_word_count: 5
                   max_word_count: 2
-                  words: [car, dog, trash, sun, star, book]
+                  words: [cat, dog, sun, sat, hat, bed]
             """)
         }
     }
@@ -2099,7 +2099,7 @@ struct LevelConfigTests {
                 - type: ending-sound-pit
                   min_word_count: 2
                   max_word_count: 4
-                  words: [car, dog]
+                  words: [can, dog]
             """)
         }
     }
@@ -2112,7 +2112,7 @@ struct LevelConfigTests {
                 - type: ending-sound-pit
                   min_word_count: 2
                   max_word_count: 2
-                  words: [car, car]
+                  words: [can, can]
             """)
         }
         #expect(throws: WorldSeedError.invalidPitBridgeWords) {
@@ -2127,16 +2127,23 @@ struct LevelConfigTests {
         }
     }
 
-    @Test func rejectsPitBridgeWordsWithoutImages() {
+    @Test func rejectsPitBridgeWordsWithoutImages() throws {
+        // Curriculum words are all imaged; inject an audio-only entry to hit the guard.
+        let catalog = WordCatalog(words: WordCatalog.fallback.words + [
+            GateWord.fallbackEntry(word: "silent"),
+        ])
         #expect(throws: WorldSeedError.invalidPitBridgeWords) {
-            try LevelConfig.decode(from: Self.pitLevelPrefix + """
-            pit:
-              minigames:
-                - type: ending-sound-pit
-                  min_word_count: 1
-                  max_word_count: 1
-                  words: [gate]
-            """)
+            try LevelConfig.decode(
+                from: Self.pitLevelPrefix + """
+                pit:
+                  minigames:
+                    - type: ending-sound-pit
+                      min_word_count: 1
+                      max_word_count: 1
+                      words: [silent]
+                """,
+                wordCatalog: catalog
+            )
         }
     }
 
@@ -2149,15 +2156,15 @@ struct LevelConfigTests {
         #expect(tython.pit.minigames.map(\.weight) == [1, 0, 0])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.letterPosition == .ending)
-            #expect(bridge.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-            #expect(Set(bridge.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+            #expect(bridge.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+            #expect(Set(bridge.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
         } else {
             Issue.record("expected bridge entry")
         }
         if case .bridge(let starting) = tython.pit.minigames[2] {
             #expect(starting.letterPosition == .starting)
-            #expect(starting.wordIDs == ["car", "dog", "trash", "sun", "star", "book"])
-            #expect(Set(starting.words.map(\.word)) == Set(["book", "car", "dog", "star", "sun", "trash"]))
+            #expect(starting.wordIDs == ["cat", "dog", "sun", "sat", "hat", "bed"])
+            #expect(Set(starting.words.map(\.word)) == Set(["bed", "cat", "dog", "hat", "sat", "sun"]))
         } else {
             Issue.record("expected starting-sound bridge entry")
         }

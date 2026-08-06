@@ -21,7 +21,7 @@ struct GateWordPlugMinigameEngineTests {
         wordCountMin: Int = 3,
         wordCountMax: Int = 6,
         letterPosition: GateWordPlugLetterPosition = .starting,
-        pool: [String] = ["cat", "dog", "star", "gate", "car"],
+        pool: [String] = ["cat", "dog", "sat", "map", "can"],
         letterPool: [String] = ["a", "b", "c", "d", "e", "f", "g", "h", "o", "s"],
         seed: UInt64 = 42
     ) -> GateWordPlugMinigameEngine {
@@ -53,7 +53,7 @@ struct GateWordPlugMinigameEngineTests {
             let engine = makeEngine(
                 wordCountMin: 3,
                 wordCountMax: 6,
-                pool: ["cat", "dog", "star", "gate", "car"],
+                pool: ["cat", "dog", "sat", "map", "can"],
                 seed: seed
             )
             // Pool has 5 unique first letters; range snaps to 3.
@@ -66,7 +66,7 @@ struct GateWordPlugMinigameEngineTests {
             let engine = makeEngine(
                 wordCountMin: 2,
                 wordCountMax: 2,
-                pool: ["cat", "dog", "star", "gate", "car"],
+                pool: ["cat", "dog", "sat", "map", "can"],
                 seed: seed
             )
             #expect(engine.slots.count == 2)
@@ -81,14 +81,14 @@ struct GateWordPlugMinigameEngineTests {
     }
 
     @Test func beginCanPickEveryWordInThePool() {
-        let pool = ["bath", "book", "cat", "dance", "dog", "lightbulb", "star", "wand"]
+        let pool = ["bed", "bug", "cat", "dad", "dog", "pig", "sat", "web"]
         var seen: Set<String> = []
         for seed in UInt64(1)...60 {
             let engine = makeEngine(
                 wordCountMin: 2,
                 wordCountMax: 2,
                 pool: pool,
-                letterPool: ["b", "c", "d", "l", "s", "w"],
+                letterPool: ["b", "c", "d", "p", "s", "w"],
                 seed: seed
             )
             #expect(engine.slots.count == 2)
@@ -101,11 +101,11 @@ struct GateWordPlugMinigameEngineTests {
         let engine = makeEngine(
             wordCountMin: 2,
             wordCountMax: 2,
-            pool: ["bath", "book"],
+            pool: ["bed", "bug"],
             letterPool: ["b"],
             seed: 7
         )
-        #expect(engine.slots.map(\.word).sorted() == ["bath", "book"])
+        #expect(engine.slots.map(\.word).sorted() == ["bed", "bug"])
         #expect(engine.tray.map(\.letter) == ["b", "b"])
     }
 
@@ -120,8 +120,8 @@ struct GateWordPlugMinigameEngineTests {
     @Test func endingModeMasksLastLetter() {
         let engine = makeEngine(
             letterPosition: .ending,
-            pool: ["dog", "wand", "cloud"],
-            letterPool: ["d", "g", "l"],
+            pool: ["dog", "web", "coat"],
+            letterPool: ["b", "d", "g", "t"],
             seed: 7
         )
         for slot in engine.slots {
@@ -136,8 +136,8 @@ struct GateWordPlugMinigameEngineTests {
             wordCountMin: 3,
             wordCountMax: 3,
             letterPosition: .ending,
-            pool: ["dog", "wand", "cloud"],
-            letterPool: ["d", "g", "l"],
+            pool: ["dog", "web", "coat"],
+            letterPool: ["b", "d", "g", "t"],
             seed: 5
         )
         #expect(engine.slots.count == 3)
@@ -188,7 +188,7 @@ struct GateWordPlugMinigameEngineTests {
         var engine = makeEngine(
             wordCountMin: 3,
             wordCountMax: 3,
-            pool: ["cat", "dog", "star"],
+            pool: ["cat", "dog", "sat"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
@@ -209,7 +209,7 @@ struct GateWordPlugMinigameEngineTests {
         var engine = makeEngine(
             wordCountMin: 3,
             wordCountMax: 3,
-            pool: ["cat", "dog", "star"],
+            pool: ["cat", "dog", "sat"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),
@@ -224,8 +224,8 @@ struct GateWordPlugMinigameEngineTests {
 
     @Test func pluggingEverySlotWinsAndAwardsStars() {
         for (minCount, maxCount, pool) in [
-            (3, 3, ["cat", "dog", "star"]),
-            (6, 6, ["cat", "dog", "star", "gate", "car", "sun"]),
+            (3, 3, ["cat", "dog", "sat"]),
+            (6, 6, ["cat", "dog", "sat", "map", "can", "sun"]),
         ] as [(Int, Int, [String])] {
             var engine = makeEngine(
                 wordCountMin: minCount,
@@ -252,7 +252,7 @@ struct GateWordPlugMinigameEngineTests {
         var engine = makeEngine(
             wordCountMin: 3,
             wordCountMax: 3,
-            pool: ["cat", "dog", "star"],
+            pool: ["cat", "dog", "sat"],
             seed: 5
         )
         for slot in engine.slots {
@@ -273,7 +273,7 @@ struct GateWordPlugMinigameEngineTests {
         var engine = makeEngine(
             wordCountMin: 3,
             wordCountMax: 3,
-            pool: ["cat", "dog", "star"],
+            pool: ["cat", "dog", "sat"],
             seed: 1
         )
         guard let slot = engine.slots.first(where: { $0.word == "cat" }),

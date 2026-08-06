@@ -1,33 +1,18 @@
 #!/usr/bin/env python3
-"""Generate word spelling/progressive SFX via macOS `say` + afconvert into FX/Words/."""
+"""Generate full-word pronunciation SFX via macOS `say` + afconvert into FX/Words/.
+
+Reads word ids from Catalogs/words.yaml by default. Pass `--prune` to delete any
+sfx_word_*.m4a not listed in the catalog.
+"""
 
 from __future__ import annotations
 
+import argparse
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
-# Default words to generate when no CLI args are passed.
-WORDS = [
-    "apple",
-    "bath",
-    "boat",
-    "book",
-    "car",
-    "cat",
-    "cloud",
-    "dance",
-    "dog",
-    "gate",
-    "house",
-    "lightbulb",
-    "pencil",
-    "star",
-    "sun",
-    "trash",
-    "wand",
-]
 
 
 def say_to_aiff(text: str, aiff_path: Path) -> None:
@@ -63,28 +48,50 @@ def generate(text: str, out_m4a: Path) -> None:
     print(f"wrote {out_m4a.name}")
 
 
-def clips_for(word: str) -> list[tuple[str, str]]:
-    """(spoken_text, filename) for the full word plus each growing prefix."""
-    out = [(word, f"sfx_word_{word}.m4a")]
-    for i in range(1, len(word) + 1):
-        prefix = word[:i]
-        out.append((prefix, f"sfx_word_{word}_{prefix}.m4a"))
-    return out
+def word_ids(yaml_path: Path) -> list[str]:
+    text = yaml_path.read_text(encoding="utf-8")
+    return re.findall(r"(?m)^  ([a-z]+):\s*$", text)
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("words", nargs="*", help="Optional word ids; default: words.yaml")
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Delete sfx_word_*.m4a files not in the catalog (or CLI list)",
+    )
+    args = parser.parse_args()
+
     repo_root = Path(__file__).resolve().parents[1]
+    yaml_path = (
+        repo_root
+        / "Padawan Adventures"
+        / "Resources"
+        / "Config"
+        / "Catalogs"
+        / "words.yaml"
+    )
     out_dir = (
         repo_root / "Padawan Adventures" / "Resources" / "Audio" / "FX" / "Words"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    words = sys.argv[1:] or WORDS
+
+    words = [w.lower() for w in args.words] or word_ids(yaml_path)
+    expected = {f"sfx_word_{word}.m4a" for word in words}
+
     for word in words:
-        for text, filename in clips_for(word.lower()):
-            target = out_dir / filename
-            if target.exists():
-                continue
-            generate(text, target)
+        target = out_dir / f"sfx_word_{word}.m4a"
+        if target.exists():
+            continue
+        generate(word, target)
+
+    if args.prune:
+        for path in sorted(out_dir.glob("sfx_word_*.m4a")):
+            if path.name not in expected:
+                path.unlink()
+                print(f"pruned {path.name}")
+
     return 0
 
 

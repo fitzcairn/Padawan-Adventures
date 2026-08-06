@@ -15,10 +15,10 @@ struct CombatDeflectMinigameEngineTests {
     /// Imaged words covering a…f so configured ring letters always have a throw candidate.
     private func words(for letters: [String]) -> [GateWord] {
         let samples: [String: [String]] = [
-            "a": ["apple"],
-            "b": ["bath", "boat", "book"],
-            "c": ["car", "cat", "cloud"],
-            "d": ["dance", "dog"],
+            "a": ["ant"],
+            "b": ["bed", "boat", "bug"],
+            "c": ["can", "cat", "coat"],
+            "d": ["dad", "dog"],
             "e": ["egg"],
             "f": ["fish"],
         ]
@@ -95,9 +95,9 @@ struct CombatDeflectMinigameEngineTests {
 
     @Test func throwPicksAWordStartingWithTheRingLetter() {
         let wordPool = [
-            WordCatalog.imagedFallbackEntry(word: "bath"),
+            WordCatalog.imagedFallbackEntry(word: "bed"),
             WordCatalog.imagedFallbackEntry(word: "boat"),
-            WordCatalog.imagedFallbackEntry(word: "book"),
+            WordCatalog.imagedFallbackEntry(word: "bug"),
         ]
         var seen: Set<String> = []
         for seed in UInt64(1)...40 {
@@ -112,14 +112,14 @@ struct CombatDeflectMinigameEngineTests {
             seen.insert(word)
         }
         #expect(seen.count > 1)
-        #expect(seen.isSubset(of: ["bath", "boat", "book"]))
+        #expect(seen.isSubset(of: ["bed", "boat", "bug"]))
     }
 
     @Test func throwSkipsLettersWithNoImagedWord() {
         var engine = makeEngine(
             monsterHP: 500,
             pool: ["a", "g"],
-            wordPool: [WordCatalog.imagedFallbackEntry(word: "apple")],
+            wordPool: [WordCatalog.imagedFallbackEntry(word: "ant")],
             seed: 1
         )
         for _ in 0..<20 {
@@ -137,8 +137,8 @@ struct CombatDeflectMinigameEngineTests {
         let wordPool = [
             WordCatalog.imagedFallbackEntry(word: "boat"),
             WordCatalog.imagedFallbackEntry(word: "cat"),
-            WordCatalog.imagedFallbackEntry(word: "cloud"),
-            WordCatalog.imagedFallbackEntry(word: "wand"),
+            WordCatalog.imagedFallbackEntry(word: "coat"),
+            WordCatalog.imagedFallbackEntry(word: "web"),
         ]
         var engine = makeEngine(
             monsterHP: 500,

@@ -28,8 +28,8 @@ struct WordCatalogTests {
 
     @Test func resolveSubsetKeepsDeterministicOrder() throws {
         let catalog = WordCatalog.fallback
-        let words = try catalog.resolve(ids: ["star", "cat"])
-        #expect(words.map(\.word) == ["cat", "star"])
+        let words = try catalog.resolve(ids: ["sat", "cat"])
+        #expect(words.map(\.word) == ["cat", "sat"])
     }
 
     @Test func rejectsEmptyIDList() {
@@ -86,7 +86,7 @@ struct WordCatalogTests {
 
     @Test func bundleWordsProvidesGateVocabulary() throws {
         let catalog = try WordCatalog.loadFromBundle()
-        #expect(catalog.words.map(\.word).contains("gate"))
+        #expect(catalog.words.count == 75)
         #expect(catalog.words.contains {
             $0.word == "cat"
                 && $0.image == "cat"
@@ -94,9 +94,10 @@ struct WordCatalogTests {
                 && $0.graphemes == ["c", "a", "t"]
         })
         #expect(catalog.words.contains {
-            $0.word == "gate"
-                && $0.image == nil
-                && $0.sfx == "sfx_word_gate"
+            $0.word == "stop"
+                && $0.image == "stop"
+                && $0.sfx == "sfx_word_stop"
+                && $0.graphemes == ["st", "o", "p"]
         })
     }
 }

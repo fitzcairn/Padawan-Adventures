@@ -105,17 +105,17 @@ pit:
       weight: 1.0
       min_choice_count: 3
       max_choice_count: 3
-      words: [cat, dog, sun, star]
+      words: [cat, dog, sun, sat]
     - type: ending-sound-pit
       weight: 0.0
       min_word_count: 3
       max_word_count: 5
-      words: [car, dog, trash, sun, star, book]
+      words: [cat, dog, sun, sat, hat, bed]
     - type: starting-sound-pit
       weight: 0.0
       min_word_count: 3
       max_word_count: 5
-      words: [car, dog, trash, sun, star, book]
+      words: [cat, dog, sun, sat, hat, bed]
 
 # Gate minigames (triggered on gate tile contact).
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
@@ -147,7 +147,7 @@ gate:
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
-      words: [cat, dog, star, bath, dance, book, lightbulb, wand]
+      words: [cat, dog, sun, sat, hat, bed, pig, map]
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
       weight: 0.0
@@ -155,14 +155,14 @@ gate:
       min_word_count: 2
       max_word_count: 2
       # Each word's LAST letter must exist in graphemes.yaml.
-      words: [dog, wand, cloud, lightbulb, pencil]
+      words: [dog, sun, hat, bed, map]
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
       weight: 1.0
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4
-      words: [cat, dog, star, car]
+      words: [cat, dog, sun, sat]
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
       weight: 0.0
