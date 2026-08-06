@@ -179,6 +179,20 @@ struct CombatDeflectMinigameEngineTests {
         }
     }
 
+    @Test func endingMatchUsesGraphemeUnitNotStringSuffix() {
+        let config = CombatDeflectMinigameEngine.Config(
+            graphemes: letters(["t", "st"]),
+            words: [
+                WordCatalog.imagedFallbackEntry(word: "fast", graphemes: ["f", "a", "st"]),
+            ],
+            monsterHP: 3,
+            orbTravelSeconds: 3,
+            letterPosition: .ending
+        )
+        #expect(config.words(matching: "st").map(\.word) == ["fast"])
+        #expect(config.words(matching: "t").isEmpty)
+    }
+
     @Test func onlyOneOrbCanBeLiveAtATime() {
         var engine = makeEngine()
         #expect(!engine.throwNextOrb().isEmpty)

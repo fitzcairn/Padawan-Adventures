@@ -11,13 +11,15 @@ nonisolated struct GateSoundOutWordEngine {
         var choiceCountMax: Int
         var words: [GateWord]
         var graphemes: [GateGrapheme]
+        var vocabulary: LevelVocabularyPool
 
         init(from puzzle: GateSoundOutWordConfig) {
             self.init(
                 choiceCountMin: puzzle.choiceCountMin,
                 choiceCountMax: puzzle.choiceCountMax,
                 words: puzzle.words,
-                graphemes: puzzle.graphemes
+                graphemes: puzzle.graphemes,
+                vocabulary: puzzle.vocabulary
             )
         }
 
@@ -25,7 +27,8 @@ nonisolated struct GateSoundOutWordEngine {
             choiceCountMin: Int = 2,
             choiceCountMax: Int = 4,
             words: [GateWord],
-            graphemes: [GateGrapheme]
+            graphemes: [GateGrapheme],
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             let low = max(GateSoundOutWordConfig.minChoiceCount, choiceCountMin)
             self.choiceCountMin = low
@@ -35,6 +38,10 @@ nonisolated struct GateSoundOutWordEngine {
             )
             self.words = GateWord.normalized(words)
             self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+            self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+                words: self.words,
+                graphemes: self.graphemes
+            )
         }
     }
 
@@ -104,11 +111,9 @@ nonisolated struct GateSoundOutWordEngine {
         isActive = true
         outcome = nil
         placedCount = 0
-        let picked = SpellingMinigameCore.pickTargetEntry(
-            from: config.words,
-            fallbackWord: "cat",
-            using: &rng
-        )
+        let picked = config.vocabulary.pickWord(using: &rng)
+            ?? config.words.randomElement(using: &rng)
+            ?? .fallbackEntry(word: "cat")
         targetEntry = picked
         targetWord = picked.word
         choiceSets = buildChoiceSets(for: targetGraphemes)

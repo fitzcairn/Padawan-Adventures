@@ -131,6 +131,40 @@ struct GateWordPlugMinigameEngineTests {
         }
     }
 
+    @Test func digraphStartingMaskBlanksFullGraphemeSpan() {
+        var engine = GateWordPlugMinigameEngine(
+            config: .init(
+                wordCountMin: 1,
+                wordCountMax: 1,
+                letterPosition: .starting,
+                words: [WordCatalog.imagedFallbackEntry(word: "stop", graphemes: ["st", "o", "p"])],
+                graphemes: letters(["st", "o", "p"])
+            ),
+            rng: SeededGenerator(seed: 1)
+        )
+        engine.begin()
+        #expect(engine.slots.count == 1)
+        #expect(engine.slots[0].maskedText == "__op")
+        #expect(engine.slots[0].letter == "st")
+    }
+
+    @Test func digraphEndingMaskBlanksFullGraphemeSpan() {
+        var engine = GateWordPlugMinigameEngine(
+            config: .init(
+                wordCountMin: 1,
+                wordCountMax: 1,
+                letterPosition: .ending,
+                words: [WordCatalog.imagedFallbackEntry(word: "high", graphemes: ["h", "igh"])],
+                graphemes: letters(["h", "igh"])
+            ),
+            rng: SeededGenerator(seed: 1)
+        )
+        engine.begin()
+        #expect(engine.slots.count == 1)
+        #expect(engine.slots[0].maskedText == "h___")
+        #expect(engine.slots[0].letter == "igh")
+    }
+
     @Test func endingModePluggingEverySlotWinsAndAwardsStars() {
         var engine = makeEngine(
             wordCountMin: 3,

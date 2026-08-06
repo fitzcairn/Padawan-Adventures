@@ -22,6 +22,8 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
     var letterPosition: GateWordPlugLetterPosition
     /// Resolved vocabulary (sorted by word). Populated via `resolve(from:)`.
     var words: [GateWord]
+    /// Tier-weighted pool used for word/decoy picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
 
     static let defaultMinWords = 2
     static let defaultMaxWords = 4
@@ -39,28 +41,31 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         minWords: Int = defaultMinWords,
         maxWords: Int = defaultMaxWords,
         letterPosition: GateWordPlugLetterPosition = .ending,
-        words: [GateWord] = []
+        words: [GateWord] = [],
+        vocabulary: LevelVocabularyPool? = nil
     ) {
         self.weight = weight
         self.minWords = minWords
         self.maxWords = maxWords
         self.letterPosition = letterPosition
         self.words = GateWord.normalized(words)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(words: self.words)
     }
 
-    /// Imaged words with ≥2 graphemes whose answer letter is in the pool.
+    /// Imaged words with ≥2 graphemes whose answer grapheme is in the pool.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
         let known = Set(pool.allGraphemes.map(\.grapheme))
-        words = pool.allWords.filter { entry in
+        vocabulary = pool.filteringWords { entry in
             guard entry.graphemes.count >= 2,
                   let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty,
-                  let answer = letterPosition.answerLetter(in: entry.word),
+                  let answer = letterPosition.answerGrapheme(in: entry),
                   known.contains(answer) else {
                 return false
             }
             return true
         }
+        words = GateWord.normalized(vocabulary.allWords)
     }
 
     func validate() throws {
@@ -77,7 +82,7 @@ nonisolated struct PitBridgeConfig: Equatable, Sendable {
         )
         var seen = Set<String>()
         for entry in words {
-            guard entry.word.count >= 2,
+            guard entry.graphemes.count >= 2,
                   let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty,
                   seen.insert(entry.word).inserted else {
@@ -99,6 +104,8 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
     var words: [GateWord]
     /// Resolved grapheme pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
+    /// Tier-weighted pool used for word picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
 
     /// One correct tile plus at least one decoy.
     static let minChoiceCount = 2
@@ -119,19 +126,24 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
         choiceCountMin: Int = 3,
         choiceCountMax: Int = 3,
         words: [GateWord] = [],
-        graphemes: [GateGrapheme] = []
+        graphemes: [GateGrapheme] = [],
+        vocabulary: LevelVocabularyPool? = nil
     ) {
         self.weight = weight
         self.choiceCountMin = choiceCountMin
         self.choiceCountMax = choiceCountMax
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+            words: self.words,
+            graphemes: self.graphemes
+        )
     }
 
     /// Imaged pool words whose graphemes are all in the pool; graphemes = full pool.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
         let known = Set(pool.allGraphemes.map(\.grapheme))
-        words = pool.allWords.filter { entry in
+        vocabulary = pool.filteringWords { entry in
             guard let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty,
                   entry.graphemes.count >= 2,
@@ -140,6 +152,7 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
             }
             return true
         }
+        words = GateWord.normalized(vocabulary.allWords)
         graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
@@ -159,7 +172,7 @@ nonisolated struct PitSoundOutWordConfig: Equatable, Sendable {
         )
         var seen = Set<String>()
         for entry in words {
-            guard entry.word.count >= 2,
+            guard entry.graphemes.count >= 2,
                   let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty,
                   seen.insert(entry.word).inserted else {

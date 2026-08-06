@@ -92,10 +92,10 @@ nonisolated struct CombatDeflectMinigameEngine {
             )
         }
 
-        /// Imaged vocabulary entries that start (or end) with `grapheme`.
+        /// Imaged vocabulary entries whose first (or last) grapheme equals `grapheme`.
         func words(matching grapheme: String) -> [GateWord] {
             words.filter { entry in
-                letterPosition.matches(grapheme: grapheme, in: entry.word)
+                letterPosition.matches(grapheme: grapheme, in: entry)
                     && entry.image.map { !$0.isEmpty } == true
             }
         }

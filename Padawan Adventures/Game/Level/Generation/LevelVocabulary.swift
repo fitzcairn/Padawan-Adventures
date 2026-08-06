@@ -231,6 +231,20 @@ nonisolated struct LevelVocabularyPool: Equatable, Sendable {
 
     nonisolated static let empty = LevelVocabularyPool(tiers: [])
 
+    /// Single-tier pool for tests / configs that only have flat word/grapheme arrays.
+    nonisolated static func singleTier(
+        words: [GateWord] = [],
+        graphemes: [GateGrapheme] = [],
+        order: Int = 1
+    ) -> LevelVocabularyPool {
+        guard !words.isEmpty || !graphemes.isEmpty else { return .empty }
+        return LevelVocabularyPool(
+            tiers: [
+                Tier(order: order, weight: 1, words: words, graphemes: graphemes),
+            ]
+        )
+    }
+
     nonisolated init(tiers: [Tier]) {
         self.tiers = tiers
     }

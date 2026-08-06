@@ -16,6 +16,8 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
     var words: [GateWord]
     /// Resolved letter pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
+    /// Tier-weighted pool used for word picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
@@ -40,6 +42,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         choiceCountMax: Int = 4,
         words: [GateWord],
         graphemes: [GateGrapheme],
+        vocabulary: LevelVocabularyPool? = nil,
         music: String? = nil
     ) {
         self.weight = weight
@@ -48,15 +51,20 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
         self.choiceCountMax = choiceCountMax
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+            words: self.words,
+            graphemes: self.graphemes
+        )
         self.music = music
     }
 
     /// Any pool words whose graphemes are all in the pool; graphemes = full pool.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
         let known = Set(pool.allGraphemes.map(\.grapheme))
-        words = pool.allWords.filter { entry in
+        vocabulary = pool.filteringWords { entry in
             entry.graphemes.allSatisfy { known.contains($0.lowercased()) }
         }
+        words = GateWord.normalized(vocabulary.allWords)
         graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
@@ -108,6 +116,8 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     var fx: SoundEffectTable
     /// Resolved letters (sorted). Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
+    /// Tier-weighted pool used for grapheme picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
@@ -125,6 +135,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         graphemeCountMax: Int = 8,
         fx: SoundEffectTable = SoundEffectTable(),
         graphemes: [GateGrapheme],
+        vocabulary: LevelVocabularyPool? = nil,
         music: String? = nil
     ) {
         self.weight = weight
@@ -132,10 +143,12 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         self.graphemeCountMax = graphemeCountMax
         self.fx = fx
         self.graphemes = Self.normalizedGraphemes(graphemes)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(graphemes: self.graphemes)
         self.music = music
     }
 
     mutating func resolve(from pool: LevelVocabularyPool) throws {
+        vocabulary = pool
         graphemes = Self.normalizedGraphemes(pool.allGraphemes)
     }
 
@@ -170,36 +183,37 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     }
 }
 
-/// Which letter of the word the player must plug in.
+/// Which grapheme of the word the player must plug in.
 nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
     case starting
     case ending
 
-    /// Lowercased answer letter; `nil` for an empty word.
-    func answerLetter(in word: String) -> String? {
+    /// Lowercased answer grapheme; `nil` when the entry has no graphemes.
+    func answerGrapheme(in entry: GateWord) -> String? {
         switch self {
-        case .starting: word.first.map { String($0).lowercased() }
-        case .ending: word.last.map { String($0).lowercased() }
+        case .starting: return entry.graphemes.first
+        case .ending: return entry.graphemes.last
         }
     }
 
-    /// Console mask with the answer letter blanked: `_og` for starting, `do_` for ending.
-    func maskedText(for word: String) -> String {
+    /// Console mask blanking the answer grapheme's full character span:
+    /// `stop` starting → `__op`; `high` ending → `h___`.
+    func maskedText(for entry: GateWord) -> String {
+        guard let answer = answerGrapheme(in: entry) else { return entry.word }
+        let blanks = String(repeating: "_", count: answer.count)
         switch self {
-        case .starting: "_\(word.dropFirst())"
-        case .ending: "\(word.dropLast())_"
+        case .starting: return blanks + entry.word.dropFirst(answer.count)
+        case .ending: return String(entry.word.dropLast(answer.count)) + blanks
         }
     }
 
-    /// True when `word` starts (or ends) with `grapheme`. Unlike `answerLetter(in:)`,
-    /// this handles multi-character graphemes such as `sh`.
-    func matches(grapheme: String, in word: String) -> Bool {
+    /// True when `entry`'s first (or last) grapheme equals `grapheme`.
+    func matches(grapheme: String, in entry: GateWord) -> Bool {
         let key = grapheme.lowercased()
         guard !key.isEmpty else { return false }
-        let subject = word.lowercased()
         switch self {
-        case .starting: return subject.hasPrefix(key)
-        case .ending: return subject.hasSuffix(key)
+        case .starting: return entry.graphemes.first == key
+        case .ending: return entry.graphemes.last == key
         }
     }
 }
@@ -220,6 +234,8 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
     var words: [GateWord]
     /// Resolved letter pool. Populated via `resolve(from:)`.
     var graphemes: [GateGrapheme]
+    /// Tier-weighted pool used for word picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
     /// Per-entry music override; `nil` → use `gate.music`.
     var music: String?
 
@@ -243,6 +259,7 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         fx: SoundEffectTable = SoundEffectTable(),
         words: [GateWord],
         graphemes: [GateGrapheme],
+        vocabulary: LevelVocabularyPool? = nil,
         music: String? = nil
     ) {
         self.weight = weight
@@ -252,22 +269,27 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         self.fx = fx
         self.words = GateWord.normalized(words)
         self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+            words: self.words,
+            graphemes: self.graphemes
+        )
         self.music = music
     }
 
-    /// Imaged words with ≥2 graphemes whose answer letter is in the pool.
+    /// Imaged words with ≥2 graphemes whose answer grapheme is in the pool.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
         let known = Set(pool.allGraphemes.map(\.grapheme))
-        words = pool.allWords.filter { entry in
+        vocabulary = pool.filteringWords { entry in
             guard entry.graphemes.count >= 2,
                   let image = entry.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty,
-                  let answer = letterPosition.answerLetter(in: entry.word),
+                  let answer = letterPosition.answerGrapheme(in: entry),
                   known.contains(answer) else {
                 return false
             }
             return true
         }
+        words = GateWord.normalized(vocabulary.allWords)
         graphemes = GateGraphemeMatchConfig.normalizedGraphemes(pool.allGraphemes)
     }
 
@@ -284,10 +306,10 @@ nonisolated struct GateWordPlugConfig: Equatable, Sendable {
         guard !graphemes.isEmpty else { throw WorldSeedError.invalidGateWordPlugGraphemes }
         let known = Set(graphemes.map(\.grapheme))
         for entry in words {
-            if letterPosition == .ending, entry.word.count < 2 {
+            if letterPosition == .ending, entry.graphemes.count < 2 {
                 throw WorldSeedError.invalidGateWordPlugGraphemes
             }
-            guard let answer = letterPosition.answerLetter(in: entry.word),
+            guard let answer = letterPosition.answerGrapheme(in: entry),
                   known.contains(answer) else {
                 throw WorldSeedError.invalidGateWordPlugGraphemes
             }

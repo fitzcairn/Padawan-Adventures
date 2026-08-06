@@ -82,7 +82,8 @@ final class PitSoundOutWordScene: MinigameScene {
                 choiceCountMin: soundOutConfig.choiceCountMin,
                 choiceCountMax: soundOutConfig.choiceCountMax,
                 words: soundOutConfig.words,
-                graphemes: soundOutConfig.graphemes
+                graphemes: soundOutConfig.graphemes,
+                vocabulary: soundOutConfig.vocabulary
             )
         )
         super.init(size: size)

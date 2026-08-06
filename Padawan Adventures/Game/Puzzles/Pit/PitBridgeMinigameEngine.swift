@@ -13,13 +13,15 @@ nonisolated struct PitBridgeMinigameEngine {
         var maxWords: Int
         var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
+        var vocabulary: LevelVocabularyPool
 
         init(from bridge: PitBridgeConfig) {
             self.init(
                 minWords: bridge.minWords,
                 maxWords: bridge.maxWords,
                 letterPosition: bridge.letterPosition,
-                words: bridge.words
+                words: bridge.words,
+                vocabulary: bridge.vocabulary
             )
         }
 
@@ -27,7 +29,8 @@ nonisolated struct PitBridgeMinigameEngine {
             minWords: Int = 2,
             maxWords: Int = 4,
             letterPosition: GateWordPlugLetterPosition = .ending,
-            words: [GateWord]
+            words: [GateWord],
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             let upper = max(1, maxWords)
             let lower = min(max(1, minWords), upper)
@@ -35,6 +38,26 @@ nonisolated struct PitBridgeMinigameEngine {
             self.maxWords = upper
             self.letterPosition = letterPosition
             self.words = GateWord.normalized(words)
+            if let vocabulary {
+                self.vocabulary = vocabulary
+            } else {
+                // Tests often pass words only; seed decoy graphemes from the alphabet
+                // plus any units already present on those words.
+                var seen = Set<String>()
+                var graphemes: [GateGrapheme] = []
+                for entry in self.words {
+                    for g in entry.graphemes where seen.insert(g).inserted {
+                        graphemes.append(GateGrapheme(grapheme: g, pronunciation: "", name: ""))
+                    }
+                }
+                for letter in PitBridgeMinigameEngine.alphabet where seen.insert(letter).inserted {
+                    graphemes.append(GateGrapheme(grapheme: letter, pronunciation: "", name: ""))
+                }
+                self.vocabulary = LevelVocabularyPool.singleTier(
+                    words: self.words,
+                    graphemes: graphemes
+                )
+            }
         }
     }
 
@@ -83,15 +106,16 @@ nonisolated struct PitBridgeMinigameEngine {
         currentEntry?.sfx ?? ""
     }
 
-    /// First or last letter of the current word, per `config.letterPosition` — the answer.
+    /// First or last grapheme of the current word, per `config.letterPosition` — the answer.
     var currentAnswer: String {
-        config.letterPosition.answerLetter(in: currentWord) ?? ""
+        guard let entry = currentEntry else { return "" }
+        return config.letterPosition.answerGrapheme(in: entry) ?? ""
     }
 
-    /// Current word with the answer letter replaced by `_` (`ca_` for car, `_og` for dog).
+    /// Current word with the answer grapheme blanked (`ca_` for can, `__op` for stop/starting).
     var maskedPromptText: String {
-        guard !currentWord.isEmpty else { return "" }
-        return config.letterPosition.maskedText(for: currentWord)
+        guard let entry = currentEntry else { return "" }
+        return config.letterPosition.maskedText(for: entry)
     }
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
@@ -106,15 +130,16 @@ nonisolated struct PitBridgeMinigameEngine {
         roundIndex = 0
         choices = []
 
-        guard !config.words.isEmpty else {
+        let poolSize = max(config.vocabulary.allWords.count, config.words.count)
+        guard poolSize > 0 else {
             words = []
             return
         }
 
-        let upper = min(config.maxWords, config.words.count)
+        let upper = min(config.maxWords, poolSize)
         let lower = min(max(1, config.minWords), upper)
         let n = Int.random(in: lower...upper, using: &rng)
-        words = Array(config.words.shuffled(using: &rng).prefix(n))
+        words = config.vocabulary.pickWords(count: n, using: &rng)
         choices = makeChoices(for: currentAnswer)
     }
 
@@ -145,6 +170,15 @@ nonisolated struct PitBridgeMinigameEngine {
     private mutating func makeChoices(for answer: String) -> [Choice] {
         guard !answer.isEmpty else { return [] }
         var letters = [answer]
+        let decoys = config.vocabulary
+            .filteringGraphemes { $0.grapheme != answer.lowercased() }
+            .pickGraphemes(count: Self.choiceCount - 1, using: &rng)
+            .map(\.grapheme)
+        for decoy in decoys where !letters.contains(decoy) {
+            letters.append(decoy)
+            if letters.count >= Self.choiceCount { break }
+        }
+        // Sparse test pools may still need filler letters.
         while letters.count < Self.choiceCount {
             let index = Int.random(in: 0..<Self.alphabet.count, using: &rng)
             let candidate = Self.alphabet[index]

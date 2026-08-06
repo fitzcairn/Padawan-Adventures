@@ -95,6 +95,34 @@ struct PitBridgeMinigameEngineTests {
         #expect(engine.choices.first(where: \.isCorrect)?.letter == "d")
     }
 
+    @Test func digraphStartingMaskBlanksFullGraphemeSpan() {
+        let stop = WordCatalog.imagedFallbackEntry(word: "stop", graphemes: ["st", "o", "p"])
+        let engine = makeEngine(
+            minWords: 1,
+            maxWords: 1,
+            letterPosition: .starting,
+            words: [stop],
+            seed: 1
+        )
+        #expect(engine.currentAnswer == "st")
+        #expect(engine.maskedPromptText == "__op")
+        #expect(engine.choices.first(where: \.isCorrect)?.letter == "st")
+    }
+
+    @Test func digraphEndingMaskBlanksFullGraphemeSpan() {
+        let high = WordCatalog.imagedFallbackEntry(word: "high", graphemes: ["h", "igh"])
+        let engine = makeEngine(
+            minWords: 1,
+            maxWords: 1,
+            letterPosition: .ending,
+            words: [high],
+            seed: 1
+        )
+        #expect(engine.currentAnswer == "igh")
+        #expect(engine.maskedPromptText == "h___")
+        #expect(engine.choices.first(where: \.isCorrect)?.letter == "igh")
+    }
+
     @Test func startingModeMasksFirstLetterAcrossPool() {
         for seed in UInt64(1)...UInt64(40) {
             let engine = makeEngine(

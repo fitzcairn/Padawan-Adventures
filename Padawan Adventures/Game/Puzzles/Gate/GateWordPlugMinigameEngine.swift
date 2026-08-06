@@ -18,6 +18,7 @@ nonisolated struct GateWordPlugMinigameEngine {
         var letterPosition: GateWordPlugLetterPosition
         var words: [GateWord]
         var graphemes: [GateGrapheme]
+        var vocabulary: LevelVocabularyPool
 
         init(from puzzle: GateWordPlugConfig) {
             wordCountMin = puzzle.wordCountMin
@@ -25,6 +26,7 @@ nonisolated struct GateWordPlugMinigameEngine {
             letterPosition = puzzle.letterPosition
             words = puzzle.words
             graphemes = puzzle.graphemes
+            vocabulary = puzzle.vocabulary
         }
 
         init(
@@ -32,13 +34,18 @@ nonisolated struct GateWordPlugMinigameEngine {
             wordCountMax: Int = 6,
             letterPosition: GateWordPlugLetterPosition = .starting,
             words: [GateWord],
-            graphemes: [GateGrapheme]
+            graphemes: [GateGrapheme],
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             self.wordCountMin = wordCountMin
             self.wordCountMax = wordCountMax
             self.letterPosition = letterPosition
             self.words = GateWord.normalized(words)
             self.graphemes = GateGraphemeMatchConfig.normalizedGraphemes(graphemes)
+            self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+                words: self.words,
+                graphemes: self.graphemes
+            )
         }
     }
 
@@ -99,27 +106,23 @@ nonisolated struct GateWordPlugMinigameEngine {
         outcome = nil
         plugged = [:]
 
-        // Every word is eligible; the round size comes from the configured min/max.
-        var pool = config.words
-        pool.sort { $0.word < $1.word }
-
+        let poolSize = max(config.vocabulary.allWords.count, config.words.count)
         let count = Self.sampleWordCount(
             minimum: config.wordCountMin,
             maximum: config.wordCountMax,
-            poolSize: pool.count,
+            poolSize: poolSize,
             rng: &rng
         )
-        pool.shuffle(using: &rng)
-        let chosen = Array(pool.prefix(count))
+        let chosen = config.vocabulary.pickWords(count: count, using: &rng)
 
         slots = chosen.map { entry in
             WordSlot(
                 id: UUID(),
                 word: entry.word,
                 imageName: entry.image,
-                maskedText: config.letterPosition.maskedText(for: entry.word),
+                maskedText: config.letterPosition.maskedText(for: entry),
                 wordTrackID: entry.sfx,
-                letter: config.letterPosition.answerLetter(in: entry.word) ?? ""
+                letter: config.letterPosition.answerGrapheme(in: entry) ?? ""
             )
         }
 

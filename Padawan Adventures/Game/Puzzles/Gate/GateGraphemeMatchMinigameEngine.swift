@@ -15,17 +15,20 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         var graphemeCountMin: Int
         var graphemeCountMax: Int
         var graphemes: [GateGrapheme]
+        var vocabulary: LevelVocabularyPool
 
         init(from puzzle: GateGraphemeMatchConfig) {
             graphemeCountMin = puzzle.graphemeCountMin
             graphemeCountMax = puzzle.graphemeCountMax
             graphemes = puzzle.graphemes
+            vocabulary = puzzle.vocabulary
         }
 
         init(
             graphemeCountMin: Int = 4,
             graphemeCountMax: Int = 8,
-            graphemes: [GateGrapheme]
+            graphemes: [GateGrapheme],
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             self.graphemeCountMin = graphemeCountMin
             self.graphemeCountMax = graphemeCountMax
@@ -36,6 +39,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
                     name: $0.name
                 )
             }
+            self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(graphemes: self.graphemes)
         }
     }
 
@@ -121,18 +125,16 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
     }
 
     private mutating func pickRoundLetters() -> [LetterToken] {
-        let pool = config.graphemes
-        guard !pool.isEmpty else { return [] }
+        let poolSize = max(config.vocabulary.allGraphemes.count, config.graphemes.count)
+        guard poolSize > 0 else { return [] }
 
         let count = Self.sampleLetterCount(
             minimum: config.graphemeCountMin,
             maximum: config.graphemeCountMax,
-            poolSize: pool.count,
+            poolSize: poolSize,
             rng: &rng
         )
-        var shuffled = pool
-        shuffled.shuffle(using: &rng)
-        return shuffled.prefix(count).map { entry in
+        return config.vocabulary.pickGraphemes(count: count, using: &rng).map { entry in
             LetterToken(
                 id: UUID(),
                 letter: entry.grapheme.lowercased(),
