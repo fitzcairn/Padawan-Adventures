@@ -58,6 +58,7 @@ python3 Tools/Record/serve.py --check    # inventory summary only
 | --- | --- |
 | ↑ / ↓ | Select previous / next visible row |
 | Space (hold) | Start / stop recording |
+| B | Play the take (or saved clip if none) |
 | Enter | Play the saved clip |
 | ⌘S / Ctrl+S | Save the current take |
 
@@ -95,13 +96,12 @@ Real recordings made through this tool overwrite the beeps.
 
 ## Cleanup pipeline
 
-Browser-side, before save:
+Browser-side, before save — **trims only**; the spoken word is left unprocessed so tone
+adjustments can be layered back in later:
 
-1. DC-offset removal
-2. Zero-phase 80 Hz high-pass
-3. STFT spectral subtraction (noise profile from 500 ms *before* the press)
-4. Trim leading and trailing blank time (RMS gate + sample-accurate edges, ~8 ms pad)
-5. 12 ms raised-cosine fades
-6. Peak normalize to ≈ −1 dBFS
+1. Fixed edge guards (~85 ms after press, ~100 ms before release) for Space key travel
+2. Smart leftover click removal (amplitude + high-frequency burst detection)
+3. Trim leading/trailing blank time using the pre-press noise floor (tight ~6 ms lead pad)
+4. Tiny 8 ms edge fades (avoid cut discontinuities only)
 
-Mic browser processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) is disabled so this pipeline owns the result.
+Mic browser processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) is disabled.

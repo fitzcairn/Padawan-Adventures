@@ -9,8 +9,14 @@ const IDB_VERSION = 1;
 const IDB_STORE = "takes";
 
 const NOISE_MS = 500;
-const PRE_ROLL_MS = 150;
-const POST_ROLL_MS = 200;
+/**
+ * Pre-roll used to prepend silence (and place the key-down click mid-buffer).
+ * Keep the ring for noise profiling only; assemble takes without pre-roll so
+ * leading silence trim and press-click guards start at the hold edge.
+ */
+const PRE_ROLL_MS = 0;
+/** Don't keep recording after release — that was capturing the Space key-up click. */
+const POST_ROLL_MS = 0;
 const MIN_HOLD_MS = 120;
 
 const state = {
@@ -27,6 +33,8 @@ const state = {
 let audioCtx = null;
 let mediaStream = null;
 let workletNode = null;
+/** In-flight ensureMic() so warm + record don't race two AudioContexts. */
+let micReady = null;
 let ring = null;
 let ringWrite = 0;
 let ringFilled = false;
@@ -95,8 +103,22 @@ function setMicStatus(text, dataState) {
 
 async function ensureMic() {
   if (audioCtx && workletNode) return;
+  if (micReady) {
+    await micReady;
+    return;
+  }
+  micReady = openMic();
+  try {
+    await micReady;
+  } catch (err) {
+    micReady = null;
+    throw err;
+  }
+}
+
+async function openMic() {
   setMicStatus("Mic: requesting…", "idle");
-  mediaStream = await navigator.mediaDevices.getUserMedia({
+  const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: false,
       noiseSuppression: false,
@@ -104,22 +126,25 @@ async function ensureMic() {
       channelCount: 1,
     },
   });
-  audioCtx = new AudioContext();
-  await audioCtx.audioWorklet.addModule("recorder-worklet.js");
-  const source = audioCtx.createMediaStreamSource(mediaStream);
-  workletNode = new AudioWorkletNode(audioCtx, "recorder-processor");
+  // Keep the context in a local so a concurrent ensureMic cannot swap
+  // audioCtx between addModule and AudioWorkletNode construction.
+  const ctx = new AudioContext();
+  const workletUrl = new URL("recorder-worklet.js", window.location.href).href;
+  await ctx.audioWorklet.addModule(workletUrl);
+  const source = ctx.createMediaStreamSource(stream);
+  const node = new AudioWorkletNode(ctx, "recorder-processor");
   // Keep the graph alive without audible monitoring.
-  const mute = audioCtx.createGain();
+  const mute = ctx.createGain();
   mute.gain.value = 0;
-  source.connect(workletNode);
-  workletNode.connect(mute);
-  mute.connect(audioCtx.destination);
+  source.connect(node);
+  node.connect(mute);
+  mute.connect(ctx.destination);
 
-  ring = new Float32Array(audioCtx.sampleRate);
+  ring = new Float32Array(ctx.sampleRate);
   ringWrite = 0;
   ringFilled = false;
 
-  workletNode.port.onmessage = (ev) => {
+  node.port.onmessage = (ev) => {
     const chunk = ev.data;
     if (!(chunk instanceof Float32Array)) return;
     writeRing(chunk);
@@ -128,6 +153,9 @@ async function ensureMic() {
     }
   };
 
+  mediaStream = stream;
+  audioCtx = ctx;
+  workletNode = node;
   setMicStatus("Mic: ready", "ready");
 }
 
@@ -195,7 +223,7 @@ async function startRecording(rowId) {
   }
 
   noiseSnapshot = snapshotRing(NOISE_MS);
-  preRollSnapshot = snapshotRing(PRE_ROLL_MS);
+  preRollSnapshot = PRE_ROLL_MS > 0 ? snapshotRing(PRE_ROLL_MS) : new Float32Array(0);
   takeChunks = [];
   recording = true;
   pressStartedAt = performance.now();
@@ -206,19 +234,20 @@ async function startRecording(rowId) {
 }
 
 function stopRecording() {
-  // Already in the post-roll window, or not recording at all.
+  // Already finishing, or not recording at all.
   if (!recording || stopTimer) return;
   const rowId = state.recordingId;
   const heldMs = performance.now() - pressStartedAt;
   const chunksRef = takeChunks;
   const noise = noiseSnapshot;
   const pre = preRollSnapshot;
+  // Stop appending immediately so the Space/mouse release click isn't captured
+  // in a post-roll window.
+  recording = false;
+  takeChunks = null;
   setMicStatus("Mic: ready", "ready");
 
-  // Keep `recording` true so the worklet continues appending for post-roll.
-  stopTimer = setTimeout(async () => {
-    recording = false;
-    takeChunks = null;
+  const finish = async () => {
     state.recordingId = null;
     renderSelectionClasses();
     stopTimer = null;
@@ -231,7 +260,8 @@ function stopRecording() {
 
     setStatus(rowId, "cleaning…", "busy");
     try {
-      const assembled = concatFloat32([pre, ...chunksRef]);
+      const parts = pre && pre.length ? [pre, ...chunksRef] : chunksRef;
+      const assembled = concatFloat32(parts);
       const { samples, tooQuiet } = cleanup(assembled, noise, audioCtx.sampleRate);
       if (tooQuiet) {
         setStatus(rowId, "too quiet", "warn");
@@ -251,7 +281,13 @@ function stopRecording() {
     } catch (err) {
       setStatus(rowId, `error: ${err.message || err}`, "error");
     }
-  }, POST_ROLL_MS);
+  };
+
+  if (POST_ROLL_MS > 0) {
+    stopTimer = setTimeout(finish, POST_ROLL_MS);
+  } else {
+    stopTimer = setTimeout(finish, 0);
+  }
 }
 
 function forceStopRecording() {
@@ -611,6 +647,14 @@ function wireEvents() {
           setStatus(state.selectedId, `error: ${err.message || err}`, "error")
         );
       }
+      return;
+    }
+    if (e.code === "KeyB" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      if (!state.selectedId) return;
+      const id = state.selectedId;
+      const play = state.takes.has(id) ? playTake(id) : playCurrentClip(id);
+      play.catch((err) => setStatus(id, `error: ${err.message || err}`, "error"));
       return;
     }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
