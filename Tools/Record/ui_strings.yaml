@@ -1,0 +1,131 @@
+# UI strings for voice-over recording (Tools/Record).
+# Flat list: each entry is id / text / context (context <= 10 words).
+# Accessibility-only labels and the numeric keypad are omitted.
+# Interpolated strings use their static spoken form.
+
+- id: menu_continue
+  text: "CONTINUE"
+  context: "Main menu button resuming saved progress"
+- id: menu_new_game
+  text: "NEW GAME"
+  context: "Main menu button starting a new game"
+- id: menu_settings
+  text: "SETTINGS"
+  context: "Main menu button opening settings"
+- id: menu_quit
+  text: "QUIT"
+  context: "Main menu button quitting the app"
+- id: menu_welcome
+  text: "Welcome"
+  context: "Main menu greeting without a player"
+- id: loading_loading
+  text: "Loading..."
+  context: "Loading screen status while bootstrapping"
+- id: loading_tap_to_start
+  text: "Tap to start"
+  context: "Loading screen status when ready"
+- id: preparing_takeoff
+  text: "PREPARING FOR TAKEOFF..."
+  context: "Preparing screen status during world load"
+- id: preparing_error_title
+  text: "COULD NOT LOAD ENEMIES"
+  context: "Preparing screen error title"
+- id: preparing_error_body
+  text: "Sprite sheets failed to load. Try again from level select."
+  context: "Preparing screen error body"
+- id: button_back
+  text: "Back"
+  context: "Shared back button on several screens"
+- id: button_cancel
+  text: "Cancel"
+  context: "Shared cancel button in alerts"
+- id: button_ok
+  text: "OK"
+  context: "Shared confirm button in alerts"
+- id: button_delete
+  text: "Delete"
+  context: "Destructive delete confirmation button"
+- id: button_new
+  text: "New"
+  context: "Create-player button on player select"
+- id: player_select_title
+  text: "Select Player"
+  context: "Player select screen title"
+- id: player_select_empty
+  text: "No players yet. Tap New to create one."
+  context: "Empty player list message"
+- id: player_new_title
+  text: "New Player"
+  context: "New-player alert title"
+- id: player_new_message
+  text: "Enter a unique player name."
+  context: "New-player alert message"
+- id: player_name_placeholder
+  text: "Player name"
+  context: "New-player text field placeholder"
+- id: player_delete_title
+  text: "Delete Player"
+  context: "Delete confirmation alert title"
+- id: player_delete_message
+  text: "Delete this player and all saved progress? This cannot be undone."
+  context: "Delete confirmation alert message"
+- id: player_name_taken_title
+  text: "Name Already Taken"
+  context: "Duplicate-name alert title"
+- id: player_name_taken_message
+  text: "Player names must be unique. Choose a different name."
+  context: "Duplicate-name alert message"
+- id: selfie_title
+  text: "Smile!"
+  context: "Selfie screen title"
+- id: selfie_capture
+  text: "Click!"
+  context: "Selfie capture button"
+- id: selfie_camera_unavailable
+  text: "Camera unavailable"
+  context: "Selfie camera error message"
+- id: settings_title
+  text: "Settings"
+  context: "Settings screen title"
+- id: settings_sound_effects
+  text: "Sound Effects"
+  context: "Settings volume row label"
+- id: settings_music
+  text: "Music"
+  context: "Settings music checkbox label"
+- id: cutscene_tap_to_skip
+  text: "Tap to Skip"
+  context: "Cutscene skip hint overlay"
+- id: level_locked
+  text: "Complete the current level first!"
+  context: "Locked-planet message overlay"
+- id: dad_mode_unlocked
+  text: "Dad mode unlocked!"
+  context: "Dad mode success overlay"
+- id: dad_mode_enter_password
+  text: "Enter password"
+  context: "Dad mode password screen title"
+- id: dad_mode_incorrect
+  text: "incorrect"
+  context: "Wrong-password feedback"
+- id: level_detail_try_again
+  text: "Try again?"
+  context: "Level detail start button"
+- id: level_detail_no_thanks
+  text: "No thanks!"
+  context: "Level detail dismiss button"
+- id: level_detail_highest_score
+  text: "Your highest score"
+  context: "Level detail highest-score row"
+- id: you_win
+  text: "You win!"
+  context: "Level-complete overlay title"
+- id: you_win_new_high_score
+  text: "New high score!"
+  context: "Level-complete high-score line"
+- id: defeated
+  text: "Defeated"
+  context: "Death or defeat overlay"
+- id: minigame_coins_won
+  text: "You won some coins!"
+  context: "Minigame win overlay"

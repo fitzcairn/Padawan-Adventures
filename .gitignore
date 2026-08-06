@@ -66,6 +66,11 @@ fastlane/test_output
 # Floor bake contact sheets (not bundled)
 scripts/out/
 
+# Audio recorder backups (Tools/Record)
+Tools/Record/backups/*
+!Tools/Record/backups/.gitkeep
+
+
 # Raw cutscene media (too large for git)
 Art/Cutscene/
 *.mov

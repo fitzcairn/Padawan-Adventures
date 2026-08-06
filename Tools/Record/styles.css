@@ -1,0 +1,238 @@
+:root {
+  --bg: #12141a;
+  --panel: #1c2030;
+  --text: #e8ecf4;
+  --muted: #9aa3b5;
+  --border: #2c3348;
+  --accent: #6ea8fe;
+  --selected: #243356;
+  --recording: #5a1a1a;
+  --recording-border: #ff4d4d;
+  --ok: #3dd68c;
+  --warn: #f0c14b;
+  --danger: #ff6b6b;
+  --row-hover: #22283a;
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(18, 20, 26, 0.96);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.toolbar h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.toolbar .check,
+.toolbar .filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.toolbar input[type="search"] {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  min-width: 12rem;
+}
+
+.toolbar .hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.mic-status {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.mic-status[data-state="ready"] {
+  color: var(--ok);
+  border-color: rgba(61, 214, 140, 0.4);
+}
+
+.mic-status[data-state="error"] {
+  color: var(--danger);
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
+.mic-status[data-state="recording"] {
+  color: var(--danger);
+  border-color: var(--recording-border);
+}
+
+main {
+  padding: 0 1rem 3rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+thead th {
+  position: sticky;
+  top: 3.6rem;
+  z-index: 5;
+  background: #161925;
+  text-align: left;
+  padding: 0.65rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+tbody tr.group-header td {
+  background: #171b28;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  padding: 0.7rem 0.55rem 0.45rem;
+  border-top: 1px solid var(--border);
+}
+
+tbody tr.row td {
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid rgba(44, 51, 72, 0.65);
+  vertical-align: middle;
+}
+
+tbody tr.row:hover {
+  background: var(--row-hover);
+}
+
+tbody tr.row.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--selected);
+}
+
+tbody tr.row.recording {
+  background: var(--recording);
+  outline: 2px solid var(--recording-border);
+  outline-offset: -2px;
+  animation: pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    box-shadow: inset 0 0 0 0 rgba(255, 77, 77, 0.15);
+  }
+  to {
+    box-shadow: inset 0 0 0 3px rgba(255, 77, 77, 0.35);
+  }
+}
+
+.text-cell {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.context-cell {
+  color: var(--muted);
+  max-width: 18rem;
+}
+
+.status-cell {
+  color: var(--muted);
+  min-width: 6.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-cell[data-kind="ok"] {
+  color: var(--ok);
+}
+
+.status-cell[data-kind="warn"] {
+  color: var(--warn);
+}
+
+.status-cell[data-kind="error"] {
+  color: var(--danger);
+}
+
+.status-cell[data-kind="busy"] {
+  color: var(--accent);
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button.record {
+  min-width: 5.5rem;
+  background: #3a1c1c;
+  border-color: #7a3030;
+}
+
+button.record:hover:not(:disabled) {
+  border-color: var(--recording-border);
+}
+
+button.record.active {
+  background: #7a1f1f;
+  border-color: var(--recording-border);
+  color: #fff;
+}
+
+.mtime {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

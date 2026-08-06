@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Padawan Adventures — Audio Recorder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <h1>Audio Recorder</h1>
+      <label class="check">
+        <input type="checkbox" id="autosave" />
+        Autosave on record
+      </label>
+      <label class="filter">
+        Filter
+        <input type="search" id="filter" placeholder="word, letter, UI…" autocomplete="off" />
+      </label>
+      <label class="check">
+        <input type="checkbox" id="unrecorded" />
+        Unrecorded only
+      </label>
+      <span id="mic-status" class="mic-status" data-state="idle">Mic: not started</span>
+      <span class="hint">↑↓ select · Space hold to record · Enter play · ⌘S save</span>
+    </header>
+
+    <main>
+      <table id="table">
+        <thead>
+          <tr>
+            <th>Text</th>
+            <th>Context</th>
+            <th>Current clip</th>
+            <th>Last updated</th>
+            <th>Record</th>
+            <th>Play recording</th>
+            <th>Save</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

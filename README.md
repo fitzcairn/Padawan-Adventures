@@ -26,3 +26,14 @@ python3 scripts/bake_sprites.py --verify # fail if sources drifted
 python3 scripts/bake_floor_sets.py       # floor tiles (also via bake_sprites.py --floors)
 python3 scripts/score_floor_sets.py      # cohesion gates + synthetic room renders
 ```
+
+## Audio recording
+
+Record voice-over for words, letters, graphemes, and UI strings with the local web tool:
+
+```bash
+./Tools/Record/record.sh                 # opens http://127.0.0.1:8765 (or next free port)
+python3 Tools/Record/serve.py --check    # inventory summary only
+```
+
+See [Tools/Record/README.md](Tools/Record/README.md) for keyboard shortcuts, cleanup details, and how UI clips sync into `Resources/Config/audio.yaml`.
