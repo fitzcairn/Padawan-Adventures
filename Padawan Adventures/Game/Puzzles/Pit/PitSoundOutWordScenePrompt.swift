@@ -128,6 +128,10 @@ extension PitSoundOutWordScene {
                 fontSize: fontSize,
                 disablesInteraction: true
             )
+            // Center alignment boxes each glyph on its own bounds; baseline keeps the word level.
+            for case let label as SKLabelNode in node.children {
+                label.verticalAlignmentMode = .baseline
+            }
             node.name = "promptLetter:\(index)"
             let width = max(node.calculateAccumulatedFrame().width, fontSize * 0.4)
             nodes.append(node)
