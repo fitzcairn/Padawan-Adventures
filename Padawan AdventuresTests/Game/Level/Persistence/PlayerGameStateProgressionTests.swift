@@ -80,4 +80,16 @@ struct PlayerGameStateProgressionTests {
         #expect(keys.count == 10)
         #expect(Set(keys).count == keys.count)
     }
+
+    @Test func everyMinigameKindHasDistinctInstructionsStringID() {
+        let keys = PitMinigameKind.allCases.map(\.rawValue)
+            + GateMinigameKind.allCases.map(\.rawValue)
+            + CombatMinigameKind.allCases.map(\.rawValue)
+        let stringIDs = keys.map { MinigameInstructionsView.bodyStringID(forKindRawValue: $0) }
+        #expect(Set(stringIDs).count == stringIDs.count)
+        for id in stringIDs {
+            #expect(id.hasPrefix("minigame_instructions_"))
+            #expect(!id.contains("-"))
+        }
+    }
 }

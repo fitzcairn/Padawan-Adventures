@@ -23,6 +23,7 @@ final class GameEncounterCoordinator {
         music: MusicCue,
         memoryLabel: String,
         showInstructions: Bool,
+        instructionsKey: String,
         onInstructionsAcknowledged: @escaping () -> Void,
         @ViewBuilder makeView: @escaping (_ finish: @escaping (MinigameOutcome) -> Void) -> Content,
         onOutcome: @escaping (_ outcome: MinigameOutcome?, _ returnToWorld: OverlayReturn) -> Void
@@ -42,6 +43,7 @@ final class GameEncounterCoordinator {
                     AnyView(
                         MinigameInstructionsGate(
                             needsInstructions: showInstructions,
+                            instructionsKey: instructionsKey,
                             onAcknowledged: onInstructionsAcknowledged
                         ) {
                             makeView { outcome in

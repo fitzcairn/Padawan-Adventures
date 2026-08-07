@@ -58,7 +58,7 @@ struct LevelConfigSnapshotTests {
         #expect(level.combat.minigames.map(\.kind) == [
             .slash, .startingSoundDeflect, .endingSoundDeflect,
         ])
-        #expect(level.combat.minigames.map(\.weight) == [0.5, 0.5, 0])
+        #expect(level.combat.minigames.map(\.weight) == [0, 0.5, 0.5])
         guard case .slash(let slash) = level.combat.minigames[0] else {
             Issue.record("expected slash combat entry")
             return
@@ -106,7 +106,7 @@ struct LevelConfigSnapshotTests {
         #expect(endingSound.words.map(\.word) == Self.level1Words)
 
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
-        #expect(level.pit.minigames.map(\.weight) == [1, 0, 0])
+        #expect(level.pit.minigames.map(\.weight) == [0, 1, 0])
         guard case .soundOutWord(let soundOut) = level.pit.minigames[0] else {
             Issue.record("expected pit sound-out-word entry")
             return

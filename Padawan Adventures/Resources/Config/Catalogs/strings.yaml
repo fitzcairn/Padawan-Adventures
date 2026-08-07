@@ -192,10 +192,46 @@ strings:
     spoken: "You won some coins!"
     sfx: sfx_ui_minigame_coins_won
     context: "Minigame win overlay"
-  minigame_instructions_body:
+  minigame_instructions_sound_out_word_pit:
     text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_body
-    context: "First-encounter minigame instructions placeholder body"
+    sfx: sfx_ui_minigame_instructions_sound_out_word_pit
+    context: "First-encounter instructions for sound-out-word-pit"
+  minigame_instructions_ending_sound_pit:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_ending_sound_pit
+    context: "First-encounter instructions for ending-sound-pit"
+  minigame_instructions_starting_sound_pit:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_starting_sound_pit
+    context: "First-encounter instructions for starting-sound-pit"
+  minigame_instructions_sound_out_word_gate:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_sound_out_word_gate
+    context: "First-encounter instructions for sound-out-word-gate"
+  minigame_instructions_grapheme_sound_gate:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_grapheme_sound_gate
+    context: "First-encounter instructions for grapheme-sound-gate"
+  minigame_instructions_starting_sound_gate:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_starting_sound_gate
+    context: "First-encounter instructions for starting-sound-gate"
+  minigame_instructions_ending_sound_gate:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_ending_sound_gate
+    context: "First-encounter instructions for ending-sound-gate"
+  minigame_instructions_grapheme_sound_combat:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_grapheme_sound_combat
+    context: "First-encounter instructions for grapheme-sound-combat"
+  minigame_instructions_starting_sound_combat:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_starting_sound_combat
+    context: "First-encounter instructions for starting-sound-combat"
+  minigame_instructions_ending_sound_combat:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_ending_sound_combat
+    context: "First-encounter instructions for ending-sound-combat"
   minigame_instructions_continue:
     text: "Tap to continue"
     sfx: sfx_ui_minigame_instructions_continue

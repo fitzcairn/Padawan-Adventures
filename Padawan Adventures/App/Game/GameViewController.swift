@@ -267,6 +267,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
             showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
             },
@@ -414,6 +415,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
             showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
             },
@@ -537,6 +539,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
             showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
             },
