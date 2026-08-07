@@ -109,11 +109,11 @@ pit:
   fx: { jump: pit-jump }
   minigames:
     - type: sound-out-word-pit
-      weight: 1.0
+      weight: 0.0
       min_choice_count: 3
       max_choice_count: 3
     - type: ending-sound-pit
-      weight: 0.0
+      weight: 1.0
       min_word_count: 3
       max_word_count: 5
     - type: starting-sound-pit

@@ -262,9 +262,14 @@ final class GameViewController: LandscapeHostingController {
             """
         )
 
+        let instructionsKey = chosenMinigame.kind.rawValue
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
+            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            onInstructionsAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
             makeView: { finish in
                 CombatMinigameFactory.makeView(
                     config: chosenMinigame,
@@ -404,9 +409,14 @@ final class GameViewController: LandscapeHostingController {
         let playerFx = session.playerConfig.fx
         let hudConfig = cachedHudConfig
 
+        let instructionsKey = chosenMinigame.kind.rawValue
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
+            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            onInstructionsAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
             makeView: { finish in
                 PitMinigameFactory.makeView(
                     config: chosenMinigame,
@@ -522,9 +532,14 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = cachedHudConfig
 
         let musicName = chosen.music ?? session.selectedGateConfig.music
+        let instructionsKey = chosen.kind.rawValue
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
+            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
+            onInstructionsAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
             makeView: { finish in
                 GateMinigameFactory.makeView(
                     config: chosen,

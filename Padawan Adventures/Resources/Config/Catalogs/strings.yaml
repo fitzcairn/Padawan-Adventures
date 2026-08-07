@@ -192,6 +192,14 @@ strings:
     spoken: "You won some coins!"
     sfx: sfx_ui_minigame_coins_won
     context: "Minigame win overlay"
+  minigame_instructions_body:
+    text: "Instructions go here"
+    sfx: sfx_ui_minigame_instructions_body
+    context: "First-encounter minigame instructions placeholder body"
+  minigame_instructions_continue:
+    text: "Tap to continue"
+    sfx: sfx_ui_minigame_instructions_continue
+    context: "First-encounter minigame instructions continue hint"
   defeated:
     text: "Defeated"
     sfx: sfx_ui_defeated

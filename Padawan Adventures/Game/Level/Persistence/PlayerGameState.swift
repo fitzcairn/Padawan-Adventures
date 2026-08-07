@@ -170,6 +170,9 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var settings: PlayerSettings
     /// One-shot Dad mode unlock; cleared after a level tap or new game.
     var dadModeUnlocked: Bool
+    /// Minigame `kind` raw values (e.g. "ending-sound-pit") whose instructions
+    /// screen has already been shown. Cleared by `resetForNewGame`.
+    var seenMinigameInstructions: Set<String>
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -181,7 +184,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         stats: PlayerStats = PlayerStats(),
         totalStars: Int = 0,
         settings: PlayerSettings = .default,
-        dadModeUnlocked: Bool = false
+        dadModeUnlocked: Bool = false,
+        seenMinigameInstructions: Set<String> = []
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -193,6 +197,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.totalStars = totalStars
         self.settings = settings
         self.dadModeUnlocked = dadModeUnlocked
+        self.seenMinigameInstructions = seenMinigameInstructions
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -206,6 +211,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case totalStars
         case settings
         case dadModeUnlocked
+        case seenMinigameInstructions
     }
 
     init(from decoder: Decoder) throws {
@@ -220,6 +226,9 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         totalStars = try container.decodeIfPresent(Int.self, forKey: .totalStars) ?? 0
         settings = try container.decodeIfPresent(PlayerSettings.self, forKey: .settings) ?? .default
         dadModeUnlocked = try container.decodeIfPresent(Bool.self, forKey: .dadModeUnlocked) ?? false
+        seenMinigameInstructions = try container.decodeIfPresent(
+            Set<String>.self, forKey: .seenMinigameInstructions
+        ) ?? []
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -284,6 +293,16 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.energy = energy
     }
 
+    func hasSeenMinigameInstructions(_ key: String) -> Bool {
+        seenMinigameInstructions.contains(key)
+    }
+
+    /// Records `key` as seen. Returns false when it was already recorded.
+    @discardableResult
+    mutating func markMinigameInstructionsSeen(_ key: String) -> Bool {
+        seenMinigameInstructions.insert(key).inserted
+    }
+
     /// Clears run progress for a fresh game (inventory, stars, level flags) and restores starting vitals.
     mutating func resetForNewGame(health: Int, energy: Int) {
         lastLevelStarted = nil
@@ -291,6 +310,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         inventory = PlayerInventory()
         totalStars = 0
         dadModeUnlocked = false
+        seenMinigameInstructions = []
         resetVitals(health: health, energy: energy)
     }
 

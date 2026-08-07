@@ -67,6 +67,17 @@ extension AppSession {
         return true
     }
 
+    func hasSeenMinigameInstructions(_ key: String) -> Bool {
+        playerState?.hasSeenMinigameInstructions(key) ?? false
+    }
+
+    func markMinigameInstructionsSeen(_ key: String) async {
+        guard var state = playerState,
+              state.markMinigameInstructionsSeen(key) else { return }
+        playerState = state
+        await persistPlayerState()
+    }
+
     /// Grants artifacts / completion for all catalog levels before `resourceName`, clears Dad mode, persists.
     func applyDadModeProgression(to resourceName: String) async {
         guard var state = playerState else { return }

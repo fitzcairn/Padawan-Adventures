@@ -76,6 +76,8 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "you_win": "You win!",
         "you_win_high_score": "New high score: {score}!",
         "minigame_coins_won": "You won {coins} coins!",
+        "minigame_instructions_body": "Instructions go here",
+        "minigame_instructions_continue": "Tap to continue",
         "defeated": "Defeated",
         "hud_flee": "Flee the planet!",
         "hud_leave": "Leave",

@@ -22,6 +22,8 @@ final class GameEncounterCoordinator {
     func presentMinigame<Content: View>(
         music: MusicCue,
         memoryLabel: String,
+        showInstructions: Bool,
+        onInstructionsAcknowledged: @escaping () -> Void,
         @ViewBuilder makeView: @escaping (_ finish: @escaping (MinigameOutcome) -> Void) -> Content,
         onOutcome: @escaping (_ outcome: MinigameOutcome?, _ returnToWorld: OverlayReturn) -> Void
     ) {
@@ -37,10 +39,17 @@ final class GameEncounterCoordinator {
             fadeWorldOut: true,
             makeViewController: {
                 self.buildOverlayHost { overlayFinish in
-                    AnyView(makeView { outcome in
-                        outcomeBox.outcome = outcome
-                        overlayFinish()
-                    })
+                    AnyView(
+                        MinigameInstructionsGate(
+                            needsInstructions: showInstructions,
+                            onAcknowledged: onInstructionsAcknowledged
+                        ) {
+                            makeView { outcome in
+                                outcomeBox.outcome = outcome
+                                overlayFinish()
+                            }
+                        }
+                    )
                 }
             },
             onResolved: { returnToWorld in

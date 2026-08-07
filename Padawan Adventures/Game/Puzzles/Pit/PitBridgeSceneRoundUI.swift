@@ -115,7 +115,7 @@ extension PitBridgeScene {
         wordPromptNode = root
     }
 
-    /// Word letters plus a `_` blank for the missing sound, laid out under the illustration.
+    /// Word letters plus a rectangle blank for the missing sound, laid out under the illustration.
     /// Each grapheme is its own baseline-aligned stack so the blank doesn't float above the rest.
     func makeMaskedSpellingNode(fontSize: CGFloat) -> SKNode {
         let row = SKNode()
@@ -130,12 +130,20 @@ extension PitBridgeScene {
         var cursorX = -totalWidth * 0.5
 
         for (index, character) in characters.enumerated() {
-            let node = OutlinedLetterFactory.make(
-                text: character,
-                fontSize: fontSize,
-                disablesInteraction: true
-            )
-            applySpellingBaselineAlignment(to: node)
+            let node: SKNode
+            if character == "_" {
+                node = OutlinedLetterFactory.makeBlank(
+                    fontSize: fontSize,
+                    disablesInteraction: true
+                )
+            } else {
+                node = OutlinedLetterFactory.make(
+                    text: character,
+                    fontSize: fontSize,
+                    disablesInteraction: true
+                )
+                applySpellingBaselineAlignment(to: node)
+            }
             let isBlank = blankLeads ? index == 0 : index == characters.count - 1
             if isBlank {
                 node.name = Self.blankLetterNodeName
@@ -143,7 +151,9 @@ extension PitBridgeScene {
             } else {
                 node.name = "spellingLetter:\(index)"
             }
-            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: 0)
+            // Ending blanks: nudge right by 2% of box width so the outline clears the letter.
+            let endingShift = (!blankLeads && character == "_") ? widths[index] * 0.02 : 0
+            node.position = CGPoint(x: cursorX + widths[index] * 0.5 + endingShift, y: 0)
             row.addChild(node)
             cursorX += widths[index]
         }
@@ -158,19 +168,47 @@ extension PitBridgeScene {
     }
 
     func spellingLetterWidth(_ letter: String, fontSize: CGFloat) -> CGFloat {
+        if letter == "_" {
+            return OutlinedLetterFactory.blankSize(fontSize: fontSize).width
+        }
         let font = AppFont.uiKit(size: max(1, fontSize))
         return ceil((letter as NSString).size(withAttributes: [.font: font]).width)
     }
 
+    /// Shows a real letter in the interactive blank, or restores the rectangle when `text` is `"_"`.
     func setBlankLetterText(_ text: String) {
         guard let blankLetterNode else { return }
-        for case let label as SKLabelNode in blankLetterNode.children {
-            label.text = text
+        let fontSize = OutlinedLetterFactory.fontSize(from: blankLetterNode) ?? 18
+        let userData = blankLetterNode.userData
+        blankLetterNode.removeAllChildren()
+
+        let content: SKNode
+        if text == "_" {
+            content = OutlinedLetterFactory.makeBlank(
+                fontSize: fontSize,
+                disablesInteraction: true
+            )
+        } else {
+            content = OutlinedLetterFactory.make(
+                text: text,
+                fontSize: fontSize,
+                disablesInteraction: true
+            )
+            applySpellingBaselineAlignment(to: content)
         }
+        for child in content.children {
+            child.removeFromParent()
+            blankLetterNode.addChild(child)
+        }
+        blankLetterNode.userData = userData ?? content.userData
     }
 
     func setBlankLetterFillColor(_ color: UIColor) {
         guard let blankLetterNode else { return }
+        if let stroke = OutlinedLetterFactory.blankFill(in: blankLetterNode) {
+            stroke.strokeColor = color
+            return
+        }
         for case let label as SKLabelNode in blankLetterNode.children
         where label.zPosition == SceneLayer.LabelStack.fill {
             label.fontColor = color

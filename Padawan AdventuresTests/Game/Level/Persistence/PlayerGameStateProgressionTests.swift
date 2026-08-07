@@ -46,4 +46,38 @@ struct PlayerGameStateProgressionTests {
         #expect(state.inventory.artifacts.isEmpty)
         #expect(state.dadModeUnlocked == false)
     }
+
+    @Test func seenMinigameInstructionsDefaultsEmptyOnDecode() throws {
+        let data = try JSONEncoder().encode(PlayerGameState(health: 3, energy: 2))
+        let decoded = try JSONDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.seenMinigameInstructions.isEmpty)
+    }
+
+    @Test func seenMinigameInstructionsSurvivesPlistRoundTrip() throws {
+        var state = PlayerGameState(health: 3, energy: 2)
+        let firstMark = state.markMinigameInstructionsSeen("ending-sound-pit")
+        let secondMark = state.markMinigameInstructionsSeen("ending-sound-pit")
+        #expect(firstMark)
+        #expect(secondMark == false)
+
+        let data = try PropertyListEncoder().encode(state)
+        let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.hasSeenMinigameInstructions("ending-sound-pit"))
+        #expect(decoded.hasSeenMinigameInstructions("starting-sound-pit") == false)
+    }
+
+    @Test func resetForNewGameClearsSeenMinigameInstructions() {
+        var state = PlayerGameState(health: 3, energy: 2)
+        _ = state.markMinigameInstructionsSeen("grapheme-sound-combat")
+        state.resetForNewGame(health: 5, energy: 4)
+        #expect(state.seenMinigameInstructions.isEmpty)
+    }
+
+    @Test func minigameInstructionKeysAreUniqueAcrossFamilies() {
+        let keys = PitMinigameKind.allCases.map(\.rawValue)
+            + GateMinigameKind.allCases.map(\.rawValue)
+            + CombatMinigameKind.allCases.map(\.rawValue)
+        #expect(keys.count == 10)
+        #expect(Set(keys).count == keys.count)
+    }
 }

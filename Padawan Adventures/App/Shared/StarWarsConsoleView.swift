@@ -102,6 +102,76 @@ struct StarWarsConsoleFrame<Screen: View>: View {
     }
 }
 
+// MARK: - Masked spelling (underscore → blank rectangle)
+
+/// Renders masked spelling with each `_` as an empty outlined rectangle (underscore width × 1.2 × cap height).
+struct MaskedSpellingText: View {
+    let text: String
+    let fontSize: CGFloat
+    var foreground: Color
+    var glow: Color
+
+    private var uiFont: UIFont {
+        AppFont.uiKit(size: max(1, fontSize))
+    }
+
+    private var blankWidth: CGFloat {
+        ceil(("_" as NSString).size(withAttributes: [.font: uiFont]).width)
+    }
+
+    /// Cap height of surrounding letters — used to vertically center the taller blank.
+    private var stringHeight: CGFloat {
+        max(1, uiFont.capHeight)
+    }
+
+    private var blankHeight: CGFloat {
+        stringHeight * 1.2
+    }
+
+    private var blankLineWidth: CGFloat {
+        max(1.5, fontSize * 0.08)
+    }
+
+    /// Ending blanks sit slightly right of the letter advance (2% of box width).
+    private var endingBlankShift: CGFloat {
+        blankWidth * 0.05
+    }
+
+    /// True for `_` in a trailing blank run (ending-sound masks like `do_` / `h___`).
+    private func isEndingBlank(at offset: Int) -> Bool {
+        let chars = Array(text)
+        guard offset < chars.count, chars[offset] == "_" else { return false }
+        let trailingBlanks = chars[offset...].allSatisfy { $0 == "_" }
+        let hasLetterBefore = chars[..<offset].contains { $0 != "_" }
+        return trailingBlanks && hasLetterBefore
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            ForEach(Array(text.enumerated()), id: \.offset) { offset, character in
+                if character == "_" {
+                    Rectangle()
+                        .strokeBorder(foreground, lineWidth: blankLineWidth)
+                        .frame(width: blankWidth, height: blankHeight)
+                        .shadow(color: glow, radius: max(2, fontSize * 0.12))
+                        // Center of box aligns with mid of cap height (stringHeight/2 above baseline).
+                        .alignmentGuide(.firstTextBaseline) {
+                            $0[VerticalAlignment.center] + stringHeight * 0.5
+                        }
+                        .offset(x: isEndingBlank(at: offset) ? endingBlankShift : 0)
+                } else {
+                    Text(String(character))
+                        .font(AppFont.swiftUI(size: fontSize, weight: .heavy))
+                        .foregroundStyle(foreground)
+                        .shadow(color: glow, radius: max(2, fontSize * 0.12))
+                }
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.35)
+    }
+}
+
 // MARK: - Console plate (text)
 
 /// Compact CRT console frame used for word-plug plates (and previews).
@@ -122,14 +192,14 @@ struct StarWarsConsoleView: View {
             let m = min(geo.size.width, geo.size.height)
             let fontSize = max(10, m * 0.42)
             StarWarsConsoleFrame {
-                Text(text)
-                    .font(AppFont.swiftUI(size: fontSize, weight: .heavy))
-                    .foregroundStyle(accent)
-                    .shadow(color: glow, radius: max(2, fontSize * 0.12))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.35)
-                    .padding(.horizontal, fontSize * 0.25)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                MaskedSpellingText(
+                    text: text,
+                    fontSize: fontSize,
+                    foreground: accent,
+                    glow: glow
+                )
+                .padding(.horizontal, fontSize * 0.25)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -226,13 +296,13 @@ struct StarWarsConsoleImageView: View {
                         .frame(width: imageSide, height: imageSide)
 
                     if !maskedText.isEmpty {
-                        Text(maskedText)
-                            .font(AppFont.swiftUI(size: fontSize, weight: .heavy))
-                            .foregroundStyle(StarWarsConsolePalette.crtBlue)
-                            .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, fontSize * 0.12))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.35)
-                            .frame(maxHeight: .infinity)
+                        MaskedSpellingText(
+                            text: maskedText,
+                            fontSize: fontSize,
+                            foreground: StarWarsConsolePalette.crtBlue,
+                            glow: StarWarsConsolePalette.crtGlow
+                        )
+                        .frame(maxHeight: .infinity)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: contentAlignment)
