@@ -45,9 +45,13 @@ extension GateSoundOutWordScene {
             label.position = facePosition
             label.zPosition = 1
             root.addChild(label)
-        } else if let play = makePlayIconNode(side: capacitorPlayIconSide(for: diameter)) {
+        } else {
+            let play = makePlayIconNode(side: capacitorPlayIconSide(for: diameter))
             // play / play.fill are optically left-heavy; nudge so they read centered.
-            play.position = CGPoint(x: facePosition.x + diameter * 0.03, y: facePosition.y)
+            play.position = CGPoint(
+                x: facePosition.x + diameter * MinigamePlaySoundIcon.opticalXNudgeRatio,
+                y: facePosition.y
+            )
             play.zPosition = 1
             root.addChild(play)
         }
@@ -67,63 +71,19 @@ extension GateSoundOutWordScene {
         capacitorGlyphFontSize(for: diameter) * 0.85
     }
 
-    /// White SF Symbol baked into a texture (SKTexture ignores UIImage tints).
-    func bakePlayIconTexture(systemName: String, side: CGFloat) -> SKTexture? {
-        let pointSize = max(side, 1)
-        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
-        guard let symbol = UIImage(systemName: systemName, withConfiguration: config) else {
-            return nil
-        }
-        let size = CGSize(width: pointSize, height: pointSize)
-        let image = UIGraphicsImageRenderer(size: size).image { _ in
-            symbol
-                .withTintColor(.white, renderingMode: .alwaysOriginal)
-                .draw(in: CGRect(origin: .zero, size: size))
-        }
-        return SKTexture(image: image)
-    }
-
-    /// Idle + filled play textures for `side`, reused across the choice set.
-    func playIconTexturePair(side: CGFloat) -> (idle: SKTexture, filled: SKTexture)? {
-        if let cached = playIconTextures, abs(cached.side - side) < 0.5 {
-            return (cached.idle, cached.filled)
-        }
-        guard let idle = bakePlayIconTexture(systemName: "play", side: side),
-              let filled = bakePlayIconTexture(systemName: "play.fill", side: side) else {
-            return nil
-        }
-        playIconTextures = (side, idle, filled)
-        return (idle, filled)
-    }
-
     /// Idle `play` icon; swapped to `play.fill` for the duration of a letter-sound tap.
-    func makePlayIconNode(side: CGFloat) -> SKSpriteNode? {
-        guard let textures = playIconTexturePair(side: side) else { return nil }
-        let node = SKSpriteNode(
-            texture: textures.idle,
-            size: CGSize(width: side, height: side)
-        )
-        node.name = Self.capacitorPlayIconName
-        node.isUserInteractionEnabled = false
-        return node
+    func makePlayIconNode(side: CGFloat) -> SKSpriteNode {
+        MinigamePlaySoundIcon.makeNode(side: side, name: Self.capacitorPlayIconName)
     }
 
     /// Shows `play.fill` while `trackID` plays, then restores the idle `play` outline.
     func pulsePlayIcon(on root: SKNode, forTrackID trackID: String) {
         guard let icon = root.childNode(withName: Self.capacitorPlayIconName) as? SKSpriteNode
         else { return }
-        let side = max(icon.size.width, icon.size.height)
-        guard let textures = playIconTexturePair(side: side) else { return }
-        icon.removeAction(forKey: Self.capacitorPlayIconActionKey)
-        icon.texture = textures.filled
-        icon.run(
-            SKAction.sequence([
-                SKAction.wait(
-                    forDuration: SoundEffectsController.shared.cueDuration(of: trackID)
-                ),
-                SKAction.run { [weak icon] in icon?.texture = textures.idle },
-            ]),
-            withKey: Self.capacitorPlayIconActionKey
+        MinigamePlaySoundIcon.pulse(
+            icon,
+            forTrackID: trackID,
+            actionKey: Self.capacitorPlayIconActionKey
         )
     }
 
@@ -198,26 +158,19 @@ extension GateSoundOutWordScene {
         return node
     }
 
-    /// Word illustration for the chosen word; `nil` when the catalog entry has no image.
+    /// CRT plate holding the word illustration; `nil` when the entry has no image.
     func makePictureNode(side: CGFloat) -> SKSpriteNode? {
         guard side > 0,
               let image = GateWordPlugImageSprites.image(named: engine.targetEntry.image) else {
             return nil
         }
-        let texture = SKTexture(image: image)
-        let textureSize = texture.size()
-        let maxDimension = max(textureSize.width, textureSize.height)
-        guard maxDimension > 0 else { return nil }
-        let scale = side / maxDimension
-        let node = SKSpriteNode(texture: texture)
-        node.size = CGSize(
-            width: textureSize.width * scale,
-            height: textureSize.height * scale
+        let plate = MinigameCRTPromptPlate.makePicturePlate(
+            image: image,
+            contentSide: side,
+            name: "wordPicture"
         )
-        node.name = "wordPicture"
-        node.zPosition = 30
-        node.isUserInteractionEnabled = false
-        return node
+        plate.zPosition = 30
+        return plate
     }
 
     func setPromptColor(at index: Int, color: UIColor) {
@@ -271,14 +224,10 @@ extension GateSoundOutWordScene {
         return nil
     }
 
-    /// True when `point` hits the prompt word (any letter, with a little padding).
+    /// True when `point` hits the word plate.
     func isPromptWordTap(_ point: CGPoint) -> Bool {
-        guard !promptLetterNodes.isEmpty else { return false }
-        var frame = promptLetterNodes[0].calculateAccumulatedFrame()
-        for node in promptLetterNodes.dropFirst() {
-            frame = frame.union(node.calculateAccumulatedFrame())
-        }
-        return frame.insetBy(dx: -promptFontSize * 0.15, dy: -promptFontSize * 0.2).contains(point)
+        guard let wordPlateNode else { return false }
+        return wordPlateNode.calculateAccumulatedFrame().contains(point)
     }
 
     func isPictureTap(_ point: CGPoint) -> Bool {

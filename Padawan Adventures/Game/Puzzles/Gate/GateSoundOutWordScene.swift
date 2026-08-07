@@ -32,7 +32,10 @@ final class GateSoundOutWordScene: MinigameScene {
 
     // MARK: Nodes
 
+    static let wordPlateName = "wordPlate"
+
     var pictureNode: SKSpriteNode?
+    var wordPlateNode: SKSpriteNode?
     /// One outlined-letter stack per grapheme of the word, left to right.
     var promptLetterNodes: [SKNode] = []
     var leftEndpointNode: SKNode?
@@ -45,8 +48,6 @@ final class GateSoundOutWordScene: MinigameScene {
     var choiceNodes: [UUID: SKNode] = [:]
     var choiceHome: [UUID: CGPoint] = [:]
     var connectorSegments: [ElectricConnector] = []
-    /// Cached white `play` / `play.fill` textures for the current choice-icon side.
-    var playIconTextures: (side: CGFloat, idle: SKTexture, filled: SKTexture)?
 
     // MARK: State
 

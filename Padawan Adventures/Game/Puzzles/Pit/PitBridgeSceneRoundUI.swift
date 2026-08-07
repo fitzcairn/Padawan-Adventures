@@ -34,6 +34,9 @@ extension PitBridgeScene {
         let trackID = engine.currentSfx
         if !trackID.isEmpty {
             SoundEffectsController.shared.play(trackID: trackID)
+            if let wordPromptNode {
+                MinigameCRTPromptPlate.pulseIcons(in: wordPromptNode, forTrackID: trackID)
+            }
         }
         let duration = SoundEffectsController.shared.cueDuration(of: trackID)
         run(
@@ -52,6 +55,9 @@ extension PitBridgeScene {
         let trackID = engine.currentSfx
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+        if let wordPromptNode {
+            MinigameCRTPromptPlate.pulseIcons(in: wordPromptNode, forTrackID: trackID)
+        }
     }
 
     func completePromptContinuation(_ continuation: @escaping () -> Void) {
@@ -74,42 +80,43 @@ extension PitBridgeScene {
         let maxSide = max(geo.wordPromptMaxSide, 48)
         let fontSize = max(maxSide * 0.28, 18)
         let font = AppFont.uiKit(size: fontSize)
-        // Spelling glyphs use baseline alignment; this is the visual mid-line above that baseline.
-        let spellingMidY = font.capHeight * 0.5
         let spelling = makeMaskedSpellingNode(fontSize: fontSize)
-        spelling.zPosition = 2
-        root.addChild(spelling)
+        let wordContentWidth = max(
+            spelling.calculateAccumulatedFrame().width + fontSize * 0.5,
+            fontSize
+        )
+        let wordPlateSize = StarWarsConsoleChrome.plateSize(
+            forContent: CGSize(width: wordContentWidth, height: font.lineHeight)
+        )
+        let wordPlate = MinigameCRTPromptPlate.makeWordPlate(
+            size: wordPlateSize,
+            name: Self.wordPromptNodeName
+        )
+        wordPlate.zPosition = 1
 
-        let hitHeight: CGFloat
         if let image = GateWordPlugImageSprites.image(named: engine.currentImageName) {
-            let texture = SKTexture(image: image)
-            SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
-            let sprite = SKSpriteNode(texture: texture)
-            let texSize = texture.size()
-            let maxDim = max(texSize.width, texSize.height)
-            let scale = maxSide / max(maxDim, 1)
-            sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
-            sprite.zPosition = 1
-            root.addChild(sprite)
-
-            let gap = fontSize * 0.35
-            let totalHeight = sprite.size.height + gap + font.capHeight
-            sprite.position = CGPoint(x: 0, y: (totalHeight - sprite.size.height) * 0.5)
-            spelling.position = CGPoint(x: 0, y: -totalHeight * 0.5 + spellingMidY)
-            hitHeight = totalHeight * 1.15
+            let picture = MinigameCRTPromptPlate.makePicturePlate(
+                image: image,
+                contentSide: maxSide,
+                name: Self.wordPromptNodeName
+            )
+            picture.zPosition = 1
+            let gap = max(
+                geo.wordPromptBlockHeight - picture.size.height - wordPlateSize.height,
+                fontSize * 0.1
+            )
+            let total = picture.size.height + gap + wordPlateSize.height
+            picture.position = CGPoint(x: 0, y: (total - picture.size.height) * 0.5)
+            wordPlate.position = CGPoint(x: 0, y: -total * 0.5 + wordPlateSize.height * 0.5)
+            root.addChild(picture)
         } else {
-            // No illustration — masked spelling is the prompt.
-            spelling.position = CGPoint(x: 0, y: -spellingMidY)
-            hitHeight = max(font.lineHeight * 1.2, maxSide * 0.5)
+            wordPlate.position = .zero
         }
 
-        // Invisible hit pad so taps are reliable even on thin sprites.
-        let hit = SKShapeNode(rectOf: CGSize(width: maxSide * 1.15, height: hitHeight))
-        hit.fillColor = .clear
-        hit.strokeColor = .clear
-        hit.zPosition = 0
-        hit.name = Self.wordPromptNodeName
-        root.addChild(hit)
+        root.addChild(wordPlate)
+        spelling.position = CGPoint(x: 0, y: -font.capHeight * 0.5)
+        spelling.zPosition = 2
+        wordPlate.addChild(spelling)
 
         addChild(root)
         wordPromptNode = root

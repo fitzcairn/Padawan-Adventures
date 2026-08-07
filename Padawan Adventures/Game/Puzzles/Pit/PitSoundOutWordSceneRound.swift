@@ -157,6 +157,7 @@ extension PitSoundOutWordScene {
                     if let grapheme = engine.currentGrapheme,
                        let trackID = engine.nameTrackID(for: grapheme) {
                         SoundEffectsController.shared.play(trackID: trackID)
+                        MinigameCRTPromptPlate.pulseIcons(in: node, forTrackID: trackID)
                     }
                     return
                 }

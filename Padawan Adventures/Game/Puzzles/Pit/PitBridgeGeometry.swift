@@ -5,8 +5,10 @@ import Foundation
 nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Tray tiles sit this fraction up the scene (inside the bottom 30%).
     static let trayCenterYFraction: CGFloat = 0.15
-    /// Word illustration sits this fraction up the scene (top middle).
-    static let wordPromptYFraction: CGFloat = 0.88
+    /// The prompt block hangs from just under the top edge so the CRT stack grows downward.
+    static let wordPromptTopFraction: CGFloat = 0.97
+    /// Gap between the picture plate and the word plate, as a fraction of the picture side.
+    static let wordPromptPlateGapScale: CGFloat = 0.03
     /// Tray tile centers as fractions of scene width.
     static let trayXFractions: [CGFloat] = [0.25, 0.5, 0.75]
     /// Drop hit radius as a fraction of the tile side.
@@ -18,17 +20,25 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Number of bridge slots (== words this session).
     var slotCount: Int
 
-    /// Top-middle anchor for the current word illustration.
-    var wordPromptCenter: CGPoint {
-        CGPoint(
-            x: sceneSize.width * 0.5,
-            y: sceneSize.height * Self.wordPromptYFraction
-        )
-    }
-
     /// Target max dimension for the word illustration.
     var wordPromptMaxSide: CGFloat {
         min(sceneSize.width * 0.28, sceneSize.height * 0.16, tileSide * 1.8)
+    }
+
+    /// Height of the CRT prompt stack: picture plate + gap + word plate.
+    var wordPromptBlockHeight: CGFloat {
+        let picturePlate = wordPromptMaxSide / StarWarsConsoleChrome.contentScale
+        let fontSize = max(wordPromptMaxSide * 0.28, 18)
+        let wordPlate = fontSize * 1.3 / StarWarsConsoleChrome.contentScale
+        return picturePlate + wordPromptMaxSide * Self.wordPromptPlateGapScale + wordPlate
+    }
+
+    /// Centre of the top-anchored prompt block.
+    var wordPromptCenter: CGPoint {
+        CGPoint(
+            x: sceneSize.width * 0.5,
+            y: sceneSize.height * Self.wordPromptTopFraction - wordPromptBlockHeight * 0.5
+        )
     }
 
     var leftPadRect: CGRect {

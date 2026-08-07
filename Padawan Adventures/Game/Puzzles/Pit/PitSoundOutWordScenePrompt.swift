@@ -22,6 +22,10 @@ extension PitSoundOutWordScene {
         let trackID = engine.wordTrackID
         if !trackID.isEmpty {
             SoundEffectsController.shared.play(trackID: trackID)
+            if let promptNode,
+               let picture = promptNode.childNode(withName: Self.pictureNodeName) {
+                MinigameCRTPromptPlate.pulseIcons(in: picture, forTrackID: trackID)
+            }
         }
         let duration = SoundEffectsController.shared.cueDuration(of: trackID)
         run(
@@ -40,6 +44,10 @@ extension PitSoundOutWordScene {
         let trackID = engine.wordTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+        if let promptNode,
+           let picture = promptNode.childNode(withName: Self.pictureNodeName) {
+            MinigameCRTPromptPlate.pulseIcons(in: picture, forTrackID: trackID)
+        }
     }
 
     func completePromptContinuation(_ continuation: @escaping () -> Void) {
@@ -62,51 +70,47 @@ extension PitSoundOutWordScene {
 
         let maxSide = max(geo.promptMaxSide, 48)
         let fontSize = max(maxSide * 0.28, 18)
+        let font = AppFont.uiKit(size: fontSize)
+
         let wordRow = makeWordRow(fontSize: fontSize)
-        wordRow.zPosition = 2
-        root.addChild(wordRow)
+        let wordContentWidth = max(
+            wordRow.calculateAccumulatedFrame().width + fontSize * 0.5,
+            fontSize
+        )
+        let wordPlateSize = StarWarsConsoleChrome.plateSize(
+            forContent: CGSize(width: wordContentWidth, height: font.lineHeight)
+        )
+        let wordPlate = MinigameCRTPromptPlate.makeWordPlate(
+            size: wordPlateSize,
+            name: Self.wordTextNodeName
+        )
+        wordPlate.zPosition = 1
 
-        let hitHeight: CGFloat
         if let image = GateWordPlugImageSprites.image(named: engine.targetEntry.image) {
-            let texture = SKTexture(image: image)
-            SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
-            let sprite = SKSpriteNode(texture: texture)
-            let texSize = texture.size()
-            let maxDim = max(texSize.width, texSize.height)
-            let scale = maxSide / max(maxDim, 1)
-            sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
-            sprite.name = Self.pictureNodeName
-            sprite.zPosition = 1
-            sprite.isUserInteractionEnabled = false
-            root.addChild(sprite)
-
-            let gap = fontSize * 0.1
-            let rowHeight = wordRow.calculateAccumulatedFrame().height
-            let totalHeight = sprite.size.height + gap + max(rowHeight, fontSize)
-            sprite.position = CGPoint(x: 0, y: (totalHeight - sprite.size.height) * 0.5)
-            wordRow.position = CGPoint(x: 0, y: -totalHeight * 0.5 + fontSize * 0.35)
-            hitHeight = totalHeight * 1.15
-
-            let pictureHit = SKShapeNode(
-                rectOf: CGSize(width: maxSide * 1.15, height: sprite.size.height * 1.1)
+            let picture = MinigameCRTPromptPlate.makePicturePlate(
+                image: image,
+                contentSide: maxSide,
+                name: Self.pictureNodeName
             )
-            pictureHit.fillColor = .clear
-            pictureHit.strokeColor = .clear
-            pictureHit.zPosition = 0
-            pictureHit.name = Self.pictureNodeName
-            pictureHit.position = sprite.position
-            root.addChild(pictureHit)
+            picture.zPosition = 1
+            // Fill the block the geometry reserved, so the fan clamp stays accurate.
+            let gap = max(
+                geo.promptBlockHeight - picture.size.height - wordPlateSize.height,
+                fontSize * 0.1
+            )
+            let total = picture.size.height + gap + wordPlateSize.height
+            picture.position = CGPoint(x: 0, y: (total - picture.size.height) * 0.5)
+            wordPlate.position = CGPoint(x: 0, y: -total * 0.5 + wordPlateSize.height * 0.5)
+            root.addChild(picture)
         } else {
-            wordRow.position = .zero
-            hitHeight = max(fontSize * 1.4, maxSide * 0.5)
+            wordPlate.position = .zero
         }
 
-        let hit = SKShapeNode(rectOf: CGSize(width: maxSide * 1.15, height: hitHeight))
-        hit.fillColor = .clear
-        hit.strokeColor = .clear
-        hit.zPosition = -1
-        hit.name = Self.pictureNodeName
-        root.addChild(hit)
+        root.addChild(wordPlate)
+        // Baseline-aligned letters, centred on the plate's screen.
+        wordRow.position = CGPoint(x: 0, y: -font.capHeight * 0.5)
+        wordRow.zPosition = 2
+        wordPlate.addChild(wordRow)
 
         addChild(root)
         promptNode = root
@@ -114,7 +118,6 @@ extension PitSoundOutWordScene {
 
     func makeWordRow(fontSize: CGFloat) -> SKNode {
         let container = SKNode()
-        container.name = Self.wordTextNodeName
 
         let graphemes = engine.targetGraphemes
         guard !graphemes.isEmpty else { return container }
@@ -146,19 +149,6 @@ extension PitSoundOutWordScene {
             cursorX += widths[index] + gap
         }
         wordGraphemeNodes = nodes
-
-        let frame = container.calculateAccumulatedFrame()
-        let hit = SKShapeNode(
-            rectOf: CGSize(
-                width: max(frame.width * 1.15, fontSize),
-                height: max(frame.height * 1.3, fontSize)
-            )
-        )
-        hit.fillColor = .clear
-        hit.strokeColor = .clear
-        hit.zPosition = -1
-        hit.name = Self.wordTextNodeName
-        container.addChild(hit)
 
         return container
     }

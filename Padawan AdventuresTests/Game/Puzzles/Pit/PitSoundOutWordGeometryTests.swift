@@ -28,7 +28,7 @@ struct PitSoundOutWordGeometryTests {
     @Test func candidateCentersStayOnScreenBelowPrompt() {
         for count in 2...6 {
             let geo = geometry(stepCount: 3)
-            let topLimit = geo.promptCenter.y - geo.promptMaxSide * 0.75
+            let topLimit = geo.promptBottomY - geo.tileSide * 0.15
             for candidate in 0..<count {
                 let center = geo.candidateCenter(step: 0, candidate: candidate, count: count)
                 #expect(center.x >= 0)

@@ -13,12 +13,18 @@ extension GateSoundOutWordScene {
         let trackID = engine.wordTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+        if let pictureNode {
+            MinigameCRTPromptPlate.pulseIcons(in: pictureNode, forTrackID: trackID)
+        }
     }
 
     /// Letter name ("bee") for the flashing prompt and for taps on the word text.
     func playGraphemeName(_ grapheme: String) {
         guard let trackID = engine.nameTrackID(for: grapheme) else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+        if let wordPlateNode {
+            MinigameCRTPromptPlate.pulseIcons(in: wordPlateNode, forTrackID: trackID)
+        }
     }
 
     /// Letter name for the grapheme the player is currently working on.

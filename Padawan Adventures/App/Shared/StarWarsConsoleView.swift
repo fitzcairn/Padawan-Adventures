@@ -47,6 +47,34 @@ struct StarWarsConsoleChrome {
     }
 }
 
+extension StarWarsConsoleChrome {
+    /// Fraction of the plate's min dimension the rim + bezel eat on each edge
+    /// (`rim` 0.055 + `bezel` 0.10 in `metrics(for:)`).
+    nonisolated static let insetRatio: CGFloat = 0.155
+
+    /// Fraction of a plate's min dimension left for its screen.
+    nonisolated static var contentScale: CGFloat { 1 - insetRatio * 2 }
+
+    /// Smallest plate whose screen fits `content`. Assumes a landscape-or-square plate,
+    /// i.e. the plate height is the min dimension — true for picture and word plates.
+    nonisolated static func plateSize(forContent content: CGSize) -> CGSize {
+        let height = max(content.height, 1) / contentScale
+        let width = max(max(content.width, 1) + height * insetRatio * 2, height)
+        return CGSize(width: width, height: height)
+    }
+
+    /// Usable screen area inside the bezel, in a centre-anchored sprite's local coordinates.
+    nonisolated static func screenRect(for size: CGSize) -> CGRect {
+        let inset = min(size.width, size.height) * insetRatio
+        return CGRect(
+            x: -size.width * 0.5 + inset,
+            y: -size.height * 0.5 + inset,
+            width: max(size.width - inset * 2, 1),
+            height: max(size.height - inset * 2, 1)
+        )
+    }
+}
+
 // MARK: - Shared console frame
 
 /// Metal bezel + CRT screen shell. `screen` is drawn inside the inset display area.
@@ -334,6 +362,68 @@ extension StarWarsConsoleImageView {
     }
 }
 
+// MARK: - Console plate (picture only)
+
+/// CRT console plate showing a word illustration as blue phosphor. Unlike
+/// `StarWarsConsoleImageView`, which flattens art to a template silhouette for the
+/// small word-plug plates, this keeps the shading so detail survives at prompt size.
+struct StarWarsConsolePictureView: View {
+    let image: UIImage
+
+    var body: some View {
+        GeometryReader { geo in
+            let chrome = StarWarsConsoleChrome.metrics(for: geo.size)
+            let contentH = max(1, geo.size.height - chrome.contentInset * 2)
+            StarWarsConsoleFrame {
+                Image(uiImage: CRTImageTint.phosphor(image))
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .shadow(
+                        color: StarWarsConsolePalette.crtGlow,
+                        radius: max(2, contentH * 0.08)
+                    )
+                    .frame(width: contentH, height: contentH)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+}
+
+extension StarWarsConsolePictureView {
+    @MainActor
+    static func makeTexture(image: UIImage, size: CGSize, scale: CGFloat = 2) -> SKTexture {
+        renderTexture(
+            StarWarsConsolePictureView(image: image),
+            size: size,
+            scale: scale,
+            placeholderSolved: false
+        )
+    }
+}
+
+// MARK: - Console plate (empty screen)
+
+/// Bezel, dark screen, and scanlines with no content — a backdrop for live SpriteKit
+/// nodes that have to keep changing, such as the prompt letters.
+struct StarWarsConsoleScreenView: View {
+    var body: some View {
+        StarWarsConsoleFrame { Color.clear }
+    }
+}
+
+extension StarWarsConsoleScreenView {
+    @MainActor
+    static func makeTexture(size: CGSize, scale: CGFloat = 2) -> SKTexture {
+        renderTexture(
+            StarWarsConsoleScreenView(),
+            size: size,
+            scale: scale,
+            placeholderSolved: false
+        )
+    }
+}
+
 extension StarWarsConsoleProgressBar {
     /// Renders a console progress bar into an `SKTexture` sized for SpriteKit scene points.
     @MainActor
@@ -492,6 +582,20 @@ private enum DarkMetalBezel {
 #Preview("Progress full") {
     StarWarsConsoleProgressBar(progress: 1)
         .frame(width: 280, height: 36)
+        .padding()
+        .background(Color.black)
+}
+
+#Preview("Picture plate") {
+    StarWarsConsolePictureView(image: UIImage(systemName: "dog.fill") ?? UIImage())
+        .frame(width: 140, height: 140)
+        .padding()
+        .background(Color.black)
+}
+
+#Preview("Empty screen") {
+    StarWarsConsoleScreenView()
+        .frame(width: 280, height: 76)
         .padding()
         .background(Color.black)
 }

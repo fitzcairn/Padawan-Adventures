@@ -4,7 +4,10 @@ import Foundation
 /// Layout math for the sound-out-word pit arena (pads, per-step candidate fan, prompt).
 /// Pure and unit-testable.
 nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
-    static let promptYFraction: CGFloat = 0.88
+    /// The prompt block hangs from just under the top edge so the CRT stack grows downward.
+    static let promptTopFraction: CGFloat = 0.97
+    /// Gap between the picture plate and the word plate, as a fraction of the picture side.
+    static let promptPlateGapScale: CGFloat = 0.03
     /// Vertical gap between tiles in a step, as a fraction of the tile side.
     static let candidateSpacingScale: CGFloat = 0.95
     /// Whole candidate fan sits this fraction below the pad mid-line.
@@ -51,18 +54,31 @@ nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
         padSize.width * 0.5
     }
 
-    /// Top-middle anchor for the word illustration + text row.
-    var promptCenter: CGPoint {
-        CGPoint(
-            x: sceneSize.width * 0.5,
-            y: sceneSize.height * Self.promptYFraction
-        )
-    }
-
     /// Target max dimension for the word illustration.
     var promptMaxSide: CGFloat {
         min(sceneSize.width * 0.28, sceneSize.height * 0.16, tileSide * 1.8)
     }
+
+    /// Height of the CRT prompt stack: picture plate + gap + word plate. Plate chrome adds
+    /// ~45% around its contents; the word plate holds one line at `promptMaxSide * 0.28`,
+    /// approximated here at 1.3x the font size because `AppFont` is MainActor-isolated.
+    var promptBlockHeight: CGFloat {
+        let picturePlate = promptMaxSide / StarWarsConsoleChrome.contentScale
+        let fontSize = max(promptMaxSide * 0.28, 18)
+        let wordPlate = fontSize * 1.3 / StarWarsConsoleChrome.contentScale
+        return picturePlate + promptMaxSide * Self.promptPlateGapScale + wordPlate
+    }
+
+    /// Centre of the top-anchored prompt block.
+    var promptCenter: CGPoint {
+        CGPoint(
+            x: sceneSize.width * 0.5,
+            y: sceneSize.height * Self.promptTopFraction - promptBlockHeight * 0.5
+        )
+    }
+
+    /// Lowest point the prompt block reaches — the ceiling for the candidate fan.
+    var promptBottomY: CGFloat { promptCenter.y - promptBlockHeight * 0.5 }
 
     var stepSpacing: CGFloat {
         (rightPadRect.minX - leftPadRect.maxX) / CGFloat(stepCount + 1)
@@ -169,7 +185,7 @@ nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
         guard count > 1 else { return spacing }
 
         let halfSpan = CGFloat(count - 1) / 2
-        let topLimit = promptCenter.y - promptMaxSide * 0.75
+        let topLimit = promptBottomY - tileSide * 0.15
         let bottomLimit = tileSide * 0.5
         let midY = candidateFanMidY
 

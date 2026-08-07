@@ -60,8 +60,6 @@ final class PitSoundOutWordScene: MinigameScene {
     static let playSymbolName = "candidatePlaySymbol"
     static let graphemeGlyphName = "candidateGlyph"
 
-    private static var playSymbolTextureCache: [String: SKTexture] = [:]
-
     init(
         size: CGSize,
         soundOutConfig: PitSoundOutWordConfig,
@@ -115,26 +113,7 @@ final class PitSoundOutWordScene: MinigameScene {
         touchesBegan(Set([SceneTestTouch(location: location)]), with: nil)
     }
 
-    /// SKTexture ignores UIImage dynamic tints and draws SF Symbols as flat black
-    /// templates, so the white tint has to be baked into a bitmap.
     static func playSymbolTexture(systemName: String, side: CGFloat) -> SKTexture {
-        let roundedSide = max(round(side), 1)
-        let key = "\(systemName):\(Int(roundedSide))"
-        if let cached = playSymbolTextureCache[key] {
-            return cached
-        }
-        let config = UIImage.SymbolConfiguration(pointSize: roundedSide, weight: .bold)
-        guard let symbol = UIImage(systemName: systemName, withConfiguration: config) else {
-            return SKTexture()
-        }
-        let size = CGSize(width: roundedSide, height: roundedSide)
-        let image = UIGraphicsImageRenderer(size: size).image { _ in
-            symbol
-                .withTintColor(.white, renderingMode: .alwaysOriginal)
-                .draw(in: CGRect(origin: .zero, size: size))
-        }
-        let texture = SKTexture(image: image)
-        playSymbolTextureCache[key] = texture
-        return texture
+        MinigamePlaySoundIcon.texture(systemName: systemName, side: side)
     }
 }
