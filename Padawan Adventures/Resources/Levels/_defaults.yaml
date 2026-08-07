@@ -73,7 +73,7 @@ combat:
   music: combat
   minigames:
     - type: grapheme-sound-combat
-      weight: 0.5
+      weight: 0.0
       # Extra non-matching letters launched alongside the cued one, per wave.
       min_decoy_count: 2
       max_decoy_count: 4
@@ -86,7 +86,7 @@ combat:
       orb_travel_seconds: 4.0
       ring_count: 4
     - type: ending-sound-combat
-      weight: 0.0
+      weight: 0.5
       monster_hit_points: 5
       orb_travel_seconds: 4.0
       ring_count: 4
