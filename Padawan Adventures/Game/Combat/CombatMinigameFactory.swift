@@ -19,6 +19,7 @@ struct CombatPresentationContext {
     let letterSpriteSetLibrary: LetterSpriteSetLibrary
     let combatSprite: SpriteConfig?
     let enemySprite: (id: String, config: SpriteConfig)?
+    let projectileSprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
     /// Isometric ellipse squash (`tile_height / tile_width`) for the deflect rings.
     let isoSquash: CGFloat
@@ -61,6 +62,7 @@ enum CombatMinigameFactory {
                 spriteLibrary: context.spriteLibrary,
                 combatSprite: context.combatSprite,
                 enemySprite: context.enemySprite,
+                projectileSprite: context.projectileSprite,
                 wallHeight: context.wallHeight,
                 isoSquash: context.isoSquash,
                 onFinished: onFinished

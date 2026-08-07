@@ -10,12 +10,15 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
     var enemies: [String: EnemyTypeConfig]
     /// Shared sprite definitions referenced by `EnemyTypeConfig.sprite`.
     var sprites: [String: SpriteConfig]
+    /// Combat projectile sheets referenced by `EnemyTypeConfig.projectile`.
+    var projectiles: [String: SpriteConfig]
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
         case slashMaxScreenWidthFraction = "slash_max_screen_width_fraction"
         case enemies
         case sprites
+        case projectiles
     }
 
     nonisolated static let fallbackSlashMaxSeconds: Double = 0.5
@@ -43,12 +46,14 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         slashMaxSeconds: Double = fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = fallbackSlashMaxScreenWidthFraction,
         enemies: [String: EnemyTypeConfig],
-        sprites: [String: SpriteConfig] = [:]
+        sprites: [String: SpriteConfig] = [:],
+        projectiles: [String: SpriteConfig] = [:]
     ) {
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.enemies = enemies
         self.sprites = sprites
+        self.projectiles = projectiles
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +66,7 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         ) ?? Self.fallbackSlashMaxScreenWidthFraction
         enemies = try container.decode([String: EnemyTypeConfig].self, forKey: .enemies)
         sprites = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .sprites) ?? [:]
+        projectiles = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .projectiles) ?? [:]
     }
 
     func validate() throws {
@@ -80,6 +86,11 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
             if let spriteID = type.sprite, sprites[spriteID] == nil {
                 throw EnemyConfigError.invalid("\(id).sprite references unknown sprite '\(spriteID)'")
             }
+            if let projectileID = type.projectile, projectiles[projectileID] == nil {
+                throw EnemyConfigError.invalid(
+                    "\(id).projectile references unknown projectile '\(projectileID)'"
+                )
+            }
         }
     }
 
@@ -92,6 +103,14 @@ nonisolated struct EnemyConfig: Codable, Equatable, Sendable {
         guard let spriteID = enemies[typeID]?.sprite,
               let config = sprites[spriteID] else { return nil }
         return (spriteID, config)
+    }
+
+    /// Resolves an enemy type's projectile sprite from the `projectiles:` map.
+    /// The `projectile_` prefix namespaces the SpriteLibrary id away from body sprites.
+    func projectileSpriteConfig(for typeID: String) -> (id: String, config: SpriteConfig)? {
+        guard let projectileID = enemies[typeID]?.projectile,
+              let config = projectiles[projectileID] else { return nil }
+        return ("projectile_\(projectileID)", config)
     }
 
     static func loadFromBundle(
@@ -133,12 +152,14 @@ private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
     var slashMaxScreenWidthFraction: Double?
     var enemies: [String: EnemyTypeConfigDTO]
     var sprites: [String: SpriteConfig]?
+    var projectiles: [String: SpriteConfig]?
 
     enum CodingKeys: String, CodingKey {
         case slashMaxSeconds = "slash_max_seconds"
         case slashMaxScreenWidthFraction = "slash_max_screen_width_fraction"
         case enemies
         case sprites
+        case projectiles
     }
 
     nonisolated func asEnemyConfig() -> EnemyConfig {
@@ -147,7 +168,8 @@ private nonisolated struct EnemyConfigDTO: Decodable, Sendable {
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction
                 ?? EnemyConfig.fallbackSlashMaxScreenWidthFraction,
             enemies: enemies.mapValues { $0.asEnemyTypeConfig() },
-            sprites: sprites ?? [:]
+            sprites: sprites ?? [:],
+            projectiles: projectiles ?? [:]
         )
     }
 }
@@ -163,6 +185,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
     var shotTypes: [String: EnemyShotTypeConfig]?
     var fx: SoundEffectTable?
     var sprite: String?
+    var projectile: String?
 
     enum CodingKeys: String, CodingKey {
         case letter
@@ -175,6 +198,7 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
         case shotTypes = "shot_types"
         case fx
         case sprite
+        case projectile
     }
 
     nonisolated func asEnemyTypeConfig() -> EnemyTypeConfig {
@@ -188,7 +212,8 @@ private nonisolated struct EnemyTypeConfigDTO: Decodable, Sendable {
             starsToWin: starsToWin ?? 10,
             shotTypes: shotTypes ?? EnemyTypeConfig.fallbackShotTypes,
             fx: fx ?? .empty,
-            sprite: sprite
+            sprite: sprite,
+            projectile: projectile
         )
     }
 }

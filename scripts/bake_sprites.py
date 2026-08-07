@@ -31,6 +31,7 @@ Dependencies:
 Usage:
   python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + gates + planets + loading + cutscene + gate
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
+  python3 scripts/bake_sprites.py --projectiles # bake combat projectile sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
   python3 scripts/bake_sprites.py --pits       # bake per-level pit platform tile sets
   python3 scripts/bake_sprites.py --gates      # bake per-level world gate wall sprites
@@ -1043,6 +1044,26 @@ def collect_enemies(plan: BakePlan, only: set[str] | None = None) -> None:
         )
 
 
+def collect_projectiles(plan: BakePlan) -> None:
+    """Combat projectile sheets from the `projectiles:` map in enemies.yaml."""
+    path = CONFIG / "Catalogs" / "enemies.yaml"
+    add_config_input(plan, path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    projectiles = data.get("projectiles") or {}
+    if not isinstance(projectiles, dict):
+        plan.errors.append("projectiles: mapping missing")
+        return
+    for projectile_id, sprite in projectiles.items():
+        if not isinstance(sprite, dict):
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"projectile.{projectile_id}",
+            sprite=sprite,
+            flip_vertical=True,
+        )
+
+
 def collect_planets(plan: BakePlan) -> None:
     """Level-select planet art, one job per level folder.
 
@@ -1191,6 +1212,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_cutscene = args.all or args.default_set or args.cutscene
     bake_gate = args.all or args.default_set or args.gate
     bake_enemies = args.all or args.enemies or bool(args.enemy)
+    bake_projectiles = args.all or args.projectiles
 
     # Default invocation (no flags) → default set.
     if not any(
@@ -1198,6 +1220,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.all,
             args.enemies,
             args.enemy,
+            args.projectiles,
             args.player,
             args.items,
             args.floors,
@@ -1220,6 +1243,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.all,
             args.enemies,
             args.enemy,
+            args.projectiles,
             args.player,
             args.items,
             args.floors,
@@ -1262,6 +1286,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)
+    if bake_projectiles:
+        collect_projectiles(plan)
 
     # Deduplicate jobs by (sheet, atlas).
     seen: set[tuple[Path, Path]] = set()
@@ -1553,9 +1579,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, enemies",
+        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, enemies, projectiles",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
+    p.add_argument("--projectiles", action="store_true", help="Bake combat projectile sheets")
     p.add_argument(
         "--enemy",
         action="append",
@@ -1588,6 +1615,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.all,
             args.enemies,
             args.enemy,
+            args.projectiles,
             args.player,
             args.items,
             args.floors,

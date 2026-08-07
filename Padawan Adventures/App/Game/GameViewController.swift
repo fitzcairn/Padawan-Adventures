@@ -207,6 +207,7 @@ final class GameViewController: LandscapeHostingController {
         // Slash shots use the level's single-character letter pool, not enemies.yaml.
         let enemyType = baseEnemyType.withShotTypes(from: session.selectedLevel.vocabulary)
         let enemySprite = typeID.flatMap { session.enemyConfig.spriteConfig(for: $0) }
+        let projectileSprite = typeID.flatMap { session.enemyConfig.projectileSpriteConfig(for: $0) }
         let combatSprite = session.playerConfig.combatSprite
         let healthCount = scene.currentWorld.healthCount
         let hudConfig = cachedHudConfig
@@ -248,6 +249,7 @@ final class GameViewController: LandscapeHostingController {
             letterSpriteSetLibrary: session.letterSpriteSetLibrary,
             combatSprite: combatSprite,
             enemySprite: enemySprite,
+            projectileSprite: projectileSprite,
             wallHeight: isoConfig.wallHeight,
             isoSquash: isoConfig.tileHeight / max(isoConfig.tileWidth, 1)
         )

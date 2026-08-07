@@ -167,6 +167,15 @@ extension AppSession {
                 allReady = false
             }
         }
+        // Projectiles are level-scoped, unlike enemy bodies: all eight sheets at native
+        // resolution are ~137 MB, so only the current level's are kept resident.
+        for typeID in Set(typeIDs) {
+            guard let projectile = enemyConfig.projectileSpriteConfig(for: typeID) else { continue }
+            await spriteLibrary.ensureLoaded(projectile.config, id: projectile.id)
+            if !spriteLibrary.isLoaded(id: projectile.id) {
+                GameLogger.error(.sprites, "projectile sprite '\(projectile.id)' incomplete")
+            }
+        }
         onProgress?(1)
         return allReady
     }

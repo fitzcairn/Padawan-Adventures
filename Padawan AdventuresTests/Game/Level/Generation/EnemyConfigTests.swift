@@ -185,6 +185,40 @@ struct EnemyConfigTests {
         }
     }
 
+    @Test func decodesProjectilesMapAndResolvesTypeProjectile() throws {
+        let yaml = """
+        projectiles:
+          slime:
+            root: Sprites/Projectiles
+            animations:
+              fly: { sheet: slime-spritesheet, atlas: slime-atlas }
+        defaults:
+          letter: E
+          color: "#FF0000"
+          tiles_per_second: 0.5
+          forget_seconds: 3.0
+        enemies:
+          spider: { projectile: slime }
+        """
+        let config = try EnemyConfig.decode(from: yaml)
+        let resolved = try #require(config.projectileSpriteConfig(for: "spider"))
+        #expect(resolved.id == "projectile_slime")
+        #expect(resolved.config.root == "Sprites/Projectiles")
+        #expect(config.type(named: "spider")?.projectile == "slime")
+    }
+
+    @Test func validateRejectsUnknownProjectileReference() {
+        var config = EnemyConfig.fallback
+        config.enemies["spider"]?.projectile = "missing"
+        #expect(
+            throws: EnemyConfigError.invalid(
+                "spider.projectile references unknown projectile 'missing'"
+            )
+        ) {
+            try config.validate()
+        }
+    }
+
     @Test func typeBlockOverridesDefaultsWhenSpritesPresent() throws {
         let yaml = """
         sprites:
@@ -237,6 +271,9 @@ struct EnemyConfigTests {
             }
             let resolved = try #require(config.spriteConfig(for: id))
             #expect(resolved.id == id)
+            let projectile = try #require(config.projectileSpriteConfig(for: id))
+            #expect(projectile.config.root == "Sprites/Projectiles")
+            #expect(projectile.config.animations["fly"] != nil)
         }
     }
 

@@ -240,6 +240,21 @@ sprites:
       walk_southwest: { flip_of: walk_southeast }
       walk_down: { sheet: treant-walk_down-spritesheet, atlas: treant-walk_down-atlas }
 
+# Combat projectile sheets, referenced by id from each enemy type's `projectile:`.
+# 5x5 grid of 512px cells = 25 frames; `duration_s: 2.0` in the atlas paces the loop.
+# `bake_scale: 1.0` keeps native resolution — these render large in the deflect arena.
+# Shared opaque trim (default) crops to the union bbox across all 25 frames, so the
+# orb stays registered frame to frame instead of jittering.
+projectiles:
+  ice:    { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: ice-spritesheet,    atlas: ice-atlas } } }
+  lava:   { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: lava-spritesheet,   atlas: lava-atlas } } }
+  metal:  { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: metal-spritesheet,  atlas: metal-atlas } } }
+  mud:    { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: mud-spritesheet,    atlas: mud-atlas } } }
+  plasma: { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: plasma-spritesheet, atlas: plasma-atlas } } }
+  slime:  { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: slime-spritesheet,  atlas: slime-atlas } } }
+  web:    { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: web-spritesheet,    atlas: web-atlas } } }
+  wood:   { root: Sprites/Projectiles, bake_scale: 1.0, animations: { fly: { sheet: wood-spritesheet,   atlas: wood-atlas } } }
+
 defaults:
   letter: E
   color: "#FF0000"
@@ -254,13 +269,13 @@ defaults:
 # Each type inherits everything from `defaults:`; any same-name key here wins.
 # `fx.notice` plays once, the first time that enemy gets line of sight on the player.
 enemies:
-  centipede:   { sprite: centipede,   fx: { notice: enemy-centipede } }
-  dino:        { sprite: dino,        fx: { notice: enemy-dino } }
-  drone:       { sprite: drone,       fx: { notice: enemy-drone } }
-  ice_monster: { sprite: ice_monster, fx: { notice: enemy-ice_monster } }
-  lava_lizard: { sprite: lava_lizard, fx: { notice: enemy-lava_lizard } }
-  moth:        { sprite: moth,        fx: { notice: enemy-moth } }
-  robot:       { sprite: robot,       fx: { notice: enemy-robot } }
-  snake:       { sprite: snake,       fx: { notice: enemy-snake } }
-  spider:      { sprite: spider,      fx: { notice: enemy-spider } }
-  treant:      { sprite: treant,      fx: { notice: enemy-treant } }
+  centipede:   { sprite: centipede,   projectile: slime,  fx: { notice: enemy-centipede } }
+  dino:        { sprite: dino,        projectile: mud,    fx: { notice: enemy-dino } }
+  drone:       { sprite: drone,       projectile: plasma, fx: { notice: enemy-drone } }
+  ice_monster: { sprite: ice_monster, projectile: ice,    fx: { notice: enemy-ice_monster } }
+  lava_lizard: { sprite: lava_lizard, projectile: lava,   fx: { notice: enemy-lava_lizard } }
+  moth:        { sprite: moth,        projectile: web,    fx: { notice: enemy-moth } }
+  robot:       { sprite: robot,       projectile: metal,  fx: { notice: enemy-robot } }
+  snake:       { sprite: snake,       projectile: slime,  fx: { notice: enemy-snake } }
+  spider:      { sprite: spider,      projectile: slime,  fx: { notice: enemy-spider } }
+  treant:      { sprite: treant,      projectile: wood,   fx: { notice: enemy-treant } }

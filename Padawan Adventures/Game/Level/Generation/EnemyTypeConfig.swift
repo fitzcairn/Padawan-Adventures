@@ -57,6 +57,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
     var fx: SoundEffectTable
     /// Shared sprite id from the file's `sprites:` map; nil renders the placeholder shape.
     var sprite: String?
+    /// Projectile sprite id from the file's `projectiles:` map; nil falls back to the plain disc.
+    var projectile: String?
 
     enum CodingKeys: String, CodingKey {
         case letter
@@ -69,6 +71,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         case shotTypes = "shot_types"
         case fx
         case sprite
+        case projectile
     }
 
     init(
@@ -81,7 +84,8 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         starsToWin: Int = 10,
         shotTypes: [String: EnemyShotTypeConfig] = EnemyTypeConfig.fallbackShotTypes,
         fx: SoundEffectTable = .empty,
-        sprite: String? = nil
+        sprite: String? = nil,
+        projectile: String? = nil
     ) {
         self.letter = letter
         self.color = color
@@ -93,6 +97,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         self.shotTypes = shotTypes
         self.fx = fx
         self.sprite = sprite
+        self.projectile = projectile
     }
 
     init(from decoder: Decoder) throws {
@@ -108,6 +113,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
             ?? EnemyTypeConfig.fallbackShotTypes
         fx = try container.decodeIfPresent(SoundEffectTable.self, forKey: .fx) ?? .empty
         sprite = try container.decodeIfPresent(String.self, forKey: .sprite)
+        projectile = try container.decodeIfPresent(String.self, forKey: .projectile)
     }
 
     /// Level-1 letters used when YAML omits `shot_types` (hand-built configs / tests).

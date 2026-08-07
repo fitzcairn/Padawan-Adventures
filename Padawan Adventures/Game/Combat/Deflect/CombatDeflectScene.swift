@@ -34,6 +34,7 @@ final class CombatDeflectScene: MinigameScene {
     let spriteLibrary: SpriteLibrary
     let combatSprite: SpriteConfig?
     let enemySprite: (id: String, config: SpriteConfig)?
+    let projectileSprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
     let isoSquash: CGFloat
 
@@ -46,8 +47,18 @@ final class CombatDeflectScene: MinigameScene {
     var activeLoopTrackID: String?
     var cachedPlayerWidth: CGFloat?
 
-    /// 20% larger than the slash arena's letter sprites (`103.68`).
-    let orbBaseSize: CGFloat = 103.68 * 1.2
+    /// Peak flight scale (`runFlight` endScale on the inbound leg and on a wrong tap).
+    static let peakOrbScale: CGFloat = 1.15
+    /// Base size such that the projectile's peak on-screen width (at impact) is 75% of
+    /// the player's visible sprite width.
+    var orbBaseSize: CGFloat { max(measuredPlayerWidth * 0.75 / Self.peakOrbScale, 1) }
+    /// Extra scale for the animated projectile clip relative to `orbBaseSize`. The word
+    /// image in the middle stays on `orbBaseSize` and is unaffected.
+    static let projectileSpriteScale: CGFloat = 1.15
+    /// Word illustration is fitted into this fraction of `orbBaseSize`. The orb art is
+    /// blobby rather than a clean circle, so this is the knob to tune if the word
+    /// crowds the edge.
+    static let wordImageFitFraction: CGFloat = 0.62
     let ringLineWidth: CGFloat = 2
     let ringDashLengths: [CGFloat] = [10, 8]
     /// Indexed by ring index — left to right (supports up to `maxRingCount`).
@@ -86,6 +97,7 @@ final class CombatDeflectScene: MinigameScene {
         spriteLibrary: SpriteLibrary,
         combatSprite: SpriteConfig?,
         enemySprite: (id: String, config: SpriteConfig)?,
+        projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
         isoSquash: CGFloat
     ) {
@@ -94,6 +106,7 @@ final class CombatDeflectScene: MinigameScene {
         self.spriteLibrary = spriteLibrary
         self.combatSprite = combatSprite
         self.enemySprite = enemySprite
+        self.projectileSprite = projectileSprite
         self.wallHeight = max(wallHeight, 1)
         self.isoSquash = isoSquash
         self.engine = CombatDeflectMinigameEngine(

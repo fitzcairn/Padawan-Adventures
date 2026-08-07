@@ -141,6 +141,7 @@ nonisolated enum ConfigStore {
         "inherits",
         "sprite",
         "sprites",
+        "projectiles",
         "slash_max_seconds",
         "slash_max_screen_width_fraction",
         "fade_seconds",

@@ -12,6 +12,7 @@ struct CombatDeflectMinigameView: View {
     let spriteLibrary: SpriteLibrary
     let combatSprite: SpriteConfig?
     let enemySprite: (id: String, config: SpriteConfig)?
+    let projectileSprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
     let isoSquash: CGFloat
     let onFinished: (MinigameOutcome) -> Void
@@ -27,6 +28,7 @@ struct CombatDeflectMinigameView: View {
         spriteLibrary: SpriteLibrary,
         combatSprite: SpriteConfig?,
         enemySprite: (id: String, config: SpriteConfig)?,
+        projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
         isoSquash: CGFloat,
         onFinished: @escaping (MinigameOutcome) -> Void
@@ -39,6 +41,7 @@ struct CombatDeflectMinigameView: View {
         self.spriteLibrary = spriteLibrary
         self.combatSprite = combatSprite
         self.enemySprite = enemySprite
+        self.projectileSprite = projectileSprite
         self.wallHeight = wallHeight
         self.isoSquash = isoSquash
         self.onFinished = onFinished
@@ -51,6 +54,7 @@ struct CombatDeflectMinigameView: View {
                 spriteLibrary: spriteLibrary,
                 combatSprite: combatSprite,
                 enemySprite: enemySprite,
+                projectileSprite: projectileSprite,
                 wallHeight: wallHeight,
                 isoSquash: isoSquash
             )
@@ -113,11 +117,12 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     private let spriteLibrary: SpriteLibrary
     private let combatSprite: SpriteConfig?
     private let enemySprite: (id: String, config: SpriteConfig)?
+    private let projectileSprite: (id: String, config: SpriteConfig)?
     private let wallHeight: CGFloat
     private let isoSquash: CGFloat
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatDeflectScene>(
-        make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, wallHeight, isoSquash] size in
+        make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, projectileSprite, wallHeight, isoSquash] size in
             CombatDeflectScene(
                 size: size,
                 deflectConfig: deflectConfig,
@@ -127,6 +132,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
                 spriteLibrary: spriteLibrary,
                 combatSprite: combatSprite,
                 enemySprite: enemySprite,
+                projectileSprite: projectileSprite,
                 wallHeight: wallHeight,
                 isoSquash: isoSquash
             )
@@ -146,6 +152,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
         spriteLibrary: SpriteLibrary,
         combatSprite: SpriteConfig?,
         enemySprite: (id: String, config: SpriteConfig)?,
+        projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
         isoSquash: CGFloat
     ) {
@@ -156,6 +163,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
         self.spriteLibrary = spriteLibrary
         self.combatSprite = combatSprite
         self.enemySprite = enemySprite
+        self.projectileSprite = projectileSprite
         self.wallHeight = wallHeight
         self.isoSquash = isoSquash
         self.health = startingHealth

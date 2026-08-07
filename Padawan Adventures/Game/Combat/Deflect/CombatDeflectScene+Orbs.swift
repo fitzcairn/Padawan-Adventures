@@ -102,15 +102,23 @@ extension CombatDeflectScene {
         }
     }
 
-    /// Word illustration on a dark disc; falls back to a lettered circle when the PNG is missing.
+    /// Word illustration centered on the enemy's animated projectile. Falls back to a
+    /// dark disc, and to a lettered disc when the word PNG is missing too.
     func makeOrbNode(letter: String, imageName: String?) -> SKNode {
         let root = SKNode()
-        let backing = SKShapeNode(circleOfRadius: orbBaseSize * 0.55)
-        backing.fillColor = UIColor.black.withAlphaComponent(0.55)
-        backing.strokeColor = UIColor.white.withAlphaComponent(0.85)
-        backing.lineWidth = 2
-        backing.isAntialiased = true
-        root.addChild(backing)
+
+        if let projectile = makeProjectileNode() {
+            root.addChild(projectile)
+        } else {
+            let backing = SKShapeNode(
+                circleOfRadius: orbBaseSize * Self.projectileSpriteScale * 0.55
+            )
+            backing.fillColor = UIColor.black.withAlphaComponent(0.55)
+            backing.strokeColor = UIColor.white.withAlphaComponent(0.85)
+            backing.lineWidth = 2
+            backing.isAntialiased = true
+            root.addChild(backing)
+        }
 
         if let image = GateWordPlugImageSprites.image(named: imageName) {
             let texture = SKTexture(image: image)
@@ -118,7 +126,7 @@ extension CombatDeflectScene {
             let sprite = SKSpriteNode(texture: texture)
             let texSize = texture.size()
             let maxDim = max(texSize.width, texSize.height)
-            let scale = (orbBaseSize * 0.78) / max(maxDim, 1)
+            let scale = (orbBaseSize * Self.wordImageFitFraction) / max(maxDim, 1)
             sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
             sprite.zPosition = 1
             sprite.isUserInteractionEnabled = false
@@ -133,6 +141,25 @@ extension CombatDeflectScene {
             root.addChild(label)
         }
         return root
+    }
+
+    /// Looping projectile clip sized a bit larger than `orbBaseSize` so the word image
+    /// reads clearly inside the orb without growing with it.
+    private func makeProjectileNode() -> AnimatedSpriteNode? {
+        guard let projectileSprite,
+              spriteLibrary.animation(id: projectileSprite.id, named: "fly") != nil else {
+            return nil
+        }
+        let width = orbBaseSize * Self.projectileSpriteScale
+        let node = AnimatedSpriteNode(size: CGSize(width: width, height: width))
+        // Characters anchor at texture-top so their feet stay on the node position; an orb
+        // wants its middle there instead. The V-correcting negative yScale still resolves
+        // because it mirrors about the same center.
+        node.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        node.play(name: "fly", library: spriteLibrary, libraryID: projectileSprite.id)
+        // After `play` the texture exists, so `fitWidth` can lock pixels-to-points.
+        node.fitWidth(width)
+        return node
     }
 
     func inboundControlPoint(from start: CGPoint, to end: CGPoint) -> CGPoint {
