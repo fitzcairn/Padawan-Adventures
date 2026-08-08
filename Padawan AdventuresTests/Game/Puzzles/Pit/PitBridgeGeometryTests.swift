@@ -56,4 +56,14 @@ struct PitBridgeGeometryTests {
         let far = CGPoint(x: center.x + geo.tileSide * 2, y: center.y)
         #expect(!geo.isDrop(far, onSlot: 0))
     }
+
+    @Test func isDropAcceptsNearMissOutsideDashedBox() {
+        let geo = makeGeometry(slotCount: 2)
+        let center = geo.slotCenter(0)
+        // Dashed box half-diagonal is ~0.71 * tileSide; a point just past a box
+        // edge should still count with the assisted radius.
+        let nearMiss = CGPoint(x: center.x + geo.tileSide * 0.95, y: center.y)
+        #expect(geo.isDrop(nearMiss, onSlot: 0))
+        #expect(geo.distance(from: nearMiss, toSlot: 0) > geo.tileSide * 0.5)
+    }
 }

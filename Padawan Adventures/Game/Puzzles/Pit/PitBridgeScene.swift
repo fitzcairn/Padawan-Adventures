@@ -57,6 +57,9 @@ final class PitBridgeScene: MinigameScene {
     static let letterCueActionKey = "pitBridgeLetterCue"
     static let winSoundActionKey = "pitBridgeWinSound"
     static let springBackDuration: TimeInterval = 0.18
+    /// Ease a near-miss drop into the dashed slot before resolving correct/incorrect.
+    static let snapIntoSlotDuration: TimeInterval = 0.18
+    static let snapIntoSlotActionKey = "snapIntoSlot"
     static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
     static let wordPromptNodeName = "wordPrompt"
     static let blankLetterNodeName = "blankLetter"

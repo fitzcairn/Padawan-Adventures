@@ -375,7 +375,8 @@ extension PitBridgeScene {
         }
 
         guard let node = choiceNode(at: location) else { return }
-        guard node.action(forKey: "springBack") == nil else { return }
+        guard node.action(forKey: "springBack") == nil,
+              node.action(forKey: Self.snapIntoSlotActionKey) == nil else { return }
         draggedNode = node
         dragStartPosition = node.position
         dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
@@ -416,14 +417,8 @@ extension PitBridgeScene {
             return
         }
 
-        guard geometry.isDrop(node.position, onSlot: engine.roundIndex) else {
-            node.zPosition = Self.trayTilesZ
-            resumePlayerIdle()
-            springBack(node, to: dragStartPosition)
-            return
-        }
-
-        guard let result = engine.accept(choiceID: id) else {
+        let slotIndex = engine.roundIndex
+        guard geometry.isDrop(node.position, onSlot: slotIndex) else {
             node.zPosition = Self.trayTilesZ
             resumePlayerIdle()
             springBack(node, to: dragStartPosition)
@@ -431,6 +426,23 @@ extension PitBridgeScene {
         }
 
         isUserInteractionEnabled = false
+        let target = geometry.slotCenter(slotIndex)
+        snapIntoSlot(node, to: target) { [weak self] in
+            guard let self else { return }
+            self.resolveDrop(node: node, id: id)
+        }
+    }
+
+    /// Resolves a drop that has already been accepted by geometry (and snapped into the slot).
+    func resolveDrop(node: SKNode, id: UUID) {
+        guard let result = engine.accept(choiceID: id) else {
+            node.zPosition = Self.trayTilesZ
+            resumePlayerIdle()
+            isUserInteractionEnabled = true
+            springBack(node, to: dragStartPosition)
+            return
+        }
+
         let letter = (node.userData?["letter"] as? String) ?? ""
         switch result {
         case let .correct(slotIndex, won):

@@ -15,8 +15,9 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     static let bridgeContentDownShift: CGFloat = 0.10
     /// Tray tile centers as fractions of scene width.
     static let trayXFractions: [CGFloat] = [0.25, 0.5, 0.75]
-    /// Drop hit radius as a fraction of the tile side.
-    static let dropRadiusScale: CGFloat = 0.6
+    /// Drop hit radius as a fraction of the tile side. Larger than the dashed box
+    /// half-diagonal (~0.71) so near-misses still count.
+    static let dropRadiusScale: CGFloat = 1.25
 
     var sceneSize: CGSize
     /// AABB of the 2x2 isometric floor block used for each side pad.
@@ -103,9 +104,12 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
         return CGPoint(x: x, y: y)
     }
 
-    func isDrop(_ point: CGPoint, onSlot index: Int) -> Bool {
+    func distance(from point: CGPoint, toSlot index: Int) -> CGFloat {
         let center = slotCenter(index)
-        let radius = tileSide * Self.dropRadiusScale
-        return hypot(point.x - center.x, point.y - center.y) <= radius
+        return hypot(point.x - center.x, point.y - center.y)
+    }
+
+    func isDrop(_ point: CGPoint, onSlot index: Int) -> Bool {
+        distance(from: point, toSlot: index) <= tileSide * Self.dropRadiusScale
     }
 }

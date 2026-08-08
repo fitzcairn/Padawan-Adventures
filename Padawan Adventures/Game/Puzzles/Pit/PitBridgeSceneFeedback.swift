@@ -84,6 +84,25 @@ extension PitBridgeScene {
         )
     }
 
+    /// Smoothly pulls a near-miss drop into the dashed slot before feedback runs.
+    func snapIntoSlot(_ node: SKNode, to position: CGPoint, completion: @escaping () -> Void) {
+        let distance = hypot(node.position.x - position.x, node.position.y - position.y)
+        guard distance > 1 else {
+            node.position = position
+            completion()
+            return
+        }
+        let action = SKAction.move(to: position, duration: Self.snapIntoSlotDuration)
+        action.timingMode = .easeOut
+        node.run(
+            .sequence([
+                action,
+                .run(completion),
+            ]),
+            withKey: Self.snapIntoSlotActionKey
+        )
+    }
+
     func flashOverlay(on node: SKNode, color: UIColor, completion: @escaping () -> Void) {
         let side = geometry.tileSide
         let overlay = SKShapeNode(rectOf: CGSize(width: side, height: side * 0.6), cornerRadius: 4)
