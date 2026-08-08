@@ -68,7 +68,7 @@ extension GateSoundOutWordScene {
     }
 
     func capacitorPlayIconSide(for diameter: CGFloat) -> CGFloat {
-        capacitorGlyphFontSize(for: diameter) * 0.85
+        capacitorGlyphFontSize(for: diameter) * 0.85 * 0.6
     }
 
     /// Idle `play` icon; swapped to `play.fill` for the duration of a letter-sound tap.
