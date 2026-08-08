@@ -53,9 +53,10 @@ final class MinigameDemoCoinLayer {
         let y = scene.size.height * 0.82
         let startX = scene.size.width * 0.5 - width * 0.5
 
-        // Kick off SKActions, then sleep for their duration. Awaiting
-        // `node.run(...)` hangs forever when the scene is not presented
-        // (unit tests build a bare SKScene with no view / update loop).
+        // Kick off SKActions, then sleep for their duration. Prefer
+        // `run(_:withKey:)` over the bare / completion `run` overloads: the
+        // async `run(_:)` is preferred in async contexts and hangs forever
+        // when the scene is not presented (unit tests use a bare SKScene).
         let gatherDuration: TimeInterval = 0.45
         for (index, coin) in coins.enumerated() {
             coin.removeAction(forKey: "bob")
@@ -64,9 +65,7 @@ final class MinigameDemoCoinLayer {
                 duration: gatherDuration
             )
             move.timingMode = .easeInEaseOut
-            // Completion-handler overload (not the async `run`) so we don't
-            // hang when the scene has no update loop.
-            coin.run(move, completion: {})
+            coin.run(move, withKey: "gather")
         }
         try? await Task.sleep(nanoseconds: UInt64(gatherDuration * 1_000_000_000))
         try? await Task.sleep(nanoseconds: 500_000_000)
@@ -80,7 +79,7 @@ final class MinigameDemoCoinLayer {
         label.position = CGPoint(x: startX + width + spacing, y: y)
         label.alpha = 0
         root.addChild(label)
-        label.run(.fadeIn(withDuration: fadeDuration), completion: {})
+        label.run(.fadeIn(withDuration: fadeDuration), withKey: "fadeIn")
         try? await Task.sleep(nanoseconds: UInt64(fadeDuration * 1_000_000_000))
     }
 
