@@ -263,6 +263,9 @@ final class GameViewController: LandscapeHostingController {
         )
 
         let instructionsKey = chosenMinigame.kind.rawValue
+        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
+            forKindRawValue: instructionsKey
+        )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
@@ -270,6 +273,13 @@ final class GameViewController: LandscapeHostingController {
             instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
+            makeDemoView: {
+                CombatMinigameFactory.makeDemoView(
+                    config: chosenMinigame,
+                    context: context,
+                    leadInSeconds: leadInSeconds
+                )
             },
             makeView: { finish in
                 CombatMinigameFactory.makeView(
@@ -411,6 +421,9 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = cachedHudConfig
 
         let instructionsKey = chosenMinigame.kind.rawValue
+        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
+            forKindRawValue: instructionsKey
+        )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
@@ -418,6 +431,19 @@ final class GameViewController: LandscapeHostingController {
             instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
+            makeDemoView: {
+                PitMinigameFactory.makeDemoView(
+                    config: chosenMinigame,
+                    pitFx: pitConfig.fx,
+                    playerFx: playerFx,
+                    hudConfig: hudConfig,
+                    floorTileSetLibrary: self.session.floorTileSetLibrary,
+                    isoConfig: self.isoConfig,
+                    spriteLibrary: self.session.spriteLibrary,
+                    playerSpriteConfig: self.session.playerConfig.sprite,
+                    leadInSeconds: leadInSeconds
+                )
             },
             makeView: { finish in
                 PitMinigameFactory.makeView(
@@ -535,6 +561,9 @@ final class GameViewController: LandscapeHostingController {
 
         let musicName = chosen.music ?? session.selectedGateConfig.music
         let instructionsKey = chosen.kind.rawValue
+        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
+            forKindRawValue: instructionsKey
+        )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
@@ -542,6 +571,14 @@ final class GameViewController: LandscapeHostingController {
             instructionsKey: instructionsKey,
             onInstructionsAcknowledged: { [weak self] in
                 Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            },
+            makeDemoView: {
+                GateMinigameFactory.makeDemoView(
+                    config: chosen,
+                    playerFx: playerFx,
+                    hudConfig: hudConfig,
+                    leadInSeconds: leadInSeconds
+                )
             },
             makeView: { finish in
                 GateMinigameFactory.makeView(

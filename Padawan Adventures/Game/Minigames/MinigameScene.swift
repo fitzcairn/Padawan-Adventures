@@ -41,4 +41,15 @@ class MinigameScene: SKScene {
 
     /// Called on meaningful size changes after the initial build.
     func rebuildLayout() {}
+
+    /// Test seam: runs the first-time build without an `SKView` present.
+    func buildContentForTesting() {
+        guard !didSetup else { return }
+        isBuilding = true
+        defer {
+            isBuilding = false
+            didSetup = true
+        }
+        buildContent()
+    }
 }

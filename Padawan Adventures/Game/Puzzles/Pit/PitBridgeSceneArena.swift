@@ -22,7 +22,7 @@ extension PitBridgeScene {
         let geo = geometry
         addPad(rect: geo.leftPadRect, name: "leftPad")
         addPad(rect: geo.rightPadRect, name: "rightPad")
-        addPlayer(at: CGPoint(x: geo.leftPadRect.midX, y: geo.leftPadRect.midY))
+        addPlayer(at: CGPoint(x: geo.leftPadRect.midX, y: geo.bridgeLineY))
     }
 
     func addPad(rect: CGRect, name: String) {
@@ -158,7 +158,7 @@ extension PitBridgeScene {
             trayNodes[choice.id]?.position = geo.trayCenter(index)
         }
         if !isJumping, placedTileNodes.isEmpty, let playerNode {
-            playerNode.position = CGPoint(x: geo.leftPadRect.midX, y: geo.leftPadRect.midY)
+            playerNode.position = CGPoint(x: geo.leftPadRect.midX, y: geo.bridgeLineY)
         } else if !isJumping, let last = placedTileNodes.last, let playerNode {
             playerNode.position = last.position
         }

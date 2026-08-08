@@ -9,6 +9,10 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     static let wordPromptTopFraction: CGFloat = 0.97
     /// Gap between the picture plate and the word plate, as a fraction of the picture side.
     static let wordPromptPlateGapScale: CGFloat = 0.03
+    /// Side pads sit this fraction below scene mid-height.
+    static let bridgeLineDownShift: CGFloat = 0.20
+    /// Placed tiles, dashed slot, and player sit this fraction below the pad mid-line.
+    static let bridgeContentDownShift: CGFloat = 0.10
     /// Tray tile centers as fractions of scene width.
     static let trayXFractions: [CGFloat] = [0.25, 0.5, 0.75]
     /// Drop hit radius as a fraction of the tile side.
@@ -41,16 +45,26 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
         )
     }
 
+    /// Bottom edge of a vertically centred pad, before the bridge down-shift.
+    private var unshiftedPadMinY: CGFloat {
+        (sceneSize.height - padSize.height) * 0.5
+    }
+
+    /// Shared vertical origin for both side pads after the bridge down-shift.
+    private var padMinY: CGFloat {
+        let unshiftedMidY = unshiftedPadMinY + padSize.height * 0.5
+        let shiftedMidY = unshiftedMidY * (1 - Self.bridgeLineDownShift)
+        return shiftedMidY - padSize.height * 0.5
+    }
+
     var leftPadRect: CGRect {
-        let padY = (sceneSize.height - padSize.height) * 0.5
-        return CGRect(x: 0, y: padY, width: padSize.width, height: padSize.height)
+        CGRect(x: 0, y: padMinY, width: padSize.width, height: padSize.height)
     }
 
     var rightPadRect: CGRect {
-        let padY = (sceneSize.height - padSize.height) * 0.5
-        return CGRect(
+        CGRect(
             x: sceneSize.width - padSize.width,
-            y: padY,
+            y: padMinY,
             width: padSize.width,
             height: padSize.height
         )
@@ -61,6 +75,11 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
         padSize.width * 0.5
     }
 
+    /// Vertical centre of placed tiles, the dashed slot, and the player.
+    var bridgeLineY: CGFloat {
+        leftPadRect.midY * (1 - Self.bridgeContentDownShift)
+    }
+
     var slotSpacing: CGFloat {
         let count = max(slotCount, 1)
         return (rightPadRect.minX - leftPadRect.maxX) / CGFloat(count + 1)
@@ -69,7 +88,7 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     func slotCenter(_ index: Int) -> CGPoint {
         CGPoint(
             x: leftPadRect.maxX + slotSpacing * CGFloat(index + 1),
-            y: leftPadRect.midY
+            y: bridgeLineY
         )
     }
 

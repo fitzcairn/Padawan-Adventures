@@ -160,17 +160,26 @@ struct MaskedSpellingText: View {
         max(1.5, fontSize * 0.08)
     }
 
-    /// Ending blanks sit slightly right of the letter advance (2% of box width).
-    private var endingBlankShift: CGFloat {
+    /// Gap between a blank run and the adjacent letter (5% of box width).
+    private var blankLetterGap: CGFloat {
         blankWidth * 0.05
     }
 
-    /// True for `_` in a trailing blank run (ending-sound masks like `do_` / `h___`).
-    private func isEndingBlank(at offset: Int) -> Bool {
+    /// Last `_` in a leading blank run (`_og` / `__op`) — pad after toward the letter.
+    private func isLastLeadingBlank(at offset: Int) -> Bool {
+        let chars = Array(text)
+        guard offset < chars.count, chars[offset] == "_" else { return false }
+        let nextIsLetter = offset + 1 < chars.count && chars[offset + 1] != "_"
+        let onlyBlanksBefore = chars[..<offset].allSatisfy { $0 == "_" }
+        return nextIsLetter && onlyBlanksBefore
+    }
+
+    /// First `_` in a trailing blank run (`do_` / `h___`) — pad before toward the letter.
+    private func isFirstTrailingBlank(at offset: Int) -> Bool {
         let chars = Array(text)
         guard offset < chars.count, chars[offset] == "_" else { return false }
         let trailingBlanks = chars[offset...].allSatisfy { $0 == "_" }
-        let hasLetterBefore = chars[..<offset].contains { $0 != "_" }
+        let hasLetterBefore = offset > 0 && chars[offset - 1] != "_"
         return trailingBlanks && hasLetterBefore
     }
 
@@ -186,7 +195,8 @@ struct MaskedSpellingText: View {
                         .alignmentGuide(.firstTextBaseline) {
                             $0[VerticalAlignment.center] + stringHeight * 0.5
                         }
-                        .offset(x: isEndingBlank(at: offset) ? endingBlankShift : 0)
+                        .padding(.trailing, isLastLeadingBlank(at: offset) ? blankLetterGap : 0)
+                        .padding(.leading, isFirstTrailingBlank(at: offset) ? blankLetterGap : 0)
                 } else {
                     Text(String(character))
                         .font(AppFont.swiftUI(size: fontSize, weight: .heavy))

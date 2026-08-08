@@ -69,4 +69,64 @@ enum CombatMinigameFactory {
             )
         }
     }
+
+    @MainActor @ViewBuilder
+    static func makeDemoView(
+        config: CombatMinigameConfig,
+        context: CombatPresentationContext,
+        leadInSeconds: TimeInterval
+    ) -> some View {
+        switch config {
+        case .slash:
+            MinigameDemoView(
+                make: { size in
+                    CombatScene(
+                        size: size,
+                        enemyType: context.enemyType,
+                        playerFx: context.playerFx,
+                        startingHealth: context.healthCount,
+                        graphemeSoundRepeatSeconds: context.graphemeSoundRepeatSeconds,
+                        minDecoyCount: context.minDecoyCount,
+                        maxDecoyCount: context.maxDecoyCount,
+                        graphemeCase: context.graphemeCase,
+                        slashMaxSeconds: context.slashMaxSeconds,
+                        slashMaxScreenWidthFraction: context.slashMaxScreenWidthFraction,
+                        spriteLibrary: context.spriteLibrary,
+                        letterSpriteSetLibrary: context.letterSpriteSetLibrary,
+                        combatSprite: context.combatSprite,
+                        enemySprite: context.enemySprite,
+                        wallHeight: context.wallHeight
+                    )
+                },
+                timing: .init(
+                    maxCorrectMoves: 3,
+                    displayedTotal: context.enemyType.starsToWin
+                ),
+                leadInSeconds: leadInSeconds
+            )
+        case .deflect(let deflect):
+            MinigameDemoView(
+                make: { size in
+                    CombatDeflectScene(
+                        size: size,
+                        deflectConfig: deflect,
+                        enemyType: context.enemyType,
+                        playerFx: context.playerFx,
+                        startingHealth: context.healthCount,
+                        spriteLibrary: context.spriteLibrary,
+                        combatSprite: context.combatSprite,
+                        enemySprite: context.enemySprite,
+                        projectileSprite: context.projectileSprite,
+                        wallHeight: context.wallHeight,
+                        isoSquash: context.isoSquash
+                    )
+                },
+                timing: .init(
+                    maxCorrectMoves: 3,
+                    displayedTotal: deflect.monsterHP
+                ),
+                leadInSeconds: leadInSeconds
+            )
+        }
+    }
 }

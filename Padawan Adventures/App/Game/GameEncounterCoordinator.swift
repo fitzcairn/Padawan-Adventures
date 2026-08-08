@@ -19,12 +19,13 @@ final class GameEncounterCoordinator {
         self.buildOverlayHost = buildOverlayHost
     }
 
-    func presentMinigame<Content: View>(
+    func presentMinigame<Demo: View, Content: View>(
         music: MusicCue,
         memoryLabel: String,
         showInstructions: Bool,
         instructionsKey: String,
         onInstructionsAcknowledged: @escaping () -> Void,
+        @ViewBuilder makeDemoView: @escaping () -> Demo,
         @ViewBuilder makeView: @escaping (_ finish: @escaping (MinigameOutcome) -> Void) -> Content,
         onOutcome: @escaping (_ outcome: MinigameOutcome?, _ returnToWorld: OverlayReturn) -> Void
     ) {
@@ -44,7 +45,8 @@ final class GameEncounterCoordinator {
                         MinigameInstructionsGate(
                             needsInstructions: showInstructions,
                             instructionsKey: instructionsKey,
-                            onAcknowledged: onInstructionsAcknowledged
+                            onAcknowledged: onInstructionsAcknowledged,
+                            demo: { makeDemoView() }
                         ) {
                             makeView { outcome in
                                 outcomeBox.outcome = outcome

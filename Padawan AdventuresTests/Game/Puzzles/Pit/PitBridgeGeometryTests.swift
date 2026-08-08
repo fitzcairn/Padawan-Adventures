@@ -22,11 +22,16 @@ struct PitBridgeGeometryTests {
         let geo = makeGeometry(slotCount: 3)
         #expect(geo.leftPadRect.maxX < geo.rightPadRect.minX)
         let centers = (0..<3).map { geo.slotCenter($0) }
+        let padMidY = geo.sceneSize.height * 0.5 * (1 - PitBridgeGeometry.bridgeLineDownShift)
+        let expectedBridgeY = padMidY * (1 - PitBridgeGeometry.bridgeContentDownShift)
         for center in centers {
             #expect(center.x > geo.leftPadRect.maxX)
             #expect(center.x < geo.rightPadRect.minX)
-            #expect(abs(center.y - geo.leftPadRect.midY) < 0.001)
+            #expect(abs(center.y - geo.bridgeLineY) < 0.001)
+            #expect(abs(center.y - expectedBridgeY) < 0.001)
+            #expect(center.y < geo.leftPadRect.midY)
         }
+        #expect(abs(geo.leftPadRect.midY - padMidY) < 0.001)
         let gapBefore = centers[0].x - geo.leftPadRect.maxX
         let gapBetween = centers[1].x - centers[0].x
         let gapAfter = geo.rightPadRect.minX - centers[2].x

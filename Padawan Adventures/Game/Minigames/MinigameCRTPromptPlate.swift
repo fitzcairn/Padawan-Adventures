@@ -11,13 +11,24 @@ enum MinigameCRTPromptPlate {
     /// capacitor / floor-tile play icons, which are the primary affordance.
     static let iconSideScale: CGFloat = 0.22
     static let iconMarginScale: CGFloat = 0.08
+    /// How far the play icon sits to the right of the content, as a fraction of the CRT
+    /// screen’s shorter side. Plate width grows by twice this (centre-anchored) so the
+    /// upper-right slot moves by a full nudge while the icon stays inside the screen.
+    static let iconXNudgeScale: CGFloat = 0.25
+
+    /// Plate size for content, widened for the play-icon X nudge.
+    static func plateSize(forContent content: CGSize) -> CGSize {
+        var size = StarWarsConsoleChrome.plateSize(forContent: content)
+        size.width += iconExtraWidth(for: size) * 2
+        return size
+    }
 
     static func makePicturePlate(
         image: UIImage,
         contentSide: CGFloat,
         name: String
     ) -> SKSpriteNode {
-        let size = StarWarsConsoleChrome.plateSize(
+        let size = plateSize(
             forContent: CGSize(width: contentSide, height: contentSide)
         )
         let plate = SKSpriteNode(
@@ -31,6 +42,8 @@ enum MinigameCRTPromptPlate {
     }
 
     static func makeWordPlate(size: CGSize, name: String) -> SKSpriteNode {
+        var size = size
+        size.width += iconExtraWidth(for: size) * 2
         let plate = SKSpriteNode(
             texture: StarWarsConsoleScreenView.makeTexture(size: size),
             size: size
@@ -51,11 +64,18 @@ enum MinigameCRTPromptPlate {
         }
     }
 
+    private static func iconExtraWidth(for plateSize: CGSize) -> CGFloat {
+        let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
+        return min(screen.width, screen.height) * iconXNudgeScale
+    }
+
     private static func addIcon(to plate: SKSpriteNode) {
         let screen = StarWarsConsoleChrome.screenRect(for: plate.size)
         let side = max(screen.height * iconSideScale, 9)
         let margin = min(screen.width, screen.height) * iconMarginScale
         let icon = MinigamePlaySoundIcon.makeNode(side: side, name: iconName)
+        // Upper-right of the widened plate; width growth is what shifts the icon right
+        // relative to the centred word/picture content.
         icon.position = CGPoint(
             x: screen.maxX - margin - side * 0.5
                 + side * MinigamePlaySoundIcon.opticalXNudgeRatio,

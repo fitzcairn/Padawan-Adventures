@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import Padawan_Adventures
 
@@ -85,11 +86,46 @@ struct PlayerGameStateProgressionTests {
         let keys = PitMinigameKind.allCases.map(\.rawValue)
             + GateMinigameKind.allCases.map(\.rawValue)
             + CombatMinigameKind.allCases.map(\.rawValue)
-        let stringIDs = keys.map { MinigameInstructionsView.bodyStringID(forKindRawValue: $0) }
+        let stringIDs = keys.map {
+            MinigameInstructionsView<EmptyView>.bodyStringID(forKindRawValue: $0)
+        }
         #expect(Set(stringIDs).count == stringIDs.count)
         for id in stringIDs {
             #expect(id.hasPrefix("minigame_instructions_"))
             #expect(!id.contains("-"))
         }
+    }
+
+    @Test func everyMinigameKindHasDemoStage() {
+        // Compile-time / type-level coverage: each kind's scene conforms to MinigameDemoStage.
+        let stages: [any MinigameDemoStage.Type] = [
+            PitSoundOutWordScene.self,
+            PitBridgeScene.self,
+            GateSoundOutWordScene.self,
+            GateGraphemeMatchScene.self,
+            GateWordPlugScene.self,
+            CombatScene.self,
+            CombatDeflectScene.self,
+        ]
+        #expect(stages.count == 7)
+
+        let keys = PitMinigameKind.allCases.map(\.rawValue)
+            + GateMinigameKind.allCases.map(\.rawValue)
+            + CombatMinigameKind.allCases.map(\.rawValue)
+        #expect(keys.count == 10)
+        // 10 kinds map onto 7 scene types (starting/ending share a scene).
+        let uniqueSceneKinds: Set<String> = [
+            "sound-out-word-pit",
+            "ending-sound-pit",
+            "starting-sound-pit",
+            "sound-out-word-gate",
+            "grapheme-sound-gate",
+            "starting-sound-gate",
+            "ending-sound-gate",
+            "grapheme-sound-combat",
+            "starting-sound-combat",
+            "ending-sound-combat",
+        ]
+        #expect(Set(keys) == uniqueSceneKinds)
     }
 }

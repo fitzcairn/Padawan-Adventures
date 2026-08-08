@@ -124,47 +124,86 @@ extension PitBridgeScene {
 
     /// Word letters plus a rectangle blank for the missing sound, laid out under the illustration.
     /// Each grapheme is its own baseline-aligned stack so the blank doesn't float above the rest.
-    func makeMaskedSpellingNode(fontSize: CGFloat) -> SKNode {
+    /// When `filledLetter` is set, the blank run is replaced by that letter with natural string spacing (no blank gap).
+    func makeMaskedSpellingNode(fontSize: CGFloat, filledLetter: String? = nil) -> SKNode {
         let row = SKNode()
         row.name = Self.wordSpellingNodeName
-        let masked = engine.maskedPromptText
-        guard !masked.isEmpty else { return row }
+        let units = spellingDisplayUnits(filledLetter: filledLetter)
+        guard !units.isEmpty else { return row }
 
         let blankLeads = engine.config.letterPosition == .starting
-        let characters = masked.map(String.init)
-        let widths = characters.map { spellingLetterWidth($0, fontSize: fontSize) }
-        let totalWidth = widths.reduce(0, +)
+        let showingBlank = filledLetter == nil
+        let widths = units.map { spellingLetterWidth($0, fontSize: fontSize) }
+        // Extra gap only while the empty box is visible — drop it once a letter fills the blank.
+        let blankLetterGap = showingBlank
+            ? OutlinedLetterFactory.blankSize(fontSize: fontSize).width * 0.05
+            : 0
+        var gapsBefore = [CGFloat](repeating: 0, count: units.count)
+        if showingBlank {
+            for index in units.indices {
+                if blankLeads {
+                    if units[index] != "_",
+                       index > 0,
+                       units[index - 1] == "_",
+                       units[..<index].allSatisfy({ $0 == "_" }) {
+                        gapsBefore[index] = blankLetterGap
+                    }
+                } else if units[index] == "_",
+                          index > 0,
+                          units[index - 1] != "_",
+                          units[index...].allSatisfy({ $0 == "_" }) {
+                    gapsBefore[index] = blankLetterGap
+                }
+            }
+        }
+        let totalWidth = zip(widths, gapsBefore).map(+).reduce(0, +)
         var cursorX = -totalWidth * 0.5
+        blankLetterNode = nil
 
-        for (index, character) in characters.enumerated() {
+        for (index, unit) in units.enumerated() {
             let node: SKNode
-            if character == "_" {
+            if unit == "_" {
                 node = OutlinedLetterFactory.makeBlank(
                     fontSize: fontSize,
                     disablesInteraction: true
                 )
             } else {
                 node = OutlinedLetterFactory.make(
-                    text: character,
+                    text: unit,
                     fontSize: fontSize,
                     disablesInteraction: true
                 )
                 applySpellingBaselineAlignment(to: node)
             }
-            let isBlank = blankLeads ? index == 0 : index == characters.count - 1
-            if isBlank {
+            let isAnswerSlot = blankLeads ? index == 0 : index == units.count - 1
+            if isAnswerSlot {
                 node.name = Self.blankLetterNodeName
                 blankLetterNode = node
             } else {
                 node.name = "spellingLetter:\(index)"
             }
-            // Ending blanks: nudge right by 2% of box width so the outline clears the letter.
-            let endingShift = (!blankLeads && character == "_") ? widths[index] * 0.02 : 0
-            node.position = CGPoint(x: cursorX + widths[index] * 0.5 + endingShift, y: 0)
+            cursorX += gapsBefore[index]
+            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: 0)
             row.addChild(node)
             cursorX += widths[index]
         }
         return row
+    }
+
+    /// Masked characters while empty; when filled, blank run collapses to the letter so spacing matches a normal word.
+    func spellingDisplayUnits(filledLetter: String?) -> [String] {
+        let masked = engine.maskedPromptText
+        guard !masked.isEmpty else { return [] }
+        let blankLeads = engine.config.letterPosition == .starting
+        guard let filled = filledLetter, filled != "_", !filled.isEmpty else {
+            return masked.map(String.init)
+        }
+        if blankLeads {
+            let rest = String(masked.drop(while: { $0 == "_" }))
+            return [filled] + rest.map(String.init)
+        }
+        let rest = String(masked.reversed().drop(while: { $0 == "_" }).reversed())
+        return rest.map(String.init) + [filled]
     }
 
     /// Match GateSoundOutWord prompt packing so every grapheme shares one baseline.
@@ -183,31 +222,25 @@ extension PitBridgeScene {
     }
 
     /// Shows a real letter in the interactive blank, or restores the rectangle when `text` is `"_"`.
+    /// Relays out the spelling row so a filled letter uses normal string spacing (no blank gap).
     func setBlankLetterText(_ text: String) {
-        guard let blankLetterNode else { return }
-        let fontSize = OutlinedLetterFactory.fontSize(from: blankLetterNode) ?? 18
-        let userData = blankLetterNode.userData
-        blankLetterNode.removeAllChildren()
+        guard let row = blankLetterNode?.parent
+            ?? wordPromptNode?.childNode(withName: "//\(Self.wordSpellingNodeName)"),
+              let parent = row.parent
+        else { return }
 
-        let content: SKNode
-        if text == "_" {
-            content = OutlinedLetterFactory.makeBlank(
-                fontSize: fontSize,
-                disablesInteraction: true
-            )
-        } else {
-            content = OutlinedLetterFactory.make(
-                text: text,
-                fontSize: fontSize,
-                disablesInteraction: true
-            )
-            applySpellingBaselineAlignment(to: content)
-        }
-        for child in content.children {
-            child.removeFromParent()
-            blankLetterNode.addChild(child)
-        }
-        blankLetterNode.userData = userData ?? content.userData
+        let fontSize = blankLetterNode.flatMap { OutlinedLetterFactory.fontSize(from: $0) }
+            ?? row.children.compactMap { OutlinedLetterFactory.fontSize(from: $0) }.first
+            ?? 18
+        let position = row.position
+        let zPosition = row.zPosition
+        row.removeFromParent()
+
+        let filled: String? = (text == "_") ? nil : text
+        let newRow = makeMaskedSpellingNode(fontSize: fontSize, filledLetter: filled)
+        newRow.position = position
+        newRow.zPosition = zPosition
+        parent.addChild(newRow)
     }
 
     func setBlankLetterFillColor(_ color: UIColor) {

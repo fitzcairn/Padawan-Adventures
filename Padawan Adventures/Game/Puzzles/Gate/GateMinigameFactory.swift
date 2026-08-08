@@ -28,4 +28,40 @@ enum GateMinigameFactory {
             )
         }
     }
+
+    @MainActor @ViewBuilder
+    static func makeDemoView(
+        config: GateMinigameConfig,
+        playerFx: SoundEffectTable,
+        hudConfig _: HudConfig,
+        leadInSeconds: TimeInterval
+    ) -> some View {
+        switch config {
+        case .soundOutWord(let soundOutWord):
+            MinigameDemoView(
+                make: { size in
+                    GateSoundOutWordScene(size: size, puzzleConfig: soundOutWord)
+                },
+                leadInSeconds: leadInSeconds
+            )
+        case .graphemeMatch(let graphemeMatch):
+            MinigameDemoView(
+                make: { size in
+                    GateGraphemeMatchScene(size: size, puzzleConfig: graphemeMatch)
+                },
+                leadInSeconds: leadInSeconds
+            )
+        case .wordPlug(let wordPlug):
+            MinigameDemoView(
+                make: { size in
+                    GateWordPlugScene(
+                        size: size,
+                        puzzleConfig: wordPlug,
+                        playerFx: playerFx
+                    )
+                },
+                leadInSeconds: leadInSeconds
+            )
+        }
+    }
 }

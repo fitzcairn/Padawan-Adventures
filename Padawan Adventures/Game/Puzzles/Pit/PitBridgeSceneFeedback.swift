@@ -155,7 +155,7 @@ extension PitBridgeScene {
         guard !didEnd else { return }
         didEnd = true
         isUserInteractionEnabled = false
-        let exit = CGPoint(x: geometry.rightPadRect.midX, y: geometry.rightPadRect.midY)
+        let exit = CGPoint(x: geometry.rightPadRect.midX, y: geometry.bridgeLineY)
         isJumping = true
         jumpPlayer(to: exit, landAnimation: "celebrate_down") { [weak self] in
             guard let self else { return }
