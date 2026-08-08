@@ -20,7 +20,7 @@ final class MinigameDemoPointer {
     private weak var scene: SKScene?
     private let cursor: SKNode
     private static let frameSeconds: TimeInterval = 1.0 / 60.0
-    private static let approachSeconds: TimeInterval = 0.35
+    static let approachSeconds: TimeInterval = 0.35
 
     init(scene: SKScene, cursor: SKNode) {
         self.scene = scene

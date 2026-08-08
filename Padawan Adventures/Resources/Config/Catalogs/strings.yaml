@@ -233,11 +233,11 @@ strings:
     sfx: sfx_ui_minigame_instructions_grapheme_sound_combat
     context: "First-encounter instructions for grapheme-sound-combat"
   minigame_instructions_starting_sound_combat:
-    text: "Instructions go here"
+    text: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
     sfx: sfx_ui_minigame_instructions_starting_sound_combat
     context: "First-encounter instructions for starting-sound-combat"
   minigame_instructions_ending_sound_combat:
-    text: "Instructions go here"
+    text: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
     sfx: sfx_ui_minigame_instructions_ending_sound_combat
     context: "First-encounter instructions for ending-sound-combat"
   minigame_instructions_continue:

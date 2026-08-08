@@ -8,12 +8,12 @@ extension CombatDeflectScene {
     func handle(_ events: [CombatDeflectEvent]) {
         for event in events {
             switch event {
-            case let .throwOrb(id, letter, word, imageName, ring, travelSeconds):
+            case let .throwOrb(id, letter, word, sfx, ring, travelSeconds):
                 throwOrb(
                     id: id,
                     letter: letter,
                     word: word,
-                    imageName: imageName,
+                    sfx: sfx,
                     ring: ring,
                     travelSeconds: travelSeconds
                 )
@@ -58,7 +58,7 @@ extension CombatDeflectScene {
         id: UUID,
         letter: String,
         word: String,
-        imageName: String?,
+        sfx: String,
         ring: CombatDeflectRing,
         travelSeconds: Double
     ) {
@@ -70,7 +70,8 @@ extension CombatDeflectScene {
         let end = bodyCenter(of: playerNode, height: playerSpriteHeight)
         let control = inboundControlPoint(from: start, to: end)
 
-        let node = makeOrbNode(letter: letter, imageName: imageName)
+        let built = makeOrbNode(letter: letter, word: word)
+        let node = built.node
         node.position = start
         node.setScale(0.35)
         node.zPosition = Layer.orb
@@ -81,11 +82,16 @@ extension CombatDeflectScene {
             id: id,
             letter: letter,
             word: word,
-            imageName: imageName,
+            sfx: sfx,
             ring: ring,
             travelSeconds: travel,
             flightStartedAt: CACurrentMediaTime(),
-            node: node
+            node: node,
+            projectileWidth: built.projectileWidth,
+            wordNode: built.wordNode,
+            pathStart: start,
+            pathControl: control,
+            pathEnd: end
         )
 
         runFlight(
@@ -102,17 +108,33 @@ extension CombatDeflectScene {
         }
     }
 
-    /// Word illustration centered on the enemy's animated projectile. Falls back to a
-    /// dark disc, and to a lettered disc when the word PNG is missing too.
-    func makeOrbNode(letter: String, imageName: String?) -> SKNode {
-        let root = SKNode()
+    struct OrbBuild {
+        let node: SKNode
+        let wordNode: SKNode
+        let projectileWidth: CGFloat
+    }
 
-        if let projectile = makeProjectileNode() {
+    /// The masked word centered on the enemy's animated projectile. The art is scaled to
+    /// the word rather than the other way round, so long words stay legible. Falls back
+    /// to a dark disc when the enemy has no projectile sprite.
+    func makeOrbNode(letter: String, word: String) -> OrbBuild {
+        let root = SKNode()
+        let built = makeMaskedWordNode(
+            word: word,
+            grapheme: letter,
+            fontSize: orbWordFontSize
+        )
+        let fit = CombatDeflectOrbWord.fit(
+            wordWidth: built.width,
+            baseWidth: orbBaseSize * Self.projectileSpriteScale,
+            maxWidth: maxProjectileWidth,
+            fitFraction: Self.orbWordFitFraction
+        )
+
+        if let projectile = makeProjectileNode(width: fit.projectileWidth) {
             root.addChild(projectile)
         } else {
-            let backing = SKShapeNode(
-                circleOfRadius: orbBaseSize * Self.projectileSpriteScale * 0.55
-            )
+            let backing = SKShapeNode(circleOfRadius: fit.projectileWidth * 0.55)
             backing.fillColor = UIColor.black.withAlphaComponent(0.55)
             backing.strokeColor = UIColor.white.withAlphaComponent(0.85)
             backing.lineWidth = 2
@@ -120,37 +142,22 @@ extension CombatDeflectScene {
             root.addChild(backing)
         }
 
-        if let image = GateWordPlugImageSprites.image(named: imageName) {
-            let texture = SKTexture(image: image)
-            SpriteSheetLoader.prepareTextureForScaledDisplay(texture)
-            let sprite = SKSpriteNode(texture: texture)
-            let texSize = texture.size()
-            let maxDim = max(texSize.width, texSize.height)
-            let scale = (orbBaseSize * Self.wordImageFitFraction) / max(maxDim, 1)
-            sprite.size = CGSize(width: texSize.width * scale, height: texSize.height * scale)
-            sprite.zPosition = 1
-            sprite.isUserInteractionEnabled = false
-            root.addChild(sprite)
-        } else {
-            let label = makeOutlinedLetter(
-                letter,
-                fontSize: orbBaseSize * 0.55,
-                outline: .darkGray
-            )
-            label.zPosition = 1
-            root.addChild(label)
-        }
-        return root
+        built.node.setScale(fit.wordScale)
+        built.node.zPosition = 1
+        root.addChild(built.node)
+        return OrbBuild(
+            node: root,
+            wordNode: built.node,
+            projectileWidth: fit.projectileWidth
+        )
     }
 
-    /// Looping projectile clip sized a bit larger than `orbBaseSize` so the word image
-    /// reads clearly inside the orb without growing with it.
-    private func makeProjectileNode() -> AnimatedSpriteNode? {
+    /// Looping projectile clip sized to wrap the masked word.
+    private func makeProjectileNode(width: CGFloat) -> AnimatedSpriteNode? {
         guard let projectileSprite,
               spriteLibrary.animation(id: projectileSprite.id, named: "fly") != nil else {
             return nil
         }
-        let width = orbBaseSize * Self.projectileSpriteScale
         let node = AnimatedSpriteNode(size: CGSize(width: width, height: width))
         // Characters anchor at texture-top so their feet stay on the node position; an orb
         // wants its middle there instead. The V-correcting negative yScale still resolves
@@ -198,6 +205,18 @@ extension CombatDeflectScene {
         return min(max(elapsed / max(orb.travelSeconds, 0.05), 0), 1)
     }
 
+    /// Where the inbound orb will be `seconds` from now.
+    func predictedOrbCenter(of orb: OrbVisual, after seconds: TimeInterval) -> CGPoint {
+        let elapsed = CACurrentMediaTime() - orb.flightStartedAt + seconds
+        let t = CGFloat(min(max(elapsed / max(orb.travelSeconds, 0.05), 0), 1))
+        return quadraticBezier(
+            t: t,
+            start: orb.pathStart,
+            control: orb.pathControl,
+            end: orb.pathEnd
+        )
+    }
+
     func removeOrbNode() {
         activeOrb?.node.removeAllActions()
         activeOrb?.node.removeFromParent()
@@ -209,7 +228,11 @@ extension CombatDeflectScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !didEnd, engine.outcome == nil else { return }
         guard let touch = touches.first else { return }
-        guard let ring = geometry.hitTest(touch.location(in: self)) else { return }
+        let point = touch.location(in: self)
+        guard let ring = geometry.hitTest(point) else {
+            replayActiveOrbWord(at: point)
+            return
+        }
 
         switch engine.registerTap(ring: ring) {
         case .ignored:
@@ -219,6 +242,31 @@ extension CombatDeflectScene {
         case .wrong:
             playWrongTap()
         }
+    }
+
+    /// Tapping the orb itself replays its word. It never resolves the orb, so it is free:
+    /// no deflect, no lost heart, no engine call.
+    func replayActiveOrbWord(at point: CGPoint) {
+        guard let orb = activeOrb, engine.activeOrb?.isResolved == false else { return }
+        let radius = orb.projectileWidth * 0.5 * abs(orb.node.xScale)
+        let dx = point.x - orb.node.position.x
+        let dy = point.y - orb.node.position.y
+        guard dx * dx + dy * dy <= radius * radius else { return }
+        let now = CACurrentMediaTime()
+        guard now - lastWordReplayAt >= wordReplayCooldownSeconds else { return }
+        lastWordReplayAt = now
+
+        SoundEffectsController.shared.play(trackID: orb.sfx)
+        // `runFlight` rewrites the root's scale every frame, so pulse the word child.
+        // `scale(by:)` is relative, so it composes with the clamped `wordScale`.
+        orb.wordNode.removeAction(forKey: orbWordPulseActionKey)
+        orb.wordNode.run(
+            .sequence([
+                .scale(by: 1.15, duration: 0.09),
+                .scale(by: 1 / 1.15, duration: 0.09),
+            ]),
+            withKey: orbWordPulseActionKey
+        )
     }
 
     /// Swing toward the tapped ring, then send the orb home at double speed.

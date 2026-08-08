@@ -68,7 +68,7 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     var words: [GateWord]
 
     static let defaultMonsterHP = 5
-    static let defaultOrbTravelSeconds: Double = 3
+    static let defaultOrbTravelSeconds: Double = 6
     static let minRingCount = 2
     static let maxRingCount = 6
     /// Used when YAML omits `ring_count:` (and for the code fallback).

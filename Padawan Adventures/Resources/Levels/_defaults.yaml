@@ -65,9 +65,9 @@ world:
 #   fanned, equal-speed curves. Slash the matching letter to score; slashing a decoy, or
 #   letting any letter reach you, costs one heart. Letter pool and flight time come from
 #   enemies.yaml. Stars = waves cleared.
-# `starting-sound-combat`: monster throws a word image; tap the ring for that word's first
-#   grapheme. `ring_count` (2–6) picks that many single graphemes from the level pool.
-#   Stars = orbs deflected.
+# `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
+#   orb to hear the word, then tap the ring for that missing sound. `ring_count` (2–6)
+#   picks that many single graphemes from the level pool. Stars = orbs deflected.
 # `ending-sound-combat`: same arena, but the ring must match the word's last grapheme.
 combat:
   music: combat
@@ -83,12 +83,12 @@ combat:
     - type: starting-sound-combat
       weight: 0.5
       monster_hit_points: 5
-      orb_travel_seconds: 4.0
+      orb_travel_seconds: 8.0
       ring_count: 4
     - type: ending-sound-combat
       weight: 0.5
       monster_hit_points: 5
-      orb_travel_seconds: 4.0
+      orb_travel_seconds: 8.0
       ring_count: 4
 
 # Pit minigames (one is picked per pit contact, weighted). weight 0 = never.

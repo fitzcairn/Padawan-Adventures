@@ -76,7 +76,7 @@ struct CombatDeflectMinigameEngineTests {
         let events = engine.throwNextOrb()
         #expect(events.count == 2)
 
-        guard case .throwOrb(_, let letter, let word, let imageName, let ring, let travel) = events[0]
+        guard case .throwOrb(_, let letter, let word, let sfx, let ring, let travel) = events[0]
         else {
             Issue.record("expected a throwOrb event first")
             return
@@ -86,7 +86,7 @@ struct CombatDeflectMinigameEngineTests {
         // The orb's letter must be the letter on the ring that deflects it.
         #expect(engine.config.graphemes[ring.rawValue].grapheme == letter)
         #expect(word.hasPrefix(letter))
-        #expect(imageName != nil)
+        #expect(sfx == "sfx_word_\(word)")
         #expect(events[1] == .speakWord(trackID: "sfx_word_\(word)"))
         #expect(engine.activeOrb?.letter == letter)
         #expect(engine.activeOrb?.word == word)

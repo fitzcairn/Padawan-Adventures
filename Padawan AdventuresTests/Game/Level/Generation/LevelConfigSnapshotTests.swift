@@ -73,7 +73,7 @@ struct LevelConfigSnapshotTests {
         }
         #expect(deflect.letterPosition == .starting)
         #expect(deflect.monsterHP == 5)
-        #expect(deflect.orbTravelSeconds == 4)
+        #expect(deflect.orbTravelSeconds == 8)
         #expect(deflect.ringCount == 4)
         #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
         guard case .deflect(let endingDeflect) = level.combat.minigames[2] else {
@@ -82,7 +82,7 @@ struct LevelConfigSnapshotTests {
         }
         #expect(endingDeflect.letterPosition == .ending)
         #expect(endingDeflect.monsterHP == 5)
-        #expect(endingDeflect.orbTravelSeconds == 4)
+        #expect(endingDeflect.orbTravelSeconds == 8)
         #expect(endingDeflect.ringCount == 4)
         // Level 1 ending candidates are t/p/n only; ring_count clamps to 3.
         #expect(endingDeflect.graphemes.map(\.grapheme) == ["t", "p", "n"])

@@ -36,4 +36,15 @@ protocol MinigameDemoStage: AnyObject {
     var demoCoinAnchor: CGPoint? { get }
     /// True once the round is over; the runner stops.
     var demoIsFinished: Bool { get }
+    /// True when this stage demonstrates a non-scoring affordance before the main
+    /// wrong-then-right sequence. Stages without one skip the prelude polling entirely.
+    var demoDemonstratesPrelude: Bool { get }
+    /// Prelude gesture(s) when they are performable right now; empty while they are not
+    /// (the combat orb, for instance, is only tappable early in its flight).
+    var demoPreludeMoves: [MinigameDemoMove] { get }
+}
+
+extension MinigameDemoStage {
+    var demoDemonstratesPrelude: Bool { false }
+    var demoPreludeMoves: [MinigameDemoMove] { [] }
 }

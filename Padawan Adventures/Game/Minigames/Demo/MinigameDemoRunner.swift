@@ -30,6 +30,8 @@ final class MinigameDemoRunner {
         var beatSeconds: TimeInterval = 1.2
         var settleSeconds: TimeInterval = 0.4
         var readyTimeoutSeconds: TimeInterval = 12
+        /// How long to wait for a non-scoring prelude gesture (e.g. tap the orb).
+        var preludeTimeoutSeconds: TimeInterval = 10
         /// Upper bound on correct moves. Puzzle rounds are short enough to finish
         /// naturally; combat needs the cap (see "Combat length").
         var maxCorrectMoves: Int = 6
@@ -42,6 +44,7 @@ final class MinigameDemoRunner {
             beatSeconds: TimeInterval = 1.2,
             settleSeconds: TimeInterval = 0.4,
             readyTimeoutSeconds: TimeInterval = 12,
+            preludeTimeoutSeconds: TimeInterval = 10,
             maxCorrectMoves: Int = 6,
             displayedTotal: Int? = nil
         ) {
@@ -49,6 +52,7 @@ final class MinigameDemoRunner {
             self.beatSeconds = beatSeconds
             self.settleSeconds = settleSeconds
             self.readyTimeoutSeconds = readyTimeoutSeconds
+            self.preludeTimeoutSeconds = preludeTimeoutSeconds
             self.maxCorrectMoves = maxCorrectMoves
             self.displayedTotal = displayedTotal
         }
@@ -87,6 +91,15 @@ final class MinigameDemoRunner {
     func run() async {
         guard await waitUntilReady() else { return }
 
+        // 0. The non-scoring affordance (combat: tap the orb to hear its word again).
+        if stage.demoDemonstratesPrelude, await waitForPrelude() {
+            for move in stage.demoPreludeMoves {
+                await performer.perform(move, gestureSeconds: timing.gestureSeconds)
+                await performer.pause(timing.beatSeconds)
+            }
+            guard await waitUntilReady() else { return }
+        }
+
         // 1. The wrong move.
         if let wrong = stage.demoMoves.first(where: { !$0.isCorrect }) {
             await performer.perform(wrong, gestureSeconds: timing.gestureSeconds)
@@ -122,6 +135,20 @@ final class MinigameDemoRunner {
             if stage.demoAcceptsInput, stage.demoMoves.contains(where: { $0.isCorrect }) {
                 return true
             }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return false
+    }
+
+    /// Polls for a performable prelude. Separate from `waitUntilReady` because the
+    /// combat orb is only tappable while it is still clear of the ring cluster, so the
+    /// runner may have to wait for the next throw — and gives up rather than stalling
+    /// the whole instructions screen.
+    private func waitForPrelude() async -> Bool {
+        let deadline = Date().addingTimeInterval(timing.preludeTimeoutSeconds)
+        while Date() < deadline {
+            if Task.isCancelled || stage.demoIsFinished { return false }
+            if stage.demoAcceptsInput, !stage.demoPreludeMoves.isEmpty { return true }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return false

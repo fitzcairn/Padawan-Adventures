@@ -9,22 +9,33 @@ protocol CombatDeflectSceneDelegate: AnyObject {
     func combatDeflectSceneDidLose()
 }
 
-/// SpriteKit deflect arena: the monster lobs one word-image orb at a time and the player
+/// SpriteKit deflect arena: the monster lobs one masked-word orb at a time and the player
 /// taps the ring whose grapheme matches the word's first or last grapheme (per config) to
-/// send it back.
+/// send it back. Tapping the orb itself replays the word.
 final class CombatDeflectScene: MinigameScene {
     /// A live orb and the quadratic path it is currently following.
     struct OrbVisual {
         let id: UUID
         let letter: String
         let word: String
-        let imageName: String?
+        /// Pronunciation track, replayed when the player taps the orb.
+        let sfx: String
         /// The ring that deflects this orb.
         let ring: CombatDeflectRing
         let travelSeconds: Double
         /// `CACurrentMediaTime()` when the inbound flight began.
         let flightStartedAt: TimeInterval
         let node: SKNode
+        /// Unscaled projectile art width; the tap target is half this times `node.xScale`.
+        let projectileWidth: CGFloat
+        /// Pulsed on tap. `runFlight` rewrites the root node's scale every frame, so the
+        /// feedback animation has to live on a child.
+        let wordNode: SKNode
+        /// Inbound bezier, used to predict where the orb will be. Not rewritten by
+        /// `playDeflect`, so only read it while the orb is unresolved.
+        let pathStart: CGPoint
+        let pathControl: CGPoint
+        let pathEnd: CGPoint
     }
 
     weak var deflectDelegate: CombatDeflectSceneDelegate?
@@ -46,19 +57,34 @@ final class CombatDeflectScene: MinigameScene {
     var activeOrb: OrbVisual?
     var activeLoopTrackID: String?
     var cachedPlayerWidth: CGFloat?
+    var lastWordReplayAt: TimeInterval = 0
+    let wordReplayCooldownSeconds: TimeInterval = 0.35
 
     /// Peak flight scale (`runFlight` endScale on the inbound leg and on a wrong tap).
     static let peakOrbScale: CGFloat = 1.15
     /// Base size such that the projectile's peak on-screen width (at impact) is 75% of
     /// the player's visible sprite width.
     var orbBaseSize: CGFloat { max(measuredPlayerWidth * 0.75 / Self.peakOrbScale, 1) }
-    /// Extra scale for the animated projectile clip relative to `orbBaseSize`. The word
-    /// image in the middle stays on `orbBaseSize` and is unaffected.
-    static let projectileSpriteScale: CGFloat = 1.15
-    /// Word illustration is fitted into this fraction of `orbBaseSize`. The orb art is
-    /// blobby rather than a clean circle, so this is the knob to tune if the word
+    /// Extra scale for the animated projectile clip relative to `orbBaseSize`.
+    static let projectileSpriteScale: CGFloat = 1.38
+    /// The word row is fitted into this fraction of the projectile art's width. The art
+    /// is a blob rather than a clean circle, so this is the knob to tune if the word
     /// crowds the edge.
-    static let wordImageFitFraction: CGFloat = 0.62
+    static let orbWordFitFraction: CGFloat = 0.62
+    /// Word font size as a fraction of `orbBaseSize`.
+    static let orbWordFontFraction: CGFloat = 0.26
+    /// Extra gap between the blank square and the nearest letter, as a fraction of
+    /// blank width.
+    static let orbBlankLetterGapFraction: CGFloat = 0.35
+    /// A long word grows the orb, but its peak on-screen width is capped here.
+    static let maxOrbWidthFraction: CGFloat = 0.6
+
+    var orbWordFontSize: CGFloat { max(orbBaseSize * Self.orbWordFontFraction, 10) }
+    /// Unscaled cap, so `peakOrbScale` at impact still respects `maxOrbWidthFraction`.
+    var maxProjectileWidth: CGFloat {
+        max(size.width * Self.maxOrbWidthFraction / Self.peakOrbScale, 1)
+    }
+
     let ringLineWidth: CGFloat = 2
     let ringDashLengths: [CGFloat] = [10, 8]
     /// Indexed by ring index — left to right (supports up to `maxRingCount`).
@@ -78,6 +104,7 @@ final class CombatDeflectScene: MinigameScene {
     let orbFlightActionKey = "orbFlight"
     let nextOrbActionKey = "nextOrb"
     let deflectFlashActionKey = "deflectFlash"
+    let orbWordPulseActionKey = "orbWordPulse"
 
     enum Layer {
         static let sprites: CGFloat = 10

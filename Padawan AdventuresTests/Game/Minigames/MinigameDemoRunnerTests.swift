@@ -9,6 +9,8 @@ final class FakeDemoStage: MinigameDemoStage {
     private(set) var stepIndex = 0
     private let steps: [Step]
     private(set) var isFinishedFlag = false
+    var demoDemonstratesPrelude = false
+    var preludeMoves: [MinigameDemoMove] = []
 
     struct Step {
         var moves: [MinigameDemoMove]
@@ -28,6 +30,8 @@ final class FakeDemoStage: MinigameDemoStage {
         guard stepIndex < steps.count else { return [] }
         return steps[stepIndex].moves
     }
+
+    var demoPreludeMoves: [MinigameDemoMove] { preludeMoves }
 
     var demoCoinAnchor: CGPoint? {
         CGPoint(x: 10 * CGFloat(stepIndex + 1), y: 20)
@@ -162,5 +166,33 @@ struct MinigameDemoRunnerTests {
         await runner.run()
         #expect(performer.performedIsCorrect.isEmpty)
         #expect(coins.count == 0)
+    }
+
+    @Test func preludeRunsBeforeWrongMoveAndAwardsNoCoins() async {
+        let stage = FakeDemoStage(steps: [
+            .init(
+                moves: [makeMove(isCorrect: false, x: 1), makeMove(isCorrect: true, x: 2)],
+                finishesAfter: true
+            ),
+        ])
+        stage.demoDemonstratesPrelude = true
+        stage.preludeMoves = [makeMove(isCorrect: false, x: 0)]
+        let performer = FakeDemoPerformer(stage: stage)
+        let scene = SKScene(size: CGSize(width: 200, height: 200))
+        let coins = MinigameDemoCoinLayer(scene: scene)
+        var timing = MinigameDemoRunner.Timing()
+        timing.beatSeconds = 0.01
+        timing.settleSeconds = 0.01
+
+        let runner = MinigameDemoRunner(
+            stage: stage,
+            performer: performer,
+            coins: coins,
+            timing: timing
+        )
+        await runner.run()
+
+        #expect(performer.performedIsCorrect == [false, false, true])
+        #expect(coins.count == 1)
     }
 }

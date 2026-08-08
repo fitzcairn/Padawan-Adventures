@@ -34,12 +34,13 @@ nonisolated enum CombatDeflectTapResult: Equatable, Sendable {
 }
 
 nonisolated enum CombatDeflectEvent: Equatable, Sendable {
-    /// `letter` is the ring that deflects this orb; `word` / `imageName` drive the thrown sprite + SFX.
+    /// `letter` is the ring that deflects this orb; `word` / `sfx` drive the thrown
+    /// sprite text and its pronunciation.
     case throwOrb(
         id: UUID,
         letter: String,
         word: String,
-        imageName: String?,
+        sfx: String,
         ring: CombatDeflectRing,
         travelSeconds: Double
     )
@@ -188,7 +189,7 @@ nonisolated struct CombatDeflectMinigameEngine {
                 id: orb.id,
                 letter: orb.letter,
                 word: orb.word,
-                imageName: orb.imageName,
+                sfx: word.sfx,
                 ring: ring,
                 travelSeconds: config.orbTravelSeconds
             ),
