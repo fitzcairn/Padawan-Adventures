@@ -53,17 +53,25 @@ final class MinigameDemoCoinLayer {
         let y = scene.size.height * 0.82
         let startX = scene.size.width * 0.5 - width * 0.5
 
+        // Kick off SKActions, then sleep for their duration. Awaiting
+        // `node.run(...)` hangs forever when the scene is not presented
+        // (unit tests build a bare SKScene with no view / update loop).
+        let gatherDuration: TimeInterval = 0.45
         for (index, coin) in coins.enumerated() {
             coin.removeAction(forKey: "bob")
             let move = SKAction.move(
                 to: CGPoint(x: startX + spacing * CGFloat(index), y: y),
-                duration: 0.45
+                duration: gatherDuration
             )
             move.timingMode = .easeInEaseOut
-            await coin.run(move)
+            // Completion-handler overload (not the async `run`) so we don't
+            // hang when the scene has no update loop.
+            coin.run(move, completion: {})
         }
+        try? await Task.sleep(nanoseconds: UInt64(gatherDuration * 1_000_000_000))
         try? await Task.sleep(nanoseconds: 500_000_000)
 
+        let fadeDuration: TimeInterval = 0.25
         let label = SKLabelNode(text: "x\(shown)")
         label.fontName = "AvenirNext-Bold"
         label.fontSize = side * 0.8
@@ -72,7 +80,8 @@ final class MinigameDemoCoinLayer {
         label.position = CGPoint(x: startX + width + spacing, y: y)
         label.alpha = 0
         root.addChild(label)
-        await label.run(.fadeIn(withDuration: 0.25))
+        label.run(.fadeIn(withDuration: fadeDuration), completion: {})
+        try? await Task.sleep(nanoseconds: UInt64(fadeDuration * 1_000_000_000))
     }
 
     func teardown() {

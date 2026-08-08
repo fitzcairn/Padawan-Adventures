@@ -106,7 +106,9 @@ final class MinigameDemoPointer {
         cursor.removeAllActions()
         let move = SKAction.move(to: point, duration: duration)
         move.timingMode = .easeInEaseOut
-        await cursor.run(move)
+        // Completion-handler overload (not the async `run`) so we don't hang
+        // when the scene has no update loop; sleep provides timing.
+        cursor.run(move, completion: {})
         await pause(duration)
         cursor.position = point
     }
