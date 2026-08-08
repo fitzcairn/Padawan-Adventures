@@ -25,5 +25,8 @@ screens:
     music: title_menu
   you_win:
     music: victory
+  win_game:
+    # Campaign clear on level select after the final artifact fades in.
+    music: win-game
   defeat:
     music: silence

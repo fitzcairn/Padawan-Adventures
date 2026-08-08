@@ -187,6 +187,14 @@ strings:
     spoken: "New high score!"
     sfx: sfx_ui_you_win_high_score
     context: "Level-complete high-score line"
+  campaign_win_congratulations:
+    text: "Congratulations!"
+    sfx: sfx_ui_campaign_win_congratulations
+    context: "Campaign-complete overlay title"
+  campaign_win_tap_to_play_more:
+    text: "tap to play more"
+    sfx: sfx_ui_campaign_win_tap_to_play_more
+    context: "Campaign-complete dismiss hint"
   minigame_coins_won:
     text: "You won {coins} coins!"
     spoken: "You won some coins!"

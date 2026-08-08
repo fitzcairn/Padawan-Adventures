@@ -28,9 +28,16 @@ struct LevelSelectView: View {
     @State private var celebrationRevealed = true
     @State private var inventorySparklesActive = false
     @State private var planetSparklesActive = false
+    /// Campaign-clear sequence after the final artifact fades in.
+    @State private var campaignWinActive = false
+    @State private var campaignWinScrimOpacity: Double = 0
+    @State private var campaignWinTextOpacity: Double = 0
+    @State private var campaignWinInteractive = false
 
     private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
     private static let contentFadeSeconds: Double = 0.35
+    private static let campaignWinScrimFadeSeconds: Double = 0.9
+    private static let campaignWinTextFadeSeconds: Double = 0.5
 
     init(
         session: AppSession,
@@ -96,11 +103,24 @@ struct LevelSelectView: View {
                 .animation(.easeIn(duration: Self.contentFadeSeconds), value: showsContent)
             }
 
-            if showsContent {
+            if showsContent && !campaignWinActive {
                 PlanetStripScrollHints(
                     canScrollLeft: canScrollLeft,
                     canScrollRight: canScrollRight
                 )
+            }
+
+            if campaignWinActive {
+                CampaignWinOverlay(
+                    scrimOpacity: campaignWinScrimOpacity,
+                    textOpacity: campaignWinTextOpacity,
+                    isInteractive: campaignWinInteractive,
+                    onFinished: {
+                        router.popOrShowMenu()
+                    }
+                ) {
+                    campaignWinArtifacts
+                }
             }
 
             if let messageOverlay {
@@ -201,6 +221,62 @@ struct LevelSelectView: View {
         guard !Task.isCancelled else { return }
         inventorySparklesActive = false
         planetSparklesActive = false
+
+        // Final planet cleared with a full rack — campaign victory after the artifact lands.
+        let allLevelsComplete = viewModel.completedLevels.count == viewModel.levels.count
+        if celebratingUnlockResource == nil, allLevelsComplete {
+            await presentCampaignWinIfNeeded()
+        }
+    }
+
+    @MainActor
+    private func presentCampaignWinIfNeeded() async {
+        guard !campaignWinActive else { return }
+        campaignWinActive = true
+        campaignWinScrimOpacity = 0
+        campaignWinTextOpacity = 0
+        campaignWinInteractive = false
+
+        withAnimation(.easeInOut(duration: Self.campaignWinScrimFadeSeconds)) {
+            campaignWinScrimOpacity = 1
+        }
+        try? await Task.sleep(
+            nanoseconds: UInt64(Self.campaignWinScrimFadeSeconds * 1_000_000_000)
+        )
+        guard !Task.isCancelled else { return }
+
+        BackgroundMusicController.shared.applyScreen(named: "win_game")
+        Strings.speak("campaign_win_congratulations")
+        withAnimation(.easeIn(duration: Self.campaignWinTextFadeSeconds)) {
+            campaignWinTextOpacity = 1
+        }
+        campaignWinInteractive = true
+    }
+
+    /// Inventory rack lifted above the black scrim at the same bottom-band position.
+    private var campaignWinArtifacts: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            HStack(alignment: .bottom, spacing: 16) {
+                Color.clear
+                    .frame(width: 52, height: 52)
+                InventoryRackView(
+                    session: session,
+                    inventoryLevels: viewModel.inventoryLevels(progressionEpoch: progressionEpoch),
+                    inventoryTreasureIDs: viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch),
+                    isContentReady: showsContent,
+                    celebratingInventoryResource: nil,
+                    celebrationRevealed: true,
+                    inventorySparklesActive: false,
+                    inventoryIcons: $inventoryIcons
+                )
+                .frame(maxWidth: AppChrome.maxContentWidth)
+                .frame(maxWidth: .infinity)
+                Color.clear
+                    .frame(width: 52, height: 52)
+            }
+        }
+        .appScreenContentPadding()
     }
 
     private var readyContent: some View {

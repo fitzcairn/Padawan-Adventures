@@ -33,6 +33,11 @@ struct ScreenConfigTests {
         #expect(config.musicCue == .track("victory"))
     }
 
+    @Test func loadsWinGameScreenFromBundle() throws {
+        let config = try ScreenConfig.loadFromBundle(named: "win_game")
+        #expect(config.musicCue == .track("win-game"))
+    }
+
     @Test func loadsSettingsScreenFromBundle() throws {
         let config = try ScreenConfig.loadFromBundle(named: "settings")
         #expect(config.musicCue == .track("title_menu"))
@@ -81,7 +86,8 @@ struct ScreenConfigTests {
         #expect(all.screens["cutscene"]?.musicCue == .silence)
         #expect(all.screens["level_select"]?.musicCue == .track("level_screen"))
         #expect(all.screens["level_select"]?.background == "level_screen_bg")
-        #expect(all.screens.count == 10)
+        #expect(all.screens["win_game"]?.musicCue == .track("win-game"))
+        #expect(all.screens.count == 11)
     }
 
     @Test func missingScreenNameThrows() {
