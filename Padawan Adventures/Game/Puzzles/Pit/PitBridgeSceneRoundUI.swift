@@ -125,10 +125,15 @@ extension PitBridgeScene {
     /// Word letters plus a rectangle blank for the missing sound, laid out under the illustration.
     /// Each grapheme is its own baseline-aligned stack so the blank doesn't float above the rest.
     /// When `filledLetter` is set, the blank run is replaced by that letter with natural string spacing (no blank gap).
-    func makeMaskedSpellingNode(fontSize: CGFloat, filledLetter: String? = nil) -> SKNode {
+    /// Pass `maskedPrompt` when filling after a correct drop — `engine.accept` advances the round first.
+    func makeMaskedSpellingNode(
+        fontSize: CGFloat,
+        filledLetter: String? = nil,
+        maskedPrompt: String? = nil
+    ) -> SKNode {
         let row = SKNode()
         row.name = Self.wordSpellingNodeName
-        let units = spellingDisplayUnits(filledLetter: filledLetter)
+        let units = spellingDisplayUnits(filledLetter: filledLetter, maskedPrompt: maskedPrompt)
         guard !units.isEmpty else { return row }
 
         let blankLeads = engine.config.letterPosition == .starting
@@ -191,8 +196,8 @@ extension PitBridgeScene {
     }
 
     /// Masked characters while empty; when filled, blank run collapses to the letter so spacing matches a normal word.
-    func spellingDisplayUnits(filledLetter: String?) -> [String] {
-        let masked = engine.maskedPromptText
+    func spellingDisplayUnits(filledLetter: String?, maskedPrompt: String? = nil) -> [String] {
+        let masked = maskedPrompt ?? engine.maskedPromptText
         guard !masked.isEmpty else { return [] }
         let blankLeads = engine.config.letterPosition == .starting
         guard let filled = filledLetter, filled != "_", !filled.isEmpty else {
@@ -223,7 +228,8 @@ extension PitBridgeScene {
 
     /// Shows a real letter in the interactive blank, or restores the rectangle when `text` is `"_"`.
     /// Relays out the spelling row so a filled letter uses normal string spacing (no blank gap).
-    func setBlankLetterText(_ text: String) {
+    /// `maskedPrompt` must be the word that was just solved when called after `engine.accept`.
+    func setBlankLetterText(_ text: String, maskedPrompt: String? = nil) {
         guard let row = blankLetterNode?.parent
             ?? wordPromptNode?.childNode(withName: "//\(Self.wordSpellingNodeName)"),
               let parent = row.parent
@@ -237,7 +243,11 @@ extension PitBridgeScene {
         row.removeFromParent()
 
         let filled: String? = (text == "_") ? nil : text
-        let newRow = makeMaskedSpellingNode(fontSize: fontSize, filledLetter: filled)
+        let newRow = makeMaskedSpellingNode(
+            fontSize: fontSize,
+            filledLetter: filled,
+            maskedPrompt: maskedPrompt
+        )
         newRow.position = position
         newRow.zPosition = zPosition
         parent.addChild(newRow)
@@ -435,6 +445,8 @@ extension PitBridgeScene {
 
     /// Resolves a drop that has already been accepted by geometry (and snapped into the slot).
     func resolveDrop(node: SKNode, id: UUID) {
+        // Capture before accept — a correct drop advances `roundIndex` immediately.
+        let maskedPrompt = engine.maskedPromptText
         guard let result = engine.accept(choiceID: id) else {
             node.zPosition = Self.trayTilesZ
             resumePlayerIdle()
@@ -447,7 +459,14 @@ extension PitBridgeScene {
         switch result {
         case let .correct(slotIndex, won):
             // Jump clip replaces the Force-lift pose once the tile snaps into the slot.
-            handleCorrectDrop(node: node, id: id, slotIndex: slotIndex, won: won, letter: letter)
+            handleCorrectDrop(
+                node: node,
+                id: id,
+                slotIndex: slotIndex,
+                won: won,
+                letter: letter,
+                maskedPrompt: maskedPrompt
+            )
         case .incorrect:
             resumePlayerIdle()
             handleIncorrectDrop(node: node, letter: letter)

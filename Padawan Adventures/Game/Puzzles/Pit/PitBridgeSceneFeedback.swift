@@ -2,10 +2,18 @@ import SpriteKit
 import UIKit
 
 extension PitBridgeScene {
-    func handleCorrectDrop(node: SKNode, id: UUID, slotIndex: Int, won: Bool, letter: String) {
+    func handleCorrectDrop(
+        node: SKNode,
+        id: UUID,
+        slotIndex: Int,
+        won: Bool,
+        letter: String,
+        maskedPrompt: String
+    ) {
         let target = geometry.slotCenter(slotIndex)
         node.position = target
-        setBlankLetterText(letter)
+        // Use the pre-accept mask: `accept` already advanced to the next word.
+        setBlankLetterText(letter, maskedPrompt: maskedPrompt)
         flashBlankLetter(color: platformCorrectTint) { [weak self] in
             // Keep the filled letter green until the next round replaces the prompt.
             self?.setBlankLetterFillColor(self?.platformCorrectTint ?? .systemGreen)
