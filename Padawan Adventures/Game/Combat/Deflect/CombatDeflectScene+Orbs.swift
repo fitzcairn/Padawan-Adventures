@@ -272,6 +272,7 @@ extension CombatDeflectScene {
     /// Swing toward the tapped ring, then send the orb home at double speed.
     func playDeflect(ring: CombatDeflectRing) {
         guard let orb = activeOrb, let playerNode, let enemyNode else { return }
+        revealOrbAnswerLetter(on: orb)
         if combatSprite != nil {
             playerNode.playOnce(
                 name: playerSwingAnimationName,

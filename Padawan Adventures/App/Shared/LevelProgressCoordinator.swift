@@ -67,13 +67,13 @@ extension AppSession {
         return true
     }
 
-    func hasSeenMinigameInstructions(_ key: String) -> Bool {
-        playerState?.hasSeenMinigameInstructions(key) ?? false
+    func hasSeenMinigameTutorial(_ key: String) -> Bool {
+        playerState?.hasSeenMinigameTutorial(key) ?? false
     }
 
-    func markMinigameInstructionsSeen(_ key: String) async {
+    func markMinigameTutorialSeen(_ key: String) async {
         guard var state = playerState,
-              state.markMinigameInstructionsSeen(key) else { return }
+              state.markMinigameTutorialSeen(key) else { return }
         playerState = state
         await persistPlayerState()
     }

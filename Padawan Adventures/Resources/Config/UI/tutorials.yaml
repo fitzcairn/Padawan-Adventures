@@ -1,0 +1,46 @@
+# Tutorial hand cursors for the minigame tutorial demo
+# (baked via scripts/bake_sprites.py --tutorials).
+pointer:
+  sprite:
+    root: Sprites/UI/Tutorials
+    chroma_key: "#000000"
+    chroma_key_tolerance: 8
+    chroma_key_feather: 30
+    chroma_key_smooth: 2
+    # Keep the full 500x500 cell. Trimming would move the art within the frame
+    # and invalidate the fingertip anchors hardcoded in
+    # MinigameTutorialCursorSprites.
+    trim: false
+    bake_scale: 0.5
+    animations:
+      idle:
+        sheet: pointer
+        atlas: pointer-atlas
+
+swipe:
+  sprite:
+    root: Sprites/UI/Tutorials
+    chroma_key: "#000000"
+    chroma_key_tolerance: 8
+    chroma_key_feather: 30
+    chroma_key_smooth: 2
+    trim: false
+    bake_scale: 0.5
+    animations:
+      idle:
+        sheet: swipe
+        atlas: swipe-atlas
+
+tap:
+  sprite:
+    root: Sprites/UI/Tutorials
+    chroma_key: "#000000"
+    chroma_key_tolerance: 8
+    chroma_key_feather: 30
+    chroma_key_smooth: 2
+    trim: false
+    bake_scale: 0.5
+    animations:
+      idle:
+        sheet: tap
+        atlas: tap-atlas

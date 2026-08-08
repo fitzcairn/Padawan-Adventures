@@ -18,11 +18,11 @@ final class MinigameDemoTouch: UITouch {
 @MainActor
 final class MinigameDemoPointer {
     private weak var scene: SKScene?
-    private let cursor: SKNode
+    private let cursor: MinigameDemoCursorNode
     private static let frameSeconds: TimeInterval = 1.0 / 60.0
     static let approachSeconds: TimeInterval = 0.35
 
-    init(scene: SKScene, cursor: SKNode) {
+    init(scene: SKScene, cursor: MinigameDemoCursorNode) {
         self.scene = scene
         self.cursor = cursor
     }
@@ -33,17 +33,21 @@ final class MinigameDemoPointer {
 
     func tap(at point: CGPoint) async {
         guard let scene else { return }
+        cursor.setPose(.pointer)
         await moveCursor(to: point, duration: Self.approachSeconds)
         let touch = MinigameDemoTouch(point: point)
+        cursor.setPose(.tap)
         pressCursor(true)
         scene.touchesBegan(Set([touch]), with: nil)
         await pause(0.10)
         scene.touchesEnded(Set([touch]), with: nil)
         pressCursor(false)
+        cursor.setPose(.pointer)
     }
 
     func drag(from: CGPoint, to: CGPoint, duration: TimeInterval) async {
         guard let scene else { return }
+        cursor.setPose(.pointer)
         await moveCursor(to: from, duration: Self.approachSeconds)
         let touch = MinigameDemoTouch(point: from)
         pressCursor(true)
@@ -59,8 +63,10 @@ final class MinigameDemoPointer {
     /// or `hasSlashTimedOut` ends the stroke early.
     func swipe(_ points: [CGPoint], duration: TimeInterval) async {
         guard let scene, let first = points.first, points.count >= 2 else { return }
+        cursor.setPose(.pointer)
         await moveCursor(to: first, duration: Self.approachSeconds)
         let touch = MinigameDemoTouch(point: first)
+        cursor.setPose(.swipe)
         pressCursor(true)
         scene.touchesBegan(Set([touch]), with: nil)
         let legSeconds = duration / TimeInterval(points.count - 1)
@@ -75,6 +81,7 @@ final class MinigameDemoPointer {
         }
         scene.touchesEnded(Set([touch]), with: nil)
         pressCursor(false)
+        cursor.setPose(.pointer)
     }
 
     // MARK: - Private
@@ -114,7 +121,7 @@ final class MinigameDemoPointer {
     }
 
     private func pressCursor(_ down: Bool) {
-        cursor.run(.scale(to: down ? 0.8 : 1.0, duration: 0.08))
+        cursor.setPressed(down)
     }
 }
 
@@ -122,14 +129,57 @@ enum MinigameDemoCursor {
     /// Above `SceneLayer.player` (1_000) so it is never occluded.
     static let zPosition: CGFloat = 5_000
 
+    /// Circle used when baked hand art is unavailable (tests / missing assets).
     @MainActor
-    static func make(diameter: CGFloat) -> SKNode {
+    static func makeFallbackCircle(diameter: CGFloat) -> SKNode {
         let node = SKShapeNode(circleOfRadius: diameter * 0.5)
         node.fillColor = UIColor.white.withAlphaComponent(0.28)
         node.strokeColor = UIColor.white.withAlphaComponent(0.85)
         node.lineWidth = 3
-        node.zPosition = zPosition
-        node.name = "demoCursor"
+        node.zPosition = 0
+        node.name = "demoCursorFallback"
         return node
+    }
+}
+
+/// The virtual finger. Uses baked hand art when available, else the old circle.
+@MainActor
+final class MinigameDemoCursorNode: SKNode {
+    private let art: [MinigameTutorialCursorSprites.Pose: MinigameTutorialCursorSprites.Art]?
+    private let sprite: SKSpriteNode?
+
+    /// `side` is the square the (square) source frame is fitted into.
+    init(side: CGFloat) {
+        let loaded = MinigameTutorialCursorSprites.load()
+        art = loaded
+        if let loaded {
+            let node = SKSpriteNode(color: .clear, size: CGSize(width: side, height: side))
+            sprite = node
+            super.init()
+            node.position = .zero
+            addChild(node)
+            setPose(.pointer)
+        } else {
+            sprite = nil
+            super.init()
+            addChild(MinigameDemoCursor.makeFallbackCircle(diameter: side * 0.3))
+        }
+        zPosition = MinigameDemoCursor.zPosition
+        name = "demoCursor"
+    }
+
+    @available(*, unavailable)
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setPose(_ pose: MinigameTutorialCursorSprites.Pose) {
+        guard let sprite, let entry = art?[pose] else { return }
+        sprite.texture = entry.texture
+        sprite.anchorPoint = entry.anchor
+    }
+
+    func setPressed(_ down: Bool) {
+        run(.scale(to: down ? 0.85 : 1.0, duration: 0.08))
     }
 }

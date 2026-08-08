@@ -143,7 +143,7 @@ final class MinigameDemoRunner {
     /// Polls for a performable prelude. Separate from `waitUntilReady` because the
     /// combat orb is only tappable while it is still clear of the ring cluster, so the
     /// runner may have to wait for the next throw — and gives up rather than stalling
-    /// the whole instructions screen.
+    /// the whole tutorial screen.
     private func waitForPrelude() async -> Bool {
         let deadline = Date().addingTimeInterval(timing.preludeTimeoutSeconds)
         while Date() < deadline {

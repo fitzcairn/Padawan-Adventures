@@ -8,7 +8,7 @@ where Scene: MinigameScene & MinigameDemoStage {
     @Published private(set) var scene: Scene?
 
     private let timing: MinigameDemoRunner.Timing
-    /// Delay before the demo starts, so the instructions voice-over is not
+    /// Delay before the demo starts, so the tutorial voice-over is not
     /// talked over by game audio.
     private let leadInSeconds: TimeInterval
     private var runnerTask: Task<Void, Never>?
@@ -39,8 +39,8 @@ where Scene: MinigameScene & MinigameDemoStage {
     func updateSceneSizeIfNeeded(_ size: CGSize) { host?.updateSceneSizeIfNeeded(size) }
 
     private func start(on scene: Scene) {
-        let cursor = MinigameDemoCursor.make(
-            diameter: min(scene.size.width, scene.size.height) * 0.07
+        let cursor = MinigameDemoCursorNode(
+            side: min(scene.size.width, scene.size.height) * 0.24
         )
         cursor.position = CGPoint(x: scene.size.width * 0.5, y: scene.size.height * 0.2)
         scene.addChild(cursor)

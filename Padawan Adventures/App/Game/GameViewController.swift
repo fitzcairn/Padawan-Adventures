@@ -262,17 +262,17 @@ final class GameViewController: LandscapeHostingController {
             """
         )
 
-        let instructionsKey = chosenMinigame.kind.rawValue
-        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
-            forKindRawValue: instructionsKey
+        let tutorialKey = chosenMinigame.kind.rawValue
+        let leadInSeconds = MinigameTutorialView<EmptyView>.leadInSeconds(
+            forKindRawValue: tutorialKey
         )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
-            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
-            instructionsKey: instructionsKey,
-            onInstructionsAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            tutorialKey: tutorialKey,
+            onTutorialAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
             },
             makeDemoView: {
                 CombatMinigameFactory.makeDemoView(
@@ -420,17 +420,17 @@ final class GameViewController: LandscapeHostingController {
         let playerFx = session.playerConfig.fx
         let hudConfig = cachedHudConfig
 
-        let instructionsKey = chosenMinigame.kind.rawValue
-        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
-            forKindRawValue: instructionsKey
+        let tutorialKey = chosenMinigame.kind.rawValue
+        let leadInSeconds = MinigameTutorialView<EmptyView>.leadInSeconds(
+            forKindRawValue: tutorialKey
         )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
-            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
-            instructionsKey: instructionsKey,
-            onInstructionsAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            tutorialKey: tutorialKey,
+            onTutorialAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
             },
             makeDemoView: {
                 PitMinigameFactory.makeDemoView(
@@ -560,17 +560,17 @@ final class GameViewController: LandscapeHostingController {
         let hudConfig = cachedHudConfig
 
         let musicName = chosen.music ?? session.selectedGateConfig.music
-        let instructionsKey = chosen.kind.rawValue
-        let leadInSeconds = MinigameInstructionsView<EmptyView>.leadInSeconds(
-            forKindRawValue: instructionsKey
+        let tutorialKey = chosen.kind.rawValue
+        let leadInSeconds = MinigameTutorialView<EmptyView>.leadInSeconds(
+            forKindRawValue: tutorialKey
         )
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
-            showInstructions: !session.hasSeenMinigameInstructions(instructionsKey),
-            instructionsKey: instructionsKey,
-            onInstructionsAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameInstructionsSeen(instructionsKey) }
+            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            tutorialKey: tutorialKey,
+            onTutorialAcknowledged: { [weak self] in
+                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
             },
             makeDemoView: {
                 GateMinigameFactory.makeDemoView(

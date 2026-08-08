@@ -38,6 +38,7 @@ Usage:
   python3 scripts/bake_sprites.py --loading    # bake loading-screen UI sprites
   python3 scripts/bake_sprites.py --cutscene   # bake cutscene UI sprites
   python3 scripts/bake_sprites.py --gate       # bake gate letter-match / word-plug UI sprites
+  python3 scripts/bake_sprites.py --tutorials  # bake tutorial hand cursor sprites
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -1195,6 +1196,11 @@ def collect_gate_word_plug(plan: BakePlan) -> None:
     )
 
 
+def collect_tutorials(plan: BakePlan) -> None:
+    """Bake tutorial hand cursor sprites. No SpriteKit prep flip (upright SKSpriteNode)."""
+    collect_gate_ui_yaml(plan, config_name="tutorials", category_prefix="tutorial")
+
+
 def build_plan(args: argparse.Namespace) -> BakePlan:
     plan = BakePlan()
     if args.verify_only:
@@ -1211,6 +1217,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_loading = args.all or args.default_set or args.loading
     bake_cutscene = args.all or args.default_set or args.cutscene
     bake_gate = args.all or args.default_set or args.gate
+    bake_tutorials = args.all or args.default_set or args.tutorials
     bake_enemies = args.all or args.enemies or bool(args.enemy)
     bake_projectiles = args.all or args.projectiles
 
@@ -1231,12 +1238,15 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.loading,
             args.cutscene,
             args.gate,
+            args.tutorials,
             args.verify,
         ]
     ):
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
-        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = True
+        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
+            bake_tutorials
+        ) = True
 
     if args.verify and not any(
         [
@@ -1254,13 +1264,16 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.loading,
             args.cutscene,
             args.gate,
+            args.tutorials,
         ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
         bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
-        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = True
+        ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
+            bake_tutorials
+        ) = True
 
     if bake_player:
         collect_player(plan)
@@ -1283,6 +1296,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     if bake_gate:
         collect_gate_grapheme_match(plan)
         collect_gate_word_plug(plan)
+    if bake_tutorials:
+        collect_tutorials(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)
@@ -1579,7 +1594,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, enemies, projectiles",
+        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, tutorials, enemies, projectiles",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument("--projectiles", action="store_true", help="Bake combat projectile sheets")
@@ -1599,6 +1614,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--loading", action="store_true", help="Bake loading-screen UI sprites")
     p.add_argument("--cutscene", action="store_true", help="Bake cutscene UI sprites")
     p.add_argument("--gate", action="store_true", help="Bake gate letter-match UI sprites")
+    p.add_argument(
+        "--tutorials",
+        action="store_true",
+        help="Bake tutorial hand cursor sprites",
+    )
     p.add_argument(
         "--verify",
         action="store_true",
@@ -1626,6 +1646,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.loading,
             args.cutscene,
             args.gate,
+            args.tutorials,
         ]
     )
     return args

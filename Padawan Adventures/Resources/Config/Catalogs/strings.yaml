@@ -200,50 +200,50 @@ strings:
     spoken: "You won some coins!"
     sfx: sfx_ui_minigame_coins_won
     context: "Minigame win overlay"
-  minigame_instructions_sound_out_word_pit:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_sound_out_word_pit
-    context: "First-encounter instructions for sound-out-word-pit"
-  minigame_instructions_ending_sound_pit:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_ending_sound_pit
-    context: "First-encounter instructions for ending-sound-pit"
-  minigame_instructions_starting_sound_pit:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_starting_sound_pit
-    context: "First-encounter instructions for starting-sound-pit"
-  minigame_instructions_sound_out_word_gate:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_sound_out_word_gate
-    context: "First-encounter instructions for sound-out-word-gate"
-  minigame_instructions_grapheme_sound_gate:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_grapheme_sound_gate
-    context: "First-encounter instructions for grapheme-sound-gate"
-  minigame_instructions_starting_sound_gate:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_starting_sound_gate
-    context: "First-encounter instructions for starting-sound-gate"
-  minigame_instructions_ending_sound_gate:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_ending_sound_gate
-    context: "First-encounter instructions for ending-sound-gate"
-  minigame_instructions_grapheme_sound_combat:
-    text: "Instructions go here"
-    sfx: sfx_ui_minigame_instructions_grapheme_sound_combat
-    context: "First-encounter instructions for grapheme-sound-combat"
-  minigame_instructions_starting_sound_combat:
+  minigame_tutorial_sound_out_word_pit:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_sound_out_word_pit
+    context: "First-encounter tutorial for sound-out-word-pit"
+  minigame_tutorial_ending_sound_pit:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_ending_sound_pit
+    context: "First-encounter tutorial for ending-sound-pit"
+  minigame_tutorial_starting_sound_pit:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_starting_sound_pit
+    context: "First-encounter tutorial for starting-sound-pit"
+  minigame_tutorial_sound_out_word_gate:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_sound_out_word_gate
+    context: "First-encounter tutorial for sound-out-word-gate"
+  minigame_tutorial_grapheme_sound_gate:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_grapheme_sound_gate
+    context: "First-encounter tutorial for grapheme-sound-gate"
+  minigame_tutorial_starting_sound_gate:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_starting_sound_gate
+    context: "First-encounter tutorial for starting-sound-gate"
+  minigame_tutorial_ending_sound_gate:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_ending_sound_gate
+    context: "First-encounter tutorial for ending-sound-gate"
+  minigame_tutorial_grapheme_sound_combat:
+    text: "Tutorial goes here"
+    sfx: sfx_ui_minigame_tutorial_grapheme_sound_combat
+    context: "First-encounter tutorial for grapheme-sound-combat"
+  minigame_tutorial_starting_sound_combat:
     text: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
-    sfx: sfx_ui_minigame_instructions_starting_sound_combat
-    context: "First-encounter instructions for starting-sound-combat"
-  minigame_instructions_ending_sound_combat:
+    sfx: sfx_ui_minigame_tutorial_starting_sound_combat
+    context: "First-encounter tutorial for starting-sound-combat"
+  minigame_tutorial_ending_sound_combat:
     text: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
-    sfx: sfx_ui_minigame_instructions_ending_sound_combat
-    context: "First-encounter instructions for ending-sound-combat"
-  minigame_instructions_continue:
+    sfx: sfx_ui_minigame_tutorial_ending_sound_combat
+    context: "First-encounter tutorial for ending-sound-combat"
+  minigame_tutorial_continue:
     text: "Tap to continue"
-    sfx: sfx_ui_minigame_instructions_continue
-    context: "First-encounter minigame instructions continue hint"
+    sfx: sfx_ui_minigame_tutorial_continue
+    context: "First-encounter minigame tutorial continue hint"
   defeated:
     text: "Defeated"
     sfx: sfx_ui_defeated

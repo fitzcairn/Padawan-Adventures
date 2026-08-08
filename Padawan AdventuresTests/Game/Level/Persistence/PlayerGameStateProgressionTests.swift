@@ -48,33 +48,33 @@ struct PlayerGameStateProgressionTests {
         #expect(state.dadModeUnlocked == false)
     }
 
-    @Test func seenMinigameInstructionsDefaultsEmptyOnDecode() throws {
+    @Test func seenMinigameTutorialsDefaultsEmptyOnDecode() throws {
         let data = try JSONEncoder().encode(PlayerGameState(health: 3, energy: 2))
         let decoded = try JSONDecoder().decode(PlayerGameState.self, from: data)
-        #expect(decoded.seenMinigameInstructions.isEmpty)
+        #expect(decoded.seenMinigameTutorials.isEmpty)
     }
 
-    @Test func seenMinigameInstructionsSurvivesPlistRoundTrip() throws {
+    @Test func seenMinigameTutorialsSurvivesPlistRoundTrip() throws {
         var state = PlayerGameState(health: 3, energy: 2)
-        let firstMark = state.markMinigameInstructionsSeen("ending-sound-pit")
-        let secondMark = state.markMinigameInstructionsSeen("ending-sound-pit")
+        let firstMark = state.markMinigameTutorialSeen("ending-sound-pit")
+        let secondMark = state.markMinigameTutorialSeen("ending-sound-pit")
         #expect(firstMark)
         #expect(secondMark == false)
 
         let data = try PropertyListEncoder().encode(state)
         let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
-        #expect(decoded.hasSeenMinigameInstructions("ending-sound-pit"))
-        #expect(decoded.hasSeenMinigameInstructions("starting-sound-pit") == false)
+        #expect(decoded.hasSeenMinigameTutorial("ending-sound-pit"))
+        #expect(decoded.hasSeenMinigameTutorial("starting-sound-pit") == false)
     }
 
-    @Test func resetForNewGameClearsSeenMinigameInstructions() {
+    @Test func resetForNewGameClearsSeenMinigameTutorials() {
         var state = PlayerGameState(health: 3, energy: 2)
-        _ = state.markMinigameInstructionsSeen("grapheme-sound-combat")
+        _ = state.markMinigameTutorialSeen("grapheme-sound-combat")
         state.resetForNewGame(health: 5, energy: 4)
-        #expect(state.seenMinigameInstructions.isEmpty)
+        #expect(state.seenMinigameTutorials.isEmpty)
     }
 
-    @Test func minigameInstructionKeysAreUniqueAcrossFamilies() {
+    @Test func minigameTutorialKeysAreUniqueAcrossFamilies() {
         let keys = PitMinigameKind.allCases.map(\.rawValue)
             + GateMinigameKind.allCases.map(\.rawValue)
             + CombatMinigameKind.allCases.map(\.rawValue)
@@ -82,16 +82,16 @@ struct PlayerGameStateProgressionTests {
         #expect(Set(keys).count == keys.count)
     }
 
-    @Test func everyMinigameKindHasDistinctInstructionsStringID() {
+    @Test func everyMinigameKindHasDistinctTutorialStringID() {
         let keys = PitMinigameKind.allCases.map(\.rawValue)
             + GateMinigameKind.allCases.map(\.rawValue)
             + CombatMinigameKind.allCases.map(\.rawValue)
         let stringIDs = keys.map {
-            MinigameInstructionsView<EmptyView>.bodyStringID(forKindRawValue: $0)
+            MinigameTutorialView<EmptyView>.bodyStringID(forKindRawValue: $0)
         }
         #expect(Set(stringIDs).count == stringIDs.count)
         for id in stringIDs {
-            #expect(id.hasPrefix("minigame_instructions_"))
+            #expect(id.hasPrefix("minigame_tutorial_"))
             #expect(!id.contains("-"))
         }
     }

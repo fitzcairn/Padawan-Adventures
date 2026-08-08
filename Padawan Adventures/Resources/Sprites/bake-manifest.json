@@ -5,7 +5,7 @@
     "Art/Levels/1-tython/1-emitter-atlas.json": "efce6fcf4e7572e7b5819240eed963169ff07b17abac34e460ce8452d0235236",
     "Art/Levels/1-tython/1-emitter-spritesheet.png": "8036afe3c2e7674f8de9d9019b739ba6b0a7074396dba7d72a0b3071f6b8436b",
     "Art/Levels/1-tython/1-tython-floor-spritesheet-pit.png": "9d4f50456d3d003768ed4536ad4c986a43bf5c9c3f48aed09c8ad01ef0b532c0",
-    "Art/Levels/1-tython/1-tython-floor-spritesheet.png": "2929a80f5bc7ccaac347433214eaf947aa88e77ea190c68f8d9881b41c3d4f72",
+    "Art/Levels/1-tython/1-tython-floor-spritesheet.png": "fffcde5d61974604cc2685abd85fea8abaff11540a8b88ed2a8f8aefca6eb7fc",
     "Art/Levels/1-tython/1-tython-gate-spritesheet.png": "1d8f9ab69c0a26353759529045c39f8c2df0ce59a2961cbbd6c332691bbdff27",
     "Art/Levels/1-tython/1-tython-letters-spritesheet.png": "8291c78554318d7f8418c748e818c90a7d438891627aa5574ca02672032f0d54",
     "Art/Levels/1-tython/1-tython-pit-spritesheet.png": "d575baf3b02f5fecba04160de5c6127dfbf17a95f6776f41c504ce3f6e664778",
@@ -340,12 +340,19 @@
     "Art/Shared/UI/Loading/logo.png": "3694957088507945b4900c79667b96c60f5a83b8776531af79975349fa09c3f7",
     "Art/Shared/UI/Loading/yoda-atlas.json": "e313a31620033586e2f823e7929d7e5387720411eeb0dcbd5d8c8331073c9c0d",
     "Art/Shared/UI/Loading/yoda-spritesheet.png": "68fa30cfae63c9be25affd1a0b9a73a1e12445d5d9f91a8de51f49110f2e26a4",
+    "Art/Shared/UI/Tutorials/pointer-atlas.json": "8b4ddda2de84e571e65e85ef124b219013fca1f00c3e787eaba16046cc56663f",
+    "Art/Shared/UI/Tutorials/pointer.png": "ce4b64e7b29c036a16527d2c8b138b2a6bfe7261d46c703db1b86ec3bff943ab",
+    "Art/Shared/UI/Tutorials/swipe-atlas.json": "8b4ddda2de84e571e65e85ef124b219013fca1f00c3e787eaba16046cc56663f",
+    "Art/Shared/UI/Tutorials/swipe.png": "923586427fa8b8c86de6353f7c003bc0fc626dc4689678604c0b6270439b13fa",
+    "Art/Shared/UI/Tutorials/tap-atlas.json": "8b4ddda2de84e571e65e85ef124b219013fca1f00c3e787eaba16046cc56663f",
+    "Art/Shared/UI/Tutorials/tap.png": "8503c6e50df4cea9ab475e7a8301c0c2bfde5002070e3f4a78ab66383fa5c3f7",
     "Padawan Adventures/Resources/Config/Catalogs/enemies.yaml": "f325e95df303dc136da67966e14bccf35804db498bddef646180b5ed6389dcb2",
     "Padawan Adventures/Resources/Config/Catalogs/items.yaml": "4a2332a68042f8656041465cc35eb6de6e8054ca9ca41af9da0fad09a4365d9b",
     "Padawan Adventures/Resources/Config/UI/cutscene.yaml": "15f7944b85b78b8db4ba0839bd541240649fee4559a6880cbb7cb32437d684a4",
     "Padawan Adventures/Resources/Config/UI/gate_grapheme_match.yaml": "abb6ac553e466e0b49d04e01bdd9aad941337c67f6fe0c15b2ff680c7d4b711e",
     "Padawan Adventures/Resources/Config/UI/gate_word_plug.yaml": "f77d0c7bbd78f7b2dd8dfa8163555f618faf9c4296dc7cc55ee6705ae63a55a4",
     "Padawan Adventures/Resources/Config/UI/loading.yaml": "8eb79a2db8e81b7c7b519b9a086d8630e0651d7f6912c3e89a48f373b3f3fdcc",
+    "Padawan Adventures/Resources/Config/UI/tutorials.yaml": "7248ba953960662cf384159d8bc94ec3ff4fd0982dde419ba224ecdced37a5f4",
     "Padawan Adventures/Resources/Config/player.yaml": "9325f4e74880d7502b7c83c761ebfe1417bcbf7f2ce68528af21c256d8a410b4",
     "Padawan Adventures/Resources/Levels/1-tython/level.yaml": "f489b80ac599a6b8afb9006f4557c97558f40b885ce7e1fbb1f451bcfc79072f",
     "Padawan Adventures/Resources/Levels/2-tatooine/level.yaml": "ed88d7b2565ca8d0107458ef253a24e0e00d8f01a8b0903577ca8e42e3c74741",
@@ -693,8 +700,8 @@
   "outputs": {
     "Padawan Adventures/Resources/Levels/1-tython/1-emitter-atlas.json": "79aba830c484e643365f675e369ab3b092e19a658e7f0b22a0e458bf63518e08",
     "Padawan Adventures/Resources/Levels/1-tython/1-emitter-spritesheet.png": "70dffc051434fc0961d35ab8eba8bacad4492a652417b3ed358466c8fd28489d",
-    "Padawan Adventures/Resources/Levels/1-tython/1-tython-floor-atlas.json": "4b2f0b51fe5eec8d579b5c252a13f075c34e5e59948f523cc8e698467419d1a7",
-    "Padawan Adventures/Resources/Levels/1-tython/1-tython-floor-spritesheet.png": "cd55f138a552e585fe68cc4560ab91c02a6ab7358660f30ec2023f0821978020",
+    "Padawan Adventures/Resources/Levels/1-tython/1-tython-floor-atlas.json": "cf5618f8015d7b58dc632f42c607a46383d12a8a65085d1be510165f9b67324a",
+    "Padawan Adventures/Resources/Levels/1-tython/1-tython-floor-spritesheet.png": "5632ec0044c3827ca98e34f4deadd69d433d7fed9018d40d54498addab801b20",
     "Padawan Adventures/Resources/Levels/1-tython/1-tython-gate-atlas.json": "e9dcc6c616be055d885a31e48fc34add73c11ee84a57326f5e78b13ccde3bc6b",
     "Padawan Adventures/Resources/Levels/1-tython/1-tython-gate-spritesheet.png": "f0b71c6f5e0c261c545706e63fd4eeb58cb4223a08d36bfcf099df1686917e62",
     "Padawan Adventures/Resources/Levels/1-tython/1-tython-letters-atlas.json": "f163f1c5871662c96f1d5079d1ff03cd74f59f95d92ab70ac315c838c8fbdffb",
@@ -1052,7 +1059,13 @@
     "Padawan Adventures/Resources/Sprites/UI/Loading/logo-atlas.json": "f2040ed63b1f2b15ebf22be8de1cb5f92eafd17b17198af7cb37ebdd41d77b69",
     "Padawan Adventures/Resources/Sprites/UI/Loading/logo.png": "da161bfeb374dae2d9e4ff5310693cd2c69bb11d6ddcf7f14b0d0ceb89941da2",
     "Padawan Adventures/Resources/Sprites/UI/Loading/yoda-atlas.json": "9672828f26220f31bb1d5b88dc92954072de3fb4d8a5765affc45a861a918070",
-    "Padawan Adventures/Resources/Sprites/UI/Loading/yoda-spritesheet.png": "94c7d195e799c9040a3668bc1dcdf74dcb9cd7fb4e36eeb7288c8e69aa4ca499"
+    "Padawan Adventures/Resources/Sprites/UI/Loading/yoda-spritesheet.png": "94c7d195e799c9040a3668bc1dcdf74dcb9cd7fb4e36eeb7288c8e69aa4ca499",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/pointer-atlas.json": "934fdc3e7b135ade7f509fa93ed87ad604148fe0a6d4efcd9207d4a0f4c3a2d1",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/pointer.png": "9e8d13173e549792d627b7195931005771d546bc2f39369a35da36da4c1d881a",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/swipe-atlas.json": "934fdc3e7b135ade7f509fa93ed87ad604148fe0a6d4efcd9207d4a0f4c3a2d1",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/swipe.png": "bf92fadc052849ca7fdd73613bb51410fb1a096232e3a88a9f51d8ff6208466f",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/tap-atlas.json": "934fdc3e7b135ade7f509fa93ed87ad604148fe0a6d4efcd9207d4a0f4c3a2d1",
+    "Padawan Adventures/Resources/Sprites/UI/Tutorials/tap.png": "3ae6941ffb1c985b0ea0f30c796ab6e64578754b1675c909f37bffd6d2b5686b"
   },
   "jobs": [
     {
@@ -3045,6 +3058,39 @@
       "trim": true,
       "bake_scale": 1.0,
       "flip_vertical": true
+    },
+    {
+      "label": "tutorial.pointer.idle",
+      "category": "tutorial.pointer",
+      "source_sheet": "Art/Shared/UI/Tutorials/pointer.png",
+      "source_atlas": "Art/Shared/UI/Tutorials/pointer-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/UI/Tutorials/pointer.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/UI/Tutorials/pointer-atlas.json",
+      "trim": false,
+      "bake_scale": 0.5,
+      "flip_vertical": false
+    },
+    {
+      "label": "tutorial.swipe.idle",
+      "category": "tutorial.swipe",
+      "source_sheet": "Art/Shared/UI/Tutorials/swipe.png",
+      "source_atlas": "Art/Shared/UI/Tutorials/swipe-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/UI/Tutorials/swipe.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/UI/Tutorials/swipe-atlas.json",
+      "trim": false,
+      "bake_scale": 0.5,
+      "flip_vertical": false
+    },
+    {
+      "label": "tutorial.tap.idle",
+      "category": "tutorial.tap",
+      "source_sheet": "Art/Shared/UI/Tutorials/tap.png",
+      "source_atlas": "Art/Shared/UI/Tutorials/tap-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/UI/Tutorials/tap.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/UI/Tutorials/tap-atlas.json",
+      "trim": false,
+      "bake_scale": 0.5,
+      "flip_vertical": false
     }
   ]
 }
