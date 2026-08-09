@@ -33,11 +33,16 @@ struct LevelSelectView: View {
     @State private var campaignWinScrimOpacity: Double = 0
     @State private var campaignWinTextOpacity: Double = 0
     @State private var campaignWinInteractive = false
+    @State private var campaignWinArtifactsOffsetY: CGFloat = 0
+    @State private var campaignWinSparklesActive = false
 
     private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
     private static let contentFadeSeconds: Double = 0.35
     private static let campaignWinScrimFadeSeconds: Double = 0.9
     private static let campaignWinTextFadeSeconds: Double = 0.5
+    private static let campaignWinArtifactsLiftSeconds: Double = 0.7
+    /// Lift the rack from the bottom band toward mid-screen under "Congratulations!".
+    private static let campaignWinArtifactsLiftPoints: CGFloat = 200
 
     init(
         session: AppSession,
@@ -112,6 +117,7 @@ struct LevelSelectView: View {
 
             if campaignWinActive {
                 CampaignWinOverlay(
+                    spriteLibrary: session.spriteLibrary,
                     scrimOpacity: campaignWinScrimOpacity,
                     textOpacity: campaignWinTextOpacity,
                     isInteractive: campaignWinInteractive,
@@ -236,6 +242,8 @@ struct LevelSelectView: View {
         campaignWinScrimOpacity = 0
         campaignWinTextOpacity = 0
         campaignWinInteractive = false
+        campaignWinArtifactsOffsetY = 0
+        campaignWinSparklesActive = false
 
         withAnimation(.easeInOut(duration: Self.campaignWinScrimFadeSeconds)) {
             campaignWinScrimOpacity = 1
@@ -247,13 +255,22 @@ struct LevelSelectView: View {
 
         BackgroundMusicController.shared.applyScreen(named: "win_game")
         Strings.speak("campaign_win_congratulations")
+        campaignWinSparklesActive = true
         withAnimation(.easeIn(duration: Self.campaignWinTextFadeSeconds)) {
             campaignWinTextOpacity = 1
         }
+        withAnimation(.easeOut(duration: Self.campaignWinArtifactsLiftSeconds)) {
+            campaignWinArtifactsOffsetY = -Self.campaignWinArtifactsLiftPoints
+        }
         campaignWinInteractive = true
+
+        // Match SparkleBurstView emit window, then clear so idle gleam can resume.
+        try? await Task.sleep(nanoseconds: 700_000_000)
+        guard !Task.isCancelled else { return }
+        campaignWinSparklesActive = false
     }
 
-    /// Inventory rack lifted above the black scrim at the same bottom-band position.
+    /// Inventory rack starts in the bottom band, then lifts when the win text fades in.
     private var campaignWinArtifacts: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
@@ -267,7 +284,7 @@ struct LevelSelectView: View {
                     isContentReady: showsContent,
                     celebratingInventoryResource: nil,
                     celebrationRevealed: true,
-                    inventorySparklesActive: false,
+                    inventorySparklesActive: campaignWinSparklesActive,
                     inventoryIcons: $inventoryIcons
                 )
                 .frame(maxWidth: AppChrome.maxContentWidth)
@@ -276,6 +293,7 @@ struct LevelSelectView: View {
                     .frame(width: 52, height: 52)
             }
         }
+        .offset(y: campaignWinArtifactsOffsetY)
         .appScreenContentPadding()
     }
 

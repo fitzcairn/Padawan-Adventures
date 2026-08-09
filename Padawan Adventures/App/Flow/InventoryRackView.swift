@@ -48,10 +48,12 @@ struct InventoryRackView: View {
     @ViewBuilder
     private func inventoryIcon(for level: LevelDescriptor) -> some View {
         let isCelebrating = celebratingInventoryResource == level.resourceName
+        // Nil celebrating resource + active sparkles = burst every slot (campaign win).
+        let showsSparkles = celebratingInventoryResource == nil || isCelebrating
         let opacity: Double = (isCelebrating && !celebrationRevealed) ? 0 : 1
         let sprite = level.treasure.flatMap { inventoryIcons[$0] }
         // Idle twinkle on visible treasure art only; pause during the unlock burst.
-        let gleamEnabled = sprite != nil && opacity > 0 && !(isCelebrating && inventorySparklesActive)
+        let gleamEnabled = sprite != nil && opacity > 0 && !(showsSparkles && inventorySparklesActive)
 
         ZStack {
             Group {
@@ -83,7 +85,7 @@ struct InventoryRackView: View {
             // Fade only the icon; keep the burst fully visible around it (same as planet unlock).
             .opacity(opacity)
 
-            if isCelebrating {
+            if showsSparkles {
                 SparkleBurstView(isActive: inventorySparklesActive, diameter: inventoryIconSide)
                     .frame(width: inventoryIconSide, height: inventoryIconSide)
                     .allowsHitTesting(false)
