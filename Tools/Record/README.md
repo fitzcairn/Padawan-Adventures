@@ -96,12 +96,34 @@ Real recordings made through this tool overwrite the beeps.
 
 ## Cleanup pipeline
 
-Browser-side, before save — **trims only**; the spoken word is left unprocessed so tone
-adjustments can be layered back in later:
+Browser-side, before save — **trims, plus narrow hum notches**; there is no EQ, broadband
+denoise or compression, so the voice itself is left unprocessed and tone adjustments can be
+layered back in later:
 
-1. Fixed edge guards (~85 ms after press, ~100 ms before release) for Space key travel
-2. Smart leftover click removal (amplitude + high-frequency burst detection)
-3. Trim leading/trailing blank time using the pre-press noise floor (tight ~6 ms lead pad)
-4. Tiny 8 ms edge fades (avoid cut discontinuities only)
+1. Tonal hum removal. The 500 ms of room noise captured before you press Space is profiled
+   with an averaged FFT, and any narrow peak standing 9 dB clear of its local spectral floor
+   is treated as a steady tone — mains hum, fan whine, coil whine, a monitor. Each centre is
+   pinned to better than 0.1 Hz, then removed with a ~6 Hz zero-phase notch (widening up high,
+   where there is no voice content to protect). Broadband hiss has no such peaks, so a quiet
+   room yields zero notches and the audio is passed through untouched. The toolbar reports
+   what was removed
+2. Fixed edge guards (~60 ms after press, ~40 ms before release) for Space key travel
+3. Smart leftover click removal (amplitude + high-frequency burst detection). A transient
+   is only treated as a key click when there is *no* speech near it — a stop burst like the
+   final `/t/` in "cat" has the vowel just behind it, a key-up click does not
+4. Trim leading/trailing blank time using the pre-press noise floor. The loud gate finds the
+   voiced core, then the edges walk outward on a much softer gate (~1% of peak, plus a
+   high-frequency test) so unvoiced consonants survive. Up to 110 ms of silent stop closure
+   is bridged, so the faint burst after "ca**t**" or before "**t**ap" is kept
+5. Tiny 8 ms edge fades (avoid cut discontinuities only)
+
+Leave a short pause (~0.3 s) after the word before releasing Space. The gap is what separates
+your key-up click from a trailing consonant, and it is also the room noise the hum profiler
+measures — so don't start speaking the instant you press.
+
+Two side effects worth knowing. A notch rings for roughly `1/(pi x width)` seconds, so ~50 ms
+at 6 Hz; this is at the hum's own level, well below the voice. And because removing a loud hum
+lowers the measured noise floor, the trim can keep a few tens of ms more tail than it would in
+a silent room.
 
 Mic browser processing (`echoCancellation`, `noiseSuppression`, `autoGainControl`) is disabled.

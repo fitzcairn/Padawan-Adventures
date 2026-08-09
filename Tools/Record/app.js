@@ -52,7 +52,11 @@ const els = {
   filter: document.getElementById("filter"),
   unrecorded: document.getElementById("unrecorded"),
   micStatus: document.getElementById("mic-status"),
+  notchStatus: document.getElementById("notch-status"),
 };
+
+/** Tones notched out of the most recent take, for at-a-glance confirmation. */
+let lastNotches = [];
 
 // ---------------------------------------------------------------------------
 // IndexedDB
@@ -99,6 +103,22 @@ async function idbLoadAllTakes() {
 function setMicStatus(text, dataState) {
   els.micStatus.textContent = text;
   els.micStatus.dataset.state = dataState;
+}
+
+function renderNotchStatus() {
+  if (!els.notchStatus) return;
+  if (!lastNotches.length) {
+    els.notchStatus.hidden = true;
+    return;
+  }
+  const shown = lastNotches
+    .slice()
+    .sort((a, b) => a - b)
+    .map((f) => (f >= 1000 ? `${(f / 1000).toFixed(2)}k` : Math.round(f)))
+    .join(", ");
+  els.notchStatus.hidden = false;
+  els.notchStatus.dataset.state = "ready";
+  els.notchStatus.textContent = `Notched: ${shown} Hz`;
 }
 
 async function ensureMic() {
@@ -262,11 +282,13 @@ function stopRecording() {
     try {
       const parts = pre && pre.length ? [pre, ...chunksRef] : chunksRef;
       const assembled = concatFloat32(parts);
-      const { samples, tooQuiet } = cleanup(assembled, noise, audioCtx.sampleRate);
+      const { samples, tooQuiet, notches } = cleanup(assembled, noise, audioCtx.sampleRate);
       if (tooQuiet) {
         setStatus(rowId, "too quiet", "warn");
         return;
       }
+      lastNotches = notches;
+      renderNotchStatus();
       const wav = encodeWav(samples, audioCtx.sampleRate);
       const take = {
         id: rowId,
