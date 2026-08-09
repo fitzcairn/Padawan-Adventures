@@ -65,13 +65,15 @@ extension AppSession {
         }
     }
 
-    /// Tier 0 + Tier 1 sprite ids warmed at bootstrap and kept across levels.
+    /// Sprite ids warmed at bootstrap and kept across levels.
+    ///
+    /// Enemy, projectile, and `player_combat` sprites are level-scoped: loaded by
+    /// `GameWorldPreparer.prepareLaunch` and dropped by `releaseLevelScopedAssets()`.
     var persistentSpriteIDs: Set<String> {
         // `logo` stays pinned — MenuView reads it. `kam`/`yoda` are loading-screen-only
         // and are invalidated when the player leaves LoadingView.
         var ids: Set<String> = [
             "player",
-            "player_combat",
             "energy",
             "health",
             "coin",
@@ -80,7 +82,6 @@ extension AppSession {
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))
-        ids.formUnion(retainedEnemySpriteIDs)
         return ids
     }
 
@@ -88,19 +89,60 @@ extension AppSession {
     func releaseCutsceneSprites() {
         spriteLibrary.invalidate(id: CutsceneSpritesConfig.playerID)
         spriteLibrary.invalidate(id: CutsceneSpritesConfig.yodaID)
-        MemoryProbe.mark("cutscene-sprites-released")
+        MemoryProbe.mark("cutscene-sprites-released sprites=\(spriteLibrary.residentBytes / 1_048_576)MB")
     }
 
-    /// Frees enemy, per-level treasure, atlas sets, and screen backgrounds after leaving a level.
+    /// Frees enemy, per-level treasure, atlas sets, gate art, and screen backgrounds after leaving a level.
     func releaseLevelScopedAssets() {
         spriteLibrary.retain(ids: persistentSpriteIDs)
         floorTileSetLibrary.release()
         letterSpriteSetLibrary.release()
         pitSpriteSetLibrary.release()
         gateSpriteSetLibrary.release()
+        releaseGateMinigameArt()
         // Keep no backgrounds at level exit — the next screen reloads what it needs.
         backgroundLibrary.retain(names: [])
-        MemoryProbe.mark("level-assets-released")
+        MemoryProbe.mark("level-assets-released sprites=\(spriteLibrary.residentBytes / 1_048_576)MB")
+    }
+
+    /// Decodes only the gate art the selected level can actually spawn.
+    ///
+    /// Weight-0 kinds are never baked onto a tile by `GateTopology.pickGateMinigameKind`,
+    /// so they are unreachable and their art (a 17 MB background each) is not decoded.
+    /// Returns the textures so the caller can include them in one `SKTexture.preload`.
+    @discardableResult
+    func ensureGateMinigameArtLoaded() -> [SKTexture] {
+        let kinds = Set(
+            selectedGateConfig.weightedMinigameKinds
+                .filter { $0.weight > 0 }
+                .map(\.kind)
+        )
+        var textures = GateMinigameBackground.preloadTextures(kinds: kinds)
+        if kinds.contains(.soundOutWord), let capacitor = GateSpellingCapacitorSprites.load() {
+            textures.append(capacitor)
+        }
+        if kinds.contains(.graphemeMatch), let switches = GateGraphemeMatchSwitchSprites.load() {
+            textures.append(switches.off)
+            textures.append(switches.on)
+        }
+        if kinds.contains(.wordPlug) || kinds.contains(.endingSoundPlug) {
+            if let sockets = GateWordPlugSocketSprites.load() {
+                textures.append(contentsOf: sockets)
+            }
+            if let plugs = GateWordPlugPlugSprites.load() {
+                textures.append(contentsOf: plugs)
+            }
+        }
+        return textures
+    }
+
+    /// Drops every gate minigame static texture cache.
+    func releaseGateMinigameArt() {
+        GateMinigameBackground.release()
+        GateSpellingCapacitorSprites.release()
+        GateGraphemeMatchSwitchSprites.release()
+        GateWordPlugSocketSprites.release()
+        GateWordPlugPlugSprites.release()
     }
 
     /// Drops level-scoped textures under memory pressure.

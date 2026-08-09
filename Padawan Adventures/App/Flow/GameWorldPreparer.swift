@@ -80,6 +80,7 @@ enum GameWorldPreparer {
             + session.letterSpriteSetLibrary.allTextures()
             + session.pitSpriteSetLibrary.allTextures()
             + session.gateSpriteSetLibrary.allTextures()
+            + session.ensureGateMinigameArtLoaded()
         await withCheckedContinuation { continuation in
             SKTexture.preload(textures) {
                 continuation.resume()
@@ -92,7 +93,7 @@ enum GameWorldPreparer {
                 report(LoadProgress.map(local, from: assetsEnd, to: 1))
             }
         }
-        MemoryProbe.mark("world-ready")
+        MemoryProbe.mark("world-ready sprites=\(session.spriteLibrary.residentBytes / 1_048_576)MB")
         return world
     }
 

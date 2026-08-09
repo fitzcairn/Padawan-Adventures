@@ -7,26 +7,41 @@ enum GateMinigameBackground {
     @MainActor
     private static var textureCache: [String: SKTexture] = [:]
 
-    /// Decodes gate backgrounds into the texture cache (call during bootstrap).
+    /// Decodes the backgrounds for `kinds` into the texture cache.
+    /// Call per level with only the kinds that level can spawn — each background is
+    /// 2816x1536 (~17 MB decoded).
     @MainActor
     @discardableResult
-    static func preloadTextures(bundle: Bundle = .main) -> [SKTexture] {
-        let specs = [
-            ("grapheme_match-bg", "Sprites/Gate/GraphemeSoundGate"),
-            ("spelling-bg", "Sprites/Gate/SoundOutWordGate"),
-            ("word_plug_bg", "Sprites/Gate/StartingSoundGate"),
-        ]
+    static func preloadTextures(
+        kinds: Set<GateMinigameKind> = Set(GateMinigameKind.allCases),
+        bundle: Bundle = .main
+    ) -> [SKTexture] {
         var loaded: [SKTexture] = []
-        for (name, root) in specs {
-            if let existing = textureCache[cacheKey(name: name, root: root)] {
-                loaded.append(existing)
+        for kind in kinds.sorted(by: { $0.rawValue < $1.rawValue }) {
+            let spec = backgroundSpec(for: kind)
+            guard let texture = loadTexture(named: spec.name, root: spec.root, bundle: bundle) else {
                 continue
             }
-            guard let texture = loadTexture(named: name, root: root, bundle: bundle) else { continue }
-            textureCache[cacheKey(name: name, root: root)] = texture
             loaded.append(texture)
         }
         return loaded
+    }
+
+    /// Drops cached backgrounds so the next access re-decodes from the bundle.
+    static func release() {
+        textureCache.removeAll()
+    }
+
+    /// Background art for each gate kind. `wordPlug` and `endingSoundPlug` share one image.
+    private static func backgroundSpec(for kind: GateMinigameKind) -> (name: String, root: String) {
+        switch kind {
+        case .graphemeMatch:
+            ("grapheme_match-bg", "Sprites/Gate/GraphemeSoundGate")
+        case .soundOutWord:
+            ("spelling-bg", "Sprites/Gate/SoundOutWordGate")
+        case .wordPlug, .endingSoundPlug:
+            ("word_plug_bg", "Sprites/Gate/StartingSoundGate")
+        }
     }
 
     /// Letter-match art under `Sprites/Gate/GraphemeSoundGate/grapheme_match-bg.png`.

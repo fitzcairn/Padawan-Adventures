@@ -133,6 +133,8 @@ struct LoadingView: View {
         case "kam":
             kamFrames = spriteLibrary.uiImages(id: "kam") ?? []
             guard !kamFrames.isEmpty else { return }
+            // SwiftUI-only: drop the SKTexture copies now that UIImages are ready.
+            spriteLibrary.releaseTextures(id: "kam")
             withAnimation(.easeIn(duration: Self.artFadeSeconds)) {
                 kamOpacity = 1
             }
@@ -145,6 +147,8 @@ struct LoadingView: View {
         case "yoda":
             yodaFrames = spriteLibrary.uiImages(id: "yoda") ?? []
             guard !yodaFrames.isEmpty else { return }
+            // SwiftUI-only: drop the SKTexture copies now that UIImages are ready.
+            spriteLibrary.releaseTextures(id: "yoda")
             withAnimation(.easeIn(duration: Self.artFadeSeconds)) {
                 yodaOpacity = 1
             }

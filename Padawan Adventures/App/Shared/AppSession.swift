@@ -49,8 +49,6 @@ final class AppSession {
     let backgroundLibrary: BackgroundLibrary
     /// Session-scoped cutscene movie, preloaded so NEW GAME can start playback immediately.
     let cutsceneVideo: CutsceneVideo
-    /// Enemy sprite ids warmed at bootstrap for every playable level; kept across levels.
-    let retainedEnemySpriteIDs: Set<String>
     /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
     var pendingLevelSelectCelebration: String? = nil
 
@@ -79,8 +77,7 @@ final class AppSession {
         pitSpriteSetLibrary: PitSpriteSetLibrary? = nil,
         gateSpriteSetLibrary: GateSpriteSetLibrary? = nil,
         backgroundLibrary: BackgroundLibrary? = nil,
-        cutsceneVideo: CutsceneVideo? = nil,
-        retainedEnemySpriteIDs: Set<String> = []
+        cutsceneVideo: CutsceneVideo? = nil
     ) {
         self.appConfig = appConfig
         self.selectedLevel = selectedLevel
@@ -108,7 +105,6 @@ final class AppSession {
         self.gateSpriteSetLibrary = gateSpriteSetLibrary ?? GateSpriteSetLibrary()
         self.backgroundLibrary = backgroundLibrary ?? BackgroundLibrary()
         self.cutsceneVideo = cutsceneVideo ?? CutsceneVideo()
-        self.retainedEnemySpriteIDs = retainedEnemySpriteIDs
     }
 }
 

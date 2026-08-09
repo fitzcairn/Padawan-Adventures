@@ -280,7 +280,10 @@ extension AppSession {
         HudVitalIcon.energy.seed(spriteLibrary.uiImage(id: "energy"))
         await report(itemsEnd)
 
-        // 6) Enemy sprites used by any playable level (not the entire unused catalog).
+        // 6) Level configs for ConfigAudit. Enemy + projectile sprites are deliberately
+        // NOT warmed here: each level uses 1-2 of the 10 sets (~420 MB if all resident),
+        // and GameWorldPreparer.prepareLaunch warms the current level's via
+        // AppSession.ensureEnemySpritesLoaded().
         let levelsForAudit: [LevelConfig]
         do {
             levelsForAudit = try levelDescriptors.map { descriptor in
@@ -297,47 +300,11 @@ extension AppSession {
             GameLogger.fault(.config, "failed to load levels during bootstrap: \(error)")
             assertionFailure("Failed to load levels during bootstrap: \(error)")
         }
+        await report(0.80)
 
-        var enemySpriteIDs = Set<String>()
-        for level in levelsForAudit {
-            for typeID in level.enemies?.types ?? [] {
-                if let spriteID = enemyConfig.enemies[typeID]?.sprite {
-                    enemySpriteIDs.insert(spriteID)
-                }
-            }
-        }
-        let enemyEntries = enemyConfig.sprites
-            .filter { enemySpriteIDs.contains($0.key) }
-            .sorted { $0.key < $1.key }
-        let enemiesEnd = enemyEntries.isEmpty ? itemsEnd : 0.92
-        if !enemyEntries.isEmpty {
-            let total = enemyEntries.count
-            for (index, entry) in enemyEntries.enumerated() {
-                let start = LoadProgress.map(Double(index) / Double(total), from: itemsEnd, to: enemiesEnd)
-                let end = LoadProgress.map(Double(index + 1) / Double(total), from: itemsEnd, to: enemiesEnd)
-                await spriteLibrary.ensureLoaded(entry.value, id: entry.key) { local in
-                    onProgress?(LoadProgress.map(local, from: start, to: end))
-                }
-            }
-        }
-        await report(enemiesEnd)
-
-        // 7) Gate minigame stills + GPU upload for every warmed texture.
-        var gateTextures = GateMinigameBackground.preloadTextures()
-        if let capacitor = GateSpellingCapacitorSprites.load() {
-            gateTextures.append(capacitor)
-        }
-        if let switches = GateGraphemeMatchSwitchSprites.load() {
-            gateTextures.append(switches.off)
-            gateTextures.append(switches.on)
-        }
-        if let sockets = GateWordPlugSocketSprites.load() {
-            gateTextures.append(contentsOf: sockets)
-        }
-        if let plugs = GateWordPlugPlugSprites.load() {
-            gateTextures.append(contentsOf: plugs)
-        }
-        let preloadTextures = spriteLibrary.allTextures() + gateTextures
+        // 7) GPU upload for every warmed texture. Gate minigame stills are warmed
+        // per level in GameWorldPreparer (only the kinds that level can spawn).
+        let preloadTextures = spriteLibrary.allTextures()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             SKTexture.preload(preloadTextures) {
                 continuation.resume()
@@ -370,7 +337,7 @@ extension AppSession {
             assertionFailure("ConfigAudit failed: \(error)")
         }
         GameLogger.mark(.session, "loadResources complete")
-        MemoryProbe.mark("loadResources-complete")
+        MemoryProbe.mark("loadResources-complete sprites=\(spriteLibrary.residentBytes / 1_048_576)MB")
 
         return AppSession(
             appConfig: appConfig,
@@ -387,8 +354,7 @@ extension AppSession {
             pitSpriteSetLibrary: pitSpriteSetLibrary,
             gateSpriteSetLibrary: gateSpriteSetLibrary,
             backgroundLibrary: backgroundLibrary,
-            cutsceneVideo: cutsceneVideo,
-            retainedEnemySpriteIDs: enemySpriteIDs
+            cutsceneVideo: cutsceneVideo
         )
     }
 }

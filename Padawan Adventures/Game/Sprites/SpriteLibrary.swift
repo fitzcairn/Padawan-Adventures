@@ -168,6 +168,19 @@ final class SpriteLibrary {
         actionCache = actionCache.filter { !$0.key.hasPrefix("\(id)|") }
     }
 
+    /// Drops `id`'s textures while keeping its UIKit image caches.
+    ///
+    /// For sprites only ever drawn by SwiftUI (loading-screen mascots), the `SKTexture`s
+    /// are dead weight once `uiImages` has materialised the frames. A later
+    /// `ensureLoaded(id:)` re-reads the sheets, so only call this for ids that are not
+    /// reloaded during the same screen.
+    func releaseTextures(id: String) {
+        loadedIDs.remove(id)
+        animationsByID[id] = nil
+        bytesByID[id] = nil
+        actionCache = actionCache.filter { !$0.key.hasPrefix("\(id)|") }
+    }
+
     /// Drops every loaded id outside `keep`, freeing its textures.
     ///
     /// Declarative on purpose: callers state what the current context needs rather

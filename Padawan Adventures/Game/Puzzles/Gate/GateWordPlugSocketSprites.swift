@@ -86,6 +86,12 @@ enum GateWordPlugSocketSprites {
         return textures
     }
 
+    /// Drops the cached textures so the next `load()` re-decodes from the bundle.
+    static func release() {
+        cached = nil
+        didAttemptLoad = false
+    }
+
     static func randomTexture(using rng: inout some RandomNumberGenerator) -> SKTexture? {
         guard let textures = load(), let texture = textures.randomElement(using: &rng) else {
             return nil

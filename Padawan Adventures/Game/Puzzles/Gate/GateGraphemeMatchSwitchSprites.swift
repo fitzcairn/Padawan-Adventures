@@ -92,6 +92,12 @@ enum GateGraphemeMatchSwitchSprites {
         return result
     }
 
+    /// Drops the cached textures so the next `load()` re-decodes from the bundle.
+    static func release() {
+        cached = nil
+        didAttemptLoad = false
+    }
+
     /// Aspect-fit switch into a square of `side`.
     static func sprite(texture: SKTexture, side: CGFloat) -> SKSpriteNode? {
         guard side > 0 else { return nil }
