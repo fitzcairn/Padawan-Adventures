@@ -5,10 +5,8 @@ import Foundation
 nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Tray tiles sit this fraction up the scene (inside the bottom 30%).
     static let trayCenterYFraction: CGFloat = 0.15
-    /// The prompt block hangs from just under the top edge so the CRT stack grows downward.
+    /// The prompt block hangs from just under the top edge so the CRT plate grows downward.
     static let wordPromptTopFraction: CGFloat = 0.97
-    /// Gap between the picture plate and the word plate, as a fraction of the picture side.
-    static let wordPromptPlateGapScale: CGFloat = 0.03
     /// Side pads sit this fraction below scene mid-height.
     static let bridgeLineDownShift: CGFloat = 0.20
     /// Placed tiles, dashed slot, and player sit this fraction below the pad mid-line.
@@ -30,12 +28,15 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
         min(sceneSize.width * 0.28, sceneSize.height * 0.16, tileSide * 1.8)
     }
 
-    /// Height of the CRT prompt stack: picture plate + gap + word plate.
+    /// Height of the merged CRT prompt plate: illustration over the word band.
+    /// Word line height is approximated at 1.3x the font size because `AppFont` is
+    /// MainActor-isolated; word width is approximated with `wordPromptMaxSide`.
     var wordPromptBlockHeight: CGFloat {
-        let picturePlate = wordPromptMaxSide / StarWarsConsoleChrome.contentScale
         let fontSize = max(wordPromptMaxSide * 0.28, 18)
-        let wordPlate = fontSize * 1.3 / StarWarsConsoleChrome.contentScale
-        return picturePlate + wordPromptMaxSide * Self.wordPromptPlateGapScale + wordPlate
+        return MinigameCRTPromptPlate.plateSize(
+            pictureSide: wordPromptMaxSide,
+            wordContent: CGSize(width: wordPromptMaxSide, height: fontSize * 1.3)
+        ).height
     }
 
     /// Centre of the top-anchored prompt block.

@@ -53,3 +53,20 @@ class MinigameScene: SKScene {
         buildContent()
     }
 }
+
+extension MinigameScene {
+    /// Nodes owned by the tutorial demo rather than the puzzle.
+    static let demoOverlayNames: Set<String> = ["demoCursor", MinigameDemoCoinLayer.rootName]
+
+    /// Runs `rebuild` without destroying the demo overlays. Puzzle rebuilds start with
+    /// `removeAllChildren()`, but the tutorial cursor and coin layer are scene children
+    /// the puzzle does not own.
+    func preservingDemoOverlays(_ rebuild: () -> Void) {
+        let overlays = children.filter { node in
+            node.name.map(Self.demoOverlayNames.contains) ?? false
+        }
+        overlays.forEach { $0.removeFromParent() }
+        rebuild()
+        overlays.forEach { addChild($0) }
+    }
+}

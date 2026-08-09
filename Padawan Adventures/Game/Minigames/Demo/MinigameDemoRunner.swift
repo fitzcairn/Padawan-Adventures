@@ -21,6 +21,13 @@ extension MinigameDemoPointer: MinigameDemoPerforming {
     }
 }
 
+/// Bespoke choreography for one minigame, replacing the generic wrong-then-right
+/// sequence. Runs until it returns or its task is cancelled.
+@MainActor
+protocol MinigameDemoScript: AnyObject {
+    func run(performer: MinigameDemoPerforming, coins: MinigameDemoCoinLayer) async
+}
+
 @MainActor
 final class MinigameDemoRunner {
     /// Value type kept `nonisolated` so it can be used as a default argument.
@@ -35,9 +42,11 @@ final class MinigameDemoRunner {
         /// Upper bound on correct moves. Puzzle rounds are short enough to finish
         /// naturally; combat needs the cap (see "Combat length").
         var maxCorrectMoves: Int = 6
-        /// Shown after "x" in the tally when the real award differs from the
-        /// number of coins demonstrated.
-        var displayedTotal: Int?
+        /// How long the won coins sit before arcing into the corner.
+        var coinHoldSeconds: TimeInterval = 1.0
+        var coinFlightSeconds: TimeInterval = 0.75
+        /// Upper bound on waiting for a move's animation to land.
+        var consequenceTimeoutSeconds: TimeInterval = 8
 
         nonisolated init(
             gestureSeconds: TimeInterval = 0.9,
@@ -46,7 +55,9 @@ final class MinigameDemoRunner {
             readyTimeoutSeconds: TimeInterval = 12,
             preludeTimeoutSeconds: TimeInterval = 10,
             maxCorrectMoves: Int = 6,
-            displayedTotal: Int? = nil
+            coinHoldSeconds: TimeInterval = 1.0,
+            coinFlightSeconds: TimeInterval = 0.75,
+            consequenceTimeoutSeconds: TimeInterval = 8
         ) {
             self.gestureSeconds = gestureSeconds
             self.beatSeconds = beatSeconds
@@ -54,7 +65,9 @@ final class MinigameDemoRunner {
             self.readyTimeoutSeconds = readyTimeoutSeconds
             self.preludeTimeoutSeconds = preludeTimeoutSeconds
             self.maxCorrectMoves = maxCorrectMoves
-            self.displayedTotal = displayedTotal
+            self.coinHoldSeconds = coinHoldSeconds
+            self.coinFlightSeconds = coinFlightSeconds
+            self.consequenceTimeoutSeconds = consequenceTimeoutSeconds
         }
     }
 
@@ -88,8 +101,16 @@ final class MinigameDemoRunner {
         self.timing = timing
     }
 
-    func run() async {
-        guard await waitUntilReady() else { return }
+    @discardableResult
+    func run() async -> Int {
+        if let script = stage.demoScript {
+            // Scripted demos own their own looping / coin visuals. Returning 0 keeps
+            // `MinigameDemoController.runLoop` from starting a second cycle after cancel.
+            await script.run(performer: performer, coins: coins)
+            return 0
+        }
+
+        guard await waitUntilReady() else { return 0 }
 
         // 0. The non-scoring affordance (combat: tap the orb to hear its word again).
         if stage.demoDemonstratesPrelude, await waitForPrelude() {
@@ -97,18 +118,19 @@ final class MinigameDemoRunner {
                 await performer.perform(move, gestureSeconds: timing.gestureSeconds)
                 await performer.pause(timing.beatSeconds)
             }
-            guard await waitUntilReady() else { return }
+            guard await waitUntilReady() else { return 0 }
         }
 
         // 1. The wrong move.
         if let wrong = stage.demoMoves.first(where: { !$0.isCorrect }) {
             await performer.perform(wrong, gestureSeconds: timing.gestureSeconds)
-            guard await waitUntilReady() else { return }
+            guard await waitUntilReady() else { return 0 }
             // 2. The pause.
             await performer.pause(timing.beatSeconds)
         }
 
-        // 3. The correct move, then the rest of the round — one coin each.
+        // 3. The correct move, then the rest of the round — one coin each, flown to
+        // the corner as soon as the move's consequence lands (e.g. monster HP hits 0).
         var awarded = 0
         while awarded < timing.maxCorrectMoves, !stage.demoIsFinished {
             guard await waitUntilReady() else { break }
@@ -116,13 +138,19 @@ final class MinigameDemoRunner {
             let moveAnchor = correct.coinAnchor
             await performer.perform(correct, gestureSeconds: timing.gestureSeconds)
             await performer.pause(timing.settleSeconds)
+            // The tap is not the payoff: the deflected orb still has to reach the monster.
+            await waitForConsequence()
             if let anchor = moveAnchor ?? stage.demoCoinAnchor {
-                coins.dropCoin(at: anchor)
+                await coins.flyCoinToCorner(
+                    from: anchor,
+                    holdSeconds: timing.coinHoldSeconds,
+                    flightSeconds: timing.coinFlightSeconds
+                )
                 awarded += 1
             }
         }
 
-        await coins.tally(total: timing.displayedTotal)
+        return awarded
     }
 
     /// Polls rather than sleeping a fixed amount, so retiming any feedback
@@ -152,5 +180,17 @@ final class MinigameDemoRunner {
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return false
+    }
+
+    /// Blocks until the move just performed has actually landed. The tap is not the
+    /// payoff: a deflected orb still has to fly back and empty the monster's HP bar, and
+    /// the coin has to appear with that, not with the tap.
+    private func waitForConsequence() async {
+        let deadline = Date().addingTimeInterval(timing.consequenceTimeoutSeconds)
+        while Date() < deadline {
+            if Task.isCancelled { return }
+            if stage.demoIsFinished || stage.demoAcceptsInput { return }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 }

@@ -103,7 +103,7 @@ extension CombatDeflectScene {
             startScale: 0.35,
             endScale: 1.15
         ) { [weak self] in
-            // Reached the player untapped — same consequence as a wrong tap.
+            // Reached the player untapped — costs a heart.
             self?.resolvePlayerHit()
         }
     }
@@ -233,14 +233,17 @@ extension CombatDeflectScene {
             replayActiveOrbWord(at: point)
             return
         }
+        // Wrong-letter feedback owns the blank briefly; ignore ring taps until it clears.
+        guard !isWrongLetterFeedbackActive else { return }
 
         switch engine.registerTap(ring: ring) {
         case .ignored:
             break
         case .correct(let ring):
             playDeflect(ring: ring)
-        case .wrong:
-            playWrongTap()
+        case .wrong(let ring):
+            guard let letter = letter(for: ring) else { return }
+            playWrongTap(letter: letter)
         }
     }
 
@@ -338,24 +341,33 @@ extension CombatDeflectScene {
         playerNode.yScale = playerNode.correctsUIImageVInversion ? -scale : scale
     }
 
-    /// Wrong ring: dash the orb into the player so the miss visibly lands.
-    func playWrongTap() {
-        guard let orb = activeOrb, let playerNode else { return }
+    /// Wrong ring: show the tapped letter in red on the blank, play error, flash it,
+    /// restore the blank, and replay the word. The inbound flight keeps going so the
+    /// player can keep trying until the orb lands or they deflect it.
+    func playWrongTap(letter: String) {
+        guard let orb = activeOrb, !isWrongLetterFeedbackActive else { return }
+        guard let presented = presentWrongOrbLetter(letter, on: orb) else { return }
+        isWrongLetterFeedbackActive = true
+        let orbID = orb.id
         SoundEffectsController.shared.playCommon(event: "error")
-        orb.node.removeAction(forKey: orbFlightActionKey)
-
-        let start = orb.node.position
-        let end = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        runFlight(
-            on: orb.node,
-            start: start,
-            control: CGPoint(x: (start.x + end.x) * 0.5, y: (start.y + end.y) * 0.5),
-            end: end,
-            duration: wrongTapDashSeconds,
-            startScale: orb.node.xScale,
-            endScale: 1.15
+        flashPresentedWrongOrbLetter(
+            presented.letterNode,
+            blanks: presented.blanks,
+            on: orb
         ) { [weak self] in
-            self?.resolvePlayerHit()
+            guard let self else { return }
+            self.isWrongLetterFeedbackActive = false
+            guard let live = self.activeOrb, live.id == orbID,
+                  self.engine.activeOrb?.isResolved == false else { return }
+            SoundEffectsController.shared.play(trackID: live.sfx)
+            live.wordNode.removeAction(forKey: self.orbWordPulseActionKey)
+            live.wordNode.run(
+                .sequence([
+                    .scale(by: 1.15, duration: 0.09),
+                    .scale(by: 1 / 1.15, duration: 0.09),
+                ]),
+                withKey: self.orbWordPulseActionKey
+            )
         }
     }
 
@@ -375,6 +387,7 @@ extension CombatDeflectScene {
     func resolvePlayerHit() {
         guard !didEnd else { return }
         guard let playerNode else { return }
+        isWrongLetterFeedbackActive = false
         let position = activeOrb?.node.position
             ?? bodyCenter(of: playerNode, height: playerSpriteHeight)
         removeOrbNode()

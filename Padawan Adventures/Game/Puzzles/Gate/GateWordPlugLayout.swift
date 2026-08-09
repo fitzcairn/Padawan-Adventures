@@ -146,6 +146,8 @@ extension GateWordPlugScene {
             plate.position = rectCenter
             plate.name = "rect:\(slot.id.uuidString)"
             plate.zPosition = 10
+            let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
+            MinigameCRTPromptPlate.attachPlayIcon(to: plate, areaHeight: screen.height)
             addChild(plate)
             plateNodes[slot.id] = plate
 

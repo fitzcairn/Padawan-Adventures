@@ -71,6 +71,19 @@ struct CombatDeflectMinigameEngineTests {
         #expect(!engine.hasLost)
     }
 
+    @Test func oneHitPointMonsterDiesOnFirstDeflect() {
+        var engine = makeEngine(monsterHP: 1)
+        let thrown = engine.throwNextOrb()
+        guard let ring = ring(in: thrown) else {
+            #expect(Bool(false), "no orb thrown")
+            return
+        }
+        #expect(engine.registerTap(ring: ring) == .correct(ring))
+        let events = engine.registerOrbReachedMonster()
+        #expect(events.contains(.monsterHealthChanged(0)))
+        #expect(events.contains(.won(starsAwarded: 1)))
+    }
+
     @Test func throwEmitsOrbAndSpokenWord() {
         var engine = makeEngine()
         let events = engine.throwNextOrb()
@@ -230,7 +243,7 @@ struct CombatDeflectMinigameEngineTests {
         #expect(engine.registerTap(ring: target) == .ignored)
     }
 
-    @Test func wrongTapReportsTheTappedRingAndResolvesTheOrb() {
+    @Test func wrongTapReportsTheTappedRingAndLeavesOrbUnresolved() {
         var engine = makeEngine()
         let events = engine.throwNextOrb()
         guard let target = ring(in: events) else {
@@ -242,7 +255,10 @@ struct CombatDeflectMinigameEngineTests {
             return
         }
         #expect(engine.registerTap(ring: wrong) == .wrong(wrong))
-        #expect(engine.registerTap(ring: target) == .ignored)
+        #expect(engine.activeOrb?.isResolved == false)
+        // The player can keep trying until they hit the matching ring.
+        #expect(engine.registerTap(ring: target) == .correct(target))
+        #expect(engine.activeOrb?.isResolved == true)
     }
 
     @Test func tapWithNoLiveOrbIsIgnored() {

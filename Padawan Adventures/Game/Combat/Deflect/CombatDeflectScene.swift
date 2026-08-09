@@ -60,7 +60,7 @@ final class CombatDeflectScene: MinigameScene {
     var lastWordReplayAt: TimeInterval = 0
     let wordReplayCooldownSeconds: TimeInterval = 0.35
 
-    /// Peak flight scale (`runFlight` endScale on the inbound leg and on a wrong tap).
+    /// Peak flight scale (`runFlight` endScale on the inbound leg).
     static let peakOrbScale: CGFloat = 1.15
     /// Base size such that the projectile's peak on-screen width (at impact) is 75% of
     /// the player's visible sprite width.
@@ -92,10 +92,11 @@ final class CombatDeflectScene: MinigameScene {
         .systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple,
     ]
     let interOrbDelaySeconds: TimeInterval = 0.6
-    let wrongTapDashSeconds: TimeInterval = 0.25
     /// The deflected orb returns at double speed.
     let deflectSpeedMultiplier: Double = 2
     let minimumReturnSeconds: TimeInterval = 0.25
+    /// True while a wrong-letter flash is on the live orb; blocks further ring taps.
+    var isWrongLetterFeedbackActive = false
 
     let playerCombatLibraryID = "player_combat"
     let playerSwingAnimationName = "swing"
@@ -105,6 +106,7 @@ final class CombatDeflectScene: MinigameScene {
     let nextOrbActionKey = "nextOrb"
     let deflectFlashActionKey = "deflectFlash"
     let orbWordPulseActionKey = "orbWordPulse"
+    let orbWrongLetterActionKey = "orbWrongLetter"
 
     enum Layer {
         static let sprites: CGFloat = 10

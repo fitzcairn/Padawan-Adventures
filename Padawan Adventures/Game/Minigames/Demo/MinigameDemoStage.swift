@@ -42,9 +42,13 @@ protocol MinigameDemoStage: AnyObject {
     /// Prelude gesture(s) when they are performable right now; empty while they are not
     /// (the combat orb, for instance, is only tappable early in its flight).
     var demoPreludeMoves: [MinigameDemoMove] { get }
+    /// Non-nil when this stage drives its own choreography instead of the generic
+    /// wrong-then-right sequence.
+    var demoScript: MinigameDemoScript? { get }
 }
 
 extension MinigameDemoStage {
     var demoDemonstratesPrelude: Bool { false }
     var demoPreludeMoves: [MinigameDemoMove] { [] }
+    var demoScript: MinigameDemoScript? { nil }
 }

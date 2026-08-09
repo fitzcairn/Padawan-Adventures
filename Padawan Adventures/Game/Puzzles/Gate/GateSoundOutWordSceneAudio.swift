@@ -13,8 +13,8 @@ extension GateSoundOutWordScene {
         let trackID = engine.wordTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-        if let pictureNode {
-            MinigameCRTPromptPlate.pulseIcons(in: pictureNode, forTrackID: trackID)
+        if let plate = prompt?.plate {
+            MinigameCRTPromptPlate.pulseIcons(in: plate, forTrackID: trackID)
         }
     }
 
@@ -22,8 +22,8 @@ extension GateSoundOutWordScene {
     func playGraphemeName(_ grapheme: String) {
         guard let trackID = engine.nameTrackID(for: grapheme) else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-        if let wordPlateNode {
-            MinigameCRTPromptPlate.pulseIcons(in: wordPlateNode, forTrackID: trackID)
+        if let plate = prompt?.plate {
+            MinigameCRTPromptPlate.pulseIcons(in: plate, forTrackID: trackID)
         }
     }
 

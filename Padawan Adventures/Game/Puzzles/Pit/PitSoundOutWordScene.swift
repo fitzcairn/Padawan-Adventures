@@ -23,6 +23,7 @@ final class PitSoundOutWordScene: MinigameScene {
     var playerSprite: AnimatedSpriteNode?
     var playerFacingLeft = false
     var promptNode: SKNode?
+    var prompt: MinigameCRTPromptPlate.Prompt?
     var wordGraphemeNodes: [SKNode] = []
     var candidateNodes: [SKNode] = []
     var landedTileNodes: [SKNode] = []
@@ -55,8 +56,7 @@ final class PitSoundOutWordScene: MinigameScene {
     static let promptSoundKey = "pitSoundOutPromptSound"
     static let winSoundActionKey = "pitSoundOutWinSound"
     static let playSymbolActionKey = "pitSoundOutPlaySymbol"
-    static let pictureNodeName = "wordPicture"
-    static let wordTextNodeName = "wordText"
+    static let promptPlateName = "wordPrompt"
     static let playSymbolName = "candidatePlaySymbol"
     static let graphemeGlyphName = "candidateGlyph"
 

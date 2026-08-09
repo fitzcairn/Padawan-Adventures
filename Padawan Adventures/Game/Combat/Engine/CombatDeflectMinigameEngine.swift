@@ -197,16 +197,20 @@ nonisolated struct CombatDeflectMinigameEngine {
         ]
     }
 
-    /// Player tapped `ring`. Marks the orb resolved so a second tap cannot double-fire.
-    /// The scene then animates either the deflect or the hit and calls the matching
-    /// `register…` method when the animation lands.
+    /// Player tapped `ring`. A correct tap marks the orb resolved so a second tap cannot
+    /// double-fire; a wrong tap leaves it live so the player can keep trying. The scene
+    /// animates the consequence and, on a correct hit, calls `registerOrbReachedMonster`
+    /// when the return flight lands.
     mutating func registerTap(ring: CombatDeflectRing) -> CombatDeflectTapResult {
         guard isActive, outcome == nil, var orb = activeOrb, !orb.isResolved else {
             return .ignored
         }
-        orb.isResolved = true
-        activeOrb = orb
-        return orb.ring == ring ? .correct(orb.ring) : .wrong(ring)
+        if orb.ring == ring {
+            orb.isResolved = true
+            activeOrb = orb
+            return .correct(orb.ring)
+        }
+        return .wrong(ring)
     }
 
     /// The deflected orb reached the monster: -1 monster HP, maybe win.
@@ -223,7 +227,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         return events
     }
 
-    /// The orb hit the player (wrong tap, or it arrived untapped): -1 heart, maybe lose.
+    /// The orb reached the player untapped: -1 heart, maybe lose.
     mutating func registerOrbHitPlayer() -> [CombatDeflectEvent] {
         guard isActive, outcome == nil, activeOrb != nil else { return [] }
         activeOrb = nil

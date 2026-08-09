@@ -39,8 +39,8 @@ struct StarWarsConsoleChrome {
     static func metrics(for size: CGSize) -> StarWarsConsoleChrome {
         let m = min(size.width, size.height)
         return StarWarsConsoleChrome(
-            rim: max(2, m * 0.055),
-            bezel: max(3, m * 0.10),
+            rim: max(0.8, m * 0.022),
+            bezel: max(1.2, m * 0.04),
             outerRadius: max(4, m * 0.14),
             innerRadius: max(3, m * 0.10)
         )
@@ -49,8 +49,8 @@ struct StarWarsConsoleChrome {
 
 extension StarWarsConsoleChrome {
     /// Fraction of the plate's min dimension the rim + bezel eat on each edge
-    /// (`rim` 0.055 + `bezel` 0.10 in `metrics(for:)`).
-    nonisolated static let insetRatio: CGFloat = 0.155
+    /// (`rim` 0.022 + `bezel` 0.04 in `metrics(for:)`).
+    nonisolated static let insetRatio: CGFloat = 0.062
 
     /// Fraction of a plate's min dimension left for its screen.
     nonisolated static var contentScale: CGFloat { 1 - insetRatio * 2 }
@@ -61,6 +61,20 @@ extension StarWarsConsoleChrome {
         let height = max(content.height, 1) / contentScale
         let width = max(max(content.width, 1) + height * insetRatio * 2, height)
         return CGSize(width: width, height: height)
+    }
+
+    /// Smallest plate whose screen is exactly `content`, portrait allowed. The chrome inset
+    /// is a fraction of the plate's min dimension, so solve against whichever dimension that
+    /// is: the plate is landscape exactly when the content is.
+    nonisolated static func plateSize(forPromptContent content: CGSize) -> CGSize {
+        let width = max(content.width, 1)
+        let height = max(content.height, 1)
+        if width >= height {
+            let plateHeight = height / contentScale
+            return CGSize(width: width + plateHeight * insetRatio * 2, height: plateHeight)
+        }
+        let plateWidth = width / contentScale
+        return CGSize(width: plateWidth, height: height + plateWidth * insetRatio * 2)
     }
 
     /// Usable screen area inside the bezel, in a centre-anchored sprite's local coordinates.
@@ -94,7 +108,7 @@ struct StarWarsConsoleFrame<Screen: View>: View {
                     .fill(DarkMetalBezel.outerFill)
                     .overlay(
                         RoundedRectangle(cornerRadius: chrome.outerRadius, style: .continuous)
-                            .stroke(DarkMetalBezel.edgeStroke, lineWidth: max(1, m * 0.025))
+                            .stroke(DarkMetalBezel.edgeStroke, lineWidth: max(0.4, m * 0.01))
                     )
                     .padding(chrome.rim)
 
@@ -123,7 +137,7 @@ struct StarWarsConsoleFrame<Screen: View>: View {
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: max(2, m * 0.05)
+                    lineWidth: max(0.8, m * 0.02)
                 )
         }
         .clipShape(RoundedRectangle(cornerRadius: chrome.innerRadius, style: .continuous))
@@ -309,7 +323,9 @@ extension StarWarsConsoleView {
 // MARK: - Console plate (image + masked word)
 
 /// CRT console plate: word illustration + masked spelling (e.g. `_og` / `do_`).
-/// Image is square, sized to the plate's content height.
+/// Image is square, sized to the plate's content height. The illustration is the
+/// real word art (not a template silhouette) with only a soft CRT glow — the frame
+/// scanlines supply the rest of the console look so the picture stays legible.
 struct StarWarsConsoleImageView: View {
     let image: UIImage
     /// Lowercase masked spelling shown beside the image (`_og` for dog).
@@ -326,11 +342,13 @@ struct StarWarsConsoleImageView: View {
             StarWarsConsoleFrame {
                 HStack(spacing: contentH * 0.12) {
                     Image(uiImage: image)
-                        .renderingMode(.template)
+                        .renderingMode(.original)
                         .resizable()
                         .scaledToFit()
-                        .foregroundStyle(StarWarsConsolePalette.crtBlue)
-                        .shadow(color: StarWarsConsolePalette.crtGlow, radius: max(2, contentH * 0.08))
+                        .shadow(
+                            color: StarWarsConsolePalette.crtGlow.opacity(0.45),
+                            radius: max(1.5, contentH * 0.05)
+                        )
                         .frame(width: imageSide, height: imageSide)
 
                     if !maskedText.isEmpty {
@@ -372,61 +390,58 @@ extension StarWarsConsoleImageView {
     }
 }
 
-// MARK: - Console plate (picture only)
+// MARK: - Console plate (merged prompt)
 
-/// CRT console plate showing a word illustration as blue phosphor. Unlike
-/// `StarWarsConsoleImageView`, which flattens art to a template silhouette for the
-/// small word-plug plates, this keeps the shading so detail survives at prompt size.
-struct StarWarsConsolePictureView: View {
-    let image: UIImage
+/// CRT prompt screen: illustration centred above a transparent band that live SpriteKit
+/// word letters are drawn into. The illustration is the real word art with only a soft
+/// CRT glow — same treatment as `StarWarsConsoleImageView` — so pit/gate prompts stay
+/// legible; frame scanlines supply the rest of the console look.
+struct StarWarsConsolePromptView: View {
+    let image: UIImage?
+    /// Reserved bottom band height, as a fraction of the plate height.
+    var wordBandFraction: CGFloat
+    /// Gap between illustration and band, as a fraction of the plate height.
+    var gapFraction: CGFloat
 
     var body: some View {
         GeometryReader { geo in
-            let chrome = StarWarsConsoleChrome.metrics(for: geo.size)
-            let contentH = max(1, geo.size.height - chrome.contentInset * 2)
+            let band = max(geo.size.height * wordBandFraction, 1)
+            let pictureHeight = max(geo.size.height - band - geo.size.height * gapFraction, 1)
             StarWarsConsoleFrame {
-                Image(uiImage: CRTImageTint.phosphor(image))
-                    .renderingMode(.original)
-                    .resizable()
-                    .scaledToFit()
-                    .shadow(
-                        color: StarWarsConsolePalette.crtGlow,
-                        radius: max(2, contentH * 0.08)
-                    )
-                    .frame(width: contentH, height: contentH)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: geo.size.height * gapFraction) {
+                    if let image {
+                        Image(uiImage: image)
+                            .renderingMode(.original)
+                            .resizable()
+                            .scaledToFit()
+                            .shadow(
+                                color: StarWarsConsolePalette.crtGlow.opacity(0.45),
+                                radius: max(1.5, pictureHeight * 0.05)
+                            )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    Color.clear.frame(height: band)
+                }
             }
         }
     }
 }
 
-extension StarWarsConsolePictureView {
+extension StarWarsConsolePromptView {
     @MainActor
-    static func makeTexture(image: UIImage, size: CGSize, scale: CGFloat = 2) -> SKTexture {
+    static func makeTexture(
+        image: UIImage?,
+        wordBandFraction: CGFloat,
+        gapFraction: CGFloat,
+        size: CGSize,
+        scale: CGFloat = 2
+    ) -> SKTexture {
         renderTexture(
-            StarWarsConsolePictureView(image: image),
-            size: size,
-            scale: scale,
-            placeholderSolved: false
-        )
-    }
-}
-
-// MARK: - Console plate (empty screen)
-
-/// Bezel, dark screen, and scanlines with no content — a backdrop for live SpriteKit
-/// nodes that have to keep changing, such as the prompt letters.
-struct StarWarsConsoleScreenView: View {
-    var body: some View {
-        StarWarsConsoleFrame { Color.clear }
-    }
-}
-
-extension StarWarsConsoleScreenView {
-    @MainActor
-    static func makeTexture(size: CGSize, scale: CGFloat = 2) -> SKTexture {
-        renderTexture(
-            StarWarsConsoleScreenView(),
+            StarWarsConsolePromptView(
+                image: image,
+                wordBandFraction: wordBandFraction,
+                gapFraction: gapFraction
+            ),
             size: size,
             scale: scale,
             placeholderSolved: false
@@ -596,16 +611,13 @@ private enum DarkMetalBezel {
         .background(Color.black)
 }
 
-#Preview("Picture plate") {
-    StarWarsConsolePictureView(image: UIImage(systemName: "dog.fill") ?? UIImage())
-        .frame(width: 140, height: 140)
-        .padding()
-        .background(Color.black)
-}
-
-#Preview("Empty screen") {
-    StarWarsConsoleScreenView()
-        .frame(width: 280, height: 76)
-        .padding()
-        .background(Color.black)
+#Preview("Prompt plate") {
+    StarWarsConsolePromptView(
+        image: UIImage(systemName: "dog.fill"),
+        wordBandFraction: 0.28,
+        gapFraction: 0.04
+    )
+    .frame(width: 180, height: 220)
+    .padding()
+    .background(Color.black)
 }

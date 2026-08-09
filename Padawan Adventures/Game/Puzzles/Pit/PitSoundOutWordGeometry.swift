@@ -4,10 +4,8 @@ import Foundation
 /// Layout math for the sound-out-word pit arena (pads, per-step candidate fan, prompt).
 /// Pure and unit-testable.
 nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
-    /// The prompt block hangs from just under the top edge so the CRT stack grows downward.
+    /// The prompt block hangs from just under the top edge so the CRT plate grows downward.
     static let promptTopFraction: CGFloat = 0.97
-    /// Gap between the picture plate and the word plate, as a fraction of the picture side.
-    static let promptPlateGapScale: CGFloat = 0.03
     /// Vertical gap between tiles in a step, as a fraction of the tile side.
     static let candidateSpacingScale: CGFloat = 0.95
     /// Whole candidate fan sits this fraction below the pad mid-line.
@@ -59,14 +57,15 @@ nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
         min(sceneSize.width * 0.28, sceneSize.height * 0.16, tileSide * 1.8)
     }
 
-    /// Height of the CRT prompt stack: picture plate + gap + word plate. Plate chrome adds
-    /// ~45% around its contents; the word plate holds one line at `promptMaxSide * 0.28`,
-    /// approximated here at 1.3x the font size because `AppFont` is MainActor-isolated.
+    /// Height of the merged CRT prompt plate: illustration over the word band.
+    /// Word line height is approximated at 1.3x the font size because `AppFont` is
+    /// MainActor-isolated; word width is approximated with `promptMaxSide`.
     var promptBlockHeight: CGFloat {
-        let picturePlate = promptMaxSide / StarWarsConsoleChrome.contentScale
         let fontSize = max(promptMaxSide * 0.28, 18)
-        let wordPlate = fontSize * 1.3 / StarWarsConsoleChrome.contentScale
-        return picturePlate + promptMaxSide * Self.promptPlateGapScale + wordPlate
+        return MinigameCRTPromptPlate.plateSize(
+            pictureSide: promptMaxSide,
+            wordContent: CGSize(width: promptMaxSide, height: fontSize * 1.3)
+        ).height
     }
 
     /// Centre of the top-anchored prompt block.

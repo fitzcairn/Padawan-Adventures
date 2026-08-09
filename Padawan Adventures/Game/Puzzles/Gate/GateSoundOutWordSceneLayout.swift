@@ -56,7 +56,7 @@ extension GateSoundOutWordScene {
     /// Minimum center-to-center spacing so neighbouring capacitors don't overlap.
     var minCenterDistance: CGFloat { laidOutDiameter + capacitorGap }
 
-    /// Prompt typography before the CRT stack is fitted to the available room.
+    /// Prompt typography before the CRT plate is fitted to the available room.
     private var basePromptFontSize: CGFloat {
         min(44, size.height * 0.115)
     }
@@ -68,24 +68,32 @@ extension GateSoundOutWordScene {
         max(size.height - promptTopInset - playAreaRect.maxY - capacitorGap, 40)
     }
 
-    /// Height of the CRT stack at the unscaled font size.
-    private var naturalPromptStackHeight: CGFloat {
-        let font = AppFont.uiKit(size: basePromptFontSize)
-        let word = StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(width: 1, height: font.lineHeight)
-        ).height
-        guard engine.targetEntry.image?.isEmpty == false else { return word }
-        let picture = StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(width: basePromptPictureSide, height: basePromptPictureSide)
-        ).height
-        return picture + basePromptFontSize * 0.12 + word
+    /// Illustration for this round, or nil when the entry has none / the file is missing.
+    var promptImage: UIImage? {
+        GateWordPlugImageSprites.image(named: engine.targetEntry.image)
     }
 
-    /// Uniform shrink so the CRT stack never reaches the play area. Plate heights and
-    /// line height are all linear in the font size, so one factor scales the whole stack.
+    /// Word row content box (measured word plus side padding) at `fontSize`.
+    private func promptWordContent(fontSize: CGFloat) -> CGSize {
+        let width = engine.targetGraphemes
+            .map { promptLetterWidth($0, fontSize: fontSize) }
+            .reduce(0, +) + fontSize * 0.5
+        return CGSize(width: width, height: AppFont.uiKit(size: fontSize).lineHeight)
+    }
+
+    /// Merged plate height at the unscaled font size — the input to `promptScale`.
+    private var naturalPromptPlateHeight: CGFloat {
+        MinigameCRTPromptPlate.plateSize(
+            pictureSide: promptImage == nil ? 0 : basePromptPictureSide,
+            wordContent: promptWordContent(fontSize: basePromptFontSize)
+        ).height
+    }
+
+    /// Uniform shrink so the CRT plate never reaches the play area. Plate height and
+    /// line height are all linear in the font size, so one factor scales the whole plate.
     private var promptScale: CGFloat {
-        guard naturalPromptStackHeight > 0 else { return 1 }
-        return min(1, promptAvailableHeight / naturalPromptStackHeight)
+        guard naturalPromptPlateHeight > 0 else { return 1 }
+        return min(1, promptAvailableHeight / naturalPromptPlateHeight)
     }
 
     var promptFontSize: CGFloat {
@@ -102,42 +110,16 @@ extension GateSoundOutWordScene {
     /// Illustration side inside the CRT screen.
     var promptPictureSide: CGFloat { basePromptPictureSide * promptScale }
 
-    /// CRT plate wrapped around the illustration.
-    var promptPicturePlateSize: CGSize {
-        StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(width: promptPictureSide, height: promptPictureSide)
+    var promptPlateSize: CGSize {
+        MinigameCRTPromptPlate.plateSize(
+            pictureSide: promptImage == nil ? 0 : promptPictureSide,
+            wordContent: promptWordContent(fontSize: promptFontSize)
         )
     }
 
-    /// CRT plate behind the word row; width follows the measured word.
-    var promptWordPlateSize: CGSize {
-        let fontSize = promptFontSize
-        let wordWidth = engine.targetGraphemes
-            .map { promptLetterWidth($0, fontSize: fontSize) }
-            .reduce(0, +)
-        return StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(
-                width: wordWidth + fontSize * 0.5,
-                height: AppFont.uiKit(size: fontSize).lineHeight
-            )
-        )
-    }
-
-    /// Vertical gap between the two plates.
-    var promptPictureWordGap: CGFloat { promptFontSize * 0.12 }
-
-    /// Total height of the stacked picture + word plates.
-    var promptStackHeight: CGFloat {
-        let word = promptWordPlateSize.height
-        if engine.targetEntry.image?.isEmpty == false {
-            return promptPicturePlateSize.height + promptPictureWordGap + word
-        }
-        return word
-    }
-
-    /// Highest Y a dragged capacitor center may reach without covering the prompt stack.
+    /// Highest Y a dragged capacitor center may reach without covering the prompt plate.
     func maxPlayableCenterY(for radius: CGFloat) -> CGFloat {
-        max(size.height - promptTopInset - promptStackHeight - radius, radius)
+        max(size.height - promptTopInset - promptPlateSize.height - radius, radius)
     }
 
     /// Midpoint between the left screen edge and the left side of the play area.
@@ -234,8 +216,7 @@ extension GateSoundOutWordScene {
     func buildPuzzle() {
         removeAllChildren()
         removeAllActions()
-        pictureNode = nil
-        wordPlateNode = nil
+        prompt = nil
         promptLetterNodes = []
         placedNodes = []
         choiceNodes = [:]
@@ -261,42 +242,36 @@ extension GateSoundOutWordScene {
         rightEndpointNode = right
     }
 
-    /// Picture plate on top, word plate underneath — both centered at the top of the scene.
+    /// One CRT plate at the top of the scene: illustration above, live word letters in the
+    /// reserved band below.
     private func buildPromptRow() {
         let fontSize = promptFontSize
         let font = AppFont.uiKit(size: fontSize)
         let letters = engine.targetGraphemes
         let widths = letters.map { promptLetterWidth($0, fontSize: fontSize) }
         let wordWidth = widths.reduce(0, +)
-        let centerX = size.width * 0.5
-        let stackTop = size.height - promptTopInset
 
-        var wordPlateTop = stackTop
-        if let picture = makePictureNode(side: promptPictureSide) {
-            picture.position = CGPoint(x: centerX, y: stackTop - picture.size.height * 0.5)
-            addChild(picture)
-            pictureNode = picture
-            wordPlateTop = stackTop - picture.size.height - promptPictureWordGap
-        }
-
-        let plateSize = promptWordPlateSize
-        let plateCenterY = wordPlateTop - plateSize.height * 0.5
-        let plate = MinigameCRTPromptPlate.makeWordPlate(
-            size: plateSize,
-            name: Self.wordPlateName
+        let prompt = MinigameCRTPromptPlate.makePrompt(
+            image: promptImage,
+            pictureSide: promptPictureSide,
+            wordContent: promptWordContent(fontSize: fontSize),
+            name: Self.promptPlateName
         )
-        plate.position = CGPoint(x: centerX, y: plateCenterY)
-        plate.zPosition = 29
-        addChild(plate)
-        wordPlateNode = plate
+        prompt.plate.position = CGPoint(
+            x: size.width * 0.5,
+            y: size.height - promptTopInset - prompt.plate.size.height * 0.5
+        )
+        prompt.plate.zPosition = 29
+        addChild(prompt.plate)
+        self.prompt = prompt
 
-        // Letters are baseline-aligned, so centre their cap-height band on the plate.
-        let letterBaselineY = plateCenterY - font.capHeight * 0.5
-        var cursorX = centerX - wordWidth * 0.5
+        // Letters are baseline-aligned, so centre their cap-height band on the word band.
+        let baselineY = prompt.wordAnchor.y - font.capHeight * 0.5
+        var cursorX = -wordWidth * 0.5
         for (index, letter) in letters.enumerated() {
             let node = makePromptLetterNode(letter, fontSize: fontSize, index: index)
-            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: letterBaselineY)
-            addChild(node)
+            node.position = CGPoint(x: cursorX + widths[index] * 0.5, y: baselineY)
+            prompt.plate.addChild(node)
             promptLetterNodes.append(node)
             cursorX += widths[index]
         }

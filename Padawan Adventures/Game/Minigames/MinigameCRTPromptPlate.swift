@@ -1,57 +1,133 @@
 import SpriteKit
 import UIKit
 
-/// CRT console plates for the word prompt at the top of a minigame: one for the
-/// illustration, one as a backdrop for the live word letters. Each carries a small
-/// play icon in its upper right, because tapping the plate plays a sound.
+/// Single CRT console plate for the word prompt at the top of a minigame: illustration
+/// top-middle, a transparent band for the live word letters bottom-middle, and a small
+/// play icon in the upper right (tapping the plate plays a sound).
 @MainActor
 enum MinigameCRTPromptPlate {
     static let iconName = "crtPlatePlayIcon"
-    /// Icon side as a fraction of the CRT screen height — deliberately smaller than the
+    /// Icon side as a fraction of the picture-area height — deliberately smaller than the
     /// capacitor / floor-tile play icons, which are the primary affordance.
-    static let iconSideScale: CGFloat = 0.22
-    static let iconMarginScale: CGFloat = 0.08
-    /// How far the play icon sits to the right of the content, as a fraction of the CRT
-    /// screen’s shorter side. Plate width grows by twice this (centre-anchored) so the
-    /// upper-right slot moves by a full nudge while the icon stays inside the screen.
-    static let iconXNudgeScale: CGFloat = 0.25
+    nonisolated static let iconSideScale: CGFloat = 0.22
+    nonisolated static let iconMarginScale: CGFloat = 0.08
+    /// Gap between illustration and word band, as a fraction of the illustration side.
+    nonisolated static let pictureWordGapScale: CGFloat = 0.06
 
-    /// Plate size for content, widened for the play-icon X nudge.
-    static func plateSize(forContent content: CGSize) -> CGSize {
-        var size = StarWarsConsoleChrome.plateSize(forContent: content)
-        size.width += iconExtraWidth(for: size) * 2
-        return size
+    enum Region: Equatable {
+        case picture
+        case word
     }
 
-    static func makePicturePlate(
-        image: UIImage,
-        contentSide: CGFloat,
+    /// Plate-local geometry of a merged prompt plate. Plate-local coordinates are
+    /// centre-anchored, matching `StarWarsConsoleChrome.screenRect(for:)`.
+    nonisolated struct Regions: Equatable {
+        let plateSize: CGSize
+        let wordBandRect: CGRect
+        /// Everything above the band, including the play icon.
+        let pictureRect: CGRect
+        /// Where a baseline-aligned word row hangs from: centred on the band.
+        var wordAnchor: CGPoint { CGPoint(x: 0, y: wordBandRect.midY) }
+    }
+
+    struct Prompt {
+        let plate: SKSpriteNode
+        let regions: Regions
+        var wordAnchor: CGPoint { regions.wordAnchor }
+
+        /// Which area of the plate `scenePoint` (scene coordinates) hits, if any.
+        func region(at scenePoint: CGPoint) -> Region? {
+            guard let scene = plate.scene else { return nil }
+            let local = plate.convert(scenePoint, from: scene)
+            if regions.wordBandRect.contains(local) { return .word }
+            if regions.pictureRect.contains(local) { return .picture }
+            return nil
+        }
+    }
+
+    /// Icon side, from the height of the area it sits in — not the whole screen, which on a
+    /// merged plate is much taller than the old picture plate.
+    nonisolated static func iconSide(pictureAreaHeight: CGFloat) -> CGFloat {
+        max(pictureAreaHeight * iconSideScale, 9)
+    }
+
+    /// Illustration over the word band, plus an icon-wide gutter on each side so the
+    /// upper-right icon clears the centred content. `pictureSide == 0` means word only.
+    nonisolated static func promptRegions(pictureSide: CGFloat, wordContent: CGSize) -> Regions {
+        let picture = max(pictureSide, 0)
+        let band = max(wordContent.height, 1)
+        let gap = picture > 0 ? picture * pictureWordGapScale : 0
+        let gutter = iconSide(pictureAreaHeight: picture > 0 ? picture : band)
+        let content = CGSize(
+            width: max(picture, max(wordContent.width, 1)) + gutter * 2,
+            height: picture + gap + band
+        )
+        let plateSize = StarWarsConsoleChrome.plateSize(forPromptContent: content)
+        let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
+        let bandRect = CGRect(
+            x: screen.minX, y: screen.minY, width: screen.width, height: band
+        )
+        return Regions(
+            plateSize: plateSize,
+            wordBandRect: bandRect,
+            pictureRect: CGRect(
+                x: screen.minX,
+                y: bandRect.maxY,
+                width: screen.width,
+                height: max(screen.height - band, 0)
+            )
+        )
+    }
+
+    nonisolated static func plateSize(pictureSide: CGFloat, wordContent: CGSize) -> CGSize {
+        promptRegions(pictureSide: pictureSide, wordContent: wordContent).plateSize
+    }
+
+    /// One CRT plate: illustration top-middle, transparent band for the live word
+    /// bottom-middle, play icon upper right.
+    static func makePrompt(
+        image: UIImage?,
+        pictureSide: CGFloat,
+        wordContent: CGSize,
         name: String
-    ) -> SKSpriteNode {
-        let size = plateSize(
-            forContent: CGSize(width: contentSide, height: contentSide)
-        )
+    ) -> Prompt {
+        let side = image == nil ? 0 : max(pictureSide, 0)
+        let regions = promptRegions(pictureSide: side, wordContent: wordContent)
+        let plateSize = regions.plateSize
+        let gap = side > 0 ? side * pictureWordGapScale : 0
         let plate = SKSpriteNode(
-            texture: StarWarsConsolePictureView.makeTexture(image: image, size: size),
-            size: size
+            texture: StarWarsConsolePromptView.makeTexture(
+                image: image,
+                wordBandFraction: regions.wordBandRect.height / plateSize.height,
+                gapFraction: gap / plateSize.height,
+                size: plateSize
+            ),
+            size: plateSize
         )
         plate.name = name
         plate.isUserInteractionEnabled = false
-        addIcon(to: plate)
-        return plate
+        attachPlayIcon(
+            to: plate,
+            areaHeight: side > 0 ? side : regions.wordBandRect.height
+        )
+        return Prompt(plate: plate, regions: regions)
     }
 
-    static func makeWordPlate(size: CGSize, name: String) -> SKSpriteNode {
-        var size = size
-        size.width += iconExtraWidth(for: size) * 2
-        let plate = SKSpriteNode(
-            texture: StarWarsConsoleScreenView.makeTexture(size: size),
-            size: size
+    /// Upper-right play affordance for any CRT plate sprite (prompt or word-plug).
+    /// `areaHeight` is the region the icon is sized against — typically the picture
+    /// band, or the full screen height when the plate is a single image + word row.
+    static func attachPlayIcon(to plate: SKSpriteNode, areaHeight: CGFloat) {
+        let side = iconSide(pictureAreaHeight: areaHeight)
+        let screen = StarWarsConsoleChrome.screenRect(for: plate.size)
+        let margin = min(screen.width, screen.height) * iconMarginScale
+        let icon = MinigamePlaySoundIcon.makeNode(side: side, name: iconName)
+        icon.position = CGPoint(
+            x: screen.maxX - margin - side * 0.5
+                + side * MinigamePlaySoundIcon.opticalXNudgeRatio,
+            y: screen.maxY - margin - side * 0.5
         )
-        plate.name = name
-        plate.isUserInteractionEnabled = false
-        addIcon(to: plate)
-        return plate
+        icon.zPosition = 5
+        plate.addChild(icon)
     }
 
     /// Pulses every icon at or under `node`, so a caller can hand over a whole prompt.
@@ -62,26 +138,5 @@ enum MinigameCRTPromptPlate {
         for child in node.children {
             pulseIcons(in: child, forTrackID: trackID)
         }
-    }
-
-    private static func iconExtraWidth(for plateSize: CGSize) -> CGFloat {
-        let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
-        return min(screen.width, screen.height) * iconXNudgeScale
-    }
-
-    private static func addIcon(to plate: SKSpriteNode) {
-        let screen = StarWarsConsoleChrome.screenRect(for: plate.size)
-        let side = max(screen.height * iconSideScale, 9)
-        let margin = min(screen.width, screen.height) * iconMarginScale
-        let icon = MinigamePlaySoundIcon.makeNode(side: side, name: iconName)
-        // Upper-right of the widened plate; width growth is what shifts the icon right
-        // relative to the centred word/picture content.
-        icon.position = CGPoint(
-            x: screen.maxX - margin - side * 0.5
-                + side * MinigamePlaySoundIcon.opticalXNudgeRatio,
-            y: screen.maxY - margin - side * 0.5
-        )
-        icon.zPosition = 5
-        plate.addChild(icon)
     }
 }

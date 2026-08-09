@@ -2,7 +2,13 @@ import SpriteKit
 import UIKit
 
 /// A `UITouch` whose location the demo driver moves between calls.
+///
+/// `point` is stored in **scene** coordinates. When SpriteKit asks for a view
+/// location (so it can `convertPoint(fromView:)` into the scene), this converts
+/// first — otherwise `touch.location(in: scene)` double-converts and Y-flips
+/// under `aspectFit`, so choice hit-tests miss and dragged capacitors never move.
 final class MinigameDemoTouch: UITouch {
+    /// Point in scene coordinates. Converted to view space when an `SKView` asks.
     var point: CGPoint
 
     init(point: CGPoint) {
@@ -10,8 +16,21 @@ final class MinigameDemoTouch: UITouch {
         super.init()
     }
 
-    override func location(in view: UIView?) -> CGPoint { point }
-    override func previousLocation(in view: UIView?) -> CGPoint { point }
+    override func location(in view: UIView?) -> CGPoint {
+        viewCoordinates(in: view)
+    }
+
+    override func previousLocation(in view: UIView?) -> CGPoint {
+        viewCoordinates(in: view)
+    }
+
+    private func viewCoordinates(in view: UIView?) -> CGPoint {
+        if let skView = view as? SKView, let scene = skView.scene {
+            return scene.convertPoint(toView: point)
+        }
+        // View-less unit tests: `location(in: SKNode)` typically passes this through.
+        return point
+    }
 }
 
 /// Feeds synthetic touches into a live scene so the demo exercises the real input path.
@@ -180,6 +199,6 @@ final class MinigameDemoCursorNode: SKNode {
     }
 
     func setPressed(_ down: Bool) {
-        run(.scale(to: down ? 0.85 : 1.0, duration: 0.08))
+        run(.scale(to: down ? 0.85 : 1.0, duration: 0.08), withKey: "press")
     }
 }

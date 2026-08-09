@@ -66,8 +66,9 @@ world:
 #   letting any letter reach you, costs one heart. Letter pool and flight time come from
 #   enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
-#   orb to hear the word, then tap the ring for that missing sound. `ring_count` (2–6)
-#   picks that many single graphemes from the level pool. Stars = orbs deflected.
+#   orb to hear the word, then tap the ring for that missing sound. A wrong ring flashes
+#   the letter in red on the blank and replays the word — the orb keeps flying. `ring_count`
+#   (2–6) picks that many single graphemes from the level pool. Stars = orbs deflected.
 # `ending-sound-combat`: same arena, but the ring must match the word's last grapheme.
 combat:
   music: combat
@@ -144,7 +145,7 @@ gate:
   minigame_probability: 1.0
   minigames:
     - type: starting-sound-gate
-      weight: 0.0
+      weight: 1.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
@@ -156,7 +157,7 @@ gate:
       max_word_count: 2
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
-      weight: 1.0
+      weight: 0.0
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4

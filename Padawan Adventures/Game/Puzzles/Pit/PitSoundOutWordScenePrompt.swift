@@ -22,9 +22,8 @@ extension PitSoundOutWordScene {
         let trackID = engine.wordTrackID
         if !trackID.isEmpty {
             SoundEffectsController.shared.play(trackID: trackID)
-            if let promptNode,
-               let picture = promptNode.childNode(withName: Self.pictureNodeName) {
-                MinigameCRTPromptPlate.pulseIcons(in: picture, forTrackID: trackID)
+            if let promptNode {
+                MinigameCRTPromptPlate.pulseIcons(in: promptNode, forTrackID: trackID)
             }
         }
         let duration = SoundEffectsController.shared.cueDuration(of: trackID)
@@ -44,9 +43,8 @@ extension PitSoundOutWordScene {
         let trackID = engine.wordTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-        if let promptNode,
-           let picture = promptNode.childNode(withName: Self.pictureNodeName) {
-            MinigameCRTPromptPlate.pulseIcons(in: picture, forTrackID: trackID)
+        if let promptNode {
+            MinigameCRTPromptPlate.pulseIcons(in: promptNode, forTrackID: trackID)
         }
     }
 
@@ -73,47 +71,28 @@ extension PitSoundOutWordScene {
         let font = AppFont.uiKit(size: fontSize)
 
         let wordRow = makeWordRow(fontSize: fontSize)
-        let wordContentWidth = max(
-            wordRow.calculateAccumulatedFrame().width + fontSize * 0.5,
-            fontSize
+        let wordContent = CGSize(
+            width: max(wordRow.calculateAccumulatedFrame().width + fontSize * 0.5, fontSize),
+            height: font.lineHeight
         )
-        let wordPlateSize = StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(width: wordContentWidth, height: font.lineHeight)
+        let image = GateWordPlugImageSprites.image(named: engine.targetEntry.image)
+        let prompt = MinigameCRTPromptPlate.makePrompt(
+            image: image,
+            pictureSide: maxSide,
+            wordContent: wordContent,
+            name: Self.promptPlateName
         )
-        let wordPlate = MinigameCRTPromptPlate.makeWordPlate(
-            size: wordPlateSize,
-            name: Self.wordTextNodeName
-        )
-        wordPlate.zPosition = 1
+        prompt.plate.zPosition = 1
+        root.addChild(prompt.plate)
 
-        if let image = GateWordPlugImageSprites.image(named: engine.targetEntry.image) {
-            let picture = MinigameCRTPromptPlate.makePicturePlate(
-                image: image,
-                contentSide: maxSide,
-                name: Self.pictureNodeName
-            )
-            picture.zPosition = 1
-            // Fill the block the geometry reserved, so the fan clamp stays accurate.
-            let gap = max(
-                geo.promptBlockHeight - picture.size.height - wordPlateSize.height,
-                fontSize * 0.1
-            )
-            let total = picture.size.height + gap + wordPlateSize.height
-            picture.position = CGPoint(x: 0, y: (total - picture.size.height) * 0.5)
-            wordPlate.position = CGPoint(x: 0, y: -total * 0.5 + wordPlateSize.height * 0.5)
-            root.addChild(picture)
-        } else {
-            wordPlate.position = .zero
-        }
-
-        root.addChild(wordPlate)
-        // Baseline-aligned letters, centred on the plate's screen.
-        wordRow.position = CGPoint(x: 0, y: -font.capHeight * 0.5)
+        // Baseline-aligned letters, centred on the plate's word band.
+        wordRow.position = CGPoint(x: 0, y: prompt.wordAnchor.y - font.capHeight * 0.5)
         wordRow.zPosition = 2
-        wordPlate.addChild(wordRow)
+        prompt.plate.addChild(wordRow)
 
         addChild(root)
         promptNode = root
+        self.prompt = prompt
     }
 
     func makeWordRow(fontSize: CGFloat) -> SKNode {

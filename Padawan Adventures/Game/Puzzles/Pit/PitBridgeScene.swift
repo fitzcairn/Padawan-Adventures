@@ -62,6 +62,7 @@ final class PitBridgeScene: MinigameScene {
     static let snapIntoSlotActionKey = "snapIntoSlot"
     static let forceLiftSparkleCleanupKey = "forceLiftSparkleCleanup"
     static let wordPromptNodeName = "wordPrompt"
+    static let promptPlateName = "wordPromptPlate"
     static let blankLetterNodeName = "blankLetter"
     static let wordSpellingNodeName = "wordSpelling"
 

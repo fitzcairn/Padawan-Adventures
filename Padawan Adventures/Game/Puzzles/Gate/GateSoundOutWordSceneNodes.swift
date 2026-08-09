@@ -158,21 +158,6 @@ extension GateSoundOutWordScene {
         return node
     }
 
-    /// CRT plate holding the word illustration; `nil` when the entry has no image.
-    func makePictureNode(side: CGFloat) -> SKSpriteNode? {
-        guard side > 0,
-              let image = GateWordPlugImageSprites.image(named: engine.targetEntry.image) else {
-            return nil
-        }
-        let plate = MinigameCRTPromptPlate.makePicturePlate(
-            image: image,
-            contentSide: side,
-            name: "wordPicture"
-        )
-        plate.zPosition = 30
-        return plate
-    }
-
     func setPromptColor(at index: Int, color: UIColor) {
         guard promptLetterNodes.indices.contains(index),
               let fill = OutlinedLetterFactory.fillLabel(in: promptLetterNodes[index]) else {
@@ -224,14 +209,12 @@ extension GateSoundOutWordScene {
         return nil
     }
 
-    /// True when `point` hits the word plate.
+    /// True when `point` hits the word band of the prompt plate.
     func isPromptWordTap(_ point: CGPoint) -> Bool {
-        guard let wordPlateNode else { return false }
-        return wordPlateNode.calculateAccumulatedFrame().contains(point)
+        prompt?.region(at: point) == .word
     }
 
     func isPictureTap(_ point: CGPoint) -> Bool {
-        guard let pictureNode else { return false }
-        return pictureNode.calculateAccumulatedFrame().contains(point)
+        prompt?.region(at: point) == .picture
     }
 }

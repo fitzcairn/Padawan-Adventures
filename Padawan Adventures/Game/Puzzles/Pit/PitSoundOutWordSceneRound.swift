@@ -145,22 +145,26 @@ extension PitSoundOutWordScene {
         }
         let location = touch.location(in: self)
 
+        if let region = prompt?.region(at: location) {
+            switch region {
+            case .picture:
+                replayWordSound()
+            case .word:
+                if let grapheme = engine.currentGrapheme,
+                   let trackID = engine.nameTrackID(for: grapheme) {
+                    SoundEffectsController.shared.play(trackID: trackID)
+                    if let promptNode {
+                        MinigameCRTPromptPlate.pulseIcons(in: promptNode, forTrackID: trackID)
+                    }
+                }
+            }
+            return
+        }
+
         let hits = nodes(at: location)
         for hit in hits {
             var current: SKNode? = hit
             while let node = current {
-                if node.name == Self.pictureNodeName {
-                    replayWordSound()
-                    return
-                }
-                if node.name == Self.wordTextNodeName {
-                    if let grapheme = engine.currentGrapheme,
-                       let trackID = engine.nameTrackID(for: grapheme) {
-                        SoundEffectsController.shared.play(trackID: trackID)
-                        MinigameCRTPromptPlate.pulseIcons(in: node, forTrackID: trackID)
-                    }
-                    return
-                }
                 if let name = node.name, name.hasPrefix("candidate:") {
                     playCandidateSound(tile: node)
                     return

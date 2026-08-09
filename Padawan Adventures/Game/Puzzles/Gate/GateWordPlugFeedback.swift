@@ -20,7 +20,13 @@ extension GateWordPlugScene {
         }
         guard !inputLocked else { return }
         if let slotID = plateSlot(at: p) {
-            handle(engine.tapWord(slotID: slotID))
+            let events = engine.tapWord(slotID: slotID)
+            if case let .playWordSound(trackID) = events.first,
+               let plate = plateNodes[slotID]
+            {
+                MinigameCRTPromptPlate.pulseIcons(in: plate, forTrackID: trackID)
+            }
+            handle(events)
         }
     }
 
@@ -181,6 +187,9 @@ extension GateWordPlugScene {
                 if case let .playWordSound(trackID) = event { return trackID }
                 return nil
             }.first
+            if let wordTrackID, let plate = plateNodes[slotID] {
+                MinigameCRTPromptPlate.pulseIcons(in: plate, forTrackID: wordTrackID)
+            }
             let chimeDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
             var audioSteps: [SKAction] = []
             appendTrackSteps(to: &audioSteps, trackID: wordTrackID)

@@ -32,10 +32,9 @@ final class GateSoundOutWordScene: MinigameScene {
 
     // MARK: Nodes
 
-    static let wordPlateName = "wordPlate"
+    static let promptPlateName = "wordPrompt"
 
-    var pictureNode: SKSpriteNode?
-    var wordPlateNode: SKSpriteNode?
+    var prompt: MinigameCRTPromptPlate.Prompt?
     /// One outlined-letter stack per grapheme of the word, left to right.
     var promptLetterNodes: [SKNode] = []
     var leftEndpointNode: SKNode?
@@ -134,6 +133,8 @@ final class GateSoundOutWordScene: MinigameScene {
             // Letter sound plays on touch-down, whether this becomes a tap or a drag.
             playChoiceSound(choiceID: choiceID)
             guard !inputLocked, let node = choiceNodes[choiceID] else { return }
+            // Cancel any in-flight home / shuffle tween so the drag owns the node.
+            node.removeAllActions()
             dragChoiceID = choiceID
             dragStart = point
             dragMoved = false

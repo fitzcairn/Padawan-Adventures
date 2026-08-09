@@ -81,42 +81,24 @@ extension PitBridgeScene {
         let fontSize = max(maxSide * 0.28, 18)
         let font = AppFont.uiKit(size: fontSize)
         let spelling = makeMaskedSpellingNode(fontSize: fontSize)
-        let wordContentWidth = max(
-            spelling.calculateAccumulatedFrame().width + fontSize * 0.5,
-            fontSize
+        let wordContent = CGSize(
+            width: max(spelling.calculateAccumulatedFrame().width + fontSize * 0.5, fontSize),
+            height: font.lineHeight
         )
-        let wordPlateSize = StarWarsConsoleChrome.plateSize(
-            forContent: CGSize(width: wordContentWidth, height: font.lineHeight)
+        let image = GateWordPlugImageSprites.image(named: engine.currentImageName)
+        let prompt = MinigameCRTPromptPlate.makePrompt(
+            image: image,
+            pictureSide: maxSide,
+            wordContent: wordContent,
+            name: Self.promptPlateName
         )
-        let wordPlate = MinigameCRTPromptPlate.makeWordPlate(
-            size: wordPlateSize,
-            name: Self.wordPromptNodeName
-        )
-        wordPlate.zPosition = 1
+        prompt.plate.zPosition = 1
+        root.addChild(prompt.plate)
 
-        if let image = GateWordPlugImageSprites.image(named: engine.currentImageName) {
-            let picture = MinigameCRTPromptPlate.makePicturePlate(
-                image: image,
-                contentSide: maxSide,
-                name: Self.wordPromptNodeName
-            )
-            picture.zPosition = 1
-            let gap = max(
-                geo.wordPromptBlockHeight - picture.size.height - wordPlateSize.height,
-                fontSize * 0.1
-            )
-            let total = picture.size.height + gap + wordPlateSize.height
-            picture.position = CGPoint(x: 0, y: (total - picture.size.height) * 0.5)
-            wordPlate.position = CGPoint(x: 0, y: -total * 0.5 + wordPlateSize.height * 0.5)
-            root.addChild(picture)
-        } else {
-            wordPlate.position = .zero
-        }
-
-        root.addChild(wordPlate)
-        spelling.position = CGPoint(x: 0, y: -font.capHeight * 0.5)
+        // Baseline-aligned letters, centred on the plate's word band.
+        spelling.position = CGPoint(x: 0, y: prompt.wordAnchor.y - font.capHeight * 0.5)
         spelling.zPosition = 2
-        wordPlate.addChild(spelling)
+        prompt.plate.addChild(spelling)
 
         addChild(root)
         wordPromptNode = root

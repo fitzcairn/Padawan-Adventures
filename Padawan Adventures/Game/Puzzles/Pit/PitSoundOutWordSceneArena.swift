@@ -17,6 +17,7 @@ extension PitSoundOutWordScene {
         candidateNodes = []
         landedTileNodes = []
         promptNode = nil
+        prompt = nil
         wordGraphemeNodes = []
 
         let geo = geometry

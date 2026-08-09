@@ -4,6 +4,7 @@ extension CombatDeflectScene: MinigameDemoStage {
     var demoAcceptsInput: Bool {
         !didEnd
             && engine.outcome == nil
+            && !isWrongLetterFeedbackActive
             && (engine.activeOrb.map { !$0.isResolved } ?? false)
     }
 

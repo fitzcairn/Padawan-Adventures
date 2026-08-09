@@ -98,21 +98,27 @@ enum CombatMinigameFactory {
                         wallHeight: context.wallHeight
                     )
                 },
-                timing: .init(
-                    maxCorrectMoves: 3,
-                    displayedTotal: context.enemyType.starsToWin
-                ),
+                timing: .init(maxCorrectMoves: 3),
                 leadInSeconds: leadInSeconds
             )
         case .deflect(let deflect):
+            // The tutorial demonstrates a single deflect, so the HP bar has to empty
+            // on that hit for the coin to make sense.
+            let demoConfig: CombatDeflectConfig = {
+                var config = deflect
+                config.monsterHP = 1
+                return config
+            }()
             MinigameDemoView(
                 make: { size in
                     CombatDeflectScene(
                         size: size,
-                        deflectConfig: deflect,
+                        deflectConfig: demoConfig,
                         enemyType: context.enemyType,
                         playerFx: context.playerFx,
-                        startingHealth: context.healthCount,
+                        // An untapped orb still costs a heart; keep headroom so the
+                        // demo can never end in a loss.
+                        startingHealth: max(context.healthCount, 3),
                         spriteLibrary: context.spriteLibrary,
                         combatSprite: context.combatSprite,
                         enemySprite: context.enemySprite,
@@ -121,10 +127,7 @@ enum CombatMinigameFactory {
                         isoSquash: context.isoSquash
                     )
                 },
-                timing: .init(
-                    maxCorrectMoves: 3,
-                    displayedTotal: deflect.monsterHP
-                ),
+                timing: .init(maxCorrectMoves: 3),
                 leadInSeconds: leadInSeconds
             )
         }
