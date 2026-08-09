@@ -58,6 +58,8 @@ final class PitSoundOutWordScene: MinigameScene {
     static let playSymbolActionKey = "pitSoundOutPlaySymbol"
     static let promptPlateName = "wordPrompt"
     static let playSymbolName = "candidatePlaySymbol"
+    /// Play triangle size as a fraction of candidate tile side.
+    static let playSymbolSideRatio: CGFloat = 0.28
     static let graphemeGlyphName = "candidateGlyph"
 
     init(

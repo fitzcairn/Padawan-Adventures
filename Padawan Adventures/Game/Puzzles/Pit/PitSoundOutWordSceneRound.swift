@@ -97,7 +97,7 @@ extension PitSoundOutWordScene {
             root.addChild(fallback)
         }
 
-        let symbolSide = side * 0.4
+        let symbolSide = side * Self.playSymbolSideRatio
         let symbol = SKSpriteNode(
             texture: Self.playSymbolTexture(systemName: "play", side: symbolSide),
             size: CGSize(width: symbolSide, height: symbolSide)
@@ -121,7 +121,7 @@ extension PitSoundOutWordScene {
         guard let symbol = tile.childNode(withName: Self.playSymbolName) as? SKSpriteNode else {
             return
         }
-        let side = geometry.tileSide * 0.4
+        let side = geometry.tileSide * Self.playSymbolSideRatio
         symbol.removeAction(forKey: Self.playSymbolActionKey)
         symbol.texture = Self.playSymbolTexture(systemName: "play.fill", side: side)
         symbol.run(
