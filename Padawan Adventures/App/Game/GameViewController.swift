@@ -293,10 +293,12 @@ final class GameViewController: LandscapeHostingController {
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
-            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            needsTutorial: { [weak self] in
+                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+            },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
+                self?.session.markMinigameTutorialSeen(tutorialKey)
             },
             makeDemoView: {
                 CombatMinigameFactory.makeDemoView(
@@ -454,10 +456,12 @@ final class GameViewController: LandscapeHostingController {
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
-            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            needsTutorial: { [weak self] in
+                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+            },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
+                self?.session.markMinigameTutorialSeen(tutorialKey)
             },
             makeDemoView: {
                 PitMinigameFactory.makeDemoView(
@@ -595,10 +599,12 @@ final class GameViewController: LandscapeHostingController {
         encounterCoordinator.presentMinigame(
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
-            showTutorial: !session.hasSeenMinigameTutorial(tutorialKey),
+            needsTutorial: { [weak self] in
+                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+            },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in
-                Task { await self?.session.markMinigameTutorialSeen(tutorialKey) }
+                self?.session.markMinigameTutorialSeen(tutorialKey)
             },
             makeDemoView: {
                 GateMinigameFactory.makeDemoView(

@@ -22,7 +22,7 @@ final class GameEncounterCoordinator {
     func presentMinigame<Demo: View, Content: View>(
         music: MusicCue,
         memoryLabel: String,
-        showTutorial: Bool,
+        needsTutorial: @escaping () -> Bool,
         tutorialKey: String,
         onTutorialAcknowledged: @escaping () -> Void,
         @ViewBuilder makeDemoView: @escaping () -> Demo,
@@ -43,7 +43,7 @@ final class GameEncounterCoordinator {
                 self.buildOverlayHost { overlayFinish in
                     AnyView(
                         MinigameTutorialGate(
-                            needsTutorial: showTutorial,
+                            needsTutorial: needsTutorial,
                             tutorialKey: tutorialKey,
                             onAcknowledged: onTutorialAcknowledged,
                             demo: { makeDemoView() }

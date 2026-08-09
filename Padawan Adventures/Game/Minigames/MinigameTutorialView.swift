@@ -60,8 +60,12 @@ struct MinigameTutorialView<Demo: View>: View {
 /// `content` (and therefore the SpriteKit scene, its timers and its audio) is not
 /// constructed until the player taps through. The demo scene is built immediately
 /// when the tutorial is shown.
+///
+/// `needsTutorial` is re-checked on every body evaluation (not a captured Bool) so a
+/// SwiftUI identity reset after acknowledge cannot replay a tutorial already marked
+/// seen on the session.
 struct MinigameTutorialGate<Demo: View, Content: View>: View {
-    private let needsTutorial: Bool
+    private let needsTutorial: () -> Bool
     private let tutorialKey: String
     private let onAcknowledged: () -> Void
     private let demo: () -> Demo
@@ -70,7 +74,7 @@ struct MinigameTutorialGate<Demo: View, Content: View>: View {
     @State private var acknowledged = false
 
     init(
-        needsTutorial: Bool,
+        needsTutorial: @escaping () -> Bool,
         tutorialKey: String,
         onAcknowledged: @escaping () -> Void,
         @ViewBuilder demo: @escaping () -> Demo,
@@ -84,7 +88,7 @@ struct MinigameTutorialGate<Demo: View, Content: View>: View {
     }
 
     var body: some View {
-        if needsTutorial, !acknowledged {
+        if needsTutorial(), !acknowledged {
             MinigameTutorialView(tutorialKey: tutorialKey) {
                 acknowledged = true
                 onAcknowledged()

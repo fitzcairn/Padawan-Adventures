@@ -71,11 +71,14 @@ extension AppSession {
         playerState?.hasSeenMinigameTutorial(key) ?? false
     }
 
-    func markMinigameTutorialSeen(_ key: String) async {
+    /// Records the tutorial as seen in memory immediately, then persists.
+    /// Synchronous memory update so a SwiftUI rebuild cannot re-show the demo
+    /// before an async Task lands.
+    func markMinigameTutorialSeen(_ key: String) {
         guard var state = playerState,
               state.markMinigameTutorialSeen(key) else { return }
         playerState = state
-        await persistPlayerState()
+        Task { await persistPlayerState() }
     }
 
     var hasSeenWorldTutorial: Bool {

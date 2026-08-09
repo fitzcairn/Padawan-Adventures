@@ -199,6 +199,35 @@ struct AppSessionTests {
         #expect(session.isDadModeUnlocked == false)
     }
 
+    @Test func minigameTutorialsMarkSeenImmediatelyAndClearOnNewGame() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Padawan")
+
+        let keys = PitMinigameKind.allCases.map(\.rawValue)
+            + GateMinigameKind.allCases.map(\.rawValue)
+            + CombatMinigameKind.allCases.map(\.rawValue)
+        #expect(keys.count == 10)
+
+        for key in keys {
+            #expect(session.hasSeenMinigameTutorial(key) == false)
+            session.markMinigameTutorialSeen(key)
+            // Must be visible synchronously — no await — so a rebuild cannot re-show.
+            #expect(session.hasSeenMinigameTutorial(key))
+        }
+
+        // Persist + reload keeps every kind dismissed across Continue.
+        await session.persistPlayerState()
+        let reloaded = try await session.playerStore.loadState(for: "Padawan")
+        for key in keys {
+            #expect(reloaded.hasSeenMinigameTutorial(key))
+        }
+
+        await session.beginNewGame()
+        for key in keys {
+            #expect(session.hasSeenMinigameTutorial(key) == false)
+        }
+    }
+
     @Test func unlockDadModePersistsAndClearsOnProgressionJump() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Dad")
