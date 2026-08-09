@@ -147,7 +147,15 @@ extension GateWordPlugScene {
             plate.name = "rect:\(slot.id.uuidString)"
             plate.zPosition = 10
             let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
-            MinigameCRTPromptPlate.attachPlayIcon(to: plate, areaHeight: screen.height)
+            // Ending-sound plates hug the right; put the play icon on the left and mirror it.
+            let playEdge: MinigameCRTPromptPlate.PlayIconEdge =
+                puzzleConfig.letterPosition == .ending ? .leading : .trailing
+            MinigameCRTPromptPlate.attachPlayIcon(
+                to: plate,
+                areaHeight: screen.height,
+                edge: playEdge,
+                scale: 1.3
+            )
             addChild(plate)
             plateNodes[slot.id] = plate
 

@@ -121,6 +121,32 @@ struct MinigameCRTPromptPlateTests {
         #expect(screen.contains(iconFrame))
         #expect(icon.position.x > 0)
         #expect(icon.position.y > 0)
+        #expect(icon.xScale == 1)
+    }
+
+    @Test func attachPlayIconLeadingSitsInUpperLeftAndMirrors() {
+        let plateSize = CGSize(width: 200, height: 72)
+        let plate = SKSpriteNode(color: .darkGray, size: plateSize)
+        let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
+        MinigameCRTPromptPlate.attachPlayIcon(
+            to: plate,
+            areaHeight: screen.height,
+            edge: .leading
+        )
+        guard let icon = MinigamePlaySoundIcon.find(in: plate) else {
+            Issue.record("expected play icon child")
+            return
+        }
+        let iconFrame = CGRect(
+            x: icon.position.x - icon.size.width * 0.5,
+            y: icon.position.y - icon.size.height * 0.5,
+            width: icon.size.width,
+            height: icon.size.height
+        )
+        #expect(screen.contains(iconFrame))
+        #expect(icon.position.x < 0)
+        #expect(icon.position.y > 0)
+        #expect(icon.xScale == -1)
     }
 
     @Test func regionHitTestResolvesPictureWordAndMiss() {

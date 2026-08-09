@@ -3,7 +3,7 @@ import UIKit
 
 /// Single CRT console plate for the word prompt at the top of a minigame: illustration
 /// top-middle, a transparent band for the live word letters bottom-middle, and a small
-/// play icon in the upper right (tapping the plate plays a sound).
+/// play icon in the upper corner (tapping the plate plays a sound).
 @MainActor
 enum MinigameCRTPromptPlate {
     /// Icon side as a fraction of the picture-area height — deliberately smaller than the
@@ -12,6 +12,13 @@ enum MinigameCRTPromptPlate {
     nonisolated static let iconMarginScale: CGFloat = 0.08
     /// Gap between illustration and word band, as a fraction of the illustration side.
     nonisolated static let pictureWordGapScale: CGFloat = 0.06
+
+    /// Horizontal edge for the play affordance. Leading mirrors the icon on Y so the
+    /// speaker still faces the plate content.
+    enum PlayIconEdge: Equatable, Sendable {
+        case trailing
+        case leading
+    }
 
     enum Region: Equatable {
         case picture
@@ -83,7 +90,7 @@ enum MinigameCRTPromptPlate {
     }
 
     /// One CRT plate: illustration top-middle, transparent band for the live word
-    /// bottom-middle, play icon upper right.
+    /// bottom-middle, play icon upper trailing.
     static func makePrompt(
         image: UIImage?,
         pictureSide: CGFloat,
@@ -112,19 +119,34 @@ enum MinigameCRTPromptPlate {
         return Prompt(plate: plate, regions: regions)
     }
 
-    /// Upper-right play affordance for any CRT plate sprite (prompt or word-plug).
+    /// Upper-corner play affordance for any CRT plate sprite (prompt or word-plug).
     /// `areaHeight` is the region the icon is sized against — typically the picture
     /// band, or the full screen height when the plate is a single image + word row.
-    static func attachPlayIcon(to plate: SKSpriteNode, areaHeight: CGFloat) {
-        let side = iconSide(pictureAreaHeight: areaHeight)
+    /// Leading edge flips the icon on Y so the speaker faces the content.
+    static func attachPlayIcon(
+        to plate: SKSpriteNode,
+        areaHeight: CGFloat,
+        edge: PlayIconEdge = .trailing,
+        scale: CGFloat = 1
+    ) {
+        let side = iconSide(pictureAreaHeight: areaHeight) * max(scale, 0)
         let screen = StarWarsConsoleChrome.screenRect(for: plate.size)
         let margin = min(screen.width, screen.height) * iconMarginScale
+        let optical = MinigamePlaySoundIcon.opticalXOffset(containerWidth: side)
         let icon = MinigamePlaySoundIcon.makeNode(side: side)
-        icon.position = CGPoint(
-            x: screen.maxX - margin - side * 0.5
-                + MinigamePlaySoundIcon.opticalXOffset(containerWidth: side),
-            y: screen.maxY - margin - side * 0.5
-        )
+        switch edge {
+        case .trailing:
+            icon.position = CGPoint(
+                x: screen.maxX - margin - side * 0.5 + optical,
+                y: screen.maxY - margin - side * 0.5
+            )
+        case .leading:
+            icon.xScale = -1
+            icon.position = CGPoint(
+                x: screen.minX + margin + side * 0.5 - optical,
+                y: screen.maxY - margin - side * 0.5
+            )
+        }
         icon.zPosition = 5
         plate.addChild(icon)
     }
