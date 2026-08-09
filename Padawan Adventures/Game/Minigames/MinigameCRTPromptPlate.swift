@@ -6,7 +6,6 @@ import UIKit
 /// play icon in the upper right (tapping the plate plays a sound).
 @MainActor
 enum MinigameCRTPromptPlate {
-    static let iconName = "crtPlatePlayIcon"
     /// Icon side as a fraction of the picture-area height — deliberately smaller than the
     /// capacitor / floor-tile play icons, which are the primary affordance.
     nonisolated static let iconSideScale: CGFloat = 0.22
@@ -120,10 +119,10 @@ enum MinigameCRTPromptPlate {
         let side = iconSide(pictureAreaHeight: areaHeight)
         let screen = StarWarsConsoleChrome.screenRect(for: plate.size)
         let margin = min(screen.width, screen.height) * iconMarginScale
-        let icon = MinigamePlaySoundIcon.makeNode(side: side, name: iconName)
+        let icon = MinigamePlaySoundIcon.makeNode(side: side)
         icon.position = CGPoint(
             x: screen.maxX - margin - side * 0.5
-                + side * MinigamePlaySoundIcon.opticalXNudgeRatio,
+                + MinigamePlaySoundIcon.opticalXOffset(containerWidth: side),
             y: screen.maxY - margin - side * 0.5
         )
         icon.zPosition = 5
@@ -132,11 +131,6 @@ enum MinigameCRTPromptPlate {
 
     /// Pulses every icon at or under `node`, so a caller can hand over a whole prompt.
     static func pulseIcons(in node: SKNode, forTrackID trackID: String) {
-        if let icon = node as? SKSpriteNode, icon.name == iconName {
-            MinigamePlaySoundIcon.pulse(icon, forTrackID: trackID)
-        }
-        for child in node.children {
-            pulseIcons(in: child, forTrackID: trackID)
-        }
+        MinigamePlaySoundIcon.pulseAll(in: node, forTrackID: trackID)
     }
 }

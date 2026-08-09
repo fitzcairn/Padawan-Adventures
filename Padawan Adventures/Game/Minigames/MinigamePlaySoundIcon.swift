@@ -1,16 +1,23 @@
 import SpriteKit
 import UIKit
 
-/// Shared "tap to hear this" affordance: a white `play` triangle that fills while its
+/// Shared "tap to hear this" affordance: a white speaker/bubble icon that fills while its
 /// sound plays. SKTexture ignores UIImage tints and draws SF Symbols as flat black
 /// templates, so the white tint has to be baked into a bitmap.
 enum MinigamePlaySoundIcon {
-    static let idleSymbol = "play"
-    static let activeSymbol = "play.fill"
-    /// `play` is optically left-heavy; callers nudge by this fraction of the face width.
+    static let nodeName = "minigamePlaySoundIcon"
+    static let actionKey = "playSoundIconPulse"
+    static let idleSymbol = "speaker.wave.2.bubble"
+    static let activeSymbol = "speaker.wave.2.bubble.fill"
+    /// Speaker bubble is optically left-heavy; callers nudge by this fraction of the
+    /// container (tile / capacitor / icon) width.
     static let opticalXNudgeRatio: CGFloat = 0.03
 
     private static var cache: [String: SKTexture] = [:]
+
+    static func opticalXOffset(containerWidth: CGFloat) -> CGFloat {
+        containerWidth * opticalXNudgeRatio
+    }
 
     static func texture(systemName: String, side: CGFloat) -> SKTexture {
         let rounded = max(side.rounded(), 1)
@@ -31,22 +38,22 @@ enum MinigamePlaySoundIcon {
         return texture
     }
 
-    static func makeNode(side: CGFloat, name: String) -> SKSpriteNode {
+    static func makeNode(side: CGFloat) -> SKSpriteNode {
         let node = SKSpriteNode(
             texture: texture(systemName: idleSymbol, side: side),
             size: CGSize(width: side, height: side)
         )
-        node.name = name
+        node.name = nodeName
         node.isUserInteractionEnabled = false
         return node
     }
 
-    /// Shows `play.fill` for the length of `trackID`, then restores the outline.
-    static func pulse(
-        _ icon: SKSpriteNode,
-        forTrackID trackID: String,
-        actionKey: String = "playSoundIconPulse"
-    ) {
+    static func find(in parent: SKNode) -> SKSpriteNode? {
+        parent.childNode(withName: nodeName) as? SKSpriteNode
+    }
+
+    /// Shows the filled symbol for the length of `trackID`, then restores the outline.
+    static func pulse(_ icon: SKSpriteNode, forTrackID trackID: String) {
         let side = max(icon.size.width, icon.size.height)
         let idle = texture(systemName: idleSymbol, side: side)
         let active = texture(systemName: activeSymbol, side: side)
@@ -61,5 +68,30 @@ enum MinigamePlaySoundIcon {
             ]),
             withKey: actionKey
         )
+    }
+
+    /// Pulses the shared icon that is a direct child of `parent`, if present.
+    static func pulse(in parent: SKNode, forTrackID trackID: String) {
+        guard let icon = find(in: parent) else { return }
+        pulse(icon, forTrackID: trackID)
+    }
+
+    /// Pulses every shared icon at or under `node`.
+    static func pulseAll(in node: SKNode, forTrackID trackID: String) {
+        if let icon = node as? SKSpriteNode, icon.name == nodeName {
+            pulse(icon, forTrackID: trackID)
+        }
+        for child in node.children {
+            pulseAll(in: child, forTrackID: trackID)
+        }
+    }
+
+    static func cancelPulse(_ icon: SKNode) {
+        icon.removeAction(forKey: actionKey)
+    }
+
+    static func cancelPulse(in parent: SKNode) {
+        guard let icon = find(in: parent) else { return }
+        cancelPulse(icon)
     }
 }

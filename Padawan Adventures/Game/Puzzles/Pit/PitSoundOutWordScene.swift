@@ -55,10 +55,8 @@ final class PitSoundOutWordScene: MinigameScene {
     static let promptWatchdogKey = "pitSoundOutPromptWatchdog"
     static let promptSoundKey = "pitSoundOutPromptSound"
     static let winSoundActionKey = "pitSoundOutWinSound"
-    static let playSymbolActionKey = "pitSoundOutPlaySymbol"
     static let promptPlateName = "wordPrompt"
-    static let playSymbolName = "candidatePlaySymbol"
-    /// Play triangle size as a fraction of candidate tile side.
+    /// Play icon size as a fraction of candidate tile side.
     static let playSymbolSideRatio: CGFloat = 0.28
     static let graphemeGlyphName = "candidateGlyph"
 
@@ -113,9 +111,5 @@ final class PitSoundOutWordScene: MinigameScene {
 
     func touchesBeganForTesting(at location: CGPoint) {
         touchesBegan(Set([SceneTestTouch(location: location)]), with: nil)
-    }
-
-    static func playSymbolTexture(systemName: String, side: CGFloat) -> SKTexture {
-        MinigamePlaySoundIcon.texture(systemName: systemName, side: side)
     }
 }

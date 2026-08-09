@@ -4,8 +4,8 @@ import UIKit
 extension GateSoundOutWordScene {
     // MARK: - Capacitors
 
-    /// Capacitor sprite plus a face overlay: blank choices show `play` (swapping to
-    /// `play.fill` while their sound plays); placed capacitors show the grapheme.
+    /// Capacitor sprite plus a face overlay: blank choices show `speaker.wave.2.bubble`
+    /// (swapping to `.fill` while their sound plays); placed capacitors show the grapheme.
     /// Correct drops crossfade the play icon → letter via `revealGrapheme(on:_:)`.
     func makeCapacitorNode(name: String, diameter: CGFloat, grapheme: String?) -> SKNode {
         let root = SKNode()
@@ -46,10 +46,9 @@ extension GateSoundOutWordScene {
             label.zPosition = 1
             root.addChild(label)
         } else {
-            let play = makePlayIconNode(side: capacitorPlayIconSide(for: diameter))
-            // play / play.fill are optically left-heavy; nudge so they read centered.
+            let play = MinigamePlaySoundIcon.makeNode(side: capacitorPlayIconSide(for: diameter))
             play.position = CGPoint(
-                x: facePosition.x + diameter * MinigamePlaySoundIcon.opticalXNudgeRatio,
+                x: facePosition.x + MinigamePlaySoundIcon.opticalXOffset(containerWidth: diameter),
                 y: facePosition.y
             )
             play.zPosition = 1
@@ -60,8 +59,6 @@ extension GateSoundOutWordScene {
     }
 
     static let capacitorGlyphName = "capacitorGlyph"
-    static let capacitorPlayIconName = "capacitorPlayIcon"
-    static let capacitorPlayIconActionKey = "capacitorPlayIconPulse"
 
     func capacitorGlyphFontSize(for diameter: CGFloat) -> CGFloat {
         diameter * 0.5 * 1.35 * 0.85 * 0.95 * 0.95
@@ -71,26 +68,10 @@ extension GateSoundOutWordScene {
         capacitorGlyphFontSize(for: diameter) * 0.85 * 0.6
     }
 
-    /// Idle `play` icon; swapped to `play.fill` for the duration of a letter-sound tap.
-    func makePlayIconNode(side: CGFloat) -> SKSpriteNode {
-        MinigamePlaySoundIcon.makeNode(side: side, name: Self.capacitorPlayIconName)
-    }
-
-    /// Shows `play.fill` while `trackID` plays, then restores the idle `play` outline.
-    func pulsePlayIcon(on root: SKNode, forTrackID trackID: String) {
-        guard let icon = root.childNode(withName: Self.capacitorPlayIconName) as? SKSpriteNode
-        else { return }
-        MinigamePlaySoundIcon.pulse(
-            icon,
-            forTrackID: trackID,
-            actionKey: Self.capacitorPlayIconActionKey
-        )
-    }
-
     /// Crossfades the play cue into the grapheme that capacitor was hiding.
     func revealGrapheme(on root: SKNode, _ grapheme: String) {
-        let play = root.childNode(withName: Self.capacitorPlayIconName)
-        play?.removeAction(forKey: Self.capacitorPlayIconActionKey)
+        let play = MinigamePlaySoundIcon.find(in: root)
+        if let play { MinigamePlaySoundIcon.cancelPulse(play) }
         let existingGlyph = root.childNode(withName: Self.capacitorGlyphName)
         // Face center is local (0, y); play icons may be optically nudged on x.
         let faceY = play?.position.y ?? existingGlyph?.position.y ?? 0

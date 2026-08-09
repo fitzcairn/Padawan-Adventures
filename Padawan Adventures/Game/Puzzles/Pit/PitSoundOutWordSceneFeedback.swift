@@ -61,8 +61,8 @@ extension PitSoundOutWordScene {
 
     /// Crossfades the play symbol into the grapheme that tile was hiding.
     func revealGrapheme(on tile: SKNode, _ grapheme: String, completion: (() -> Void)? = nil) {
-        let play = tile.childNode(withName: Self.playSymbolName)
-        play?.removeAction(forKey: Self.playSymbolActionKey)
+        let play = MinigamePlaySoundIcon.find(in: tile)
+        if let play { MinigamePlaySoundIcon.cancelPulse(play) }
 
         let stack = OutlinedLetterFactory.make(
             text: grapheme,

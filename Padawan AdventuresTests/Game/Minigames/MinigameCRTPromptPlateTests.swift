@@ -88,9 +88,7 @@ struct MinigameCRTPromptPlateTests {
             wordContent: CGSize(width: 70, height: 30),
             name: "testPrompt"
         )
-        guard let icon = prompt.plate.childNode(withName: MinigameCRTPromptPlate.iconName)
-            as? SKSpriteNode
-        else {
+        guard let icon = MinigamePlaySoundIcon.find(in: prompt.plate) else {
             Issue.record("expected play icon child")
             return
         }
@@ -110,9 +108,7 @@ struct MinigameCRTPromptPlateTests {
         let plate = SKSpriteNode(color: .darkGray, size: plateSize)
         let screen = StarWarsConsoleChrome.screenRect(for: plateSize)
         MinigameCRTPromptPlate.attachPlayIcon(to: plate, areaHeight: screen.height)
-        guard let icon = plate.childNode(withName: MinigameCRTPromptPlate.iconName)
-            as? SKSpriteNode
-        else {
+        guard let icon = MinigamePlaySoundIcon.find(in: plate) else {
             Issue.record("expected play icon child")
             return
         }

@@ -97,16 +97,12 @@ extension PitSoundOutWordScene {
             root.addChild(fallback)
         }
 
-        let symbolSide = side * Self.playSymbolSideRatio
-        let symbol = SKSpriteNode(
-            texture: Self.playSymbolTexture(systemName: "play", side: symbolSide),
-            size: CGSize(width: symbolSide, height: symbolSide)
+        let symbol = MinigamePlaySoundIcon.makeNode(side: side * Self.playSymbolSideRatio)
+        symbol.position = CGPoint(
+            x: MinigamePlaySoundIcon.opticalXOffset(containerWidth: side),
+            y: 0
         )
-        symbol.name = Self.playSymbolName
-        // play is optically left-heavy; nudge so it reads centered on the face.
-        symbol.position = CGPoint(x: side * 0.03, y: 0)
         symbol.zPosition = 1
-        symbol.isUserInteractionEnabled = false
         root.addChild(symbol)
 
         return root
@@ -117,24 +113,7 @@ extension PitSoundOutWordScene {
         let grapheme = (tile.userData?["grapheme"] as? String) ?? ""
         guard let trackID = engine.soundTrackID(for: grapheme), !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
-
-        guard let symbol = tile.childNode(withName: Self.playSymbolName) as? SKSpriteNode else {
-            return
-        }
-        let side = geometry.tileSide * Self.playSymbolSideRatio
-        symbol.removeAction(forKey: Self.playSymbolActionKey)
-        symbol.texture = Self.playSymbolTexture(systemName: "play.fill", side: side)
-        symbol.run(
-            SKAction.sequence([
-                SKAction.wait(
-                    forDuration: SoundEffectsController.shared.cueDuration(of: trackID)
-                ),
-                SKAction.run {
-                    symbol.texture = Self.playSymbolTexture(systemName: "play", side: side)
-                },
-            ]),
-            withKey: Self.playSymbolActionKey
-        )
+        MinigamePlaySoundIcon.pulse(in: tile, forTrackID: trackID)
     }
 
     // MARK: - Touch / drag
