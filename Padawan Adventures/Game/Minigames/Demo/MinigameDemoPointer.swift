@@ -169,9 +169,8 @@ final class MinigameDemoCursorNode: SKNode {
 
     /// `side` is the square the (square) source frame is fitted into.
     init(side: CGFloat) {
-        let loaded = MinigameTutorialCursorSprites.load()
-        art = loaded
-        if let loaded {
+        art = MinigameTutorialCursorSprites.load()
+        if art != nil {
             let node = SKSpriteNode(color: .clear, size: CGSize(width: side, height: side))
             sprite = node
             super.init()

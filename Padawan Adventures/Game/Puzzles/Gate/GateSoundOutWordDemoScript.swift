@@ -4,16 +4,33 @@ import Foundation
 /// the right drag, then a coin to the corner. Runs until its task is cancelled.
 @MainActor
 final class GateSoundOutWordDemoScript: MinigameDemoScript {
-    struct Timing {
-        var gestureSeconds: TimeInterval = 0.9
+    /// Value type kept `nonisolated` so it can be used as a default argument.
+    nonisolated struct Timing: Sendable {
+        var gestureSeconds: TimeInterval
         /// Beat between the phases of a pass.
-        var beatSeconds: TimeInterval = 0.6
+        var beatSeconds: TimeInterval
         /// Beat after a drop, before polling for readiness again.
-        var settleSeconds: TimeInterval = 0.4
+        var settleSeconds: TimeInterval
         /// How long the finished circuit stays visible before a solved-word restart.
-        var circuitHoldSeconds: TimeInterval = 0.45
-        var readyTimeoutSeconds: TimeInterval = 12
-        var pollSeconds: TimeInterval = 0.05
+        var circuitHoldSeconds: TimeInterval
+        var readyTimeoutSeconds: TimeInterval
+        var pollSeconds: TimeInterval
+
+        nonisolated init(
+            gestureSeconds: TimeInterval = 0.9,
+            beatSeconds: TimeInterval = 0.6,
+            settleSeconds: TimeInterval = 0.4,
+            circuitHoldSeconds: TimeInterval = 0.45,
+            readyTimeoutSeconds: TimeInterval = 12,
+            pollSeconds: TimeInterval = 0.05
+        ) {
+            self.gestureSeconds = gestureSeconds
+            self.beatSeconds = beatSeconds
+            self.settleSeconds = settleSeconds
+            self.circuitHoldSeconds = circuitHoldSeconds
+            self.readyTimeoutSeconds = readyTimeoutSeconds
+            self.pollSeconds = pollSeconds
+        }
     }
 
     private weak var stage: (any GateSoundOutWordDemoStaging)?

@@ -121,7 +121,7 @@ extension PitBridgeScene {
 
     /// Loop Kam's Force-lift clip while a tray tile is held.
     func playForceLiftAnimation(toward target: CGPoint) {
-        guard let playerSprite, let playerNode else { return }
+        guard playerSprite != nil, let playerNode else { return }
         playerFacingLeft = target.x < playerNode.position.x - 0.5
         let preferred = playerFacingLeft
             ? "lifting_with_the_force_left"
