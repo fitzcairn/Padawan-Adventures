@@ -32,6 +32,12 @@ extension GateSoundOutWordScene: MinigameDemoStage {
     var demoIsFinished: Bool { didEnd || isCompletingWin }
 
     var demoScript: MinigameDemoScript? { GateSoundOutWordDemoScript(stage: self) }
+
+    /// Replays the opening word cue suppressed during the tutorial lead-in.
+    func demoResumeGameplayAudio() {
+        playWordSound()
+        syncArcLoopWithConnectors()
+    }
 }
 
 extension GateSoundOutWordScene: GateSoundOutWordDemoStaging {

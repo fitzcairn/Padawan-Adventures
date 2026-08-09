@@ -34,7 +34,26 @@ struct MinigameDemoCoinLayerTests {
         )
 
         #expect(coins.flightCount == 1)
-        #expect(scene.childNode(withName: MinigameDemoCoinLayer.rootName)?.children.isEmpty == true)
+        let root = scene.childNode(withName: MinigameDemoCoinLayer.rootName)
+        #expect(root?.childNode(withName: MinigameDemoCoinLayer.coinNodeName) == nil)
+    }
+
+    @Test func flyCoinToCornerSpawnsGoldSparkles() async {
+        let scene = SKScene(size: CGSize(width: 200, height: 200))
+        let coins = MinigameDemoCoinLayer(scene: scene)
+
+        let task = Task {
+            await coins.flyCoinToCorner(
+                from: CGPoint(x: 100, y: 100),
+                holdSeconds: 0.2,
+                flightSeconds: 0.01
+            )
+        }
+        try? await Task.sleep(nanoseconds: 30_000_000)
+        let root = scene.childNode(withName: MinigameDemoCoinLayer.rootName)
+        #expect(root?.children.contains { $0 is SKEmitterNode } == true)
+        #expect(abs(MinigameDemoCoinLayer.defaultSide - 44 * 1.4) < 0.001)
+        await task.value
     }
 
     @Test func flyToCornerClearsDroppedCoins() async {

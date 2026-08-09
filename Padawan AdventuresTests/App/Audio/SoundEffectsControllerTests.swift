@@ -206,6 +206,37 @@ struct SoundEffectsControllerTests {
         controller.fadeOutAndStopAll()
         #expect(mock.fadeOutAllCalls == [SoundEffectsController.defaultOneShotFadeOutSeconds])
     }
+
+    @Test func gameplaySuppressionBlocksMinigameSFXButAllowsTutorialVO() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.phoneticCueDuckHandler = { _ in }
+        controller.setGameplaySFXSuppressed(true)
+        controller.play(trackID: "sfx_combat_start")
+        controller.play(trackID: "sfx_word_bat")
+        controller.play(trackID: "sfx_ui_tutorial_deflect")
+        #expect(mock.playedTrackIDs == ["sfx_ui_tutorial_deflect"])
+
+        let loopID = controller.startLoop(
+            event: "combat_loop",
+            from: SoundEffectTable(events: ["combat_loop": "sfx_combat_loop"])
+        )
+        #expect(loopID == nil)
+        #expect(mock.loopTrackIDs.isEmpty)
+
+        controller.setGameplaySFXSuppressed(false)
+        controller.play(trackID: "sfx_combat_start")
+        #expect(mock.playedTrackIDs == ["sfx_ui_tutorial_deflect", "sfx_combat_start"])
+    }
+
+    @Test func enablingGameplaySuppressionStopsActiveLoops() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.startLoop(trackID: "sfx_combat_loop")
+        #expect(mock.loopTrackIDs == ["sfx_combat_loop"])
+        controller.setGameplaySFXSuppressed(true)
+        #expect(mock.loopTrackIDs.isEmpty)
+    }
 }
 
 struct SoundEffectTableTests {

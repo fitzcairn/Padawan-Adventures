@@ -59,6 +59,16 @@ extension CombatScene: MinigameDemoStage {
 
     var demoIsFinished: Bool { didEnd }
 
+    /// Restarts combat begin SFX suppressed during the tutorial lead-in.
+    func demoResumeGameplayAudio() {
+        stopCombatLoop()
+        SoundEffectsController.shared.play(event: "combat_start", from: playerFx)
+        activeLoopTrackID = SoundEffectsController.shared.startLoop(
+            event: "combat_loop",
+            from: playerFx
+        )
+    }
+
     private func isInDemoSwipeBand(_ bounds: CGRect) -> Bool {
         abs(bounds.midY - demoSwipeMidY) <= demoSwipeBandHalfHeight
     }

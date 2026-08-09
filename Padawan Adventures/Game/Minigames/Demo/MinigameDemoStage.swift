@@ -49,6 +49,9 @@ protocol MinigameDemoStage: AnyObject {
     /// landed — e.g. the reflected letter hitting the enemy). When nil, the runner
     /// falls back to waiting until `demoAcceptsInput` again.
     var demoConsequenceInFlight: Bool? { get }
+    /// Replays begin-of-minigame SFX after the tutorial lead-in unsuppresses gameplay
+    /// audio. Default is a no-op for stages with no opening cues.
+    func demoResumeGameplayAudio()
 }
 
 extension MinigameDemoStage {
@@ -56,4 +59,5 @@ extension MinigameDemoStage {
     var demoPreludeMoves: [MinigameDemoMove] { [] }
     var demoScript: MinigameDemoScript? { nil }
     var demoConsequenceInFlight: Bool? { nil }
+    func demoResumeGameplayAudio() {}
 }

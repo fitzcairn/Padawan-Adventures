@@ -48,12 +48,10 @@ struct MinigameTutorialView<Demo: View>: View {
         "minigame_tutorial_" + key.replacingOccurrences(of: "-", with: "_")
     }
 
-    /// Seconds to wait after speaking the voice-over before the demo starts driving
-    /// the scene (so game audio does not talk over the tutorial).
-    static func leadInSeconds(forKindRawValue key: String) -> TimeInterval {
-        let id = bodyStringID(forKindRawValue: key)
-        let trackID = Strings.catalog.entry(id)?.sfx
-        return SoundEffectsController.shared.cueDuration(of: trackID) + 0.3
+    /// Seconds to wait after the demo pointer is on screen before gestures start —
+    /// enough for the tutorial voice-over (spoken on appear) to begin.
+    static func leadInSeconds(forKindRawValue _: String) -> TimeInterval {
+        3
     }
 }
 

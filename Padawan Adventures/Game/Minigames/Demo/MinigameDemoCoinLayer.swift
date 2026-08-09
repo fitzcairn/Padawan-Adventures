@@ -3,6 +3,9 @@ import SpriteKit
 @MainActor
 final class MinigameDemoCoinLayer {
     static let rootName = "demoCoinLayer"
+    static let coinNodeName = "demoCoin"
+    /// Default coin edge: previous 44pt size bumped 40% so tutorial awards read clearly.
+    static let defaultSide: CGFloat = 44 * 1.4
 
     private let root = SKNode()
     private var coins: [SKSpriteNode] = []
@@ -12,7 +15,7 @@ final class MinigameDemoCoinLayer {
     /// racing the animation.
     private(set) var flightCount = 0
 
-    init(scene: SKScene, side: CGFloat = 44) {
+    init(scene: SKScene, side: CGFloat = defaultSide) {
         self.scene = scene
         self.side = side
         root.name = Self.rootName
@@ -24,22 +27,9 @@ final class MinigameDemoCoinLayer {
 
     func dropCoin(at point: CGPoint) {
         let node = makeCoinNode(at: point)
-        // Visible immediately — fade/scale are polish. If the scene's action loop is
-        // briefly stalled, a fully transparent coin would never appear.
-        node.alpha = 1
-        node.setScale(1)
         root.addChild(node)
         coins.append(node)
-
-        node.setScale(0.1)
-        node.run(.sequence([
-            .scale(to: 1.15, duration: 0.18),
-            .scale(to: 1.0, duration: 0.10),
-        ]), withKey: "pop")
-        node.run(.repeatForever(.sequence([
-            .moveBy(x: 0, y: 6, duration: 0.6),
-            .moveBy(x: 0, y: -6, duration: 0.6),
-        ])), withKey: "bob")
+        playAppear(on: node)
     }
 
     /// Pops a coin in at `point`, then arcs it to the scene's bottom-left corner while
@@ -52,19 +42,14 @@ final class MinigameDemoCoinLayer {
     ) async {
         guard let scene else { return }
         let node = makeCoinNode(at: point)
-        node.alpha = 1
-        node.setScale(0.1)
         root.addChild(node)
         flightCount += 1
+        playAppear(on: node)
 
-        // Prefer `run(_:withKey:)` — the async `run(_:)` overload hangs when the scene
-        // has no update loop (unit tests use a bare SKScene).
-        node.run(.sequence([
-            .scale(to: 1.15, duration: 0.18),
-            .scale(to: 1.0, duration: 0.10),
-        ]), withKey: "pop")
         try? await Task.sleep(nanoseconds: UInt64(max(0, holdSeconds) * 1_000_000_000))
 
+        node.removeAction(forKey: "bob")
+        node.removeAction(forKey: "pop")
         let end = CGPoint.zero
         let control = CGPoint(
             x: point.x + (end.x - point.x) * 0.75,
@@ -78,6 +63,8 @@ final class MinigameDemoCoinLayer {
             node.position = Self.arcPoint(t: t, start: point, control: control, end: end)
             node.setScale(max(1 - t, 0))
         }
+        // Prefer `run(_:withKey:)` — the async `run(_:)` overload hangs when the scene
+        // has no update loop (unit tests use a bare SKScene).
         node.run(.sequence([flight, .removeFromParent()]), withKey: "fly")
         try? await Task.sleep(nanoseconds: UInt64(span * 1_000_000_000))
         node.removeFromParent()
@@ -135,6 +122,8 @@ final class MinigameDemoCoinLayer {
         coins = []
     }
 
+    // MARK: - Private
+
     private func makeCoinNode(at point: CGPoint) -> SKSpriteNode {
         let size = CGSize(width: side, height: side)
         let node: SKSpriteNode
@@ -143,9 +132,44 @@ final class MinigameDemoCoinLayer {
         } else {
             node = SKSpriteNode(color: .systemOrange, size: size)
         }
+        node.name = Self.coinNodeName
         node.position = point
         node.setScale(0.1)
         node.alpha = 0
         return node
+    }
+
+    /// Fade/pop the coin in and fire the shared treasure-gold sparkle burst.
+    private func playAppear(on node: SKSpriteNode) {
+        playGoldSparkles(at: node.position)
+        // Prefer `run(_:withKey:)` over bare / async `run` (hangs without an update loop).
+        node.run(.group([
+            .fadeIn(withDuration: 0.2),
+            .sequence([
+                .scale(to: 1.15, duration: 0.18),
+                .scale(to: 1.0, duration: 0.10),
+            ]),
+        ]), withKey: "pop")
+        node.run(.repeatForever(.sequence([
+            .moveBy(x: 0, y: 6, duration: 0.6),
+            .moveBy(x: 0, y: -6, duration: 0.6),
+        ])), withKey: "bob")
+    }
+
+    private func playGoldSparkles(at point: CGPoint) {
+        let highlight = HighlightConfig.treasureGold
+        let burst = SparkleEmitterFactory.makeBurstNode(
+            config: highlight,
+            referenceHeight: side,
+            particleCount: 48
+        )
+        burst.position = point
+        burst.zPosition = 1
+        root.addChild(burst)
+        let linger = max(highlight.lifetime * 1.6, 0.7)
+        burst.run(.sequence([
+            .wait(forDuration: linger),
+            .removeFromParent(),
+        ]), withKey: "sparkleCleanup")
     }
 }

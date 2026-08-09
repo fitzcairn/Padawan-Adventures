@@ -29,4 +29,9 @@ extension GateGraphemeMatchScene: MinigameDemoStage {
     }
 
     var demoIsFinished: Bool { didEnd }
+
+    /// Replays the target pronunciation suppressed during the tutorial lead-in.
+    func demoResumeGameplayAudio() {
+        playTargetPronunciation()
+    }
 }

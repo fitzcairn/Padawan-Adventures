@@ -12,8 +12,8 @@ where Scene: MinigameScene & MinigameDemoStage {
     private let prepare: (() async -> Void)?
     private let make: (CGSize) -> Scene
     private let timing: MinigameDemoRunner.Timing
-    /// Delay before the demo starts driving the scene, so the tutorial voice-over is
-    /// not talked over by game audio. First cycle only.
+    /// Delay after the pointer is shown before gestures start, so the tutorial
+    /// voice-over has time to begin. Applied once per tutorial presentation.
     private let leadInSeconds: TimeInterval
     private let restartDelaySeconds: TimeInterval = 0.6
     private let buildTimeoutSeconds: TimeInterval = 5
@@ -25,6 +25,8 @@ where Scene: MinigameScene & MinigameDemoStage {
     /// Set only by `stop()` when the tutorial is dismissed. Cleared if the view
     /// re-appears so a spurious `onDisappear` cannot permanently kill the demo.
     private var didStop = false
+    /// Voice-over lead-in runs only at the start of the tutorial, never on demo loops.
+    private var didApplyLeadIn = false
 
     init(
         prepare: (() async -> Void)? = nil,
@@ -44,6 +46,7 @@ where Scene: MinigameScene & MinigameDemoStage {
         // cancels the loop; allow a fresh start when the view is shown again.
         if didStop {
             didStop = false
+            didApplyLeadIn = false
             loopTask?.cancel()
             loopTask = nil
         }
@@ -64,10 +67,8 @@ where Scene: MinigameScene & MinigameDemoStage {
 
     private func runLoop() async {
         await prepare?()
-        var isFirstCycle = true
         while !Task.isCancelled, !didStop {
-            let awarded = await runCycle(isFirstCycle: isFirstCycle)
-            isFirstCycle = false
+            let awarded = await runCycle()
             if Task.isCancelled || didStop { return }
             // A stage that never becomes ready would otherwise spin forever.
             guard awarded > 0 else { return }
@@ -79,10 +80,20 @@ where Scene: MinigameScene & MinigameDemoStage {
 
     /// Builds a fresh scene, drives one full demo, tears the cycle's nodes down, and
     /// returns the coins awarded.
-    private func runCycle(isFirstCycle: Bool) async -> Int {
+    private func runCycle() async -> Int {
         // Deliberately no delegate: the demo must never award stars or trigger
         // MinigameResultOverlay.
+        let applyLeadIn = !didApplyLeadIn && leadInSeconds > 0
+        // Suppress before `buildContent` so combat_start / loops / word prompts never
+        // begin under the tutorial voice-over. `sfx_ui_*` VO still plays.
+        if applyLeadIn {
+            SoundEffectsController.shared.setGameplaySFXSuppressed(true)
+        }
         let scene = make(size)
+        if applyLeadIn {
+            // Freeze before present so SKAction timers cannot advance during lead-in.
+            scene.isPaused = true
+        }
         self.scene = scene
         self.sceneEpoch += 1
 
@@ -92,7 +103,12 @@ where Scene: MinigameScene & MinigameDemoStage {
 
         // Most demo scenes call `removeAllChildren()` while building, so the cursor and
         // the coin layer cannot be attached until `buildContent` has returned.
-        guard await waitUntilBuilt(scene) else { return 0 }
+        guard await waitUntilBuilt(scene) else {
+            if applyLeadIn {
+                SoundEffectsController.shared.setGameplaySFXSuppressed(false)
+            }
+            return 0
+        }
 
         let cursor = MinigameDemoCursorNode(
             side: min(scene.size.width, scene.size.height) * 0.24
@@ -109,11 +125,14 @@ where Scene: MinigameScene & MinigameDemoStage {
             timing: timing
         )
 
-        if isFirstCycle, leadInSeconds > 0 {
-            // Freeze the arena so orbs / timers cannot resolve the fight while the
-            // tutorial voice-over is still playing.
-            scene.isPaused = true
+        if applyLeadIn {
+            didApplyLeadIn = true
+            // Pointer is already visible. Arena stays frozen while the voice-over
+            // begins. Looped cycles skip this — VO only plays once on appear.
             try? await Task.sleep(nanoseconds: UInt64(leadInSeconds * 1_000_000_000))
+            SoundEffectsController.shared.setGameplaySFXSuppressed(false)
+            guard !Task.isCancelled, !didStop else { return 0 }
+            scene.demoResumeGameplayAudio()
             scene.isPaused = false
         }
         guard !Task.isCancelled, !didStop else { return 0 }
@@ -150,6 +169,7 @@ where Scene: MinigameScene & MinigameDemoStage {
         scene?.removeAllActions()
         scene?.isPaused = true
         scene = nil
+        SoundEffectsController.shared.setGameplaySFXSuppressed(false)
         SoundEffectsController.shared.fadeOutAndStopAll()
     }
 }

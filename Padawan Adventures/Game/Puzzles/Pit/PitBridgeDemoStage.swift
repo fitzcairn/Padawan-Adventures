@@ -27,4 +27,9 @@ extension PitBridgeScene: MinigameDemoStage {
     }
 
     var demoIsFinished: Bool { didEnd }
+
+    /// Replays the opening word cue suppressed during the tutorial lead-in.
+    func demoResumeGameplayAudio() {
+        replayWordSound()
+    }
 }

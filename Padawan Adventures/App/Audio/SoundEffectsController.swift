@@ -25,6 +25,9 @@ final class SoundEffectsController {
     private(set) var soundEffectsVolume: Float = 1
     /// When true, phonetics get `combatPhoneticRelativeBoost` and other FX are ducked by the same factor.
     private(set) var isCombatMixActive = false
+    /// When true, gameplay one-shots and loops are ignored so tutorial voice-over
+    /// (`sfx_ui_*`) can play alone during the demo lead-in.
+    private(set) var isGameplaySFXSuppressed = false
     /// Shared FX from `sound.yaml` (`win`, `lose`, `error`, `correct`, …).
     private(set) var commonFx: SoundEffectTable = SoundSettings.fallback.fx
 
@@ -54,6 +57,16 @@ final class SoundEffectsController {
         isCombatMixActive = active
     }
 
+    /// Suppresses minigame begin / ambience SFX while keeping tutorial VO (`sfx_ui_*`).
+    /// Enabling also stops any active loops so a hum started in `buildContent` cannot
+    /// bleed under the voice-over.
+    func setGameplaySFXSuppressed(_ suppressed: Bool) {
+        isGameplaySFXSuppressed = suppressed
+        if suppressed {
+            stopAllLoops()
+        }
+    }
+
     func configure(commonFx: SoundEffectTable) {
         self.commonFx = commonFx
     }
@@ -69,6 +82,7 @@ final class SoundEffectsController {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trimmed) { return }
         let didPlay = player.play(trackID: trimmed, volume: playbackVolume(for: trimmed))
         if didPlay, Self.isPhoneticTrack(trimmed) {
             duckAmbienceForPhoneticCue(duration: cueDuration(of: trimmed))
@@ -98,12 +112,14 @@ final class SoundEffectsController {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trimmed) { return }
         let scale = min(1, max(0, volumeScale))
         player.startLoop(trackID: trimmed, volume: playbackVolume(for: trimmed) * scale)
     }
 
     /// Looks up `event` in `table` and starts it as a loop. Returns the track id so
-    /// the caller can stop the exact track it started.
+    /// the caller can stop the exact track it started. Returns `nil` when suppressed
+    /// or disabled so callers do not track a loop that never began.
     @discardableResult
     func startLoop(
         event: String,
@@ -111,6 +127,8 @@ final class SoundEffectsController {
         volumeScale: Float = 1
     ) -> String? {
         guard let trackID = table.trackID(for: event) else { return nil }
+        guard soundEffectsEnabled else { return nil }
+        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trackID) { return nil }
         startLoop(trackID: trackID, volumeScale: volumeScale)
         return trackID
     }
@@ -185,6 +203,12 @@ final class SoundEffectsController {
             || trackID.hasPrefix("sfx_grapheme_")
             || trackID.hasPrefix("sfx_word_")
             || trackID.hasPrefix("sfx_ui_")
+    }
+
+    /// Tutorial / UI voice-over clips under `Audio/FX/UI/`. Allowed while gameplay
+    /// SFX are suppressed during the demo lead-in.
+    static func isTutorialVoiceTrack(_ trackID: String) -> Bool {
+        trackID.hasPrefix("sfx_ui_")
     }
 
     /// Combat saber one-shots and the looping hum (`*lightsaber*` basenames).

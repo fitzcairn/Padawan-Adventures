@@ -26,4 +26,9 @@ extension PitSoundOutWordScene: MinigameDemoStage {
     var demoCoinAnchor: CGPoint? { landedTileNodes.last?.position }
 
     var demoIsFinished: Bool { didEnd || engine.isSolved }
+
+    /// Replays the opening word cue suppressed during the tutorial lead-in.
+    func demoResumeGameplayAudio() {
+        replayWordSound()
+    }
 }
