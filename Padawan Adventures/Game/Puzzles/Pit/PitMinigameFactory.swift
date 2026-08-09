@@ -70,6 +70,10 @@ enum PitMinigameFactory {
                         playerSpriteConfig: playerSpriteConfig
                     )
                 },
+                // Demonstrate the first grapheme only. Driving the later steps from a
+                // landed tile does not read as real gameplay, so end the cycle on the
+                // first correct tile and let the loop restart from a fresh arena.
+                timing: .init(maxCorrectMoves: 1),
                 leadInSeconds: leadInSeconds
             )
         case .bridge(let bridge):
