@@ -337,6 +337,7 @@ struct StarWarsConsoleImageView: View {
         GeometryReader { geo in
             let chrome = StarWarsConsoleChrome.metrics(for: geo.size)
             let contentH = max(1, geo.size.height - chrome.contentInset * 2)
+            let contentW = max(1, geo.size.width - chrome.contentInset * 2)
             let imageSide = contentH
             let fontSize = max(10, contentH * 0.42)
             StarWarsConsoleFrame {
@@ -358,6 +359,8 @@ struct StarWarsConsoleImageView: View {
                             foreground: StarWarsConsolePalette.crtBlue,
                             glow: StarWarsConsolePalette.crtGlow
                         )
+                        // Keep letters off the CRT’s trailing edge (esp. ending-sound plates).
+                        .padding(.trailing, contentW * 0.05)
                         .frame(maxHeight: .infinity)
                     }
                 }

@@ -50,11 +50,10 @@ extension GateWordPlugScene {
             let fontSize = rectHeight * 0.42
             let longest = slots.map(\.word).max(by: { $0.count < $1.count }) ?? ""
             let textWidth = plateTextWidth(longest, fontSize: fontSize)
-            // Square image (side = plate height) + masked text + chrome/gap.
-            let rectWidth = max(
-                diameter * 1.15,
-                rectHeight + textWidth + fontSize * 1.35 + rectHeight * 0.35
-            )
+            // Square image (side = plate height) + masked text + chrome/gap +
+            // 5% trailing word padding (see StarWarsConsoleImageView).
+            let contentWidth = rectHeight + textWidth + fontSize * 1.35 + rectHeight * 0.35
+            let rectWidth = max(diameter * 1.15, contentWidth * 1.05)
             let socketRectGap = diameter * 0.20
             let pairWidth = diameter + socketRectGap + rectWidth
             let hGap = hGapBase
