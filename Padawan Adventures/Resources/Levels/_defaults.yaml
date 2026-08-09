@@ -73,7 +73,9 @@ world:
 # `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
 #   orb to hear the word, then tap the ring for that missing sound. A wrong ring flashes
 #   the letter in red on the blank and replays the word — the orb keeps flying. `ring_count`
-#   (2–6) picks that many single graphemes from the level pool. Stars = orbs deflected.
+#   (2–6) picks that many single graphemes from the level pool. Thrown words must have only
+#   one valid ring answer for the visible blank (no sit/sip or tris/trip collisions), and
+#   spellings avoid repeats until the unambiguous pool is exhausted. Stars = orbs deflected.
 # `ending-sound-combat`: same arena, but the ring must match the word's last grapheme.
 combat:
   music: combat

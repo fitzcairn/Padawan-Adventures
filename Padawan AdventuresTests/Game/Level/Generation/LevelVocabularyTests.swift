@@ -176,4 +176,79 @@ struct LevelVocabularyTests {
         #expect(GateWordPlugLetterPosition.starting.matches(grapheme: "f", in: fast))
         #expect(!GateWordPlugLetterPosition.starting.matches(grapheme: "fa", in: fast))
     }
+
+    @Test func endingAnswerIsUniqueWhenNoCompetingMask() {
+        let tap = word("tap", graphemes: ["t", "a", "p"])
+        let sat = word("sat", graphemes: ["s", "a", "t"])
+        #expect(
+            GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: tap,
+                among: ["t", "p", "n"],
+                vocabulary: [tap, sat]
+            )
+        )
+    }
+
+    @Test func endingAnswerRejectsSharedMaskAmongRings() {
+        let sit = word("sit", graphemes: ["s", "i", "t"])
+        let sip = word("sip", graphemes: ["s", "i", "p"])
+        #expect(
+            !GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: sit,
+                among: ["t", "p", "n"],
+                vocabulary: [sit, sip]
+            )
+        )
+        #expect(
+            !GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: sip,
+                among: ["t", "p", "n"],
+                vocabulary: [sit, sip]
+            )
+        )
+    }
+
+    @Test func endingAnswerAllowsSharedMaskWhenCompetitorNotOnRings() {
+        let sit = word("sit", graphemes: ["s", "i", "t"])
+        let sip = word("sip", graphemes: ["s", "i", "p"])
+        #expect(
+            GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: sit,
+                among: ["t", "n"],
+                vocabulary: [sit, sip]
+            )
+        )
+    }
+
+    @Test func endingAnswerRejectsPlausibleAlternateSpelling() {
+        let tris = word("tris", graphemes: ["tr", "i", "s"])
+        #expect(
+            !GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: tris,
+                among: ["s", "t", "p", "n"],
+                vocabulary: [tris],
+                isPlausibleSpelling: { $0 == "trip" }
+            )
+        )
+        #expect(
+            GateWordPlugLetterPosition.ending.hasUniqueAnswer(
+                in: tris,
+                among: ["s", "t", "n"],
+                vocabulary: [tris],
+                isPlausibleSpelling: { $0 == "trip" }
+            )
+        )
+    }
+
+    @Test func startingAnswerRejectsSharedMaskAmongRings() {
+        let sat = word("sat", graphemes: ["s", "a", "t"])
+        let pat = word("pat", graphemes: ["p", "a", "t"])
+        #expect(
+            !GateWordPlugLetterPosition.starting.hasUniqueAnswer(
+                in: sat,
+                among: ["s", "a", "t", "p"],
+                vocabulary: [sat, pat]
+            )
+        )
+    }
 }

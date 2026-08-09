@@ -216,6 +216,55 @@ nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
         case .ending: return entry.graphemes.last == key
         }
     }
+
+    /// Characters that stay visible after blanking the answer grapheme (`tri` for `tris` ending).
+    func characterStem(in entry: GateWord) -> String? {
+        guard let answer = answerGrapheme(in: entry),
+              answer.count <= entry.word.count else { return nil }
+        switch self {
+        case .starting: return String(entry.word.dropFirst(answer.count))
+        case .ending: return String(entry.word.dropLast(answer.count))
+        }
+    }
+
+    /// Spelling formed by pairing `stem` with `grapheme` in this letter position.
+    func completedSpelling(stem: String, grapheme: String) -> String {
+        switch self {
+        case .starting: return grapheme + stem
+        case .ending: return stem + grapheme
+        }
+    }
+
+    /// True when no other ring grapheme could complete the same visible mask into another
+    /// vocabulary word (or any spelling `isPlausibleSpelling` accepts — e.g. English `trip`
+    /// beside game word `tris`).
+    func hasUniqueAnswer(
+        in entry: GateWord,
+        among ringGraphemes: Set<String>,
+        vocabulary: [GateWord],
+        isPlausibleSpelling: @Sendable (String) -> Bool = { _ in false }
+    ) -> Bool {
+        guard let answer = answerGrapheme(in: entry),
+              ringGraphemes.contains(answer) else { return false }
+        let mask = maskedText(for: entry)
+        var competingAnswers = Set<String>()
+        for other in vocabulary {
+            guard let otherAnswer = answerGrapheme(in: other),
+                  ringGraphemes.contains(otherAnswer),
+                  maskedText(for: other) == mask else { continue }
+            competingAnswers.insert(otherAnswer)
+        }
+        if competingAnswers.count > 1 { return false }
+
+        guard let stem = characterStem(in: entry) else { return false }
+        for ring in ringGraphemes where ring != answer && ring.count == answer.count {
+            let spelling = completedSpelling(stem: stem, grapheme: ring)
+            if spelling != entry.word, isPlausibleSpelling(spelling) {
+                return false
+            }
+        }
+        return true
+    }
 }
 
 /// Per-entry gate word-plug config: match each word's missing first or last letter (see `letterPosition`).

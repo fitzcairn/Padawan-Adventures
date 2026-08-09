@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// A tap target around the player. `index` is an index into `CombatDeflectConfig.letters`,
 /// ordered left to right on screen.
@@ -93,12 +96,37 @@ nonisolated struct CombatDeflectMinigameEngine {
             )
         }
 
+        /// Ring grapheme strings left to right.
+        var ringGraphemes: Set<String> {
+            Set(graphemes.map(\.grapheme))
+        }
+
         /// Imaged vocabulary entries whose first (or last) grapheme equals `grapheme`.
         func words(matching grapheme: String) -> [GateWord] {
             words.filter { entry in
                 letterPosition.matches(grapheme: grapheme, in: entry)
                     && entry.image.map { !$0.isEmpty } == true
             }
+        }
+
+        /// Throw candidates for `grapheme`: imaged, matching, and visually unambiguous among
+        /// the rings. Prefers spellings not in `excluding` when any remain.
+        func throwWords(
+            matching grapheme: String,
+            excluding usedWords: Set<String> = [],
+            isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
+        ) -> [GateWord] {
+            let rings = ringGraphemes
+            let unambiguous = words(matching: grapheme).filter { entry in
+                letterPosition.hasUniqueAnswer(
+                    in: entry,
+                    among: rings,
+                    vocabulary: words,
+                    isPlausibleSpelling: isPlausibleSpelling
+                )
+            }
+            let unused = unambiguous.filter { !usedWords.contains($0.word) }
+            return unused.isEmpty ? unambiguous : unused
         }
     }
 
@@ -124,17 +152,51 @@ nonisolated struct CombatDeflectMinigameEngine {
     private var rng: any RandomNumberGenerator
     /// Ring of the most recently deflected orb; excluded from the next throw's pool.
     private var lastDeflectedRing: CombatDeflectRing?
+    /// Spellings already thrown this fight; preferred against when picking the next word.
+    private var usedWords: Set<String>
+    /// Optional override for tests; defaults to English + catalog spellings.
+    private let isPlausibleSpelling: @Sendable (String) -> Bool
 
     init(
         config: Config,
         startingHealth: Int = 3,
-        rng: some RandomNumberGenerator = SystemRandomNumberGenerator()
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
     ) {
         self.config = config
         self.startingHealth = max(startingHealth, 0)
         self.healthCount = self.startingHealth
         self.monsterHP = config.monsterHP
         self.rng = rng
+        self.usedWords = []
+        self.isPlausibleSpelling = isPlausibleSpelling
+    }
+
+    /// True when `spelling` is an imaged catalog word or a recognized English word.
+    /// Used so distractor rings cannot complete the same blank into another real word
+    /// (e.g. `tri_` + `p` → `trip` while the thrown word is `tris`).
+    nonisolated static let isPlausibleSpelling: @Sendable (String) -> Bool = { spelling in
+        Self.spellingIsPlausible(spelling)
+    }
+
+    nonisolated private static func spellingIsPlausible(_ spelling: String) -> Bool {
+        let key = spelling.lowercased()
+        guard !key.isEmpty else { return false }
+        if WordCatalog.fallback.word(named: key) != nil { return true }
+#if canImport(UIKit)
+        let checker = UITextChecker()
+        let range = NSRange(location: 0, length: (key as NSString).length)
+        let misspelled = checker.rangeOfMisspelledWord(
+            in: key,
+            range: range,
+            startingAt: 0,
+            wrap: false,
+            language: "en_US"
+        )
+        return misspelled.location == NSNotFound
+#else
+        return false
+#endif
     }
 
     var hasWon: Bool { monsterHP <= 0 }
@@ -148,6 +210,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         monsterHP = config.monsterHP
         activeOrb = nil
         lastDeflectedRing = nil
+        usedWords = []
     }
 
     mutating func end() {
@@ -156,16 +219,22 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
     /// Picks a ring letter (excluding the last successful deflect), then a random imaged
-    /// word whose start or end matches that grapheme, per `letterPosition`.
+    /// word whose start or end matches that grapheme, per `letterPosition`. Words are
+    /// required to have a unique right answer among the rings, and unused spellings are
+    /// preferred until the unambiguous pool is exhausted.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
         guard isActive, outcome == nil, activeOrb == nil, !config.graphemes.isEmpty else {
             return []
         }
         let withWords = config.graphemes.indices.filter { index in
-            !config.words(matching: config.graphemes[index].grapheme).isEmpty
+            !config.throwWords(
+                matching: config.graphemes[index].grapheme,
+                excluding: usedWords,
+                isPlausibleSpelling: isPlausibleSpelling
+            ).isEmpty
         }
         // Prefer a different letter than the last deflect; if that empties the pool
-        // (only one letter has imaged words), allow a repeat.
+        // (only one letter has unambiguous words), allow a repeat.
         let excludingLast = withWords.filter { index in
             lastDeflectedRing.map { $0.index != index } ?? true
         }
@@ -173,8 +242,13 @@ nonisolated struct CombatDeflectMinigameEngine {
         guard let index = candidates.randomElement(using: &rng) else { return [] }
         let ring = CombatDeflectRing(index)
         let entry = config.graphemes[index]
-        let wordChoices = config.words(matching: entry.grapheme)
+        let wordChoices = config.throwWords(
+            matching: entry.grapheme,
+            excluding: usedWords,
+            isPlausibleSpelling: isPlausibleSpelling
+        )
         guard let word = wordChoices.randomElement(using: &rng) else { return [] }
+        usedWords.insert(word.word)
         let orb = Orb(
             id: UUID(),
             letter: entry.grapheme,

@@ -36,7 +36,8 @@ struct CombatDeflectMinigameEngineTests {
         pool: [String] = ["a", "b", "c"],
         wordPool: [GateWord]? = nil,
         seed: UInt64 = 42,
-        letterPosition: GateWordPlugLetterPosition = .starting
+        letterPosition: GateWordPlugLetterPosition = .starting,
+        isPlausibleSpelling: @escaping @Sendable (String) -> Bool = { _ in false }
     ) -> CombatDeflectMinigameEngine {
         var engine = CombatDeflectMinigameEngine(
             config: .init(
@@ -47,7 +48,8 @@ struct CombatDeflectMinigameEngineTests {
                 letterPosition: letterPosition
             ),
             startingHealth: startingHealth,
-            rng: CombatSeededGenerator(seed: seed)
+            rng: CombatSeededGenerator(seed: seed),
+            isPlausibleSpelling: isPlausibleSpelling
         )
         engine.begin()
         return engine
@@ -387,5 +389,91 @@ struct CombatDeflectMinigameEngineTests {
         let rings = CombatDeflectRing.all(count: 3)
         #expect(rings.map(\.index) == [0, 1, 2])
         #expect(rings.count == 3)
+    }
+
+    @Test func throwSkipsWordsWithAmbiguousRingAnswers() {
+        let wordPool = [
+            WordCatalog.imagedFallbackEntry(word: "sit"),
+            WordCatalog.imagedFallbackEntry(word: "sip"),
+            WordCatalog.imagedFallbackEntry(word: "tap"),
+        ]
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["t", "p"],
+            wordPool: wordPool,
+            seed: 3,
+            letterPosition: .ending
+        )
+        var seen = Set<String>()
+        for _ in 0..<30 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, let word, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(letter == "p")
+            #expect(word == "tap")
+            seen.insert(word)
+            _ = engine.registerOrbReachedMonster()
+        }
+        #expect(seen == ["tap"])
+    }
+
+    @Test func throwSkipsWordsWithPlausibleAlternateSpellings() {
+        let wordPool = [
+            WordCatalog.imagedFallbackEntry(word: "tris", graphemes: ["tr", "i", "s"]),
+            WordCatalog.imagedFallbackEntry(word: "tap"),
+        ]
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["s", "p"],
+            wordPool: wordPool,
+            seed: 9,
+            letterPosition: .ending,
+            isPlausibleSpelling: { $0 == "trip" }
+        )
+        for _ in 0..<20 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, let letter, let word, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            #expect(letter == "p")
+            #expect(word == "tap")
+            _ = engine.registerOrbReachedMonster()
+        }
+    }
+
+    @Test func throwAvoidsDuplicateWordsUntilPoolExhausted() {
+        let wordPool = [
+            WordCatalog.imagedFallbackEntry(word: "bed"),
+            WordCatalog.imagedFallbackEntry(word: "boat"),
+            WordCatalog.imagedFallbackEntry(word: "bug"),
+        ]
+        var engine = makeEngine(
+            monsterHP: 500,
+            pool: ["b"],
+            wordPool: wordPool,
+            seed: 1
+        )
+        var firstPass: [String] = []
+        for _ in 0..<3 {
+            let events = engine.throwNextOrb()
+            guard case .throwOrb(_, _, let word, _, _, _) = events.first else {
+                Issue.record("expected a throw")
+                return
+            }
+            firstPass.append(word)
+            _ = engine.registerOrbReachedMonster()
+        }
+        #expect(Set(firstPass) == ["bed", "boat", "bug"])
+
+        // After every unique word has been used, repeats are allowed.
+        let events = engine.throwNextOrb()
+        guard case .throwOrb(_, _, let word, _, _, _) = events.first else {
+            Issue.record("expected a throw after exhaustion")
+            return
+        }
+        #expect(["bed", "boat", "bug"].contains(word))
     }
 }
