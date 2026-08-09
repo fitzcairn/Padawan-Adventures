@@ -23,6 +23,10 @@ final class GameScene: SKScene {
     let saveService: GameSaveService?
     var isPausedForEncounter = false
     var isResolvingPickup = false
+    /// Set while the world tutorial drives the camera, so the deadzone clamp
+    /// cannot yank the view back mid-demonstration.
+    var tutorialOwnsCamera = false
+    weak var worldTutorial: WorldTutorialController?
     var continuePoint: ContinuePointStore
     /// Last movement facing; drives idle when the player stops.
     var playerFacing: CompassDirection = .down
@@ -109,6 +113,9 @@ final class GameScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard !isPausedForEncounter, !isResolvingPickup else { return }
         guard let touch = touches.first else { return }
+        if worldTutorial != nil, !(touch is MinigameDemoTouch) {
+            worldTutorial?.cancel()
+        }
         gestureTracker.begin(at: touch.location(in: self))
     }
 
@@ -145,7 +152,25 @@ final class GameScene: SKScene {
             return
         }
 
+        // Tutorial taps must walk only on ordinary floor — never through pits, gates,
+        // or occupied cells. The normal Pathfinder treats those as walkable.
+        if worldTutorial != nil, touch is MinigameDemoTouch {
+            beginTutorialSafeMove(to: target)
+            return
+        }
+
         pendingInput.enqueue(target)
+    }
+
+    /// Begins player movement along a path that stays on ordinary floor tiles only.
+    @discardableResult
+    func beginTutorialSafeMove(to target: GridCoord) -> Bool {
+        guard let start = world.playerPosition,
+              let path = WorldTutorialTargetPicker.safePath(from: start, to: target, in: world),
+              path.count >= 2 else { return false }
+        pendingInput = PendingInput()
+        movement.begin(path: path)
+        return true
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -209,6 +234,20 @@ final class GameScene: SKScene {
                 if shouldPause { break }
             }
         }
+    }
+
+    var isPlayerMoving: Bool { movement.isMoving }
+
+    func setViewportFocus(_ point: CGPoint) {
+        viewportFocus = point
+        renderer.updateViewportFocus(point)
+    }
+
+    /// Clears tutorial state and any half-finished synthetic gesture.
+    func finishWorldTutorial() {
+        tutorialOwnsCamera = false
+        gestureTracker.cancel()
+        worldTutorial = nil
     }
 
     /// Fades the simulation world out (e.g. before an encounter overlay).

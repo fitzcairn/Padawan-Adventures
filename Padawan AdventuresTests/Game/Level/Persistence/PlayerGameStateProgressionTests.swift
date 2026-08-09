@@ -74,6 +74,26 @@ struct PlayerGameStateProgressionTests {
         #expect(state.seenMinigameTutorials.isEmpty)
     }
 
+    @Test func seenWorldTutorialDefaultsFalseOnDecode() throws {
+        let data = try JSONEncoder().encode(PlayerGameState(health: 3, energy: 2))
+        let decoded = try JSONDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.seenWorldTutorial == false)
+    }
+
+    @Test func seenWorldTutorialSurvivesPlistRoundTrip() throws {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.seenWorldTutorial = true
+        let data = try PropertyListEncoder().encode(state)
+        let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.seenWorldTutorial)
+    }
+
+    @Test func resetForNewGameClearsSeenWorldTutorial() {
+        var state = PlayerGameState(health: 3, energy: 2, seenWorldTutorial: true)
+        state.resetForNewGame(health: 5, energy: 4)
+        #expect(state.seenWorldTutorial == false)
+    }
+
     @Test func minigameTutorialKeysAreUniqueAcrossFamilies() {
         let keys = PitMinigameKind.allCases.map(\.rawValue)
             + GateMinigameKind.allCases.map(\.rawValue)

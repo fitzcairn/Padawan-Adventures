@@ -42,6 +42,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     var vocab: LevelVocabularySpec?
     /// `world.vocabulary.current_level_probability` used to weight pool tiers.
     var currentLevelProbability: Double
+    /// Plays the tap/drag world tutorial the first time this level is entered.
+    var worldTutorial: Bool
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -56,6 +58,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         case combat
         case letters
         case vocab
+        case worldTutorial = "world_tutorial"
     }
 
     private enum WorldKeys: String, CodingKey {
@@ -170,7 +173,8 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         letters: Letters = LevelConfig.fallbackLetters,
         vocabulary: LevelVocabularyPool = .fallback,
         vocab: LevelVocabularySpec? = nil,
-        currentLevelProbability: Double = 0.75
+        currentLevelProbability: Double = 0.75,
+        worldTutorial: Bool = false
     ) {
         self.name = name
         self.order = order
@@ -193,6 +197,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         self.vocabulary = vocabulary
         self.vocab = vocab
         self.currentLevelProbability = currentLevelProbability
+        self.worldTutorial = worldTutorial
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -237,6 +242,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         vocab = try container.decodeIfPresent(LevelVocabularySpec.self, forKey: .vocab)
         // Filled after decode from `LevelVocabularyCatalog.pool(...)`.
         vocabulary = .empty
+        worldTutorial = try container.decodeIfPresent(Bool.self, forKey: .worldTutorial) ?? false
     }
 
     func validate() throws {

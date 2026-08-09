@@ -55,10 +55,12 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         let kinds = level.gate.weightedMinigameKinds
         return WorldGenerationConfig(
             seed: app.seed,
-            world: MapSize(
-                width: level.width,
-                height: level.height
-            ),
+            world: app.demoMode
+                ? MapSize(width: DemoWorldBuilder.mapWidth, height: DemoWorldBuilder.mapHeight)
+                : MapSize(
+                    width: level.width,
+                    height: level.height
+                ),
             generation: level.generation,
             enemies: level.enemies,
             pickups: level.pickups,

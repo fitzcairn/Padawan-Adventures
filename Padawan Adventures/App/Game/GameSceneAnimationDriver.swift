@@ -35,7 +35,7 @@ extension GameScene {
             viewportFocus = IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
             renderer.lockWorldScale(1)
             renderer.updateViewportFocus(viewportFocus)
-        } else if !gestureTracker.isPanning {
+        } else if !gestureTracker.isPanning, !tutorialOwnsCamera {
             viewportFocus = IsometricMath.focusKeepingPlayerInDeadzone(
                 focus: viewportFocus,
                 player: displayPoint,

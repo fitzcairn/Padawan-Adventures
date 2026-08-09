@@ -15,6 +15,7 @@ final class GameViewController: LandscapeHostingController {
     private weak var hud: GameHUDView?
     private let runExitHandler = GameRunExitHandler()
     private var didApplyLevelMusic = false
+    private var worldTutorial: WorldTutorialController?
     private lazy var cachedHudConfig: HudConfig = Self.loadHudConfig()
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
@@ -128,6 +129,26 @@ final class GameViewController: LandscapeHostingController {
         guard !didApplyLevelMusic else { return }
         didApplyLevelMusic = true
         BackgroundMusicController.shared.apply(MusicCue.parse(session.selectedLevelMusic))
+        startWorldTutorialIfNeeded()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        worldTutorial?.cancel()
+        worldTutorial = nil
+    }
+
+    private func startWorldTutorialIfNeeded() {
+        guard session.selectedLevel.worldTutorial,
+              !session.hasSeenWorldTutorial,
+              let scene = gameScene,
+              scene.currentWorld.playerPosition == scene.currentWorld.spawn else { return }
+
+        let controller = WorldTutorialController(scene: scene) { [weak self] in
+            Task { await self?.session.markWorldTutorialSeen() }
+        }
+        worldTutorial = controller
+        controller.start()
     }
 
     private func installHUD() {
@@ -195,7 +216,8 @@ final class GameViewController: LandscapeHostingController {
             scene.deductEnergy()
             hud?.removeBolt()
         }
-        let typeID = scene.currentWorld.entity(id: enemyID)?.enemyTypeID
+        let enemyEntity = scene.currentWorld.entity(id: enemyID)
+        let typeID = enemyEntity?.enemyTypeID
         let baseEnemyType = typeID.flatMap { session.enemyConfig.type(named: $0) }
             ?? EnemyConfig.fallback.type(named: "spider")
             ?? EnemyTypeConfig(
@@ -215,9 +237,11 @@ final class GameViewController: LandscapeHostingController {
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
 
-        // Each encounter rolls its own arena from the level's weighted list.
+        // Demo mode pins a combat kind onto each enemy; otherwise roll from weights.
         var minigameRNG = SystemRandomNumberGenerator()
-        let chosenMinigame = (try? session.selectedCombatConfig.pickMinigame(using: &minigameRNG))
+        let chosenMinigame = enemyEntity?.combatMinigame
+            .flatMap { session.selectedCombatConfig.minigame(for: $0) }
+            ?? (try? session.selectedCombatConfig.pickMinigame(using: &minigameRNG))
             ?? CombatConfig.fallback.minigames[0]
 
         let slash: CombatSlashConfig?
@@ -413,9 +437,12 @@ final class GameViewController: LandscapeHostingController {
         }
 
         let pitConfig = session.selectedPitConfig
-        // Each pit rolls its own game from the level's weighted list.
+        // Demo mode pins a pit kind onto each pit tile; otherwise roll from weights.
+        let pinnedKind = scene.currentWorld.playerPosition
+            .flatMap { scene.currentWorld.tile(at: $0)?.pitMinigame }
         var minigameRNG = SystemRandomNumberGenerator()
-        let chosenMinigame = (try? pitConfig.pickMinigame(using: &minigameRNG))
+        let chosenMinigame = pinnedKind.flatMap { pitConfig.minigame(for: $0) }
+            ?? (try? pitConfig.pickMinigame(using: &minigameRNG))
             ?? PitConfig.fallback.minigames[0]
         let playerFx = session.playerConfig.fx
         let hudConfig = cachedHudConfig
@@ -535,7 +562,8 @@ final class GameViewController: LandscapeHostingController {
         let gateConfig = session.selectedGateConfig
 
         // Probabilistic free-open: skip the puzzle and open the gate with SFX.
-        guard Double.random(in: 0..<1) < gateConfig.minigameChance else {
+        // Demo mode always runs the puzzle so every gate kind is reachable.
+        guard session.appConfig.demoMode || Double.random(in: 0..<1) < gateConfig.minigameChance else {
             guard let scene = gameScene else { return }
             Task {
                 await self.session.recordStat { $0.gatesOpened += 1 }

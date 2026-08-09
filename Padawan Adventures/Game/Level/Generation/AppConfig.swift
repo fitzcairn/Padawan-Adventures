@@ -10,12 +10,15 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
     var display: DisplayParams
     /// 4-digit password that unlocks Dad mode on the level select screen.
     var dadModePassword: String
+    /// When true, every level uses a fixed three-room demo layout instead of procedural generation.
+    var demoMode: Bool
 
     enum CodingKeys: String, CodingKey {
         case version
         case seed
         case display
         case dadModePassword = "dad_mode_password"
+        case demoMode = "demo_mode"
     }
 
     /// Default Dad mode password when omitted from YAML.
@@ -25,12 +28,14 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
         version: Int,
         seed: UInt64? = nil,
         display: DisplayParams = .default,
-        dadModePassword: String = AppConfig.defaultDadModePassword
+        dadModePassword: String = AppConfig.defaultDadModePassword,
+        demoMode: Bool = false
     ) {
         self.version = version
         self.seed = seed
         self.display = display
         self.dadModePassword = dadModePassword
+        self.demoMode = demoMode
     }
 
     init(from decoder: Decoder) throws {
@@ -39,6 +44,7 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
         seed = try Self.decodeSeed(from: container)
         display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
         dadModePassword = try Self.decodeDadModePassword(from: container)
+        demoMode = try container.decodeIfPresent(Bool.self, forKey: .demoMode) ?? false
     }
 
     private static func decodeDadModePassword(

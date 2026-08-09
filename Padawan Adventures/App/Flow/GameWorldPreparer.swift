@@ -154,6 +154,19 @@ enum GameWorldPreparer {
             }
         }
 
+        if session.appConfig.demoMode {
+            var world = DemoWorldBuilder.build(
+                level: session.selectedLevel,
+                playerConfig: playerConfig,
+                enemyConfig: enemyConfig,
+                floorTileSet: floorTileSet
+            )
+            world.healthCount = health
+            world.energyCount = energy
+            onProgress?(1)
+            return world
+        }
+
         do {
             var world = try await Task.detached(priority: .userInitiated) {
                 try ProceduralGenerator().generate(

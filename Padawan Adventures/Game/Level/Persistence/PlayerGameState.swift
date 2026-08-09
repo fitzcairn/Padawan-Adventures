@@ -173,6 +173,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     /// Minigame `kind` raw values (e.g. "ending-sound-pit") whose tutorial
     /// has already been shown. Cleared by `resetForNewGame`.
     var seenMinigameTutorials: Set<String>
+    /// Whether the level-1 world tap/drag tutorial has been shown. Cleared by `resetForNewGame`.
+    var seenWorldTutorial: Bool
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -185,7 +187,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         totalStars: Int = 0,
         settings: PlayerSettings = .default,
         dadModeUnlocked: Bool = false,
-        seenMinigameTutorials: Set<String> = []
+        seenMinigameTutorials: Set<String> = [],
+        seenWorldTutorial: Bool = false
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -198,6 +201,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.settings = settings
         self.dadModeUnlocked = dadModeUnlocked
         self.seenMinigameTutorials = seenMinigameTutorials
+        self.seenWorldTutorial = seenWorldTutorial
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -212,6 +216,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case settings
         case dadModeUnlocked
         case seenMinigameTutorials
+        case seenWorldTutorial
     }
 
     init(from decoder: Decoder) throws {
@@ -229,6 +234,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         seenMinigameTutorials = try container.decodeIfPresent(
             Set<String>.self, forKey: .seenMinigameTutorials
         ) ?? []
+        seenWorldTutorial = try container.decodeIfPresent(Bool.self, forKey: .seenWorldTutorial) ?? false
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -311,6 +317,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         totalStars = 0
         dadModeUnlocked = false
         seenMinigameTutorials = []
+        seenWorldTutorial = false
         resetVitals(health: health, energy: energy)
     }
 

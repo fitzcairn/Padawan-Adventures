@@ -104,6 +104,41 @@ struct GameSaveTests {
         #expect(legacy.floorTileID == "grass")
     }
 
+    @Test func roundTripPreservesPitAndCombatMinigamePins() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let pitTile = Tile(kind: .floor(isPit: true), pitMinigame: .soundOutWord)
+        let pitData = try encoder.encode(pitTile)
+        let decodedPit = try decoder.decode(Tile.self, from: pitData)
+        #expect(decodedPit.pitMinigame == .soundOutWord)
+        #expect(decodedPit.isPit)
+
+        let enemy = GameEntity(
+            letter: "E",
+            position: GridCoord(x: 1, y: 1, story: 0),
+            enemyTypeID: "spider",
+            combatMinigame: .slash
+        )
+        let enemyData = try encoder.encode(enemy)
+        let decodedEnemy = try decoder.decode(GameEntity.self, from: enemyData)
+        #expect(decodedEnemy.combatMinigame == .slash)
+        #expect(decodedEnemy.enemyTypeID == "spider")
+
+        // Saves written before these keys existed still decode with nil pins.
+        let legacyTileJSON = """
+        {"kind":{"type":"floor","isPit":true}}
+        """.data(using: .utf8)!
+        let legacyTile = try decoder.decode(Tile.self, from: legacyTileJSON)
+        #expect(legacyTile.pitMinigame == nil)
+
+        let legacyEntityJSON = """
+        {"id":"00000000-0000-0000-0000-000000000001","letter":"E","position":{"x":1,"y":1,"story":0},"isPlayer":false,"enemyTypeID":"spider"}
+        """.data(using: .utf8)!
+        let legacyEntity = try decoder.decode(GameEntity.self, from: legacyEntityJSON)
+        #expect(legacyEntity.combatMinigame == nil)
+    }
+
     @Test func legacyDoorWallDecodesAsFloor() throws {
         let json = """
         {"kind":{"type":"wall","destructible":false,"hasDoor":true}}

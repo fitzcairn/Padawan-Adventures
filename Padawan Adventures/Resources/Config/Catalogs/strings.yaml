@@ -269,3 +269,11 @@ strings:
     spoken: "percent"
     sfx: sfx_ui_control_percent
     context: "Slider and progress accessibility value"
+  world_tutorial_intro:
+    text: "Tap where you want to go. Drag to look around."
+    sfx: sfx_ui_world_tutorial_intro
+    context: "Level 1 world tutorial voice-over"
+  world_tutorial_tap_to_continue:
+    text: "Tap to continue"
+    sfx: sfx_ui_world_tutorial_tap_to_continue
+    context: "Level 1 world tutorial dismiss hint"

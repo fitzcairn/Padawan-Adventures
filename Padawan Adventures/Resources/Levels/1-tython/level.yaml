@@ -5,6 +5,7 @@
 inherits: _defaults
 name: Tython
 order: 1
+world_tutorial: true
 color: "#2E7D32"
 artifact: leaf.fill
 treasure: emitter

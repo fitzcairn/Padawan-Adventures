@@ -74,10 +74,13 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     var kind: TileKind
     /// Floor tile id from the level's baked floor atlas (`rRRcCC`).
     var floorTileID: String?
+    /// Demo mode pins a specific pit game to this tile; nil means roll from weights.
+    var pitMinigame: PitMinigameKind?
 
-    init(kind: TileKind, floorTileID: String? = nil) {
+    init(kind: TileKind, floorTileID: String? = nil, pitMinigame: PitMinigameKind? = nil) {
         self.kind = kind
         self.floorTileID = floorTileID
+        self.pitMinigame = pitMinigame
     }
 
     var isPit: Bool {
@@ -105,6 +108,7 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
         case floorTileID
         case terrainID
         case accentTerrainID
+        case pitMinigame
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -118,11 +122,13 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
         }
         // Ignore legacy accent overlays.
         _ = try container.decodeIfPresent(String.self, forKey: .accentTerrainID)
+        pitMinigame = try container.decodeIfPresent(PitMinigameKind.self, forKey: .pitMinigame)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(kind, forKey: .kind)
         try container.encodeIfPresent(floorTileID, forKey: .floorTileID)
+        try container.encodeIfPresent(pitMinigame, forKey: .pitMinigame)
     }
 }

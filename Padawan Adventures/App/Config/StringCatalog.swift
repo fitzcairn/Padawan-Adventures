@@ -95,6 +95,8 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "control_checked": "checked",
         "control_unchecked": "unchecked",
         "control_percent": "{percent} percent",
+        "world_tutorial_intro": "Tap where you want to go. Drag to look around.",
+        "world_tutorial_tap_to_continue": "Tap to continue",
     ])
 
     nonisolated init(entries: [String: UIString]) {

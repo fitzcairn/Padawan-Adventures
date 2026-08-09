@@ -5,6 +5,10 @@
 
 name: Level
 
+# Plays the one-time tap-to-move / drag-to-look tutorial when the player first
+# spawns into this level. Only the first level should enable it.
+world_tutorial: false
+
 # Level 1 curriculum (inherited by `_defaults` consumers and `1-tython`).
 # Later levels replace this block wholesale with their own `vocab:`.
 vocab:

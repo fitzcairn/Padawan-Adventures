@@ -114,7 +114,7 @@ extension AppSession {
     func ensureGateMinigameArtLoaded() -> [SKTexture] {
         let kinds = Set(
             selectedGateConfig.weightedMinigameKinds
-                .filter { $0.weight > 0 }
+                .filter { appConfig.demoMode || $0.weight > 0 }
                 .map(\.kind)
         )
         var textures = GateMinigameBackground.preloadTextures(kinds: kinds)

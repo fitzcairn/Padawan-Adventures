@@ -6,6 +6,10 @@
 version: 1
 seed: time
 
+# Testing shortcut: replace every level layout with a fixed three-room demo map
+# that shows one of every gate, pit, and combat minigame plus every enemy type.
+demo_mode: true
+
 # 4-digit Dad mode unlock on the level select screen.
 dad_mode_password: "1234"
 

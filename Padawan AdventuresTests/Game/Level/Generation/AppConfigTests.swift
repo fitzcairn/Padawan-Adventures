@@ -57,6 +57,26 @@ struct AppConfigTests {
         #expect(!DadModePassword.matches(entered: "0000", expected: config.dadModePassword))
     }
 
+    @Test func decodesDemoMode() throws {
+        let enabled = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        demo_mode: true
+        """)
+        #expect(enabled.demoMode == true)
+
+        let omitted = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        """)
+        #expect(omitted.demoMode == false)
+    }
+
+    @Test func bundledAppConfigHasDemoModeOff() throws {
+        let config = try WorldLoader.loadConfigFromBundle()
+        #expect(config.demoMode == false)
+    }
+
     @Test func decodesTimeSeedToken() throws {
         let yaml = """
         version: 1

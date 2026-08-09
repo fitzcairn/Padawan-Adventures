@@ -78,6 +78,17 @@ extension AppSession {
         await persistPlayerState()
     }
 
+    var hasSeenWorldTutorial: Bool {
+        playerState?.seenWorldTutorial ?? false
+    }
+
+    func markWorldTutorialSeen() async {
+        guard var state = playerState, !state.seenWorldTutorial else { return }
+        state.seenWorldTutorial = true
+        playerState = state
+        await persistPlayerState()
+    }
+
     /// Grants artifacts / completion for all catalog levels before `resourceName`, clears Dad mode, persists.
     func applyDadModeProgression(to resourceName: String) async {
         guard var state = playerState else { return }

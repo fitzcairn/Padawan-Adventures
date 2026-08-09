@@ -15,6 +15,8 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
     var enemyTypeID: String?
     /// Pickup type when this entity is a collectible; nil otherwise.
     var pickupKind: PickupKind?
+    /// Demo mode pins a specific combat game to this enemy; nil means roll from weights.
+    var combatMinigame: CombatMinigameKind?
 
     init(
         id: UUID = UUID(),
@@ -22,7 +24,8 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         position: GridCoord,
         isPlayer: Bool = false,
         enemyTypeID: String? = nil,
-        pickupKind: PickupKind? = nil
+        pickupKind: PickupKind? = nil,
+        combatMinigame: CombatMinigameKind? = nil
     ) {
         self.id = id
         self.letter = letter
@@ -30,6 +33,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         self.isPlayer = isPlayer
         self.enemyTypeID = enemyTypeID
         self.pickupKind = pickupKind
+        self.combatMinigame = combatMinigame
     }
 
     var isEnemy: Bool { enemyTypeID != nil && !isPlayer }
@@ -42,6 +46,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         case isPlayer
         case enemyTypeID
         case pickupKind
+        case combatMinigame
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -56,6 +61,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         isPlayer = try container.decode(Bool.self, forKey: .isPlayer)
         enemyTypeID = try container.decodeIfPresent(String.self, forKey: .enemyTypeID)
         pickupKind = try container.decodeIfPresent(PickupKind.self, forKey: .pickupKind)
+        combatMinigame = try container.decodeIfPresent(CombatMinigameKind.self, forKey: .combatMinigame)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -66,5 +72,6 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         try container.encode(isPlayer, forKey: .isPlayer)
         try container.encodeIfPresent(enemyTypeID, forKey: .enemyTypeID)
         try container.encodeIfPresent(pickupKind, forKey: .pickupKind)
+        try container.encodeIfPresent(combatMinigame, forKey: .combatMinigame)
     }
 }
