@@ -48,8 +48,8 @@ struct LevelConfigSnapshotTests {
         #expect(level.floor.set == "1-tython")
         #expect(level.letters.set == "1-tython")
         #expect(level.sprite?.root == "Levels/1-tython")
-        #expect(level.width == 20)
-        #expect(level.roomCount == 5)
+        #expect(level.width == 28)
+        #expect(level.roomCount == 10)
         #expect(level.enemies?.types == ["dino", "treant"])
         #expect(level.currentLevelProbability == 0.75)
         #expect(level.vocabulary.allWords.map(\.word) == Self.level1Words)
@@ -59,7 +59,7 @@ struct LevelConfigSnapshotTests {
         #expect(level.combat.minigames.map(\.kind) == [
             .slash, .startingSoundDeflect, .endingSoundDeflect,
         ])
-        #expect(level.combat.minigames.map(\.weight) == [1.0, 0.0, 0.0])
+        #expect(level.combat.minigames.map(\.weight) == [1.0, 1.0, 1.0])
         guard case .slash(let slash) = level.combat.minigames[0] else {
             Issue.record("expected slash combat entry")
             return
@@ -91,7 +91,7 @@ struct LevelConfigSnapshotTests {
         #expect(level.gate.minigameChance == 1.0)
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
         #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .soundOutWord, .graphemeMatch])
-        #expect(level.gate.minigames.map(\.weight) == [0, 0, 0, 1])
+        #expect(level.gate.minigames.map(\.weight) == [1, 1, 1, 1])
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")
             return
@@ -107,7 +107,7 @@ struct LevelConfigSnapshotTests {
         #expect(endingSound.words.map(\.word) == Self.level1Words)
 
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
-        #expect(level.pit.minigames.map(\.weight) == [1, 0, 0])
+        #expect(level.pit.minigames.map(\.weight) == [1, 1, 1])
         guard case .soundOutWord(let soundOut) = level.pit.minigames[0] else {
             Issue.record("expected pit sound-out-word entry")
             return

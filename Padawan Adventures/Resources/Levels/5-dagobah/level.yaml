@@ -12,6 +12,13 @@ vocab:
   graphemes: [st, sn, sp, fl, pl, sl, tr, fr, br, sh, cr]
   words: [stop, snap, spot, flag, plum, slip, frog, tris, brush, crab, vest]
 world:
+  width_tiles: 62
+  height_tiles: 62
+  room_count: 21
+  room:
+    min_size_tiles: 6
+    max_size_tiles: 9
+    pit_probability: 1.00
   enemies:
     types: [snake, treant]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 0.90

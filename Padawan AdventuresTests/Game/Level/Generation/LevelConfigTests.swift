@@ -429,8 +429,8 @@ struct LevelConfigTests {
         #expect(tython.sprite?.chromaKey == "#000000")
         #expect(tython.sprite?.chromaKeyTolerance == 2)
         #expect(tython.enemies?.types == ["dino", "treant"])
-        #expect(tython.width == 20)
-        #expect(tython.roomCount == 5)
+        #expect(tython.width == 28)
+        #expect(tython.roomCount == 10)
         guard case .slash(let tythonSlash) = tython.combat.minigames.first else {
             Issue.record("expected slash entry")
             return
@@ -2278,7 +2278,7 @@ struct LevelConfigTests {
             subdirectory: LevelCatalog.subdirectory
         )
         #expect(tython.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
-        #expect(tython.pit.minigames.map(\.weight) == [1, 0, 0])
+        #expect(tython.pit.minigames.map(\.weight) == [1, 1, 1])
         if case .bridge(let bridge) = tython.pit.minigames[1] {
             #expect(bridge.letterPosition == .ending)
             #expect(bridge.words.map(\.word) == ["an", "at", "in", "it", "nap", "pan", "pat", "pin", "sat", "sip", "sit", "tap"])

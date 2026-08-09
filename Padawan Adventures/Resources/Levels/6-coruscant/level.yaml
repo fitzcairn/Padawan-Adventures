@@ -12,6 +12,13 @@ vocab:
   graphemes: [nd, mp, nt]
   words: [sand, pond, jump, camp, fast, nest, tent, ant]
 world:
+  width_tiles: 74
+  height_tiles: 74
+  room_count: 25
+  room:
+    min_size_tiles: 6
+    max_size_tiles: 10
+    pit_probability: 1.00
   enemies:
     types: [drone, robot]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 1.00

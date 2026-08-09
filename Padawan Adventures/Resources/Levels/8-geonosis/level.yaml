@@ -12,6 +12,13 @@ vocab:
   graphemes: [ai, ay, ee, ea, oa, ow, igh, bl]
   words: [rain, train, play, day, see, tree, sea, read, boat, coat, snow, blow, night, high]
 world:
+  width_tiles: 116
+  height_tiles: 116
+  room_count: 36
+  room:
+    min_size_tiles: 8
+    max_size_tiles: 12
+    pit_probability: 1.00
   enemies:
     types: [centipede, snake]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 1.00

@@ -11,6 +11,13 @@ vocab:
   graphemes: [ff, ll, ss, zz]
   words: [puff, hill, kiss, buzz]
 world:
+  width_tiles: 92
+  height_tiles: 92
+  room_count: 30
+  room:
+    min_size_tiles: 7
+    max_size_tiles: 11
+    pit_probability: 1.00
   enemies:
     types: [lava_lizard]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 1.00

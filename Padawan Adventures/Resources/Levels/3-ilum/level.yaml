@@ -11,6 +11,13 @@ vocab:
   graphemes: [e, u, r, h, b, f, l]
   words: [run, bed, bug, sun, hat]
 world:
+  width_tiles: 40
+  height_tiles: 40
+  room_count: 14
+  room:
+    min_size_tiles: 5
+    max_size_tiles: 7
+    pit_probability: 1.00
   enemies:
     types: [ice_monster]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 0.70

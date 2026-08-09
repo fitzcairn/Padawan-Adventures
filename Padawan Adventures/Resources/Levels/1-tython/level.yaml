@@ -10,6 +10,13 @@ color: "#2E7D32"
 artifact: leaf.fill
 treasure: emitter
 world:
+  width_tiles: 28
+  height_tiles: 28
+  room_count: 10
+  room:
+    min_size_tiles: 4
+    max_size_tiles: 6
+    pit_probability: 0.60
   enemies:
     types: [dino, treant]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 0.50

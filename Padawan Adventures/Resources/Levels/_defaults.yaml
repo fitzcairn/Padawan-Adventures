@@ -22,18 +22,18 @@ world:
   music: level
 
   # Width and height of the level, in floor tiles.
-  width_tiles: 20
-  height_tiles: 20
+  width_tiles: 28
+  height_tiles: 28
 
   # How many rooms to place on the map.
-  room_count: 5
+  room_count: 10
   room:
     # L-shaped rooms stretch one arm to 2x max_size_tiles, so the widest room a level
     # can produce is roughly double this (capped by width/height above).
     min_size_tiles: 4
     max_size_tiles: 6
     # Probability that a room contains a pit (at most one pit area per room).
-    pit_probability: 1.0
+    pit_probability: 0.60
     # Pit area size: mean tile count, capped at max.
     pit_mean_size_tiles: 5
     pit_max_size_tiles: 10
@@ -49,7 +49,7 @@ world:
 
   enemies:
     types: [spider]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 0.5
 
   pickups:
     health:
@@ -89,12 +89,12 @@ combat:
       # How often to replay the current grapheme-name prompt while a wave is in flight.
       grapheme_sound_repeat_seconds: 3
     - type: starting-sound-combat
-      weight: 0.0
+      weight: 1.0
       monster_hit_points: 5
       orb_travel_seconds: 8.0
       ring_count: 4
     - type: ending-sound-combat
-      weight: 0.0
+      weight: 1.0
       monster_hit_points: 5
       orb_travel_seconds: 8.0
       ring_count: 4
@@ -121,11 +121,11 @@ pit:
       min_choice_count: 3
       max_choice_count: 3
     - type: ending-sound-pit
-      weight: 0.0
+      weight: 1.0
       min_word_count: 3
       max_word_count: 5
     - type: starting-sound-pit
-      weight: 0.0
+      weight: 1.0
       min_word_count: 3
       max_word_count: 5
 
@@ -152,19 +152,19 @@ gate:
   minigame_probability: 1.0
   minigames:
     - type: starting-sound-gate
-      weight: 0.0
+      weight: 1.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
-      weight: 0.0
+      weight: 1.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
-      weight: 0.0
+      weight: 1.0
       # Capacitors offered per grapheme: 2...6.
       min_choice_count: 2
       max_choice_count: 4

@@ -12,6 +12,13 @@ vocab:
   graphemes: [j, v, w, x, y, z, qu]
   words: [jam, vet, web, fox, zip, padawan, quit, quiz]
 world:
+  width_tiles: 48
+  height_tiles: 48
+  room_count: 17
+  room:
+    min_size_tiles: 5
+    max_size_tiles: 8
+    pit_probability: 1.00
   enemies:
     types: [spider, moth]
-    spawn_probability_per_room: 0.8
+    spawn_probability_per_room: 0.80
