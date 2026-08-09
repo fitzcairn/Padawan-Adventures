@@ -85,7 +85,7 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "minigame_tutorial_grapheme_sound_gate": "Tutorial goes here",
         "minigame_tutorial_starting_sound_gate": "Tutorial goes here",
         "minigame_tutorial_ending_sound_gate": "Tutorial goes here",
-        "minigame_tutorial_grapheme_sound_combat": "Tutorial goes here",
+        "minigame_tutorial_grapheme_sound_combat": "The monster throws letters at you. Slash the letter you hear to send it back. A wrong letter flashes and fades — keep going until you find the right one.",
         "minigame_tutorial_starting_sound_combat": "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back.",
         "minigame_tutorial_ending_sound_combat": "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back.",
         "minigame_tutorial_continue": "Tap to continue",

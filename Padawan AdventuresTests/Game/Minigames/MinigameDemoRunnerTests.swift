@@ -22,7 +22,7 @@ final class FakeDemoStage: MinigameDemoStage {
     var preludeMoves: [MinigameDemoMove] = []
     var script: MinigameDemoScript?
     /// Stands in for an animation that has to land before the move means anything
-    /// (the deflected orb flying back to the monster).
+    /// (the reflected letter / deflected orb flying back to the monster).
     var isBusy = false
 
     struct Step {
@@ -47,6 +47,10 @@ final class FakeDemoStage: MinigameDemoStage {
     var demoPreludeMoves: [MinigameDemoMove] { preludeMoves }
 
     var demoScript: MinigameDemoScript? { script }
+
+    /// Mirrors combat slash: report an explicit in-flight consequence while busy so
+    /// `waitForConsequence` lands with the payoff, not with the next ready state.
+    var demoConsequenceInFlight: Bool? { isBusy ? true : nil }
 
     var demoCoinAnchor: CGPoint? {
         CGPoint(x: 10 * CGFloat(stepIndex + 1), y: 20)

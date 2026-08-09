@@ -173,7 +173,8 @@ struct CombatMinigameEngineTests {
         var engine = makeEngine(starsToWin: 99, startingHealth: 1, seed: 15)
         let wave = try #require(nextWave(&engine))
         let shotID = try #require(wave.shots.first?.id)
-        #expect(engine.registerWaveImpact(shotID: shotID))
+        let damaged = engine.registerWaveImpact(shotID: shotID)
+        #expect(damaged)
         #expect(engine.outcome == .lost)
 
         for _ in 0..<20 {
@@ -266,7 +267,8 @@ struct CombatMinigameEngineTests {
         while engine.outcome == nil {
             guard let wave = nextWave(&engine) else { break }
             let shotID = try #require(wave.shots.first?.id)
-            #expect(engine.registerWaveImpact(shotID: shotID))
+            let damaged = engine.registerWaveImpact(shotID: shotID)
+            #expect(damaged)
             _ = engine.finishWaveResolution()
         }
         #expect(engine.healthCount == 0)

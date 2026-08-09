@@ -229,7 +229,7 @@ strings:
     sfx: sfx_ui_minigame_tutorial_ending_sound_gate
     context: "First-encounter tutorial for ending-sound-gate"
   minigame_tutorial_grapheme_sound_combat:
-    text: "Tutorial goes here"
+    text: "The monster throws letters at you. Slash the letter you hear to send it back. A wrong letter flashes and fades — keep going until you find the right one."
     sfx: sfx_ui_minigame_tutorial_grapheme_sound_combat
     context: "First-encounter tutorial for grapheme-sound-combat"
   minigame_tutorial_starting_sound_combat:

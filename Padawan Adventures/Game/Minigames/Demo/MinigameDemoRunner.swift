@@ -138,7 +138,8 @@ final class MinigameDemoRunner {
             let moveAnchor = correct.coinAnchor
             await performer.perform(correct, gestureSeconds: timing.gestureSeconds)
             await performer.pause(timing.settleSeconds)
-            // The tap is not the payoff: the deflected orb still has to reach the monster.
+            // The slash / tap is not the payoff: the reflected letter (or deflected orb)
+            // still has to reach the monster before the coin drops.
             await waitForConsequence()
             if let anchor = moveAnchor ?? stage.demoCoinAnchor {
                 await coins.flyCoinToCorner(
@@ -182,14 +183,19 @@ final class MinigameDemoRunner {
         return false
     }
 
-    /// Blocks until the move just performed has actually landed. The tap is not the
-    /// payoff: a deflected orb still has to fly back and empty the monster's HP bar, and
-    /// the coin has to appear with that, not with the tap.
+    /// Blocks until the move just performed has actually landed. The gesture is not the
+    /// payoff: a reflected letter / deflected orb still has to fly back and drain the
+    /// monster's HP bar, and the coin has to appear with that, not with the swipe.
     private func waitForConsequence() async {
         let deadline = Date().addingTimeInterval(timing.consequenceTimeoutSeconds)
         while Date() < deadline {
             if Task.isCancelled { return }
-            if stage.demoIsFinished || stage.demoAcceptsInput { return }
+            if stage.demoIsFinished { return }
+            if let inFlight = stage.demoConsequenceInFlight {
+                if !inFlight { return }
+            } else if stage.demoAcceptsInput {
+                return
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
     }

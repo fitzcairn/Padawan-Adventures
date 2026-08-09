@@ -28,16 +28,33 @@ extension CombatScene: MinigameDemoStage {
             return MinigameDemoMove(
                 gesture: .swipe(points),
                 isCorrect: visual.isTarget,
-                coinAnchor: demoCoinSpawnPoint
+                // Coin pops on the monster when the reflected letter lands — same
+                // payoff beat as the HP bar drain.
+                coinAnchor: demoEnemyImpactPoint
             )
         }
     }
 
-    /// Centre of the scene so the won-coin pop reads clearly before the corner arc.
-    var demoCoinAnchor: CGPoint? { demoCoinSpawnPoint }
+    /// Monster body so the won-coin pop reads as the reflected letter's impact.
+    var demoCoinAnchor: CGPoint? { demoEnemyImpactPoint }
 
-    private var demoCoinSpawnPoint: CGPoint {
-        CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+    /// True while a correct slash's reflect / sweep (or a failed wave's charge) is
+    /// still playing out — the runner holds the coin until the letter hits the enemy.
+    var demoConsequenceInFlight: Bool? {
+        if engine.wavePhase == .resolving { return true }
+        if shotVisuals.contains(where: {
+            switch $0.value.role {
+            case .returning, .sweepingOff, .charging: return true
+            case .inbound: return false
+            }
+        }) {
+            return true
+        }
+        return false
+    }
+
+    private var demoEnemyImpactPoint: CGPoint? {
+        enemyNode.map { bodyCenter(of: $0, height: enemySpriteHeight) }
     }
 
     var demoIsFinished: Bool { didEnd }

@@ -45,10 +45,15 @@ protocol MinigameDemoStage: AnyObject {
     /// Non-nil when this stage drives its own choreography instead of the generic
     /// wrong-then-right sequence.
     var demoScript: MinigameDemoScript? { get }
+    /// When non-nil, `waitForConsequence` waits until this becomes `false` (payoff
+    /// landed — e.g. the reflected letter hitting the enemy). When nil, the runner
+    /// falls back to waiting until `demoAcceptsInput` again.
+    var demoConsequenceInFlight: Bool? { get }
 }
 
 extension MinigameDemoStage {
     var demoDemonstratesPrelude: Bool { false }
     var demoPreludeMoves: [MinigameDemoMove] { [] }
     var demoScript: MinigameDemoScript? { nil }
+    var demoConsequenceInFlight: Bool? { nil }
 }
