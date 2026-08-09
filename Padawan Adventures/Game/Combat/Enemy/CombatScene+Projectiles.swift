@@ -130,6 +130,9 @@ extension CombatScene {
         switch visual.role {
         case .inbound:
             resolveImpact(shotID: shotID)
+        case .returning:
+            landReturnOnEnemy(shotID: shotID)
+            noteResolutionStepFinished()
         case .sweepingOff:
             removeShotNode(id: shotID)
             noteResolutionStepFinished()

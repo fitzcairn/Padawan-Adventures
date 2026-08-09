@@ -4,15 +4,51 @@ extension CombatScene {
     // MARK: - Cleared
 
     func resolveWaveCleared(clearedShotID: UUID) {
-        if let visual = shotVisuals[clearedShotID] {
-            let position = visual.node.position
-            removeShotNode(id: clearedShotID)
-            playExplosion(at: position) // Keeps the slash_hit sound for the correct cut.
-        }
-        let remaining = Array(shotVisuals.keys)
-        resolvingSpriteCount = remaining.count
+        let remaining = Array(shotVisuals.keys).filter { $0 != clearedShotID }
+        resolvingSpriteCount = remaining.count + (shotVisuals[clearedShotID] != nil ? 1 : 0)
+        reflectToEnemy(shotID: clearedShotID)
         for id in remaining { sweepOffScreen(shotID: id) }
         if resolvingSpriteCount == 0 { completeWaveResolution() }
+    }
+
+    /// Accelerates the slashed target back at the enemy on a curved return arc.
+    func reflectToEnemy(shotID: UUID) {
+        guard var visual = shotVisuals[shotID], let enemyNode else {
+            noteResolutionStepFinished()
+            return
+        }
+        let current = visual.node.position
+        let destination = bodyCenter(of: enemyNode, height: enemySpriteHeight)
+        let progress = Double(pathProgress(for: visual))
+        let remaining = max(visual.pathDurationSeconds * (1 - progress), 0.05)
+        let duration = min(
+            max(remaining / Self.returnSpeedMultiplier, Self.returnSecondsRange.lowerBound),
+            Self.returnSecondsRange.upperBound
+        )
+        // Bend sideways so the return reads as a ricochet rather than a straight rewind.
+        let mid = CGPoint(
+            x: (current.x + destination.x) * 0.5,
+            y: (current.y + destination.y) * 0.5
+        )
+        let lateral: CGFloat = abs(current.x - size.width * 0.5) < size.width * 0.05
+            ? (Bool.random() ? 1 : -1)
+            : (current.x < size.width * 0.5 ? -1 : 1)
+        let bend = size.width * 0.22 * lateral
+        visual.pathStart = current
+        visual.pathEnd = destination
+        visual.pathControl1 = CGPoint(
+            x: current.x + (mid.x - current.x) * 0.55 + bend * 0.65,
+            y: current.y + (destination.y - current.y) * 0.25
+        )
+        visual.pathControl2 = CGPoint(
+            x: mid.x + bend,
+            y: mid.y + (destination.y - mid.y) * 0.35
+        )
+        visual.pathStartedAt = sceneElapsed
+        visual.pathDurationSeconds = duration
+        visual.role = .returning
+        visual.node.position = current
+        shotVisuals[shotID] = visual
     }
 
     /// Accelerates a decoy out through the nearest side of the arena.
@@ -31,6 +67,19 @@ extension CombatScene {
         visual.node.run(.fadeOut(withDuration: Self.sweepOffSeconds))
     }
 
+    // MARK: - Wrong slash (soft miss)
+
+    /// Stops the decoy in place, then flashes / fades it with an explosion. Other inbound
+    /// letters keep flying so the player can still slash the cued target.
+    func discardWrongShot(shotID: UUID) {
+        playSlashErrorSound()
+        guard let visual = shotVisuals[shotID] else { return }
+        let node = visual.node
+        let position = node.position
+        shotVisuals[shotID] = nil
+        flashRedFadeAndExplode(node, at: position)
+    }
+
     // MARK: - Failed
 
     func resolveWaveFailed(reason: CombatWaveFailure) {
@@ -38,13 +87,6 @@ extension CombatScene {
         var charging = Array(shotVisuals.keys)
 
         switch reason {
-        case let .wrongSlash(id):
-            playSlashErrorSound()
-            if let visual = shotVisuals[id] {
-                flashRedAndFade(visual.node)
-                shotVisuals[id] = nil // The action removes the node itself.
-            }
-            charging.removeAll { $0 == id }
         case let .impact(id):
             charging.removeAll { $0 == id }
             // Already touching the player: explode and take the damage now.
@@ -83,6 +125,15 @@ extension CombatScene {
         SoundEffectsController.shared.play(event: "damage", from: playerFx)
         flashPlayer(color: .orange)
         impactBurstVisual(at: position)
+    }
+
+    /// Correct letter reaching the enemy: explosion (with slash_hit) on the monster.
+    func landReturnOnEnemy(shotID: UUID) {
+        guard let visual = shotVisuals[shotID] else { return }
+        let position = visual.node.position
+        removeShotNode(id: shotID)
+        playExplosion(at: position)
+        animateMonsterHPBar()
     }
 
     // MARK: - Bookkeeping

@@ -13,6 +13,8 @@ protocol CombatSceneDelegate: AnyObject {
 final class CombatScene: MinigameScene {
     enum ShotRole {
         case inbound
+        /// Correct slash: flying back at the enemy on an accelerated arc.
+        case returning
         case sweepingOff
         case charging
     }
@@ -78,6 +80,9 @@ final class CombatScene: MinigameScene {
     let slashFadeOutSeconds: TimeInterval = 0.28
 
     static let sweepOffSeconds: Double = 0.35
+    /// Return flight is this many times faster than the remaining inbound travel time.
+    static let returnSpeedMultiplier: Double = 2.5
+    static let returnSecondsRange: ClosedRange<Double> = 0.18...0.4
     /// Charge duration for a sprite a full screen height away; scaled by distance and clamped.
     static let chargeReferenceSeconds: Double = 0.5
     static let chargeSecondsRange: ClosedRange<Double> = 0.25...0.5

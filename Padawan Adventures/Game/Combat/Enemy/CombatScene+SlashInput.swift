@@ -116,12 +116,11 @@ extension CombatScene {
                 continue
             case .correct:
                 combatDelegate?.combatSceneDidUpdateStars(engine.combatStars)
-                animateMonsterHPBar()
                 resolveWaveCleared(clearedShotID: id)
             case .wrong:
-                resolveWaveFailed(reason: .wrongSlash(id))
+                discardWrongShot(shotID: id)
             }
-            // One stroke resolves one sprite; the wave is now resolving.
+            // One stroke resolves one sprite (correct ends the wave; wrong leaves it live).
             return
         }
     }

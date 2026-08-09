@@ -58,8 +58,8 @@ extension CombatScene {
         }
     }
 
-    /// Red-flash-and-dissolve for the wrongly slashed letter.
-    func flashRedAndFade(_ node: SKNode) {
+    /// Red flash, then dissolve with the explosion VFX for a wrongly slashed letter.
+    func flashRedFadeAndExplode(_ node: SKNode, at position: CGPoint) {
         if let sprite = node as? SKSpriteNode {
             sprite.color = .systemRed
             sprite.colorBlendFactor = 0.85
@@ -67,7 +67,12 @@ extension CombatScene {
             shape.fillColor = .systemRed
             shape.strokeColor = .white
         }
+        let flashHold: TimeInterval = 0.08
         node.run(.sequence([
+            .wait(forDuration: flashHold),
+            .run { [weak self] in
+                self?.explosionVisual(at: position)
+            },
             .group([
                 .scale(by: 1.2, duration: 0.22),
                 .fadeOut(withDuration: 0.22),

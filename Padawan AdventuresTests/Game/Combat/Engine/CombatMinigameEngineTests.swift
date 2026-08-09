@@ -139,13 +139,18 @@ struct CombatMinigameEngineTests {
         #expect(engine.registerSlashHit(shotID: targetID) == .ignored)
     }
 
-    @Test func wrongSlashCostsOneHeartAndNoStars() throws {
+    @Test func wrongSlashRemovesDecoyWithoutCostingAHeart() throws {
         var engine = makeEngine(starsToWin: 99, startingHealth: 3, seed: 9)
         let wave = try #require(nextWave(&engine))
         let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
+        let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
         #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
         #expect(engine.combatStars == 0)
-        #expect(engine.healthCount == 2)
+        #expect(engine.healthCount == 3)
+        #expect(engine.wavePhase == .active)
+        #expect(engine.registerSlashHit(shotID: decoyID) == .ignored)
+        #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+        #expect(engine.combatStars == 1)
         #expect(engine.wavePhase == .resolving)
     }
 
@@ -167,8 +172,8 @@ struct CombatMinigameEngineTests {
     @Test func deferredLostEmittedFromFinishWaveResolution() throws {
         var engine = makeEngine(starsToWin: 99, startingHealth: 1, seed: 15)
         let wave = try #require(nextWave(&engine))
-        let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
-        #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
+        let shotID = try #require(wave.shots.first?.id)
+        #expect(engine.registerWaveImpact(shotID: shotID))
         #expect(engine.outcome == .lost)
 
         for _ in 0..<20 {
@@ -260,8 +265,8 @@ struct CombatMinigameEngineTests {
         var engine = makeEngine(starsToWin: 99, startingHealth: 2, seed: 7)
         while engine.outcome == nil {
             guard let wave = nextWave(&engine) else { break }
-            let decoyID = try #require(wave.shots.first(where: { !$0.isTarget })?.id)
-            #expect(engine.registerSlashHit(shotID: decoyID) == .wrong)
+            let shotID = try #require(wave.shots.first?.id)
+            #expect(engine.registerWaveImpact(shotID: shotID))
             _ = engine.finishWaveResolution()
         }
         #expect(engine.healthCount == 0)

@@ -62,8 +62,9 @@ world:
 # Vocabulary for letter rings comes from the level's top-level `vocab:` block (cumulative).
 # `grapheme-sound-combat`: wave-based swipe-to-slash arena. Each wave speaks one grapheme
 #   name and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
-#   fanned, equal-speed curves. Slash the matching letter to score; slashing a decoy, or
-#   letting any letter reach you, costs one heart. Letter pool and flight time come from
+#   fanned, equal-speed curves. Slash the matching letter to reflect it into the enemy and
+#   score; slashing a decoy stops that letter (flash + explode) while the rest keep flying.
+#   Letting any letter reach you costs one heart. Letter pool and flight time come from
 #   enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
 #   orb to hear the word, then tap the ring for that missing sound. A wrong ring flashes
@@ -74,7 +75,7 @@ combat:
   music: combat
   minigames:
     - type: grapheme-sound-combat
-      weight: 0.0
+      weight: 1.0
       # Extra non-matching letters launched alongside the cued one, per wave.
       min_decoy_count: 2
       max_decoy_count: 4
@@ -82,12 +83,12 @@ combat:
       # How often to replay the current grapheme-name prompt while a wave is in flight.
       grapheme_sound_repeat_seconds: 3
     - type: starting-sound-combat
-      weight: 0.5
+      weight: 0.0
       monster_hit_points: 5
       orb_travel_seconds: 8.0
       ring_count: 4
     - type: ending-sound-combat
-      weight: 0.5
+      weight: 0.0
       monster_hit_points: 5
       orb_travel_seconds: 8.0
       ring_count: 4
@@ -110,11 +111,11 @@ pit:
   fx: { jump: pit-jump }
   minigames:
     - type: sound-out-word-pit
-      weight: 0.0
+      weight: 1.0
       min_choice_count: 3
       max_choice_count: 3
     - type: ending-sound-pit
-      weight: 1.0
+      weight: 0.0
       min_word_count: 3
       max_word_count: 5
     - type: starting-sound-pit
@@ -145,7 +146,7 @@ gate:
   minigame_probability: 1.0
   minigames:
     - type: starting-sound-gate
-      weight: 1.0
+      weight: 0.0
       # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
       min_word_count: 2
       max_word_count: 2
@@ -163,7 +164,7 @@ gate:
       max_choice_count: 4
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
-      weight: 0.0
+      weight: 1.0
       min_grapheme_count: 4
       max_grapheme_count: 8
       fx: { switch_push: gate-grapheme_match-switch-push }

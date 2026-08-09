@@ -21,12 +21,11 @@ nonisolated enum CombatWavePhase: Equatable, Sendable {
     case pending
     /// Sprites in flight, awaiting the player's slash.
     case active
-    /// Outcome decided; the scene is playing the sweep-off or the charge.
+    /// Outcome decided; the scene is playing the reflect / sweep-off or the charge.
     case resolving
 }
 
 nonisolated enum CombatWaveFailure: Equatable, Sendable {
-    case wrongSlash(UUID)
     case impact(UUID)
 }
 
@@ -226,14 +225,16 @@ nonisolated struct CombatMinigameEngine {
     mutating func registerSlashHit(shotID: UUID) -> CombatSlashResult {
         guard acceptsInput, let shot = waveShots[shotID] else { return .ignored }
         guard shot.isTarget else {
-            failWave()
+            // Soft miss: drop the decoy so it cannot be hit again, but keep the wave live
+            // so the player can still slash the cued letter before anything lands.
+            waveShots[shotID] = nil
             return .wrong
         }
         combatStars += 1
         wavePhase = .resolving
         if combatStars >= config.starsToWin {
             // Decided now so no further waves spawn; `.won` is emitted once the scene
-            // has swept the decoys off screen.
+            // has reflected the target and swept the decoys off screen.
             outcome = .won(starsAwarded: config.starsToWin)
             isFrozen = true
         }
@@ -249,7 +250,7 @@ nonisolated struct CombatMinigameEngine {
         return true
     }
 
-    /// Both failure routes cost exactly one heart for the whole wave.
+    /// A letter reaching the player costs exactly one heart for the whole wave.
     private mutating func failWave() {
         guard wavePhase == .active else { return }
         wavePhase = .resolving
@@ -261,7 +262,7 @@ nonisolated struct CombatMinigameEngine {
         }
     }
 
-    /// Called by the scene once the sweep-off / charge choreography has played out.
+    /// Called by the scene once the reflect / sweep-off / charge choreography has played out.
     mutating func finishWaveResolution() -> [CombatEngineEvent] {
         guard wavePhase == .resolving else { return [] }
         waveShots = [:]
