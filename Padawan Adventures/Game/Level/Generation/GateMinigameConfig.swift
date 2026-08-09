@@ -236,8 +236,8 @@ nonisolated enum GateWordPlugLetterPosition: String, Equatable, Sendable {
     }
 
     /// True when no other ring grapheme could complete the same visible mask into another
-    /// vocabulary word (or any spelling `isPlausibleSpelling` accepts — e.g. English `trip`
-    /// beside game word `tris`).
+    /// vocabulary word (or any spelling `isPlausibleSpelling` accepts — e.g. known
+    /// collision `trip` beside game word `tris`).
     func hasUniqueAnswer(
         in entry: GateWord,
         among ringGraphemes: Set<String>,

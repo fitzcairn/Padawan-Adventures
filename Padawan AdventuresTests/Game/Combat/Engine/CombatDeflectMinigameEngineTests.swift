@@ -391,6 +391,44 @@ struct CombatDeflectMinigameEngineTests {
         #expect(rings.count == 3)
     }
 
+    /// Regression: the default collision check must leave Level-1 ending combat with
+    /// throw candidates. A full English dictionary check emptied this pool and hung
+    /// the first-encounter tutorial (no orb → demo never finishes).
+    @Test func defaultSpellingCheckKeepsTythonEndingThrowPoolAlive() {
+        let words = ["at", "it", "in", "an", "sat", "sit", "pat", "tap", "pan", "nap", "pin", "sip"].map {
+            WordCatalog.imagedFallbackEntry(word: $0)
+        }
+        let config = CombatDeflectMinigameEngine.Config(
+            graphemes: letters(["t", "p", "n"]),
+            words: words,
+            monsterHP: 5,
+            orbTravelSeconds: 3,
+            letterPosition: .ending
+        )
+        let throwable = ["t", "p", "n"].flatMap { config.throwWords(matching: $0).map(\.word) }
+        #expect(!throwable.isEmpty)
+        #expect(Set(throwable).isSubset(of: ["sat", "tap", "nap", "pin"]))
+
+        var engine = CombatDeflectMinigameEngine(config: config, startingHealth: 3)
+        engine.begin()
+        #expect(!engine.throwNextOrb().isEmpty)
+    }
+
+    @Test func defaultSpellingCheckRejectsTripBesideTris() {
+        let tris = WordCatalog.imagedFallbackEntry(word: "tris", graphemes: ["tr", "i", "s"])
+        let config = CombatDeflectMinigameEngine.Config(
+            graphemes: letters(["s", "p"]),
+            words: [tris, WordCatalog.imagedFallbackEntry(word: "tap")],
+            monsterHP: 5,
+            orbTravelSeconds: 3,
+            letterPosition: .ending
+        )
+        #expect(config.throwWords(matching: "s").isEmpty)
+        #expect(config.throwWords(matching: "p").map(\.word) == ["tap"])
+        #expect(CombatDeflectMinigameEngine.isPlausibleSpelling("trip"))
+        #expect(!CombatDeflectMinigameEngine.isPlausibleSpelling("tip"))
+    }
+
     @Test func throwSkipsWordsWithAmbiguousRingAnswers() {
         let wordPool = [
             WordCatalog.imagedFallbackEntry(word: "sit"),

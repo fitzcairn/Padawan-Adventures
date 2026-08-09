@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /// A tap target around the player. `index` is an index into `CombatDeflectConfig.letters`,
 /// ordered left to right on screen.
@@ -154,7 +151,7 @@ nonisolated struct CombatDeflectMinigameEngine {
     private var lastDeflectedRing: CombatDeflectRing?
     /// Spellings already thrown this fight; preferred against when picking the next word.
     private var usedWords: Set<String>
-    /// Optional override for tests; defaults to English + catalog spellings.
+    /// Optional override for tests; defaults to catalog + known collision spellings.
     private let isPlausibleSpelling: @Sendable (String) -> Bool
 
     init(
@@ -172,31 +169,21 @@ nonisolated struct CombatDeflectMinigameEngine {
         self.isPlausibleSpelling = isPlausibleSpelling
     }
 
-    /// True when `spelling` is an imaged catalog word or a recognized English word.
-    /// Used so distractor rings cannot complete the same blank into another real word
-    /// (e.g. `tri_` + `p` → `trip` while the thrown word is `tris`).
-    nonisolated static let isPlausibleSpelling: @Sendable (String) -> Bool = { spelling in
-        Self.spellingIsPlausible(spelling)
-    }
+    /// Spellings that aren't in `words.yaml` but still collide with a curriculum blank
+    /// (e.g. English `trip` beside game word `tris`). Keep this list tiny — a full
+    /// dictionary check (UITextChecker) rejects nearly every short CVC stem and leaves
+    /// the tutorial with no orb to throw.
+    nonisolated private static let extraCollisionSpellings: Set<String> = [
+        "trip",
+    ]
 
-    nonisolated private static func spellingIsPlausible(_ spelling: String) -> Bool {
+    /// True when `spelling` is a catalog word or a known collision spelling.
+    /// Used so distractor rings cannot complete the same blank into another real word.
+    nonisolated static let isPlausibleSpelling: @Sendable (String) -> Bool = { spelling in
         let key = spelling.lowercased()
         guard !key.isEmpty else { return false }
         if WordCatalog.fallback.word(named: key) != nil { return true }
-#if canImport(UIKit)
-        let checker = UITextChecker()
-        let range = NSRange(location: 0, length: (key as NSString).length)
-        let misspelled = checker.rangeOfMisspelledWord(
-            in: key,
-            range: range,
-            startingAt: 0,
-            wrap: false,
-            language: "en_US"
-        )
-        return misspelled.location == NSNotFound
-#else
-        return false
-#endif
+        return Self.extraCollisionSpellings.contains(key)
     }
 
     var hasWon: Bool { monsterHP <= 0 }
