@@ -106,14 +106,13 @@ nonisolated struct GateWordPlugMinigameEngine {
         outcome = nil
         plugged = [:]
 
-        let poolSize = max(config.vocabulary.allWords.count, config.words.count)
         let count = Self.sampleWordCount(
             minimum: config.wordCountMin,
             maximum: config.wordCountMax,
-            poolSize: poolSize,
+            poolSize: distinctAnswerCount,
             rng: &rng
         )
-        let chosen = config.vocabulary.pickWords(count: count, using: &rng)
+        let chosen = pickWordsWithDistinctAnswers(count: count)
 
         slots = chosen.map { entry in
             WordSlot(
@@ -191,6 +190,35 @@ nonisolated struct GateWordPlugMinigameEngine {
             events.append(.won)
         }
         return events
+    }
+
+    /// How many different answer graphemes the pool can supply. The tray holds one plug
+    /// per slot, so a larger board would have to repeat a letter.
+    private var distinctAnswerCount: Int {
+        let source = config.vocabulary.allWords.isEmpty ? config.words : config.vocabulary.allWords
+        return Set(source.compactMap { config.letterPosition.answerGrapheme(in: $0) }).count
+    }
+
+    /// Draws up to `count` words, at most one per answer grapheme. Returns fewer words
+    /// when the pool runs out of unused answers.
+    private mutating func pickWordsWithDistinctAnswers(count: Int) -> [GateWord] {
+        var chosen: [GateWord] = []
+        var usedAnswers = Set<String>()
+        while chosen.count < count {
+            let remaining = config.vocabulary.filteringWords { entry in
+                guard let answer = config.letterPosition.answerGrapheme(in: entry) else {
+                    return false
+                }
+                return !usedAnswers.contains(answer)
+            }
+            guard let entry = remaining.pickWord(using: &rng),
+                  let answer = config.letterPosition.answerGrapheme(in: entry) else {
+                break
+            }
+            chosen.append(entry)
+            usedAnswers.insert(answer)
+        }
+        return chosen
     }
 
     /// Uniform pick in `[minimum, maximum]`, clamped to the pool and `maxWordsPerRound`.

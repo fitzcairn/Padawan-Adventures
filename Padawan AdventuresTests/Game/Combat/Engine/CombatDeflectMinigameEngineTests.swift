@@ -391,6 +391,15 @@ struct CombatDeflectMinigameEngineTests {
         #expect(rings.count == 3)
     }
 
+    @Test func resolvedRingGraphemesAreUnique() throws {
+        for position in [GateWordPlugLetterPosition.starting, .ending] {
+            var config = CombatDeflectConfig(letterPosition: position, ringCount: 6)
+            try config.resolve(from: LevelVocabularyPool.fallback)
+            try config.validate()
+            #expect(Set(config.graphemes.map(\.grapheme)).count == config.graphemes.count)
+        }
+    }
+
     /// Regression: the default collision check must leave Level-1 ending combat with
     /// throw candidates. A full English dictionary check emptied this pool and hung
     /// the first-encounter tutorial (no orb → demo never finishes).

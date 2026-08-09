@@ -63,6 +63,20 @@ struct PitBridgeMinigameEngineTests {
         #expect(Set(engine.choices.map(\.letter)).count == engine.choices.count)
     }
 
+    @Test func everyRoundOffersDistinctChoiceLetters() {
+        for position in [GateWordPlugLetterPosition.starting, .ending] {
+            for seed in UInt64(1)...40 {
+                var engine = makeEngine(minWords: 2, maxWords: 4, letterPosition: position, seed: seed)
+                while engine.outcome == nil {
+                    #expect(Set(engine.choices.map(\.letter)).count == engine.choices.count)
+                    #expect(engine.choices.filter(\.isCorrect).count == 1)
+                    guard let correct = engine.choices.first(where: \.isCorrect) else { break }
+                    _ = engine.accept(choiceID: correct.id)
+                }
+            }
+        }
+    }
+
     @Test func currentRoundExposesCatalogImageAndSfx() {
         let sun = WordCatalog.imagedFallbackEntry(word: "sun")
         let engine = makeEngine(minWords: 1, maxWords: 1, words: [sun], seed: 1)

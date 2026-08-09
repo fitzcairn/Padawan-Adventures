@@ -97,7 +97,7 @@ struct GateWordPlugMinigameEngineTests {
         #expect(seen == Set(pool))
     }
 
-    @Test func roundMayContainTwoWordsSharingAFirstLetter() {
+    @Test func roundDropsAWordRatherThanRepeatingAPlugLetter() {
         let engine = makeEngine(
             wordCountMin: 2,
             wordCountMax: 2,
@@ -105,8 +105,25 @@ struct GateWordPlugMinigameEngineTests {
             letterPool: ["b"],
             seed: 7
         )
-        #expect(engine.slots.map(\.word).sorted() == ["bed", "bug"])
-        #expect(engine.tray.map(\.letter) == ["b", "b"])
+        #expect(engine.slots.count == 1)
+        #expect(engine.tray.map(\.letter) == ["b"])
+    }
+
+    @Test func trayLettersStayUniqueAcrossSeedsAndPositions() {
+        for position in [GateWordPlugLetterPosition.starting, .ending] {
+            for seed in UInt64(1)...60 {
+                let engine = makeEngine(
+                    wordCountMin: 1,
+                    wordCountMax: 9,
+                    letterPosition: position,
+                    pool: ["bed", "bug", "cat", "dad", "dog", "pig", "sat", "web", "can"],
+                    letterPool: ["a", "b", "c", "d", "g", "n", "p", "s", "t", "w"],
+                    seed: seed
+                )
+                #expect(Set(engine.tray.map(\.letter)).count == engine.tray.count)
+                #expect(Set(engine.slots.map(\.letter)).count == engine.slots.count)
+            }
+        }
     }
 
     @Test func maskedTextReplacesFirstLetter() {
@@ -259,7 +276,7 @@ struct GateWordPlugMinigameEngineTests {
     @Test func pluggingEverySlotWinsAndAwardsStars() {
         for (minCount, maxCount, pool) in [
             (3, 3, ["cat", "dog", "sat"]),
-            (6, 6, ["cat", "dog", "sat", "map", "can", "sun"]),
+            (6, 6, ["cat", "dog", "sat", "map", "bed", "fun"]),
         ] as [(Int, Int, [String])] {
             var engine = makeEngine(
                 wordCountMin: minCount,
