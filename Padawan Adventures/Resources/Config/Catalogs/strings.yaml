@@ -199,19 +199,19 @@ strings:
     sfx: sfx_ui_level_detail_highest_score
     context: "Level detail highest-score row"
   level_detail_take_off:
-    text: "Take off!"
+    text: "Let's go!"
     sfx: sfx_ui_level_detail_take_off
     context: "Level detail first-start confirm button"
   level_detail_not_ready:
-    text: "Not ready yet."
+    text: "Not yet."
     sfx: sfx_ui_level_detail_not_ready
     context: "Level detail first-start dismiss button"
   level_detail_try_again:
-    text: "Try again?"
+    text: "Let's go!"
     sfx: sfx_ui_level_detail_try_again
     context: "Level detail replay start button"
   level_detail_no_thanks:
-    text: "No thanks!"
+    text: "Not yet."
     sfx: sfx_ui_level_detail_no_thanks
     context: "Level detail replay dismiss button"
   dad_mode_enter_password:

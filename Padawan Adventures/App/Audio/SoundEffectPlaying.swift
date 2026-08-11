@@ -8,6 +8,12 @@ protocol SoundEffectPlaying: AnyObject {
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool
 
+    /// Plays a clip on the exclusive voice-over channel: whatever line is already
+    /// playing there fades out over `crossfade` while this one fades in, so at most
+    /// one voice-over is fully audible. Returns `false` when the track cannot be loaded.
+    @discardableResult
+    func playVoiceOver(trackID: String, volume: Float, crossfade: TimeInterval) -> Bool
+
     /// Clip length in seconds, or nil when the track cannot be resolved.
     func duration(of trackID: String) -> TimeInterval?
 
@@ -37,7 +43,9 @@ protocol SoundEffectPlaying: AnyObject {
 private final class SoundEffectPlayerStorage {
     var pools: [String: [AVAudioPlayer]] = [:]
     var loopPlayers: [String: AVAudioPlayer] = [:]
-    var oneShotFadeTasks: [String: Task<Void, Never>] = [:]
+    /// Keyed by player instance, not track id, so the two pooled instances of one
+    /// track can fade independently while they crossfade into each other.
+    var oneShotFadeTasks: [ObjectIdentifier: Task<Void, Never>] = [:]
     var loopFadeTask: Task<Void, Never>?
 
     func stopEverything() {

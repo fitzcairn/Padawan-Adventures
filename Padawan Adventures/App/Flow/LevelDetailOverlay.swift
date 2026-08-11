@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Overlay shown after tapping a planet on the level-select screen.
 struct LevelDetailOverlay: View {
@@ -6,6 +7,8 @@ struct LevelDetailOverlay: View {
     let nameStringID: String
     /// `nil` for a first start — hides the highest-score row.
     let highestStars: Int?
+    var startIcon: UIImage? = nil
+    var dismissIcon: UIImage? = nil
     let onStart: () -> Void
     let onDismiss: () -> Void
 
@@ -17,6 +20,10 @@ struct LevelDetailOverlay: View {
 
     private var dismissTitle: String {
         Strings.text(isReplay ? "level_detail_no_thanks" : "level_detail_not_ready")
+    }
+
+    private var buttonWidth: CGFloat {
+        AppLargeButton.consoleWidth(fittingTitles: [startTitle, dismissTitle], includeIcon: true)
     }
 
     var body: some View {
@@ -60,12 +67,11 @@ struct LevelDetailOverlay: View {
                             ? "levelSelect.detail.tryAgain"
                             : "levelSelect.detail.takeOff",
                         style: .console,
+                        icon: startIcon,
                         soundEvent: "takeoff",
                         action: onStart
                     )
-                    .frame(width: AppLargeButton.consoleWidth(fittingTitles: [
-                        startTitle, dismissTitle,
-                    ], includeIcon: false))
+                    .frame(width: buttonWidth)
 
                     AppLargeButton(
                         title: dismissTitle,
@@ -73,11 +79,10 @@ struct LevelDetailOverlay: View {
                             ? "levelSelect.detail.noThanks"
                             : "levelSelect.detail.notReady",
                         style: .console,
+                        icon: dismissIcon,
                         action: onDismiss
                     )
-                    .frame(width: AppLargeButton.consoleWidth(fittingTitles: [
-                        startTitle, dismissTitle,
-                    ], includeIcon: false))
+                    .frame(width: buttonWidth)
                 }
             }
             .frame(maxWidth: AppChrome.maxContentWidth * 0.85)

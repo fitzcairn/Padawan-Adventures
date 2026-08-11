@@ -146,10 +146,18 @@ struct LevelSelectView: View {
             if let selectedLevel {
                 let progress = session.playerState?.levels[selectedLevel.resourceName]
                 let hasBeenPlayed = progress?.started == true
+                let menuIcons = session.spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID)?
+                    .map(\.image) ?? []
                 LevelDetailOverlay(
                     levelName: selectedLevel.displayName,
                     nameStringID: selectedLevel.nameStringID,
                     highestStars: hasBeenPlayed ? (progress?.starsEarned ?? 0) : nil,
+                    startIcon: menuIcons.indices.contains(MenuSpritesConfig.Icon.newGame.rawValue)
+                        ? menuIcons[MenuSpritesConfig.Icon.newGame.rawValue]
+                        : nil,
+                    dismissIcon: menuIcons.indices.contains(MenuSpritesConfig.Icon.exit.rawValue)
+                        ? menuIcons[MenuSpritesConfig.Icon.exit.rawValue]
+                        : nil,
                     onStart: {
                         startLevel(selectedLevel)
                     },
