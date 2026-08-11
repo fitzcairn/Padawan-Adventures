@@ -23,7 +23,7 @@ extension AppSession {
             """
         )
         selectedLevel = level
-        selectedLevelName = level.name
+        selectedLevelName = Strings.text(level.name)
         selectedLevelResourceName = resourceName
         selectedLevelArtifact = level.artifact
         selectedLevelMusic = level.music

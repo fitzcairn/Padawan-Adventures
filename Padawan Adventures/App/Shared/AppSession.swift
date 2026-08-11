@@ -81,7 +81,7 @@ final class AppSession {
     ) {
         self.appConfig = appConfig
         self.selectedLevel = selectedLevel
-        self.selectedLevelName = selectedLevelName ?? selectedLevel.name
+        self.selectedLevelName = selectedLevelName ?? Strings.text(selectedLevel.name)
         self.selectedLevelResourceName = selectedLevelResourceName
         self.selectedLevelArtifact = selectedLevelArtifact ?? selectedLevel.artifact
         self.selectedLevelMusic = selectedLevelMusic ?? selectedLevel.music

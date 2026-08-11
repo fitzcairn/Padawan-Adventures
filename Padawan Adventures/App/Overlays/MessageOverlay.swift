@@ -13,12 +13,16 @@ struct MessageOverlay: View {
             accessibilityRootID: accessibilityRootID,
             onFinished: onFinished
         ) {
-            Text(title)
-                .font(AppFont.swiftUI(size: 32, weight: .bold))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .appCopyShadow()
-                .accessibilityIdentifier(accessibilityTitleID)
+            ModalCRTPanel {
+                ModalCRTText(
+                    text: title,
+                    size: 32,
+                    weight: .bold,
+                    accessibilityID: accessibilityTitleID,
+                    speakID: speakStringID
+                )
+            }
+            .frame(maxWidth: AppChrome.maxContentWidth * 0.85)
         }
         .onAppear {
             if let speakStringID {

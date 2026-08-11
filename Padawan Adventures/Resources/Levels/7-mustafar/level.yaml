@@ -2,7 +2,8 @@
 # Monsters:
 # - lava_lizard: Native lava lizard that lives near magma rivers.
 inherits: _defaults
-name: Mustafar
+# Display name + VO live in Config/Catalogs/strings.yaml under this id.
+name: level_mustafar
 order: 7
 color: "#E65100"
 artifact: flame.fill

@@ -12,7 +12,6 @@ struct LevelSelectView: View {
     @State private var showPassword = false
     /// Bumps when Dad mode / progression changes so buttons re-read session state.
     @State private var progressionEpoch = 0
-    @State private var nameSpeaker = LevelNameSpeaker()
     @State private var canScrollLeft = false
     @State private var canScrollRight = false
     @State private var inventoryIcons: [String: UIImage] = [:]
@@ -146,9 +145,11 @@ struct LevelSelectView: View {
 
             if let selectedLevel {
                 let progress = session.playerState?.levels[selectedLevel.resourceName]
+                let hasBeenPlayed = progress?.started == true
                 LevelDetailOverlay(
                     levelName: selectedLevel.displayName,
-                    highestStars: progress?.starsEarned ?? 0,
+                    nameStringID: selectedLevel.nameStringID,
+                    highestStars: hasBeenPlayed ? (progress?.starsEarned ?? 0) : nil,
                     onStart: {
                         startLevel(selectedLevel)
                     },
@@ -368,23 +369,15 @@ struct LevelSelectView: View {
     private func handleLevelTap(_ level: LevelDescriptor) {
         if let message = viewModel.handleLevelTap(
             level,
-            progressionEpoch: progressionEpoch,
-            nameSpeaker: nameSpeaker
+            progressionEpoch: progressionEpoch
         ) {
             playMenuSound("button_click")
             messageOverlay = message
             return
         }
 
-        let hasBeenPlayed = session.playerState?.levels[level.resourceName]?.started == true
-        if hasBeenPlayed {
-            playMenuSound("button_click")
-            selectedLevel = level
-        } else {
-            // First visit: takeoff on planet tap and start immediately (no confirm modal).
-            playMenuSound("takeoff")
-            startLevel(level)
-        }
+        playMenuSound("button_click")
+        selectedLevel = level
     }
 
     private func startLevel(_ level: LevelDescriptor) {

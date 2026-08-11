@@ -8,13 +8,15 @@ struct DefeatView: View {
             accessibilityRootID: "defeat.root",
             onFinished: onFinished
         ) {
-            Text(Strings.text("defeated"))
-                .font(AppFont.swiftUI(size: 22, weight: .semibold))
-                .foregroundStyle(AppChrome.buttonForegroundColor)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
-                .appButtonChrome(RoundedRectangle(cornerRadius: 12))
-                .accessibilityIdentifier("defeat.button")
+            ModalCRTPanel {
+                ModalCRTText(
+                    text: Strings.text("defeated"),
+                    size: 32,
+                    weight: .bold,
+                    accessibilityID: "defeat.button"
+                )
+            }
+            .frame(maxWidth: AppChrome.maxContentWidth * 0.85)
         }
         .onAppear { Strings.speak("defeated") }
     }

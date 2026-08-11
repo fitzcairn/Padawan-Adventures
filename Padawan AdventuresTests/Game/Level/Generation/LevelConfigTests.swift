@@ -409,6 +409,10 @@ struct LevelConfigTests {
             "1-tython", "2-tatooine", "3-ilum", "4-kashyyyk",
             "5-dagobah", "6-coruscant", "7-mustafar", "8-geonosis",
         ])
+        #expect(levels.map(\.nameStringID) == [
+            "level_tython", "level_tatooine", "level_ilum", "level_kashyyyk",
+            "level_dagobah", "level_coruscant", "level_mustafar", "level_geonosis",
+        ])
         #expect(levels.map(\.displayName) == [
             "Tython", "Tatooine", "Ilum", "Kashyyyk",
             "Dagobah", "Coruscant", "Mustafar", "Geonosis",
@@ -422,7 +426,8 @@ struct LevelConfigTests {
             named: "1-tython",
             subdirectory: LevelCatalog.subdirectory
         )
-        #expect(tython.name == "Tython")
+        #expect(tython.name == "level_tython")
+        #expect(Strings.text(tython.name) == "Tython")
         #expect(tython.order == 1)
         #expect(tython.color == "#2E7D32")
         #expect(tython.sprite?.root == "Levels/1-tython")

@@ -17,7 +17,8 @@ struct LevelConfigSnapshotTests {
                 named: descriptor.resourceName,
                 subdirectory: LevelCatalog.subdirectory
             )
-            #expect(level.name == descriptor.displayName)
+            #expect(level.name == descriptor.nameStringID)
+            #expect(Strings.text(level.name) == descriptor.displayName)
             #expect(level.order == descriptor.order)
             #expect(level.color == descriptor.color)
             #expect(level.treasure == descriptor.treasure)
@@ -39,7 +40,8 @@ struct LevelConfigSnapshotTests {
             subdirectory: LevelCatalog.subdirectory
         )
 
-        #expect(level.name == "Tython")
+        #expect(level.name == "level_tython")
+        #expect(Strings.text(level.name) == "Tython")
         #expect(level.order == 1)
         #expect(level.worldTutorial)
         #expect(level.color == "#2E7D32")

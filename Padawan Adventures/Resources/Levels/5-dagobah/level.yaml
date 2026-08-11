@@ -3,7 +3,8 @@
 # - snake: Swamp snake predator.
 # - treant: Walking tree creature of the bogs.
 inherits: _defaults
-name: Dagobah
+# Display name + VO live in Config/Catalogs/strings.yaml under this id.
+name: level_dagobah
 order: 5
 color: "#556B2F"
 artifact: drop.fill

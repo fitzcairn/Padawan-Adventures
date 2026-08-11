@@ -2,7 +2,8 @@
 # Monsters:
 # - centipede: Desert centipede predator.
 inherits: _defaults
-name: Tatooine
+# Display name + VO live in Config/Catalogs/strings.yaml under this id.
+name: level_tatooine
 order: 2
 color: "#D4A017"
 artifact: sun.max.fill

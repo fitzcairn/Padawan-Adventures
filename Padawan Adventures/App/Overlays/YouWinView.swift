@@ -10,21 +10,31 @@ struct YouWinView: View {
             accessibilityRootID: "youWin.root",
             onFinished: onFinished
         ) {
-            VStack(spacing: 12) {
-                Text(Strings.text("you_win"))
-                    .font(AppFont.swiftUI(size: 44, weight: .bold))
-                    .foregroundStyle(.white)
-                    .appCopyShadow()
-                    .accessibilityIdentifier("youWin.title")
+            ModalCRTPanel {
+                VStack(spacing: 12) {
+                    ModalCRTText(
+                        text: Strings.text("you_win"),
+                        size: 44,
+                        weight: .bold,
+                        accessibilityID: "youWin.title"
+                    )
 
-                if didBeatPreviousScore {
-                    Text(Strings.text("you_win_high_score", ["score": String(newScore)]))
-                        .font(AppFont.swiftUI(size: 22, weight: .semibold))
-                        .foregroundStyle(.orange)
-                        .appCopyShadow()
-                        .accessibilityIdentifier("youWin.highScore")
+                    if didBeatPreviousScore {
+                        ModalCRTText(
+                            text: Strings.text(
+                                "you_win_high_score",
+                                ["score": String(newScore)]
+                            ),
+                            size: 22,
+                            weight: .semibold,
+                            color: StarWarsConsolePalette.solvedGreen,
+                            glow: StarWarsConsolePalette.solvedGlow,
+                            accessibilityID: "youWin.highScore"
+                        )
+                    }
                 }
             }
+            .frame(maxWidth: AppChrome.maxContentWidth * 0.85)
         }
         .onAppear { Strings.speak("you_win") }
     }

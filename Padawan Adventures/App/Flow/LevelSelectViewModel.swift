@@ -70,8 +70,7 @@ struct LevelSelectViewModel {
 
     func handleLevelTap(
         _ level: LevelDescriptor,
-        progressionEpoch: Int,
-        nameSpeaker: LevelNameSpeaker
+        progressionEpoch: Int
     ) -> LevelSelectMessage? {
         let playable = LevelProgression.isPlayable(
             for: level.resourceName,
@@ -83,7 +82,8 @@ struct LevelSelectViewModel {
             return .completeCurrentFirst
         }
 
-        nameSpeaker.speak(level.displayName)
+        // Name VO plays on planet tap; overlay title can replay it.
+        Strings.speak(level.nameStringID)
         return nil
     }
 }

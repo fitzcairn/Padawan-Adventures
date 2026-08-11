@@ -185,6 +185,21 @@ extension ConfigAudit {
         return problems
     }
 
+    static func checkLevelNameString(
+        level: LevelConfig,
+        strings: StringCatalog,
+        label: String
+    ) -> [String] {
+        let id = level.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else {
+            return ["\(label).name: empty"]
+        }
+        guard strings.entry(id) != nil else {
+            return ["\(label).name: '\(id)' is missing from strings.yaml"]
+        }
+        return []
+    }
+
     @MainActor
     static func checkArtifact(_ artifact: String, label: String) -> [String] {
         let trimmed = artifact.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -24,9 +24,73 @@ enum OverlayChrome {
     static let dimColor = Color.black.opacity(0.7)
 }
 
+/// CRT bezel + screen plate that sizes to its content.
+///
+/// Scanlines sit above the content so titles and buttons pick up the CRT look.
+struct ModalCRTPanel<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(28)
+            .frame(maxWidth: .infinity)
+            .background {
+                StarWarsConsoleFrame { Color.clear }
+            }
+            .overlay {
+                GeometryReader { geo in
+                    let m = min(geo.size.width, geo.size.height)
+                    let inset = m * StarWarsConsoleChrome.insetRatio
+                    ScanlineOverlay(spacing: max(2, m * 0.06), lineOpacity: 0.32)
+                        .padding(inset)
+                }
+                .allowsHitTesting(false)
+            }
+    }
+}
+
+/// Glowing CRT copy for modal titles and body text.
+struct ModalCRTText: View {
+    let text: String
+    var size: CGFloat = 32
+    var weight: Font.Weight = .bold
+    var color: Color = StarWarsConsolePalette.crtBlue
+    var glow: Color = StarWarsConsolePalette.crtGlow
+    var accessibilityID: String? = nil
+    var speakID: String? = nil
+
+    var body: some View {
+        Text(text)
+            .font(AppFont.swiftUI(size: size, weight: weight))
+            .foregroundStyle(color)
+            .multilineTextAlignment(.center)
+            .shadow(color: glow, radius: max(2, size * 0.12))
+            .accessibilityIdentifier(accessibilityID ?? text)
+            .modifier(ModalCRTSpeakOnTap(speakID: speakID))
+    }
+}
+
+private struct ModalCRTSpeakOnTap: ViewModifier {
+    let speakID: String?
+
+    func body(content: Content) -> some View {
+        if let speakID {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture { Strings.speak(speakID) }
+        } else {
+            content
+        }
+    }
+}
+
 /// Full-bleed dim scrim + centered content for modal overlays.
 ///
-/// Structure: 50% transparent backdrop + content (modal boxes should be opaque).
+/// Structure: dim backdrop + content (prefer `ModalCRTPanel` for the dialog plate).
 /// Optional background tap for dismiss.
 struct ModalOverlayShell<Content: View>: View {
     let accessibilityRootID: String

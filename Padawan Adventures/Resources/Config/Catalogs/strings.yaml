@@ -157,19 +157,63 @@ strings:
     text: "Dad mode unlocked!"
     sfx: sfx_ui_dad_mode_unlocked
     context: "Dad mode success overlay"
+  level_tython:
+    text: "Tython"
+    sfx: sfx_ui_level_tython
+    context: "Level name spoken on level select"
+  level_tatooine:
+    text: "Tatooine"
+    sfx: sfx_ui_level_tatooine
+    context: "Level name spoken on level select"
+  level_ilum:
+    text: "Ilum"
+    sfx: sfx_ui_level_ilum
+    context: "Level name spoken on level select"
+  level_kashyyyk:
+    text: "Kashyyyk"
+    sfx: sfx_ui_level_kashyyyk
+    context: "Level name spoken on level select"
+  level_dagobah:
+    text: "Dagobah"
+    sfx: sfx_ui_level_dagobah
+    context: "Level name spoken on level select"
+  level_coruscant:
+    text: "Coruscant"
+    sfx: sfx_ui_level_coruscant
+    context: "Level name spoken on level select"
+  level_mustafar:
+    text: "Mustafar"
+    sfx: sfx_ui_level_mustafar
+    context: "Level name spoken on level select"
+  level_geonosis:
+    text: "Geonosis"
+    sfx: sfx_ui_level_geonosis
+    context: "Level name spoken on level select"
+  level_default:
+    text: "Level"
+    sfx: sfx_ui_level_default
+    context: "Fallback level name from defaults"
   level_detail_highest_score:
     text: "Your highest score: {stars}"
     spoken: "Your highest score"
     sfx: sfx_ui_level_detail_highest_score
     context: "Level detail highest-score row"
+  level_detail_take_off:
+    text: "Take off!"
+    sfx: sfx_ui_level_detail_take_off
+    context: "Level detail first-start confirm button"
+  level_detail_not_ready:
+    text: "Not ready yet."
+    sfx: sfx_ui_level_detail_not_ready
+    context: "Level detail first-start dismiss button"
   level_detail_try_again:
     text: "Try again?"
     sfx: sfx_ui_level_detail_try_again
-    context: "Level detail start button"
+    context: "Level detail replay start button"
   level_detail_no_thanks:
     text: "No thanks!"
     sfx: sfx_ui_level_detail_no_thanks
-    context: "Level detail dismiss button"
+    context: "Level detail replay dismiss button"
   dad_mode_enter_password:
     text: "Enter password"
     sfx: sfx_ui_dad_mode_enter_password

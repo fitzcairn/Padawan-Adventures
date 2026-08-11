@@ -29,17 +29,23 @@ struct MinigameResultOverlay: View {
                     .contentShape(Rectangle())
                     .onTapGesture { finish() }
 
-                Text(Strings.text("minigame_coins_won", ["coins": String(starsAwarded)]))
-                    .font(AppFont.swiftUI(size: 36, weight: .bold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white)
-                    .appCopyShadow()
-                    .accessibilityIdentifier("minigame.result.won.title")
-                    .opacity(1 - Double(flightProgress))
-                    .position(
-                        x: size.width / 2,
-                        y: size.height / 2 - Self.coinRestOffsetY
+                ModalCRTPanel {
+                    ModalCRTText(
+                        text: Strings.text(
+                            "minigame_coins_won",
+                            ["coins": String(starsAwarded)]
+                        ),
+                        size: 36,
+                        weight: .bold,
+                        accessibilityID: "minigame.result.won.title"
                     )
+                }
+                .frame(maxWidth: min(size.width * 0.85, AppChrome.maxContentWidth * 0.85))
+                .opacity(1 - Double(flightProgress))
+                .position(
+                    x: size.width / 2,
+                    y: size.height / 2 - Self.coinRestOffsetY
+                )
 
                 OverlayStars(
                     count: starsAwarded,

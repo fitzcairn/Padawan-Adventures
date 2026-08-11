@@ -8,6 +8,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     /// Default map-sprite fill when a level omits `color:`.
     static let fallbackColor = "#888888"
 
+    /// Display-name string catalog id (`strings.yaml`). Resolve with `Strings.text`.
     var name: String
     /// Sort key for level-select progression (lower first).
     var order: Int
@@ -111,7 +112,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     static let fallbackLetters = Letters()
 
     nonisolated static let fallback = LevelConfig(
-        name: "Level 1",
+        name: "level_default",
         order: 0,
         color: fallbackColor,
         sprite: nil,

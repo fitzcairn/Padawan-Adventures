@@ -3,7 +3,8 @@
 # - dino: Large ground predator.
 # - treant: Walking tree creature.
 inherits: _defaults
-name: Tython
+# Display name + VO live in Config/Catalogs/strings.yaml under this id.
+name: level_tython
 order: 1
 world_tutorial: true
 color: "#2E7D32"

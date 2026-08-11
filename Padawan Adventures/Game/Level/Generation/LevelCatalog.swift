@@ -4,6 +4,9 @@ import os
 /// A playable level discovered from `Resources/Levels/<id>/`.
 nonisolated struct LevelDescriptor: Equatable, Sendable {
     let resourceName: String
+    /// `strings.yaml` id for the level display name / VO (`level.name` in YAML).
+    let nameStringID: String
+    /// Resolved copy from `Strings.text(nameStringID)`.
     let displayName: String
     let order: Int
     /// Hex fill for the level-select planet sprite.
@@ -44,7 +47,8 @@ nonisolated enum LevelCatalog {
                 )
                 return LevelDescriptor(
                     resourceName: resourceName,
-                    displayName: level.name,
+                    nameStringID: level.name,
+                    displayName: Strings.text(level.name),
                     order: level.order,
                     color: level.color,
                     sprite: level.sprite,

@@ -62,6 +62,9 @@ nonisolated enum ConfigAudit {
 
         for (index, level) in levels.enumerated() {
             let label = "levels[\(index)] (\(level.name))"
+            problems.append(contentsOf: checkLevelNameString(
+                level: level, strings: stringCatalog, label: label
+            ))
             problems.append(contentsOf: checkFloorSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkLetterSet(level: level, label: label, bundle: bundle))
             problems.append(contentsOf: checkPitSet(level: level, label: label, bundle: bundle))
