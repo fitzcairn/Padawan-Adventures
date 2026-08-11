@@ -43,7 +43,7 @@ strings:
     sfx: sfx_ui_preparing_error_title
     context: "Preparing screen error title"
   preparing_error_body:
-    text: "Sprite sheets failed to load. Try again from level select."
+    text: "Oops!  Problem there was.  Select a new level, you must."
     sfx: sfx_ui_preparing_error_body
     context: "Preparing screen error body"
   menu_welcome:
@@ -68,7 +68,7 @@ strings:
     sfx: sfx_ui_menu_settings
     context: "Main menu button opening settings"
   menu_quit:
-    text: "QUIT"
+    text: "EXIT"
     sfx: sfx_ui_menu_quit
     context: "Main menu button quitting the app"
   cutscene_tap_to_skip:
