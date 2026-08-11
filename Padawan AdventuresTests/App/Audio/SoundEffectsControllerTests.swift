@@ -12,12 +12,24 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
     private(set) var fadeOutCalls: [(trackID: String, duration: TimeInterval)] = []
     private(set) var fadeOutAllCalls: [TimeInterval] = []
     private(set) var loopDuckScale: Float = 1
+    private(set) var voiceOverCalls: [(trackID: String, crossfade: TimeInterval)] = []
+    private(set) var fadeOutVoiceOverCalls: [TimeInterval] = []
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
         if missingTrackIDs.contains(trackID) {
             return false
         }
+        playCalls.append((trackID, volume))
+        return true
+    }
+
+    @discardableResult
+    func playVoiceOver(trackID: String, volume: Float, crossfade: TimeInterval) -> Bool {
+        if missingTrackIDs.contains(trackID) {
+            return false
+        }
+        voiceOverCalls.append((trackID, crossfade))
         playCalls.append((trackID, volume))
         return true
     }
@@ -55,6 +67,10 @@ final class MockSoundEffectPlayer: SoundEffectPlaying {
     func fadeOutAndStop(trackID: String, duration: TimeInterval) {
         fadeOutCalls.append((trackID, duration))
         loopTrackIDs.remove(trackID)
+    }
+
+    func fadeOutVoiceOver(duration: TimeInterval) {
+        fadeOutVoiceOverCalls.append(duration)
     }
 
     func fadeOutAndStopAll(duration: TimeInterval) {
@@ -227,6 +243,46 @@ struct SoundEffectsControllerTests {
         controller.setGameplaySFXSuppressed(false)
         controller.play(trackID: "sfx_combat_start")
         #expect(mock.playedTrackIDs == ["sfx_ui_tutorial_deflect", "sfx_combat_start"])
+    }
+
+    /// Catalog voice-over goes to the exclusive channel; everything else overlaps as before.
+    @Test func uiVoiceOverPlaysOnTheExclusiveChannel() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.phoneticCueDuckHandler = { _ in }
+        controller.play(trackID: "sfx_ui_level_tython")
+        controller.play(trackID: "sfx_ui_level_dagobah")
+        controller.play(trackID: "sfx_boom")
+        controller.play(trackID: "sfx_word_bat")
+
+        #expect(
+            mock.voiceOverCalls.map(\.trackID)
+                == ["sfx_ui_level_tython", "sfx_ui_level_dagobah"]
+        )
+        #expect(
+            mock.voiceOverCalls.allSatisfy {
+                $0.crossfade == SoundEffectsController.voiceOverCrossfadeSeconds
+            }
+        )
+    }
+
+    @Test func fadeOutVoiceOverForwardsDefaultDuration() {
+        let mock = MockSoundEffectPlayer()
+        let controller = SoundEffectsController(player: mock)
+        controller.fadeOutVoiceOver()
+        controller.fadeOutVoiceOver(duration: -1)
+        #expect(
+            mock.fadeOutVoiceOverCalls
+                == [SoundEffectsController.defaultOneShotFadeOutSeconds, 0]
+        )
+        #expect(mock.fadeOutAllCalls.isEmpty)
+    }
+
+    @Test func everyCatalogStringUsesTheVoiceOverChannel() throws {
+        let catalog = try StringCatalog.loadFromBundle()
+        for (id, entry) in catalog.entries {
+            #expect(SoundEffectsController.isVoiceOverTrack(entry.sfx), "\(id): \(entry.sfx)")
+        }
     }
 
     @Test func enablingGameplaySuppressionStopsActiveLoops() {

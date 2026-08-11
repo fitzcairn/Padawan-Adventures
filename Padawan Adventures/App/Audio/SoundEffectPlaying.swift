@@ -34,6 +34,10 @@ protocol SoundEffectPlaying: AnyObject {
     /// Fades playing one-shot instances of `trackID` to silence, then stops them.
     func fadeOutAndStop(trackID: String, duration: TimeInterval)
 
+    /// Fades the exclusive voice-over channel to silence and stops it, leaving
+    /// every other effect playing.
+    func fadeOutVoiceOver(duration: TimeInterval)
+
     /// Fades every playing one-shot and loop to silence, then stops them.
     func fadeOutAndStopAll(duration: TimeInterval)
 }
@@ -81,6 +85,8 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     private var durationCache: [String: TimeInterval] = [:]
     private var loopBaseVolumes: [String: Float] = [:]
     private var loopDuckScale: Float = 1
+    /// The instance currently holding the exclusive voice-over channel.
+    private weak var voiceOverPlayer: AVAudioPlayer?
 
     /// Simultaneous instances of the *same* effect before the oldest is retriggered.
     static let playersPerTrack = 2
@@ -96,25 +102,74 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         storage.pools.values.contains { players in players.contains(where: \.isPlaying) }
     }
 
+    /// Test seam: how many pooled instances are currently audible.
+    var audiblePlayerCount: Int {
+        storage.pools.values.reduce(0) { total, players in
+            total + players.filter(\.isPlaying).count
+        }
+    }
+
+    /// Test seam: whether any instance of `trackID` is currently audible.
+    func isPlaying(trackID: String) -> Bool {
+        storage.pools[trackID]?.contains(where: \.isPlaying) ?? false
+    }
+
+    /// Test seam: volumes of the audible instances of `trackID`.
+    func audibleVolumes(of trackID: String) -> [Float] {
+        (storage.pools[trackID] ?? []).filter(\.isPlaying).map(\.volume)
+    }
+
     /// Stops every one-shot and loop immediately (also runs from storage `deinit`).
     func stopAll() {
         storage.stopEverything()
         trackOrder.removeAll()
         loopBaseVolumes.removeAll()
         loopDuckScale = 1
+        voiceOverPlayer = nil
     }
 
     @discardableResult
     func play(trackID: String, volume: Float) -> Bool {
-        // A new play supersedes any in-flight fade-out for this track.
-        storage.oneShotFadeTasks[trackID]?.cancel()
-        storage.oneShotFadeTasks[trackID] = nil
         guard let url = resolvedURL(for: trackID) else { return false }
         configureSessionIfNeeded()
         guard let player = pooledPlayer(for: trackID, url: url) else { return false }
+        // A new play supersedes any in-flight fade on the instance it reuses.
+        cancelFade(for: player)
         player.volume = min(1, max(0, volume))
         player.currentTime = 0
         return player.play()
+    }
+
+    @discardableResult
+    func playVoiceOver(trackID: String, volume: Float, crossfade: TimeInterval) -> Bool {
+        guard let url = resolvedURL(for: trackID) else { return false }
+        configureSessionIfNeeded()
+        guard let player = pooledPlayer(for: trackID, url: url) else { return false }
+        cancelFade(for: player)
+
+        // Only an instance other than the one we are about to reuse can be crossfaded;
+        // when the pool hands back the outgoing player itself the line just restarts.
+        var outgoing: AVAudioPlayer?
+        if let active = voiceOverPlayer, active !== player, active.isPlaying {
+            outgoing = active
+        }
+        let duration = max(0, crossfade)
+        if let outgoing {
+            fadeOutAndStop(player: outgoing, duration: duration)
+        }
+
+        let target = min(1, max(0, volume))
+        player.currentTime = 0
+        player.volume = outgoing == nil ? target : 0
+        guard player.play() else {
+            voiceOverPlayer = nil
+            return false
+        }
+        voiceOverPlayer = player
+        if outgoing != nil {
+            fadeIn(player: player, to: target, duration: duration)
+        }
+        return true
     }
 
     func duration(of trackID: String) -> TimeInterval? {
@@ -191,44 +246,77 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     }
 
     func fadeOutAndStop(trackID: String, duration: TimeInterval) {
-        storage.oneShotFadeTasks[trackID]?.cancel()
-        storage.oneShotFadeTasks[trackID] = nil
-
         guard let pool = storage.pools[trackID] else { return }
-        let playing = pool.filter(\.isPlaying)
-        guard !playing.isEmpty else { return }
+        for player in pool where player.isPlaying {
+            fadeOutAndStop(player: player, duration: duration)
+        }
+    }
+
+    func fadeOutVoiceOver(duration: TimeInterval) {
+        guard let player = voiceOverPlayer else { return }
+        voiceOverPlayer = nil
+        fadeOutAndStop(player: player, duration: duration)
+    }
+
+    private func cancelFade(for player: AVAudioPlayer) {
+        let key = ObjectIdentifier(player)
+        storage.oneShotFadeTasks[key]?.cancel()
+        storage.oneShotFadeTasks[key] = nil
+    }
+
+    private func fadeOutAndStop(player: AVAudioPlayer, duration: TimeInterval) {
+        cancelFade(for: player)
+        guard player.isPlaying else { return }
 
         if duration <= 0 {
-            for player in playing {
-                player.stop()
-                player.currentTime = 0
-            }
+            player.stop()
+            player.currentTime = 0
             return
         }
 
-        let startVolumes = playing.map(\.volume)
+        let key = ObjectIdentifier(player)
+        let startVolume = player.volume
         let task = Task { @MainActor in
-            await VolumeFader.fadeOutMultiplicative(startVolume: 1, duration: duration) { scale in
-                guard !Task.isCancelled else { return }
-                for (player, start) in zip(playing, startVolumes) {
-                    guard player.isPlaying else { continue }
-                    player.volume = start * scale
-                }
+            await VolumeFader.fadeOutMultiplicative(
+                startVolume: startVolume,
+                duration: duration
+            ) { volume in
+                guard !Task.isCancelled, player.isPlaying else { return }
+                player.volume = volume
             }
             guard !Task.isCancelled else { return }
-            for player in playing {
-                player.stop()
-                player.currentTime = 0
-            }
-            self.storage.oneShotFadeTasks[trackID] = nil
+            player.stop()
+            player.currentTime = 0
+            self.storage.oneShotFadeTasks[key] = nil
         }
-        storage.oneShotFadeTasks[trackID] = task
+        storage.oneShotFadeTasks[key] = task
+    }
+
+    private func fadeIn(player: AVAudioPlayer, to volume: Float, duration: TimeInterval) {
+        cancelFade(for: player)
+        guard duration > 0 else {
+            player.volume = volume
+            return
+        }
+
+        let key = ObjectIdentifier(player)
+        player.volume = 0
+        let task = Task { @MainActor in
+            await VolumeFader.linearFade(from: 0, to: volume, duration: duration) { value in
+                guard !Task.isCancelled, player.isPlaying else { return }
+                player.volume = value
+            }
+            guard !Task.isCancelled else { return }
+            self.storage.oneShotFadeTasks[key] = nil
+        }
+        storage.oneShotFadeTasks[key] = task
     }
 
     func fadeOutAndStopAll(duration: TimeInterval) {
         for trackID in Array(storage.pools.keys) {
             fadeOutAndStop(trackID: trackID, duration: duration)
         }
+        voiceOverPlayer = nil
         fadeOutAndStopAllLoops(duration: duration)
     }
 
@@ -309,6 +397,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
         }
 
         let oldest = pool[0]
+        cancelFade(for: oldest)
         oldest.stop()
         storage.pools[trackID] = pool
         touchTrackOrder(trackID)
@@ -326,6 +415,7 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
             let victim = trackOrder.removeFirst()
             if let players = storage.pools.removeValue(forKey: victim) {
                 for player in players {
+                    cancelFade(for: player)
                     player.stop()
                 }
             }

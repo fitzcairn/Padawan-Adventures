@@ -160,6 +160,8 @@ final class WorldTutorialController: WorldTutorialStaging {
         didFinish = true
         task?.cancel()
         task = nil
+        // The intro line outlives a tutorial the player taps through, so fade it.
+        SoundEffectsController.shared.fadeOutVoiceOver()
         cursor?.removeAllActions()
         hint?.removeAllActions()
         cursor?.removeFromParent()

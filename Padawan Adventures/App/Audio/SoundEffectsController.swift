@@ -21,6 +21,11 @@ final class SoundEffectsController {
     /// Extra attenuation for lightsaber hum / slash / ignite / cut clips.
     static let lightsaberSFXVolumeScale: Float = 0.45
 
+    /// Voice-over lines from `strings.yaml` share one channel, so starting a line
+    /// crossfades the one already playing out over this window. Short enough that the
+    /// new line's first syllable is still crisp.
+    nonisolated static let voiceOverCrossfadeSeconds: TimeInterval = 0.2
+
     private(set) var soundEffectsEnabled = true
     private(set) var soundEffectsVolume: Float = 1
     /// When true, phonetics get `combatPhoneticRelativeBoost` and other FX are ducked by the same factor.
@@ -78,12 +83,23 @@ final class SoundEffectsController {
 
     /// Plays a track by basename under `Resources/Audio/FX/`. Missing assets are ignored.
     /// Phonetic cues duck music + ambience loops for the clip duration (all minigames).
+    /// UI voice-over (`sfx_ui_*`) is exclusive: a new line crossfades out the previous one.
     func play(trackID: String) {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trimmed) { return }
-        let didPlay = player.play(trackID: trimmed, volume: playbackVolume(for: trimmed))
+        if isGameplaySFXSuppressed, !Self.isVoiceOverTrack(trimmed) { return }
+        let volume = playbackVolume(for: trimmed)
+        let didPlay: Bool
+        if Self.isVoiceOverTrack(trimmed) {
+            didPlay = player.playVoiceOver(
+                trackID: trimmed,
+                volume: volume,
+                crossfade: Self.voiceOverCrossfadeSeconds
+            )
+        } else {
+            didPlay = player.play(trackID: trimmed, volume: volume)
+        }
         if didPlay, Self.isPhoneticTrack(trimmed) {
             duckAmbienceForPhoneticCue(duration: cueDuration(of: trimmed))
         }
@@ -112,7 +128,7 @@ final class SoundEffectsController {
         guard soundEffectsEnabled else { return }
         let trimmed = trackID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trimmed) { return }
+        if isGameplaySFXSuppressed, !Self.isVoiceOverTrack(trimmed) { return }
         let scale = min(1, max(0, volumeScale))
         player.startLoop(trackID: trimmed, volume: playbackVolume(for: trimmed) * scale)
     }
@@ -128,7 +144,7 @@ final class SoundEffectsController {
     ) -> String? {
         guard let trackID = table.trackID(for: event) else { return nil }
         guard soundEffectsEnabled else { return nil }
-        if isGameplaySFXSuppressed, !Self.isTutorialVoiceTrack(trackID) { return nil }
+        if isGameplaySFXSuppressed, !Self.isVoiceOverTrack(trackID) { return nil }
         startLoop(trackID: trackID, volumeScale: volumeScale)
         return trackID
     }
@@ -161,6 +177,13 @@ final class SoundEffectsController {
     /// Fades every currently playing FX one-shot and loop to silence, then stops them.
     func fadeOutAndStopAll(duration: TimeInterval = defaultOneShotFadeOutSeconds) {
         player.fadeOutAndStopAll(duration: max(0, duration))
+    }
+
+    /// Fades out the voice-over line currently on the exclusive channel, leaving
+    /// gameplay FX and music alone. Used when a tutorial finishes so its narration
+    /// does not outlive the screen that started it.
+    func fadeOutVoiceOver(duration: TimeInterval = defaultOneShotFadeOutSeconds) {
+        player.fadeOutVoiceOver(duration: max(0, duration))
     }
 
     /// Clip length, or nil for a blank or unresolvable track.
@@ -205,9 +228,10 @@ final class SoundEffectsController {
             || trackID.hasPrefix("sfx_ui_")
     }
 
-    /// Tutorial / UI voice-over clips under `Audio/FX/UI/`. Allowed while gameplay
-    /// SFX are suppressed during the demo lead-in.
-    static func isTutorialVoiceTrack(_ trackID: String) -> Bool {
+    /// UI voice-over clips under `Audio/FX/UI/` — every `sfx` in `strings.yaml`. These
+    /// share one exclusive channel and are allowed while gameplay SFX are suppressed
+    /// during the tutorial demo lead-in.
+    static func isVoiceOverTrack(_ trackID: String) -> Bool {
         trackID.hasPrefix("sfx_ui_")
     }
 
