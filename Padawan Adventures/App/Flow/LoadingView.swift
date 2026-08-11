@@ -70,7 +70,6 @@ struct LoadingView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isReady else { return }
-                Strings.speak("loading_tap_to_start")
                 // Drop the 25 MB kam / yoda clips — only this screen animates them.
                 // `logo` stays resident for MenuView.
                 kamFrames = []
@@ -106,6 +105,7 @@ struct LoadingView: View {
             progress = 1
             session = loaded
             isReady = true
+            Strings.speak("loading_tap_to_start")
             GameLogger.mark(.lifecycle, "bootstrap complete; loading screen ready")
         }
     }
