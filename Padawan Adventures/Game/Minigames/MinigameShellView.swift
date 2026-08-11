@@ -47,6 +47,9 @@ struct MinigameShellView<Scene: SKScene, HUD: View, Overlay: View>: View {
                 updateSceneSize(newSize)
             }
         }
+        // Sizes the scene against the whole screen. Inside the safe area the scene would be
+        // shorter than its full-bleed SKView, and `.aspectFit` would letterbox it.
+        .ignoresSafeArea()
         .accessibilityIdentifier(accessibilityRootID)
     }
 }

@@ -12,6 +12,10 @@ class LandscapeHostingController: UIViewController {
         AppOrientation.mask
     }
 
+    override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
+        .landscapeRight
+    }
+
     override var prefersStatusBarHidden: Bool { true }
 }
 

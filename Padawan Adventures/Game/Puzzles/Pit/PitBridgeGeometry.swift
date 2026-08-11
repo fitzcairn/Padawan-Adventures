@@ -5,8 +5,10 @@ import Foundation
 nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Tray tiles sit this fraction up the scene (inside the bottom 30%).
     static let trayCenterYFraction: CGFloat = 0.15
-    /// The prompt block hangs from just under the top edge so the CRT plate grows downward.
-    static let wordPromptTopFraction: CGFloat = 0.97
+    /// The prompt block hangs from the shared top chrome inset so the CRT plate grows downward.
+    /// Expressed as a fraction because this geometry is pure; it matches `ScreenLayout` because
+    /// landscape has no top safe-area inset to take the max against.
+    static let wordPromptTopFraction: CGFloat = 1 - ScreenLayout.edgeInsetFraction
     /// Side pads sit this fraction below scene mid-height.
     static let bridgeLineDownShift: CGFloat = 0.20
     /// Placed tiles, dashed slot, and player sit this fraction below the pad mid-line.

@@ -29,12 +29,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
 
-        windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: AppOrientation.mask))
+        enforceLandscape(on: windowScene)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}
 
     func sceneDidBecomeActive(_ scene: UIScene) {
+        if let windowScene = scene as? UIWindowScene {
+            enforceLandscape(on: windowScene)
+        }
         BackgroundMusicController.shared.resumeFromBackground()
     }
 
@@ -48,5 +51,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         BackgroundMusicController.shared.pauseForBackground()
+    }
+
+    /// Re-asserts the landscape mask. `UIRequiresFullScreen` keeps iPad out of portrait, and
+    /// this covers the window geometry the scene comes back with after a rotation elsewhere.
+    private func enforceLandscape(on windowScene: UIWindowScene) {
+        windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: AppOrientation.mask))
+        window?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
     }
 }

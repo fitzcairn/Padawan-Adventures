@@ -9,12 +9,7 @@ enum ScreenLayout {
     static let edgeInsetFraction: CGFloat = 0.025
 
     static func insets(size: CGSize, safeArea: EdgeInsets) -> EdgeInsets {
-        EdgeInsets(
-            top: max(safeArea.top, size.height * edgeInsetFraction),
-            leading: max(safeArea.leading, size.width * edgeInsetFraction),
-            bottom: max(safeArea.bottom, size.height * edgeInsetFraction),
-            trailing: max(safeArea.trailing, size.width * edgeInsetFraction)
-        )
+        edgeInsets(uiInsets(size: size, safeArea: uiEdgeInsets(safeArea)))
     }
 
     static func uiInsets(size: CGSize, safeArea: UIEdgeInsets) -> UIEdgeInsets {
@@ -30,15 +25,61 @@ enum ScreenLayout {
         uiInsets(size: view.bounds.size, safeArea: view.safeAreaInsets)
     }
 
+    /// Chrome insets for SpriteKit scenes.
+    ///
+    /// Measured against `sceneSize` rather than the SKView's bounds, so the fractional edge
+    /// padding is right even when the scene lays out before its view does — which is what
+    /// tutorial demos do, since they build once and never rebuild.
+    @MainActor
+    static func chromeInsets(sceneSize: CGSize, viewSafeArea: UIEdgeInsets) -> UIEdgeInsets {
+        uiInsets(size: sceneSize, safeArea: resolvedSafeArea(viewSafeArea))
+    }
+
+    /// Center Y for a row of sprites resting on the bottom chrome inset.
+    ///
+    /// `ceiling` is the highest center the row may take (typically just under whatever it
+    /// must stay clear of). A row too tall to fit gives up its bottom padding rather than
+    /// climbing into the content above it.
+    static func bottomRowCenterY(
+        rowHeight: CGFloat,
+        bottomInset: CGFloat,
+        ceiling: CGFloat
+    ) -> CGFloat {
+        let half = max(rowHeight, 0) * 0.5
+        return max(min(bottomInset + half, ceiling), half)
+    }
+
     /// GeometryReader reports zero insets after `.ignoresSafeArea()`; fall back to the key window
     /// so landscape Dynamic Island / home-indicator edges still inset chrome.
     @MainActor
     static func safeArea(fromProxy proxy: EdgeInsets) -> EdgeInsets {
-        if proxy.top > 0 || proxy.leading > 0 || proxy.bottom > 0 || proxy.trailing > 0 {
-            return proxy
-        }
-        guard let ui = AppWindow.key?.safeAreaInsets else { return proxy }
-        return EdgeInsets(top: ui.top, leading: ui.left, bottom: ui.bottom, trailing: ui.right)
+        edgeInsets(resolvedSafeArea(uiEdgeInsets(proxy)))
+    }
+
+    /// Anything that ignores the safe area reports zero insets, so a zero `candidate` means
+    /// "unknown" rather than "no inset needed" — the key window has the real edges.
+    @MainActor
+    private static func resolvedSafeArea(_ candidate: UIEdgeInsets) -> UIEdgeInsets {
+        guard candidate == .zero else { return candidate }
+        return AppWindow.key?.safeAreaInsets ?? .zero
+    }
+
+    private static func uiEdgeInsets(_ insets: EdgeInsets) -> UIEdgeInsets {
+        UIEdgeInsets(
+            top: insets.top,
+            left: insets.leading,
+            bottom: insets.bottom,
+            right: insets.trailing
+        )
+    }
+
+    private static func edgeInsets(_ insets: UIEdgeInsets) -> EdgeInsets {
+        EdgeInsets(
+            top: insets.top,
+            leading: insets.left,
+            bottom: insets.bottom,
+            trailing: insets.right
+        )
     }
 }
 

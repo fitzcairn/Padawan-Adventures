@@ -58,4 +58,61 @@ struct ScreenLayoutTests {
         #expect(resolved.leading == 59)
         #expect(resolved.trailing == 21)
     }
+
+    @Test @MainActor func chromeInsetsUsesSceneSizeWhenViewSafeAreaIsZero() {
+        let size = CGSize(width: 1180, height: 820)
+        let insets = ScreenLayout.chromeInsets(sceneSize: size, viewSafeArea: .zero)
+
+        #expect(insets.top == size.height * ScreenLayout.edgeInsetFraction)
+        #expect(insets.left == size.width * ScreenLayout.edgeInsetFraction)
+        #expect(insets.right == size.width * ScreenLayout.edgeInsetFraction)
+    }
+
+    @Test @MainActor func chromeInsetsPrefersViewSafeAreaWhenPresent() {
+        let size = CGSize(width: 800, height: 600)
+        let safe = UIEdgeInsets(top: 40, left: 0, bottom: 20, right: 0)
+        let insets = ScreenLayout.chromeInsets(sceneSize: size, viewSafeArea: safe)
+
+        #expect(insets.top == 40)
+        #expect(insets.bottom == 20)
+        #expect(insets.left == size.width * ScreenLayout.edgeInsetFraction)
+    }
+
+    @Test func bottomRowRestsOnBottomInset() {
+        let centerY = ScreenLayout.bottomRowCenterY(
+            rowHeight: 200,
+            bottomInset: 25,
+            ceiling: 400
+        )
+
+        #expect(centerY == 125)
+    }
+
+    @Test func bottomRowGivesUpBottomPaddingToStayUnderCeiling() {
+        let centerY = ScreenLayout.bottomRowCenterY(
+            rowHeight: 100,
+            bottomInset: 25,
+            ceiling: 60
+        )
+
+        #expect(centerY == 60)
+    }
+
+    @Test func bottomRowStaysOnScreenWhenCeilingIsTooLow() {
+        let centerY = ScreenLayout.bottomRowCenterY(
+            rowHeight: 200,
+            bottomInset: 25,
+            ceiling: 10
+        )
+
+        #expect(centerY == 100)
+    }
+
+    /// Taller screens push the row down rather than scaling its distance from the edge.
+    @Test func bottomRowInsetDoesNotGrowWithRowHeight() {
+        let short = ScreenLayout.bottomRowCenterY(rowHeight: 100, bottomInset: 25, ceiling: 400)
+        let tall = ScreenLayout.bottomRowCenterY(rowHeight: 300, bottomInset: 25, ceiling: 400)
+
+        #expect(short - 50 == tall - 150)
+    }
 }

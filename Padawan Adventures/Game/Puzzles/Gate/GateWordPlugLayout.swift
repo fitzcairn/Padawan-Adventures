@@ -187,8 +187,12 @@ extension GateWordPlugScene {
         let spacing = diameter * 1.2
         let span = CGFloat(tokens.count - 1) * spacing
         let startX = size.width * 0.5 - span * 0.5
-        // Center the letter row in the bottom tray band.
-        let y = size.height * trayHeightRatio * 0.5
+        // Anchor the letter row to the bottom of the screen. Centring it in the tray band
+        // left the plugs stranded mid-screen wherever the band is tall (iPad).
+        let y = bottomRowCenterY(
+            rowHeight: diameter,
+            ceiling: size.height * trayHeightRatio - diameter * 0.5
+        )
 
         for (index, token) in tokens.enumerated() {
             let position = CGPoint(x: startX + CGFloat(index) * spacing, y: y)

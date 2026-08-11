@@ -4,8 +4,10 @@ import Foundation
 /// Layout math for the sound-out-word pit arena (pads, per-step candidate fan, prompt).
 /// Pure and unit-testable.
 nonisolated struct PitSoundOutWordGeometry: Equatable, Sendable {
-    /// The prompt block hangs from just under the top edge so the CRT plate grows downward.
-    static let promptTopFraction: CGFloat = 0.97
+    /// The prompt block hangs from the shared top chrome inset so the CRT plate grows downward.
+    /// Expressed as a fraction because this geometry is pure; it matches `ScreenLayout` because
+    /// landscape has no top safe-area inset to take the max against.
+    static let promptTopFraction: CGFloat = 1 - ScreenLayout.edgeInsetFraction
     /// Vertical gap between tiles in a step, as a fraction of the tile side.
     static let candidateSpacingScale: CGFloat = 0.95
     /// Whole candidate fan sits this fraction below the pad mid-line.

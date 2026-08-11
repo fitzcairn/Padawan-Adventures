@@ -100,12 +100,7 @@ extension GateSoundOutWordScene {
         max(basePromptFontSize * promptScale, 12)
     }
 
-    var promptTopInset: CGFloat {
-        let host = view
-        let hostSize = host?.bounds.size ?? size
-        let safeArea = host?.safeAreaInsets ?? .zero
-        return ScreenLayout.uiInsets(size: hostSize, safeArea: safeArea).top
-    }
+    var promptTopInset: CGFloat { chromeInsets.top }
 
     /// Illustration side inside the CRT screen.
     var promptPictureSide: CGFloat { basePromptPictureSide * promptScale }
@@ -132,13 +127,13 @@ extension GateSoundOutWordScene {
         CGPoint(x: (playAreaRect.maxX + size.width) * 0.5, y: playAreaRect.midY)
     }
 
-    /// Center Y of the bottom-middle choice row, tucked under the play area.
+    /// Center Y of the bottom-middle choice row: anchored to the bottom of the screen, and
+    /// pushed up only far enough to stay clear of the play area.
     var choiceRowCenterY: CGFloat {
-        let radius = laidOutDiameter * 0.5
-        let band = playAreaRect.minY
-        let preferred = band * 0.5
-        let ceiling = band - capacitorGap - radius
-        return max(min(preferred, ceiling), radius + capacitorGap)
+        bottomRowCenterY(
+            rowHeight: laidOutDiameter,
+            ceiling: playAreaRect.minY - capacitorGap - laidOutDiameter * 0.5
+        )
     }
 
     /// Evenly spaced, horizontally centered slots for a set of `count` capacitors.

@@ -9,8 +9,6 @@ enum CombatMonsterHPBar {
     static let widthFraction: CGFloat = 0.22
     /// Gap between the enemy's right edge and the bar's left edge.
     static let leadingGap: CGFloat = 12
-    /// Gap between the scene top and the bar's top edge.
-    static let topInset: CGFloat = 10
     static let nodeName = "monsterHP"
     static let pulseActionKey = "monsterHPPulse"
 
@@ -37,7 +35,7 @@ enum CombatMonsterHPBar {
         track.size = barSize
         // Pin near the scene top so both arenas share the same chrome height,
         // regardless of how tall the enemy sprite is.
-        let y = scene.size.height - topInset - barSize.height * 0.5
+        let y = scene.size.height - scene.chromeInsets.top - barSize.height * 0.5
         track.position = CGPoint(x: frame.maxX + leadingGap, y: y)
         applyTexture(to: track, fraction: fraction)
     }

@@ -26,9 +26,9 @@ struct MinigameTutorialView<Demo: View>: View {
                     .font(AppFont.swiftUI(size: 22, weight: .semibold))
                     .foregroundStyle(AppChrome.primaryTextColor)
                     .appCopyShadow()
-                    .padding(.bottom, 32)
                     .accessibilityIdentifier("minigame.tutorial.continue")
             }
+            .appScreenContentPadding()
 
             // Swallows real touches so the player cannot play the demo scene.
             Color.clear
