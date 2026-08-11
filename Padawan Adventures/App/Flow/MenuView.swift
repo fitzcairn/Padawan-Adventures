@@ -112,7 +112,13 @@ struct MenuView: View {
                             exit(0)
                         }
                     }
-                    .frame(maxWidth: AppChrome.maxContentWidth * 0.75)
+                    // Shared width = widest label; text is fixedSize so it never elides.
+                    .frame(width: AppLargeButton.consoleWidth(fittingTitles: [
+                        Strings.text("menu_continue"),
+                        Strings.text("menu_new_game"),
+                        Strings.text("menu_settings"),
+                        Strings.text("menu_quit"),
+                    ]))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 

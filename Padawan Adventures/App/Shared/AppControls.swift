@@ -90,9 +90,37 @@ struct AppLargeButton: View {
     var soundEvent: String? = "button_click"
     let action: () -> Void
 
-    private let titleFontSize: CGFloat = 22
-    private let consoleHeight: CGFloat = 56
-    private var iconSide: CGFloat { titleFontSize * 1.45 }
+    static let consoleTitleFontSize: CGFloat = 22
+    static let consoleHeight: CGFloat = 56
+    static var consoleIconSide: CGFloat { consoleTitleFontSize * 1.45 * 1.25 }
+
+    private var titleFontSize: CGFloat { Self.consoleTitleFontSize }
+    private var consoleHeight: CGFloat { Self.consoleHeight }
+    private var iconSide: CGFloat { Self.consoleIconSide }
+
+    /// Plate width that fits `title` with icon + padding inside the CRT screen.
+    static func consoleWidth(fittingTitle title: String, includeIcon: Bool = true) -> CGFloat {
+        consoleWidth(fittingTitles: [title], includeIcon: includeIcon)
+    }
+
+    /// Plate width that fits the widest of `titles` (icon + padding + CRT chrome).
+    static func consoleWidth(fittingTitles titles: [String], includeIcon: Bool = true) -> CGFloat {
+        let font = AppFont.uiKit(size: consoleTitleFontSize)
+        let textWidth = titles.map { title -> CGFloat in
+            ceil(
+                (title as NSString).boundingRect(
+                    with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: consoleHeight),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: [.font: font],
+                    context: nil
+                ).width
+            )
+        }.max() ?? 0
+        let iconWidth: CGFloat = includeIcon ? consoleIconSide + 12 : 0
+        let contentWidth = iconWidth + textWidth + 36
+        // Horizontal chrome is a fraction of plate height on each edge.
+        return ceil(contentWidth + consoleHeight * StarWarsConsoleChrome.insetRatio * 2 + 12)
+    }
 
     var body: some View {
         Button {
@@ -144,11 +172,19 @@ struct AppLargeButton: View {
                         color: StarWarsConsolePalette.crtGlow,
                         radius: max(2, titleFontSize * 0.12)
                     )
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
-                Spacer(minLength: 0)
+                if icon != nil {
+                    Spacer(minLength: 0)
+                }
             }
             .padding(.horizontal, 18)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: icon == nil ? .center : .leading
+            )
         }
         .frame(height: consoleHeight)
     }
