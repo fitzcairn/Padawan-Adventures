@@ -39,6 +39,7 @@ Usage:
   python3 scripts/bake_sprites.py --cutscene   # bake cutscene UI sprites
   python3 scripts/bake_sprites.py --gate       # bake gate letter-match / word-plug UI sprites
   python3 scripts/bake_sprites.py --tutorials  # bake tutorial hand cursor sprites
+  python3 scripts/bake_sprites.py --menu       # bake main-menu button icons
   python3 scripts/bake_sprites.py --all        # everything
   python3 scripts/bake_sprites.py --verify     # exit 1 if sources/manifest stale
   python3 scripts/bake_sprites.py --enemy dino # bake one enemy type
@@ -1201,6 +1202,33 @@ def collect_tutorials(plan: BakePlan) -> None:
     collect_gate_ui_yaml(plan, config_name="tutorials", category_prefix="tutorial")
 
 
+def collect_menu(plan: BakePlan) -> None:
+    """Bake main-menu button icons. SpriteKit prep flip so `uiImages` returns upright."""
+    path = CONFIG / "UI" / "menu.yaml"
+    add_config_input(plan, path)
+    if not path.is_file():
+        plan.errors.append(f"menu: missing {path.relative_to(RESOURCES.parent)}")
+        return
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        plan.errors.append("menu: Config/UI/menu.yaml must be a mapping")
+        return
+    for name, entry in data.items():
+        if not isinstance(entry, dict):
+            plan.errors.append(f"menu.{name}: expected mapping with sprite:")
+            continue
+        sprite = entry.get("sprite")
+        if not isinstance(sprite, dict):
+            plan.errors.append(f"menu.{name}: missing sprite:")
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"menu.{name}",
+            sprite=sprite,
+            flip_vertical=True,
+        )
+
+
 def build_plan(args: argparse.Namespace) -> BakePlan:
     plan = BakePlan()
     if args.verify_only:
@@ -1218,6 +1246,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_cutscene = args.all or args.default_set or args.cutscene
     bake_gate = args.all or args.default_set or args.gate
     bake_tutorials = args.all or args.default_set or args.tutorials
+    bake_menu = args.all or args.default_set or args.menu
     bake_enemies = args.all or args.enemies or bool(args.enemy)
     bake_projectiles = args.all or args.projectiles
 
@@ -1239,6 +1268,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.cutscene,
             args.gate,
             args.tutorials,
+            args.menu,
             args.verify,
         ]
     ):
@@ -1246,7 +1276,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             bake_gates
         ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
             bake_tutorials
-        ) = True
+        ) = bake_menu = True
 
     if args.verify and not any(
         [
@@ -1265,6 +1295,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.cutscene,
             args.gate,
             args.tutorials,
+            args.menu,
         ]
     ):
         # Verify against whatever the manifest lists; still collect default inputs
@@ -1273,7 +1304,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             bake_gates
         ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
             bake_tutorials
-        ) = True
+        ) = bake_menu = True
 
     if bake_player:
         collect_player(plan)
@@ -1298,6 +1329,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
         collect_gate_word_plug(plan)
     if bake_tutorials:
         collect_tutorials(plan)
+    if bake_menu:
+        collect_menu(plan)
     if bake_enemies:
         only = set(args.enemy) if args.enemy else None
         collect_enemies(plan, only=only)
@@ -1594,7 +1627,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, tutorials, enemies, projectiles",
+        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, tutorials, menu, enemies, projectiles",
     )
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument("--projectiles", action="store_true", help="Bake combat projectile sheets")
@@ -1619,6 +1652,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Bake tutorial hand cursor sprites",
     )
+    p.add_argument("--menu", action="store_true", help="Bake main-menu button icons")
     p.add_argument(
         "--verify",
         action="store_true",
@@ -1647,6 +1681,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.cutscene,
             args.gate,
             args.tutorials,
+            args.menu,
         ]
     )
     return args

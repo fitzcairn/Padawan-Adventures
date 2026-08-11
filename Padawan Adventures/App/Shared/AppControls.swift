@@ -72,32 +72,85 @@ private struct OptionalSpeakOnTap: ViewModifier {
     }
 }
 
+enum AppLargeButtonStyle {
+    /// Flat AppChrome fill + outline.
+    case flat
+    /// In-game CRT bezel + scanline screen.
+    case console
+}
+
 struct AppLargeButton: View {
     let title: String
     var accessibilityID: String? = nil
+    var style: AppLargeButtonStyle = .flat
+    var icon: UIImage? = nil
     var backgroundColor: Color = AppChrome.buttonBackgroundColor
     var opacity: Double = 1
     /// Shared `audio.yaml` FX event played on tap (`nil` = silent).
     var soundEvent: String? = "button_click"
     let action: () -> Void
 
+    private let titleFontSize: CGFloat = 22
+    private let consoleHeight: CGFloat = 56
+    private var iconSide: CGFloat { titleFontSize * 1.45 }
+
     var body: some View {
         Button {
             playMenuSound(soundEvent)
             action()
         } label: {
-            Text(title)
-                .font(AppFont.swiftUI(size: 22, weight: .semibold))
-                .foregroundStyle(AppChrome.buttonForegroundColor)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .appButtonChrome(RoundedRectangle(cornerRadius: 12), fill: backgroundColor)
+            switch style {
+            case .flat:
+                flatLabel
+            case .console:
+                consoleLabel
+            }
         }
         .buttonStyle(.plain)
         .opacity(opacity)
-        .frame(minHeight: 44)
+        .frame(minHeight: style == .console ? consoleHeight : 44)
         .accessibilityIdentifier(accessibilityID ?? title)
+    }
+
+    private var flatLabel: some View {
+        Text(title)
+            .font(AppFont.swiftUI(size: titleFontSize, weight: .semibold))
+            .foregroundStyle(AppChrome.buttonForegroundColor)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .appButtonChrome(RoundedRectangle(cornerRadius: 12), fill: backgroundColor)
+    }
+
+    private var consoleLabel: some View {
+        StarWarsConsoleFrame {
+            HStack(spacing: 12) {
+                if let icon {
+                    Image(uiImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .shadow(
+                            color: StarWarsConsolePalette.crtGlow.opacity(0.45),
+                            radius: max(1.5, iconSide * 0.08)
+                        )
+                        .frame(width: iconSide, height: iconSide)
+                }
+
+                Text(title)
+                    .font(AppFont.swiftUI(size: titleFontSize, weight: .semibold))
+                    .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                    .shadow(
+                        color: StarWarsConsolePalette.crtGlow,
+                        radius: max(2, titleFontSize * 0.12)
+                    )
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .frame(height: consoleHeight)
     }
 }
 

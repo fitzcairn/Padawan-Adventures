@@ -1,0 +1,15 @@
+# Main-menu button icons (baked via scripts/bake_sprites.py --menu).
+# Sheet layout (2x2, row-major): Continue, New Game, Settings, Exit.
+menu_icons:
+  sprite:
+    root: Sprites/UI/Menu
+    chroma_key: "#000000"
+    chroma_key_tolerance: 8
+    chroma_key_feather: 4
+    # Keep square cells so button icons share a consistent frame size.
+    trim: false
+    bake_scale: 0.25
+    animations:
+      idle:
+        sheet: main-menu-icons
+        atlas: main-menu-icons-atlas

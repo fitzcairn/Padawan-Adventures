@@ -70,8 +70,8 @@ extension AppSession {
     /// Enemy, projectile, and `player_combat` sprites are level-scoped: loaded by
     /// `GameWorldPreparer.prepareLaunch` and dropped by `releaseLevelScopedAssets()`.
     var persistentSpriteIDs: Set<String> {
-        // `logo` stays pinned — MenuView reads it. `kam`/`yoda` are loading-screen-only
-        // and are invalidated when the player leaves LoadingView.
+        // `logo` and `menu_icons` stay pinned — MenuView reads them. `kam`/`yoda` are
+        // loading-screen-only and are invalidated when the player leaves LoadingView.
         var ids: Set<String> = [
             "player",
             "energy",
@@ -79,6 +79,7 @@ extension AppSession {
             "coin",
             "treasure",
             "logo",
+            MenuSpritesConfig.iconsID,
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))

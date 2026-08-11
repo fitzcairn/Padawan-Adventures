@@ -7,14 +7,19 @@ struct MenuView: View {
     private let screenBackground: String?
     @State private var showContinue = false
     @State private var logoImage: UIImage?
+    @State private var menuIcons: [UIImage] = []
     @State private var isContentReady = false
 
     init(session: AppSession, router: FlowRouter) {
         self.session = session
         self.router = router
         self.screenBackground = (try? ScreenConfig.loadFromBundle(named: "menu"))?.background
-        // Logo is warmed during the loading screen; paint it on the first ready frame.
+        // Logo / menu icons are warmed during the loading screen; paint on the first ready frame.
         _logoImage = State(initialValue: session.spriteLibrary.uiImage(id: "logo"))
+        _menuIcons = State(
+            initialValue: session.spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID)?
+                .map(\.image) ?? []
+        )
     }
 
     var body: some View {
@@ -35,6 +40,7 @@ struct MenuView: View {
             // Assets are already warm from bootstrap; only resolve continue eligibility.
             await session.refreshContinueEligibility()
             logoImage = session.spriteLibrary.uiImage(id: "logo")
+            await ensureMenuIcons()
             // Mid-run save *or* campaign progress (so CONTINUE survives beating a level).
             showContinue = session.shouldShowContinue
             isContentReady = true
@@ -61,7 +67,9 @@ struct MenuView: View {
                         if showContinue {
                             AppLargeButton(
                                 title: Strings.text("menu_continue"),
-                                accessibilityID: "menu.continue"
+                                accessibilityID: "menu.continue",
+                                style: .console,
+                                icon: menuIcon(.continueGame)
                             ) {
                                 // Mid-run save → jump back into the world; otherwise reopen
                                 // level select (where the player left after beating / quitting).
@@ -76,7 +84,9 @@ struct MenuView: View {
 
                         AppLargeButton(
                             title: Strings.text("menu_new_game"),
-                            accessibilityID: "menu.newGame"
+                            accessibilityID: "menu.newGame",
+                            style: .console,
+                            icon: menuIcon(.newGame)
                         ) {
                             Task {
                                 await session.beginNewGame()
@@ -86,14 +96,18 @@ struct MenuView: View {
 
                         AppLargeButton(
                             title: Strings.text("menu_settings"),
-                            accessibilityID: "menu.settings"
+                            accessibilityID: "menu.settings",
+                            style: .console,
+                            icon: menuIcon(.settings)
                         ) {
                             router.navigate(to: .settings)
                         }
 
                         AppLargeButton(
                             title: Strings.text("menu_quit"),
-                            accessibilityID: "menu.quit"
+                            accessibilityID: "menu.quit",
+                            style: .console,
+                            icon: menuIcon(.exit)
                         ) {
                             exit(0)
                         }
@@ -126,5 +140,26 @@ struct MenuView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private func menuIcon(_ icon: MenuSpritesConfig.Icon) -> UIImage? {
+        guard menuIcons.indices.contains(icon.rawValue) else { return nil }
+        return menuIcons[icon.rawValue]
+    }
+
+    @MainActor
+    private func ensureMenuIcons() async {
+        if menuIcons.count >= MenuSpritesConfig.Icon.allCases.count { return }
+        if let frames = session.spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID),
+           frames.count >= MenuSpritesConfig.Icon.allCases.count {
+            menuIcons = frames.map(\.image)
+            return
+        }
+        guard let config = try? MenuSpritesConfig.loadFromBundle() else { return }
+        for entry in config.entries {
+            await session.spriteLibrary.ensureLoaded(entry.config, id: entry.id)
+        }
+        menuIcons = session.spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID)?
+            .map(\.image) ?? []
     }
 }

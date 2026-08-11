@@ -83,6 +83,15 @@ extension AppSession {
             _ = spriteLibrary.uiImages(id: "kam")
             _ = spriteLibrary.uiImages(id: "yoda")
         }
+        if spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID) == nil,
+           let menuSprites = try? MenuSpritesConfig.loadFromBundle() {
+            for entry in menuSprites.entries {
+                await spriteLibrary.ensureLoaded(entry.config, id: entry.id)
+            }
+            _ = spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID)
+            // SwiftUI-only: drop SKTexture copies once UIImages are ready.
+            spriteLibrary.releaseTextures(id: MenuSpritesConfig.iconsID)
+        }
         await report(0.02)
 
         // Config / store bootstrap, then remaining screen + gameplay assets.
