@@ -70,9 +70,9 @@ final class CombatDeflectScene: MinigameScene {
     /// The word row is fitted into this fraction of the projectile art's width. The art
     /// is a blob rather than a clean circle, so this is the knob to tune if the word
     /// crowds the edge.
-    static let orbWordFitFraction: CGFloat = 0.62
+    static let orbWordFitFraction: CGFloat = 0.62 * 1.3
     /// Word font size as a fraction of `orbBaseSize`.
-    static let orbWordFontFraction: CGFloat = 0.26
+    static let orbWordFontFraction: CGFloat = 0.26 * 1.3
     /// Extra gap between the blank square and the nearest letter, as a fraction of
     /// blank width.
     static let orbBlankLetterGapFraction: CGFloat = 0.35
