@@ -29,6 +29,8 @@ final class CombatScene: MinigameScene {
         var pathDurationSeconds: Double
         let scaleStartedAt: Double
         let scaleDurationSeconds: Double
+        /// Inbound fan-curve length, used to test remaining distance to the player center.
+        let pathLength: CGFloat
         let letter: String
         let isTarget: Bool
         var role: ShotRole

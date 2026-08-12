@@ -14,29 +14,31 @@ extension CombatScene {
             let lane = laneOffset(index: shot.laneIndex, count: laneCount)
             // Stagger spawn X immediately so neighbors are not stacked under one swipe.
             let start = CGPoint(x: origin.x + lane * size.width * 0.18, y: origin.y)
-            let drop = start.y - target.y
-            // Per-lane vertical bias: outer lanes take higher / lower arcs so dive timing
-            // (accel/decel along Y) spreads sprites apart, not only sideways.
-            let verticalFan = lane * size.height * 0.14
-            let earlyDrop = 0.03 + abs(lane) * 0.10
-            let midDrop = min(max(0.48 + lane * 0.22, 0.28), 0.78)
-            // Cubic initial tangent points at c1 — keep early motion mostly horizontal fan-out.
+            let midY = size.height * 0.5
+            let verticalFan = lane * size.height * 0.10
+            // Wide mid-screen control points so most of the arc length is the approach
+            // from a readable, fanned pose — exponential ease-out spends its slow tail there.
             let c1 = CGPoint(
-                x: start.x + lane * size.width * 0.58,
-                y: start.y - drop * earlyDrop + verticalFan
+                x: start.x + lane * size.width * 0.55,
+                y: midY + verticalFan
             )
-            // Converge late; keep residual lateral + vertical so paths don't re-cross early.
             let c2 = CGPoint(
-                x: target.x + lane * size.width * 0.12,
-                y: start.y - drop * midDrop + verticalFan * 0.35
+                x: target.x + lane * size.width * 0.32,
+                y: midY * 0.55 + target.y * 0.45 + verticalFan * 0.4
             )
             // Fixed travel window (± speed jitter). Parameterizing by t over that duration
             // makes along-path speed proportional to each sprite's path length.
-            let duration = max(travelSeconds / shot.speedJitter, 0.2)
+            let duration = max(
+                travelSeconds / shot.speedJitter / Double(CombatShotMotion.inboundSpeedScale),
+                0.2
+            )
+            let pathLength = CombatShotMotion.cubicBezierArcLength(
+                start: start, c1: c1, c2: c2, end: target
+            )
 
             let node = makeShotNode(letter: shot.letter, id: shot.id)
             node.position = start
-            node.setScale(0.35)
+            node.setScale(CombatShotMotion.inboundStartScale)
             addChild(node)
 
             shotVisuals[shot.id] = ShotVisual(
@@ -48,6 +50,7 @@ extension CombatScene {
                 pathDurationSeconds: duration,
                 scaleStartedAt: sceneElapsed,
                 scaleDurationSeconds: duration,
+                pathLength: pathLength,
                 letter: shot.letter,
                 isTarget: shot.isTarget,
                 role: .inbound,
@@ -106,18 +109,29 @@ extension CombatScene {
         for id in Array(shotVisuals.keys) {
             guard let visual = shotVisuals[id] else { continue }
             let t = pathProgress(for: visual)
-            visual.node.position = cubicBezier(
-                t: t,
-                start: visual.pathStart,
-                c1: visual.pathControl1,
-                c2: visual.pathControl2,
-                end: visual.pathEnd
-            )
             if visual.role == .inbound {
+                // Ease distance along the curve, not the bezier parameter — otherwise the
+                // cubic bunches the dive to the player into the fast part of the ease.
+                let eased = CombatShotMotion.easeOut(t)
+                visual.node.position = CombatShotMotion.pointAlongCubicBezier(
+                    fraction: eased,
+                    start: visual.pathStart,
+                    c1: visual.pathControl1,
+                    c2: visual.pathControl2,
+                    end: visual.pathEnd
+                )
                 let scaleT = CGFloat(
                     min(1, max(0, (sceneElapsed - visual.scaleStartedAt) / max(visual.scaleDurationSeconds, 0.05)))
                 )
-                visual.node.setScale(0.35 + 0.80 * scaleT)
+                visual.node.setScale(CombatShotMotion.inboundScale(t: scaleT))
+            } else {
+                visual.node.position = cubicBezier(
+                    t: t,
+                    start: visual.pathStart,
+                    c1: visual.pathControl1,
+                    c2: visual.pathControl2,
+                    end: visual.pathEnd
+                )
             }
             if t >= 1 {
                 finishShotPath(shotID: id)
@@ -142,23 +156,41 @@ extension CombatScene {
         }
     }
 
-    /// Proximity test, so a hit registers slightly before the path formally ends.
+    /// Remaining inbound distance along the fan curve to the player body center.
+    /// Hits only when that gap is within the two sprites' visual radii.
     func checkImpacts() {
-        guard let playerNode else { return }
-        let aim = bodyCenter(of: playerNode, height: playerSpriteHeight)
-        let playerHitRadius = playerSpriteHeight * 0.45
+        let playerRadius = playerImpactRadius()
         for (id, visual) in shotVisuals where visual.role == .inbound {
-            let hitRadius = max(shotBaseSize * abs(visual.node.xScale) * 0.5, 12)
-            let distance = hypot(
-                visual.node.position.x - aim.x,
-                visual.node.position.y - aim.y
+            let eased = CombatShotMotion.easeOut(pathProgress(for: visual))
+            let remaining = CombatShotMotion.remainingArcLength(
+                fraction: eased,
+                total: visual.pathLength
             )
-            if distance <= hitRadius + playerHitRadius {
+            let projectileRadius = shotImpactRadius(for: visual.node)
+            if CombatShotMotion.projectileHitsPlayer(
+                remainingArcLength: remaining,
+                projectileRadius: projectileRadius,
+                playerRadius: playerRadius
+            ) {
                 resolveImpact(shotID: id)
                 // The first arrival fails the wave; the rest are handled by the charge.
                 return
             }
         }
+    }
+
+    /// Half the on-screen letter sprite, so overlap matches what the player sees.
+    func shotImpactRadius(for node: SKNode) -> CGFloat {
+        let bounds = shotSpriteBounds(for: node)
+        return max(bounds.width, bounds.height) * 0.5
+    }
+
+    /// Half the padawan's opaque width around body center; not the full fitted square.
+    func playerImpactRadius() -> CGFloat {
+        guard let playerNode, playerNode.texture != nil else {
+            return playerSpriteHeight * 0.15
+        }
+        return max(opaqueContentWidthPoints(for: playerNode) * 0.5, 12)
     }
 
     func resolveImpact(shotID: UUID) {
