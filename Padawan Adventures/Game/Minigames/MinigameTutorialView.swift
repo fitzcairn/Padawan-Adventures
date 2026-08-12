@@ -23,8 +23,8 @@ struct MinigameTutorialView<Demo: View>: View {
             VStack {
                 Spacer()
                 Text(Strings.text("minigame_tutorial_continue"))
-                    .font(AppFont.swiftUI(size: 22, weight: .semibold))
-                    .foregroundStyle(AppChrome.primaryTextColor)
+                    .font(TutorialHintStyle.font)
+                    .foregroundStyle(TutorialHintStyle.color)
                     .appCopyShadow()
                     .accessibilityIdentifier("minigame.tutorial.continue")
             }

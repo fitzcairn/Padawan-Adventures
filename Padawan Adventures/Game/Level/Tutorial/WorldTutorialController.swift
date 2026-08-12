@@ -31,13 +31,8 @@ final class WorldTutorialController: WorldTutorialStaging {
         scene.addChild(cursor)
         self.cursor = cursor
 
-        let hint = SKLabelNode(text: Strings.text("world_tutorial_tap_to_continue"))
+        let hint = TutorialHintStyle.makeLabel(text: Strings.text("world_tutorial_tap_to_continue"))
         hint.name = "worldTutorialHint"
-        hint.fontName = AppFont.name
-        hint.fontSize = 15
-        hint.fontColor = .white
-        hint.horizontalAlignmentMode = .center
-        hint.verticalAlignmentMode = .bottom
         hint.zPosition = IsometricMath.occlusionBandBase * 2
         hint.alpha = 0
         if let view = scene.view {
