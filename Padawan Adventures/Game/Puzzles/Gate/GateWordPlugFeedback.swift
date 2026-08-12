@@ -8,14 +8,7 @@ extension GateWordPlugScene {
         let p = touch.location(in: self)
         // Plugs stay draggable during feedback lock; only non-drag taps wait.
         if let id = draggableToken(at: p), let node = tokenNodes[id] {
-            dragTokenID = id
-            dragStart = p
-            dragMoved = false
-            dragOffset = CGPoint(x: node.position.x - p.x, y: node.position.y - p.y)
-            node.zPosition = 100
-            beginDragCable(for: id)
-            // Pronunciation plays on touch-down (tap or drag start), not on release.
-            handle(engine.tapLetter(id: id))
+            beginTokenDrag(id: id, node: node, at: p)
             return
         }
         guard !inputLocked else { return }
@@ -31,13 +24,8 @@ extension GateWordPlugScene {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, let dragTokenID, let touch = touches.first,
-              let node = tokenNodes[dragTokenID] else { return }
-        let p = touch.location(in: self)
-        if hypot(p.x - dragStart.x, p.y - dragStart.y) > tapMoveThreshold {
-            dragMoved = true
-        }
-        node.position = CGPoint(x: p.x + dragOffset.x, y: p.y + dragOffset.y)
+        guard !didEnd, dragTokenID != nil, let touch = touches.first else { return }
+        updateTokenDrag(to: touch.location(in: self))
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -45,6 +33,7 @@ extension GateWordPlugScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        stopOpenPlugSwirls()
         guard let id = dragTokenID else { return }
         tearDownCable(for: id)
         animateTokenHome(id: id)
@@ -53,7 +42,34 @@ extension GateWordPlugScene {
         dragMoved = false
     }
 
+    func beginTokenDrag(id: UUID, node: SKNode, at p: CGPoint) {
+        dragTokenID = id
+        dragStart = p
+        dragMoved = false
+        dragOffset = CGPoint(x: node.position.x - p.x, y: node.position.y - p.y)
+        node.zPosition = 100
+        beginDragCable(for: id)
+        // Pronunciation plays on touch-down (tap or drag start), not on release.
+        handle(engine.tapLetter(id: id))
+    }
+
+    /// Test seam: start a plug drag without SpriteKit hit-testing.
+    func beginTokenDragForTesting(id: UUID) {
+        guard let node = tokenNodes[id] else { return }
+        beginTokenDrag(id: id, node: node, at: node.position)
+    }
+
+    func updateTokenDrag(to p: CGPoint) {
+        guard let dragTokenID, let node = tokenNodes[dragTokenID] else { return }
+        if !dragMoved, hypot(p.x - dragStart.x, p.y - dragStart.y) > tapMoveThreshold {
+            dragMoved = true
+            startOpenPlugSwirls()
+        }
+        node.position = CGPoint(x: p.x + dragOffset.x, y: p.y + dragOffset.y)
+    }
+
     func endDrag() {
+        stopOpenPlugSwirls()
         guard let id = dragTokenID, let node = tokenNodes[id] else { return }
         defer {
             dragTokenID = nil
@@ -258,6 +274,35 @@ extension GateWordPlugScene {
     func animateTokenHome(id: UUID) {
         guard let node = tokenNodes[id], let home = tokenHome[id] else { return }
         node.run(SKAction.move(to: home, duration: 0.15).withTimingMode(.easeOut))
+    }
+
+    /// Gold particle ring around every empty word socket while a plug is in motion.
+    func startOpenPlugSwirls() {
+        stopOpenPlugSwirls(immediate: true)
+        let referenceHeight = max(laidOutDiameter, 1)
+        for (id, socket) in socketNodes {
+            guard !engine.isSlotFilled(id) else { continue }
+            let side = max(socket.size.width, socket.size.height)
+            OpenPlugSwirl.attach(
+                to: socket,
+                radius: side * OpenPlugSwirl.orbitRadiusFraction,
+                referenceHeight: referenceHeight
+            )
+        }
+        openPlugSwirlsActive = true
+    }
+
+    func stopOpenPlugSwirls(immediate: Bool = false) {
+        guard openPlugSwirlsActive || immediate else { return }
+        openPlugSwirlsActive = false
+        for socket in socketNodes.values {
+            if immediate {
+                socket.removeAction(forKey: OpenPlugSwirl.cleanupKey)
+                socket.childNode(withName: OpenPlugSwirl.nodeName)?.removeFromParent()
+            } else {
+                OpenPlugSwirl.detach(from: socket)
+            }
+        }
     }
 
     var correctSoundTrackID: String? {

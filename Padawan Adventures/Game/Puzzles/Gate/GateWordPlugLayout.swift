@@ -13,6 +13,7 @@ extension GateWordPlugScene {
         tokenNodes = [:]
         tokenPlugs = [:]
         tokenHome = [:]
+        openPlugSwirlsActive = false
 
         if let background = GateMinigameBackground.wordPlug(sceneSize: size) {
             addChild(background)

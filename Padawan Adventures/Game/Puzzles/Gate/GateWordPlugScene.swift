@@ -28,6 +28,8 @@ final class GateWordPlugScene: MinigameScene {
     var dragStart: CGPoint = .zero
     var dragOffset: CGPoint = .zero
     var dragMoved = false
+    /// Gold swirl around empty sockets while a plug is being dragged.
+    var openPlugSwirlsActive = false
     /// Active cables keyed by letter token id (kept after a correct plug).
     var tokenCables: [UUID: DragCable] = [:]
     var cableLastUpdateTime: TimeInterval?
@@ -82,9 +84,11 @@ final class GateWordPlugScene: MinigameScene {
 
     override func willMove(from view: SKView) {
         GameLogger.mark(.world, "gateWordPlug.willMove teardown")
+        stopOpenPlugSwirls(immediate: true)
         stopArcLoop()
     }
     override func rebuildLayout() {
+        let resumeSwirls = dragMoved && dragTokenID != nil
         tearDownAllCables()
         let plugged = engine.plugged
         buildPuzzle()
@@ -97,6 +101,9 @@ final class GateWordPlugScene: MinigameScene {
         }
         restorePluggedCables()
         syncArcLoop()
+        if resumeSwirls {
+            startOpenPlugSwirls()
+        }
     }
 
     override func update(_ currentTime: TimeInterval) {
