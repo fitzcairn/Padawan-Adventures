@@ -12,6 +12,12 @@ final class SoundEffectsController {
     /// unboosted SFX level, then ducked by `phoneticVolumeScale` so letter cues
     /// stay ~20% clearer even when phonetic playback is clamped at 1.
     static let backgroundSFXVolumeScale: Float = 0.5 / phoneticVolumeScale
+    /// Cutscene movie dialogue. The half-level that ambience sits at before its phonetic
+    /// duck, which the movie skips because no letter cues play over it. Every
+    /// asset is normalised to the same loudness, so this lands the story a comfortable
+    /// step above ambience and below the letter cues. Keeping it under 1 also leaves the
+    /// volume slider linear to the top, where a boosted level would clamp instead.
+    static let cutsceneVolumeScale: Float = 0.5
 
     /// While a phonetic cue plays, music and ambience loops drop to this fraction
     /// of their normal mix level so letter/word audio stays clear in every minigame.

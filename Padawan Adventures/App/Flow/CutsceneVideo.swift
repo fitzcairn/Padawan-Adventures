@@ -8,26 +8,32 @@ final class CutsceneVideo {
     static let subdirectory = "Backgrounds"
 
     private let bundle: Bundle
+    private let effects: SoundEffectsController
     private(set) var player: AVPlayer?
     /// True while a skip fade is driving volume to zero; view teardown must not hard-cut.
     private(set) var isFadingOut = false
     private var fadeTask: Task<Void, Never>?
     private var fadeGeneration = 0
 
-    init(bundle: Bundle = .main) {
+    init(bundle: Bundle = .main, effects: SoundEffectsController? = nil) {
         self.bundle = bundle
+        self.effects = effects ?? .shared
     }
 
     static func url(bundle: Bundle = .main) -> URL? {
         bundle.url(forResource: basename, withExtension: "mp4", subdirectory: subdirectory)
     }
 
-    /// Slightly louder than title / menu music so dialogue reads clearly over the mix.
-    private static let volumeBoost: Float = 1.75
-
-    /// Music effective volume × `volumeBoost`, clamped to 1 (or 0 when music is muted).
+    /// Movie dialogue at `cutsceneVolumeScale` of the sound-effects level.
+    ///
+    /// The movie is speech, like the phonetic letter cues, so it belongs on the effects
+    /// channel: silencing the score must not silence the story, and the cutscene screen
+    /// mutes music anyway (`screens.yaml`), leaving no mix for it to sit over. Scaling
+    /// down from a full-volume channel rather than boosting a quiet one also means the
+    /// slider keeps working at the top of its range instead of running into a clamp.
     private var playbackVolume: Float {
-        min(1, BackgroundMusicController.shared.effectiveVolume * Self.volumeBoost)
+        guard effects.soundEffectsEnabled else { return 0 }
+        return effects.soundEffectsVolume * SoundEffectsController.cutsceneVolumeScale
     }
 
     /// Builds the player and waits briefly for the asset to become playable.
