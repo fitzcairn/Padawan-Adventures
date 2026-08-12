@@ -1,4 +1,4 @@
-# Shared by levels 2+ via `inherits: _both_cases`.
+# Shared by levels 2–3 via `inherits: _both_cases` (levels 4+ inherit `_more_decoys`).
 # Restates combat/gate minigame lists so grapheme-sound types use both letter cases.
 inherits: _defaults
 

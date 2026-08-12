@@ -93,6 +93,7 @@ combat:
     - type: grapheme-sound-combat
       weight: 1.0
       # Extra non-matching letters launched alongside the cued one, per wave.
+      # Levels 4+ raise `max_decoy_count` to 6 via `_more_decoys`.
       min_decoy_count: 2
       max_decoy_count: 4
       grapheme_case: lower

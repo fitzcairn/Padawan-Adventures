@@ -1,0 +1,22 @@
+# Shared by levels 4+ via `inherits: _more_decoys`.
+# Restates the combat minigame list so grapheme-sound waves can launch up to 6 decoys.
+inherits: _both_cases
+
+combat:
+  minigames:
+    - type: grapheme-sound-combat
+      weight: 1.0
+      min_decoy_count: 2
+      max_decoy_count: 6
+      grapheme_case: both
+      grapheme_sound_repeat_seconds: 3
+    - type: starting-sound-combat
+      weight: 1.0
+      monster_hit_points: 5
+      orb_travel_seconds: 8.0
+      ring_count: 4
+    - type: ending-sound-combat
+      weight: 1.0
+      monster_hit_points: 5
+      orb_travel_seconds: 8.0
+      ring_count: 4

@@ -1,7 +1,7 @@
 # Terrain: A volatile, young planet characterized by active volcanic mountain ranges, massive rivers of molten lava, and jagged, obsidian rock formations.
 # Monsters:
 # - lava_lizard: Native lava lizard that lives near magma rivers.
-inherits: _both_cases
+inherits: _more_decoys
 # Display name + VO live in Config/Catalogs/strings.yaml under this id.
 name: level_mustafar
 order: 7

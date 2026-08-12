@@ -151,6 +151,27 @@ struct LevelConfigSnapshotTests {
         }
     }
 
+    @Test func levelsAfterIlumLaunchMoreSlashDecoys() throws {
+        let catalog = LevelCatalog.loadFromBundle()
+        #expect(!catalog.isEmpty)
+        for descriptor in catalog {
+            let level = try LevelConfig.loadFromBundle(
+                named: descriptor.resourceName,
+                subdirectory: LevelCatalog.subdirectory
+            )
+            guard case .slash(let slash) = level.combat.minigames.first else {
+                Issue.record("expected slash combat on \(descriptor.resourceName)")
+                continue
+            }
+            #expect(slash.minDecoyCount == 2, "\(descriptor.resourceName) min decoys")
+            if descriptor.order <= 3 {
+                #expect(slash.maxDecoyCount == 4, "\(descriptor.resourceName) max decoys")
+            } else {
+                #expect(slash.maxDecoyCount == 6, "\(descriptor.resourceName) max decoys")
+            }
+        }
+    }
+
     @Test func levelsAfterTythonUseBothGraphemeCases() throws {
         let catalog = LevelCatalog.loadFromBundle()
         #expect(!catalog.isEmpty)
