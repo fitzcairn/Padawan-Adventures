@@ -206,49 +206,26 @@ struct GateSoundOutWordEngineTests {
         #expect(Set(first).isSubset(of: ["st", "sh", "th"]))
     }
 
-    @Test func sharedSamplerDoesNotRepeatChoiceDecoysUntilThePoolWraps() {
-        let poolIDs = ["a", "b", "c", "d", "e", "f", "g", "h"]
+    @Test func choiceDecoysDoNotConsumeTheSharedGraphemePool() {
+        let poolIDs = ["a", "b", "c", "d", "e", "f"]
         let sampler = LevelVocabularySampler(
             pool: .singleTier(words: words(["bad"]), graphemes: graphemes(poolIDs))
         )
-        var first = GateSoundOutWordEngine(
+        var engine = GateSoundOutWordEngine(
             config: .init(
-                choiceCountMin: 2,
-                choiceCountMax: 2,
+                choiceCountMin: 3,
+                choiceCountMax: 3,
                 words: words(["bad"]),
                 graphemes: graphemes(poolIDs)
             ),
             rng: GateSeededGenerator(seed: 1),
             sampler: sampler
         )
-        first.begin()
-        var second = GateSoundOutWordEngine(
-            config: .init(
-                choiceCountMin: 2,
-                choiceCountMax: 2,
-                words: words(["bad"]),
-                graphemes: graphemes(poolIDs)
-            ),
-            rng: GateSeededGenerator(seed: 2),
-            sampler: sampler
-        )
-        second.begin()
-        let firstDecoys = decoys(in: first)
-        let secondDecoys = decoys(in: second)
-        #expect(firstDecoys.count == 3)
-        #expect(secondDecoys.count == 3)
-        #expect(firstDecoys.isDisjoint(with: secondDecoys))
-    }
-
-    private func decoys(in engine: GateSoundOutWordEngine) -> Set<String> {
-        var ids: Set<String> = []
-        for (index, set) in engine.choiceSets.enumerated() {
-            let answer = engine.grapheme(at: index)
-            for choice in set where choice.grapheme != answer {
-                ids.insert(choice.grapheme)
-            }
-        }
-        return ids
+        engine.begin()
+        #expect(engine.choiceSets.allSatisfy { $0.count == 3 })
+        var rng: any RandomNumberGenerator = GateSeededGenerator(seed: 9)
+        let leftover = sampler.takeGraphemes(count: poolIDs.count, using: &rng)
+        #expect(Set(leftover.map(\.grapheme)) == Set(poolIDs))
     }
 }
 

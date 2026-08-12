@@ -179,10 +179,11 @@ nonisolated struct GateSoundOutWordEngine {
         return config.graphemes.first { $0.grapheme == key }
     }
 
-    /// One shuffled set per grapheme: the answer plus distinct decoys from the run's
-    /// unused grapheme set. Prefer decoys whose character length matches the answer so
-    /// digraphs do not sit beside single letters; fall back to any unused grapheme when
-    /// that filtered set is empty. The answer itself is not consumed.
+    /// One shuffled set per grapheme: the answer plus distinct decoys. Decoys are
+    /// weighted like other vocab draws (current-level more likely) but sampled with
+    /// replacement so they do not drain the run's unused grapheme set. Prefer the
+    /// same character length as the answer; fall back to any pool grapheme when that
+    /// filtered set is empty.
     private mutating func buildChoiceSets(for graphemes: [String]) -> [[Choice]] {
         var sets: [[Choice]] = []
         sets.reserveCapacity(graphemes.count)
@@ -200,14 +201,15 @@ nonisolated struct GateSoundOutWordEngine {
         )
         let decoyCount = max(requested - 1, 0)
         let answerLength = answerKey.count
-        var decoys = sampler.takeGraphemes(
+        let decoySampler = LevelVocabularySampler(pool: sampler.pool)
+        var decoys = decoySampler.takeGraphemes(
             count: decoyCount,
             excluding: [answerKey],
             where: { $0.grapheme.count == answerLength },
             using: &rng
         )
         if decoys.count < decoyCount {
-            let extra = sampler.takeGraphemes(
+            let extra = decoySampler.takeGraphemes(
                 count: decoyCount - decoys.count,
                 excluding: Set([answerKey] + decoys.map { $0.grapheme.lowercased() }),
                 using: &rng
