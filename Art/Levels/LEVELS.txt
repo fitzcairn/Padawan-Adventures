@@ -1,0 +1,78 @@
+
+
+Levels are cumulative, but probabilities strongest over latest level.
+
+Level 1:
+
+s, a, t, p, i, n
+
+at, it, in, an, sat, sit, pat, tap, pan, nap, pin, sip
+
+
+Level 2: 
+
+m, d, g, o, c, k
+
+kam, dog, cat, mad, pig, dad, mat, map, dig, cat, can, pig, pot, mop, kid 
+
+
+Level 3: 
+
+e, u, r, h, b, f, l
+
+run, bed, bug, sun, hat
+
+
+Level 4: 
+
+j, v, w, x, y, z, g
+
+jam, vet, web, fox, zip, padawan, jump, vest, quit, quiz
+
+
+
+Level 5: Beginning blends
+
+st, sn, sp, fl, pl, sl, tr, fr, br
+
+stop, snap, spot, flag, plum, slip, tree, frog, tris, brush, crab
+
+
+Level 6: Ending blends
+
+nd, mp, st, nt
+
+sand, pond, jump, camp, fast, nest, tent, ant
+
+
+Level 7: Twin consonant endings
+
+ff, ll, ss, zz
+
+puff, hill, kiss, buzz
+
+
+Level 8: Vowel teams
+
+ai, ay, ee, ea, oa, ow, ugh
+
+rain, train, play, day, see, tree, sea, read, boat, coat, snow, blow, night, high
+
+
+
+Level 9: Magic E
+
+a_e, i_e, o_e, u_e
+
+tape, cake, name, pipe, bike, time, note, bone, home, cube, tube, huge
+
+a_e: tap becomes tape (cake, name)
+
+i_e: pip becomes pipe (bike, time)
+
+o_e: not becomes note (bone, home)
+
+u_e: cub becomes cube (tube, huge)
+
+
+
