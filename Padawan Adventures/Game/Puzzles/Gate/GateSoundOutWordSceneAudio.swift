@@ -54,8 +54,8 @@ extension GateSoundOutWordScene {
         SoundEffectsController.shared.play(event: "error", from: mergedFx)
     }
 
-    /// Holds the finished circuit, spells the word letter-by-letter (green highlight + name),
-    /// reads the whole word back, then hands off the win.
+    /// Holds the finished circuit, spells the word letter-by-letter (orange pulse on the
+    /// already-green letters + name), reads the whole word back, then hands off the win.
     func beginWinSequence() {
         guard !didEnd, !isCompletingWin else { return }
         isCompletingWin = true
@@ -72,7 +72,7 @@ extension GateSoundOutWordScene {
             let nameTrackID = engine.nameTrackID(for: grapheme)
             actions.append(SKAction.run { [weak self] in
                 guard let self else { return }
-                self.setPromptColor(at: index, color: self.promptSolvedFlashColor)
+                self.setPromptColor(at: index, color: self.promptActiveColor)
                 self.playGraphemeName(grapheme)
             })
             actions.append(
@@ -82,7 +82,7 @@ extension GateSoundOutWordScene {
             )
             actions.append(SKAction.run { [weak self] in
                 guard let self else { return }
-                self.setPromptColor(at: index, color: self.promptPendingColor)
+                self.setPromptColor(at: index, color: self.promptPlacedColor)
             })
         }
 

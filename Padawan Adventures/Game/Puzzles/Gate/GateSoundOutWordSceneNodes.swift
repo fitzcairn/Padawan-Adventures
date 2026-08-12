@@ -147,11 +147,16 @@ extension GateSoundOutWordScene {
         fill.fontColor = color
     }
 
-    /// Pending and solved graphemes read white; only the active one is orange.
+    /// Placed graphemes stay green so the word shows progress; everything else is white.
+    /// The active grapheme is painted orange by `promptCurrentGrapheme` / `restoreProgress`.
     func updatePromptColors() {
         for index in promptLetterNodes.indices {
-            setPromptColor(at: index, color: promptPendingColor)
+            setPromptColor(at: index, color: promptColor(for: index))
         }
+    }
+
+    func promptColor(for index: Int) -> UIColor {
+        index < engine.placedCount ? promptPlacedColor : promptPendingColor
     }
 
     // MARK: - Tints

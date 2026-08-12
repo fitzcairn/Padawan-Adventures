@@ -67,7 +67,8 @@ final class GateSoundOutWordScene: MinigameScene {
 
     let promptPendingColor = UIColor.white
     let promptActiveColor = UIColor.systemOrange
-    let promptSolvedFlashColor = UIColor(red: 0.30, green: 0.90, blue: 0.40, alpha: 1)
+    /// Letters already placed in the play area stay this green in the prompt word.
+    let promptPlacedColor = UIColor(red: 0.30, green: 0.90, blue: 0.40, alpha: 1)
     let capacitorWrongFlash = UIColor.systemRed
     /// Bright blue tint for the completed start → graphemes → stop chain.
     let capacitorSolvedTint = UIColor(red: 0.20, green: 0.55, blue: 1.0, alpha: 1)

@@ -31,10 +31,11 @@ extension PitSoundOutWordScene {
             event: "correct",
             from: SoundEffectsController.shared.commonFx.merging(pitFx)
         )
+        updatePromptColors()
         flashGrapheme(
             at: letterIndex,
-            apply: platformCorrectTint,
-            clear: .white,
+            apply: promptPendingColor,
+            clear: promptPlacedColor,
             count: 1
         )
 

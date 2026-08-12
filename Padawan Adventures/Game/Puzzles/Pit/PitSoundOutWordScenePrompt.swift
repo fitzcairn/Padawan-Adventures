@@ -93,6 +93,7 @@ extension PitSoundOutWordScene {
         addChild(root)
         promptNode = root
         self.prompt = prompt
+        updatePromptColors()
     }
 
     func makeWordRow(fontSize: CGFloat) -> SKNode {
@@ -137,7 +138,19 @@ extension PitSoundOutWordScene {
         OutlinedLetterFactory.fillLabel(in: wordGraphemeNodes[index])?.fontColor = color
     }
 
-    /// `doubleFlash` ends on `clear`. Activating uses white/orange; accepting uses green/white.
+    /// Placed graphemes stay green so the word shows progress; everything else is white.
+    /// The active grapheme is painted orange by `flashActiveGraphemeAndSayName`.
+    func updatePromptColors() {
+        for index in wordGraphemeNodes.indices {
+            setGraphemeFillColor(at: index, promptColor(for: index))
+        }
+    }
+
+    func promptColor(for index: Int) -> UIColor {
+        index < engine.placedCount ? promptPlacedColor : promptPendingColor
+    }
+
+    /// `doubleFlash` ends on `clear`. Activating uses white/orange; accepting uses white/green.
     func flashGrapheme(
         at index: Int,
         apply: UIColor,

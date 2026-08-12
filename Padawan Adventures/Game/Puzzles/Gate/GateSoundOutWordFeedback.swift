@@ -104,8 +104,8 @@ extension GateSoundOutWordScene {
 
     // MARK: - Placement outcomes
 
-    /// Right grapheme, right place: chime, flash the word letter green, reveal the glyph on
-    /// the capacitor, wire it to its neighbour, then move on to the next grapheme.
+    /// Right grapheme, right place: chime, flash the word letter green (it stays green),
+    /// reveal the glyph on the capacitor, wire it to its neighbour, then move on.
     func runAcceptedPlacement(choiceID: UUID) {
         guard let node = choiceNodes[choiceID] else { return }
         let index = max(engine.placedCount - 1, 0)
@@ -131,7 +131,7 @@ extension GateSoundOutWordScene {
             count: 2,
             apply: { [weak self] in
                 guard let self else { return }
-                self.setPromptColor(at: index, color: self.promptSolvedFlashColor)
+                self.setPromptColor(at: index, color: self.promptPlacedColor)
             },
             clear: { [weak self] in
                 guard let self else { return }
@@ -148,7 +148,7 @@ extension GateSoundOutWordScene {
                 ]),
                 SKAction.run { [weak self] in
                     guard let self else { return }
-                    self.setPromptColor(at: index, color: self.promptPendingColor)
+                    self.updatePromptColors()
                     if self.engine.isSolved {
                         self.beginWinSequence()
                     } else {

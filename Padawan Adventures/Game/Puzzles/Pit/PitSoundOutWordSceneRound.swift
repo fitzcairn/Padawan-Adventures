@@ -16,7 +16,7 @@ extension PitSoundOutWordScene {
               let grapheme = engine.currentGrapheme else { return }
         flashGrapheme(
             at: index,
-            apply: .white,
+            apply: promptPendingColor,
             clear: activeGraphemeColor,
             count: 2
         )

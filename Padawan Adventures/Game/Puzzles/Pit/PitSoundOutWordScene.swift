@@ -34,7 +34,10 @@ final class PitSoundOutWordScene: MinigameScene {
     var promptContinuationArmed = false
 
     let padFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
+    let promptPendingColor = UIColor.white
     let activeGraphemeColor = UIColor.systemOrange
+    /// Letters already placed stay this green in the prompt word.
+    let promptPlacedColor = UIColor(red: 0.30, green: 0.90, blue: 0.40, alpha: 1)
     let platformCorrectTint = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
     let platformWrongTint = UIColor.systemRed
     let playerFill = UIColor.systemRed
