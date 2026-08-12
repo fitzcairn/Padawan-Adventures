@@ -101,7 +101,7 @@ extension CombatDeflectScene {
     }
 
     func playExplosion(at position: CGPoint) {
-        SoundEffectsController.shared.play(event: "slash_hit", from: playerFx)
+        SoundEffectsController.shared.play(event: "enemy_damage", from: playerFx)
         let circle = SKShapeNode(circleOfRadius: 12)
         circle.fillColor = .yellow
         circle.strokeColor = UIColor.orange

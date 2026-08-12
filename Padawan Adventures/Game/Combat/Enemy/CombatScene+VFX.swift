@@ -38,7 +38,7 @@ extension CombatScene {
     }
 
     func playExplosion(at position: CGPoint) {
-        SoundEffectsController.shared.play(event: "slash_hit", from: playerFx)
+        SoundEffectsController.shared.play(event: "enemy_damage", from: playerFx)
         explosionVisual(at: position)
     }
 

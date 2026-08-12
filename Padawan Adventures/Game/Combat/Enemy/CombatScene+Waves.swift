@@ -127,7 +127,7 @@ extension CombatScene {
         impactBurstVisual(at: position)
     }
 
-    /// Correct letter reaching the enemy: explosion (with slash_hit) on the monster.
+    /// Correct letter reaching the enemy: explosion (with enemy_damage) on the monster.
     func landReturnOnEnemy(shotID: UUID) {
         guard let visual = shotVisuals[shotID] else { return }
         let position = visual.node.position
