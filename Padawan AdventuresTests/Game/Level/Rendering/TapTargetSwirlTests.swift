@@ -7,7 +7,7 @@ import UIKit
 @MainActor
 struct TapTargetSwirlTests {
     @Test func durationAndRiseMatchSpec() {
-        #expect(TapTargetSwirl.duration == 1.0)
+        #expect(TapTargetSwirl.duration == 0.75)
         #expect(TapTargetSwirl.riseHeightFraction == 0.2)
         #expect(TapTargetSwirl.zProgressFraction == 0.2)
         #expect(TapTargetSwirl.riseDistance(playerSpriteHeight: 100) == 20)
@@ -15,6 +15,9 @@ struct TapTargetSwirlTests {
         #expect(TapTargetSwirl.endRadiusScale == 0.9)
         #expect(TapTargetSwirl.orbitScale(progress: 0) == 0.5)
         #expect(abs(TapTargetSwirl.orbitScale(progress: 1) - 0.9) < 0.000_1)
+        #expect(abs(TapTargetSwirl.reticuleRadiusFraction - 0.205) < 0.000_1)
+        #expect(abs(TapTargetSwirl.reticuleLineFraction - 0.016875) < 0.000_1)
+        #expect(TapTargetSwirl.reticuleEndScale == 0.88)
     }
 
     @Test func zPositionStartsOnFloorAndRisesTwentyPercentTowardPlayer() {
@@ -57,8 +60,8 @@ struct TapTargetSwirlTests {
         #expect(node.zPosition == startZ)
         #expect(node.action(forKey: TapTargetSwirl.nodeName) != nil)
 
-        let green = try #require(node.childNode(withName: "tapTargetGreen") as? SKEmitterNode)
-        let blue = try #require(node.childNode(withName: "tapTargetBlue") as? SKEmitterNode)
+        let green = try #require(node.childNode(withName: "//tapTargetGreen") as? SKEmitterNode)
+        let blue = try #require(node.childNode(withName: "//tapTargetBlue") as? SKEmitterNode)
         #expect(green.particleBlendMode == .add)
         #expect(blue.particleBlendMode == .add)
         #expect(green.particleColorBlendFactor == 1)
@@ -67,6 +70,43 @@ struct TapTargetSwirlTests {
         #expect(blue.particleBirthRate == TapTargetSwirl.birthRate)
         #expect(colorsMatch(green.particleColor, TapTargetSwirl.green))
         #expect(colorsMatch(blue.particleColor, TapTargetSwirl.blue))
+    }
+
+    @Test func playAddsSpinningBlueReticuleOnTheGround() throws {
+        let parent = SKNode()
+        TapTargetSwirl.play(
+            in: parent,
+            at: CGPoint(x: 8, y: -4),
+            startZ: 12,
+            playerZ: 1_000_000_012,
+            tileWidth: 80,
+            tileHeight: 40,
+            playerSpriteHeight: 80
+        )
+
+        let node = try #require(parent.childNode(withName: TapTargetSwirl.nodeName))
+        let reticule = try #require(node.childNode(withName: TapTargetSwirl.reticuleName))
+        #expect(reticule.position == .zero)
+        #expect(reticule.alpha == 0)
+        #expect(reticule.action(forKey: TapTargetSwirl.reticuleName) != nil)
+        #expect(abs(reticule.action(forKey: TapTargetSwirl.reticuleName)!.duration - TapTargetSwirl.duration) < 0.000_1)
+        #expect(reticule.action(forKey: "\(TapTargetSwirl.reticuleName)Shrink") != nil)
+
+        let spinner = try #require(TapTargetSwirl.reticuleSpinner(in: reticule))
+        #expect(spinner.action(forKey: TapTargetSwirl.reticuleSpinnerName) != nil)
+
+        let squash = try #require(reticule.children.first)
+        #expect(abs(squash.yScale - 0.5) < 0.000_1)
+
+        let strokes = spinner.children.compactMap { $0 as? SKShapeNode }
+        #expect(strokes.count >= 6)
+        #expect(strokes.allSatisfy { $0.blendMode == .add })
+        #expect(strokes.contains { colorsMatch($0.strokeColor, TapTargetSwirl.blue) })
+        #expect(strokes.contains { colorsMatch($0.fillColor, TapTargetSwirl.blue) })
+
+        let outer = try #require(strokes.max { $0.frame.width < $1.frame.width })
+        #expect(abs(outer.lineWidth - max(80 * TapTargetSwirl.reticuleLineFraction, 0.6)) < 0.001)
+        #expect(outer.frame.width <= 80 * TapTargetSwirl.reticuleRadiusFraction * 2 + 8)
     }
 
     @Test func rendererPlaysSwirlAtTileCenterAboveFloorArt() throws {
