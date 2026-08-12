@@ -82,6 +82,12 @@ struct LoadingView: View {
         }
         .playScreenMusic("loading")
         .task {
+            // Cue after the loading-screen music has had a few seconds to settle in.
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            Strings.speak("loading_tap_to_start")
+        }
+        .task {
             // Commit the chrome ("Loading..." + bar) before any asset work.
             await Task.yield()
 
@@ -105,7 +111,6 @@ struct LoadingView: View {
             progress = 1
             session = loaded
             isReady = true
-            Strings.speak("loading_tap_to_start")
             GameLogger.mark(.lifecycle, "bootstrap complete; loading screen ready")
         }
     }
