@@ -52,6 +52,19 @@ struct ScreenLayoutTests {
         #expect(ScreenLayout.edgeInsetFraction == 0.025)
     }
 
+    @Test func swipeRowBottomInsetAddsHomeGestureClearance() {
+        let height: CGFloat = 400
+        let chromeBottom: CGFloat = 21
+        let inset = ScreenLayout.swipeRowBottomInset(
+            sceneHeight: height,
+            chromeBottom: chromeBottom
+        )
+
+        #expect(ScreenLayout.swipeRowExtraBottomInsetFraction == 0.08)
+        #expect(inset == chromeBottom + height * 0.08)
+        #expect(inset > chromeBottom)
+    }
+
     @Test @MainActor func prefersNonZeroProxySafeAreaOverWindowFallback() {
         let proxy = EdgeInsets(top: 0, leading: 59, bottom: 0, trailing: 21)
         let resolved = ScreenLayout.safeArea(fromProxy: proxy)

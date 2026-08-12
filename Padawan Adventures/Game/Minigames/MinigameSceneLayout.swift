@@ -12,10 +12,15 @@ extension SKScene {
     }
 
     /// Center Y for a bottom row of `rowHeight`-tall sprites, kept at or below `ceiling`.
+    ///
+    /// Uses the swipe-row inset so the bar sits above the home-indicator gesture zone.
     func bottomRowCenterY(rowHeight: CGFloat, ceiling: CGFloat) -> CGFloat {
         ScreenLayout.bottomRowCenterY(
             rowHeight: rowHeight,
-            bottomInset: chromeInsets.bottom,
+            bottomInset: ScreenLayout.swipeRowBottomInset(
+                sceneHeight: size.height,
+                chromeBottom: chromeInsets.bottom
+            ),
             ceiling: ceiling
         )
     }

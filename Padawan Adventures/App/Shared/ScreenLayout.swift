@@ -7,6 +7,9 @@ import UIKit
 /// `max(safeArea, edgeInsetFraction × dimension)` on each edge.
 enum ScreenLayout {
     static let edgeInsetFraction: CGFloat = 0.025
+    /// Extra lift under swipeable bottom rows so a drag toward the home indicator
+    /// does not leave the app.
+    static let swipeRowExtraBottomInsetFraction: CGFloat = 0.08
 
     static func insets(size: CGSize, safeArea: EdgeInsets) -> EdgeInsets {
         edgeInsets(uiInsets(size: size, safeArea: uiEdgeInsets(safeArea)))
@@ -33,6 +36,11 @@ enum ScreenLayout {
     @MainActor
     static func chromeInsets(sceneSize: CGSize, viewSafeArea: UIEdgeInsets) -> UIEdgeInsets {
         uiInsets(size: sceneSize, safeArea: resolvedSafeArea(viewSafeArea))
+    }
+
+    /// Bottom inset for a swipeable row: chrome inset plus extra home-gesture clearance.
+    static func swipeRowBottomInset(sceneHeight: CGFloat, chromeBottom: CGFloat) -> CGFloat {
+        chromeBottom + max(sceneHeight, 0) * swipeRowExtraBottomInsetFraction
     }
 
     /// Center Y for a row of sprites resting on the bottom chrome inset.

@@ -3,8 +3,6 @@ import Foundation
 
 /// Layout math for the pit-bridge arena (pads, slots, tray). Pure and unit-testable.
 nonisolated struct PitBridgeGeometry: Equatable, Sendable {
-    /// Tray tiles sit this fraction up the scene (inside the bottom 30%).
-    static let trayCenterYFraction: CGFloat = 0.15
     /// The prompt block hangs from the shared top chrome inset so the CRT plate grows downward.
     /// Expressed as a fraction because this geometry is pure; it matches `ScreenLayout` because
     /// landscape has no top safe-area inset to take the max against.
@@ -100,10 +98,15 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
         let fractions = Self.trayXFractions
         let fraction = fractions[index % fractions.count]
         let x = sceneSize.width * fraction
-        let preferredY = sceneSize.height * Self.trayCenterYFraction
-        let minY = tileSide * 0.6
         let maxY = leftPadRect.minY - tileSide * 0.6
-        let y = max(minY, min(preferredY, maxY))
+        let y = ScreenLayout.bottomRowCenterY(
+            rowHeight: tileSide,
+            bottomInset: ScreenLayout.swipeRowBottomInset(
+                sceneHeight: sceneSize.height,
+                chromeBottom: sceneSize.height * ScreenLayout.edgeInsetFraction
+            ),
+            ceiling: maxY
+        )
         return CGPoint(x: x, y: y)
     }
 

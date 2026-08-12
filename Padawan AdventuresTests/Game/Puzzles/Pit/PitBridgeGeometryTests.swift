@@ -49,6 +49,22 @@ struct PitBridgeGeometryTests {
         }
     }
 
+    @Test func trayRestsOnSwipeRowInsetBelowPads() {
+        let geo = makeGeometry()
+        let expectedY = ScreenLayout.bottomRowCenterY(
+            rowHeight: geo.tileSide,
+            bottomInset: ScreenLayout.swipeRowBottomInset(
+                sceneHeight: geo.sceneSize.height,
+                chromeBottom: geo.sceneSize.height * ScreenLayout.edgeInsetFraction
+            ),
+            ceiling: geo.leftPadRect.minY - geo.tileSide * 0.6
+        )
+        for index in 0..<3 {
+            #expect(abs(geo.trayCenter(index).y - expectedY) < 0.001)
+        }
+        #expect(expectedY - geo.tileSide * 0.5 > geo.sceneSize.height * ScreenLayout.edgeInsetFraction)
+    }
+
     @Test func isDropAcceptsSlotCenterAndRejectsDistantPoint() {
         let geo = makeGeometry(slotCount: 2)
         let center = geo.slotCenter(0)
