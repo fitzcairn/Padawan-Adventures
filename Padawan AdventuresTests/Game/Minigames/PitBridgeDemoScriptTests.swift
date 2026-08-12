@@ -282,6 +282,66 @@ struct PitBridgeDemoStageTests {
         coins.teardown()
     }
 
+    @Test func tapOnTrayTileLeavesItInPlace() {
+        let scene = makeScene()
+        scene.buildContentForTesting()
+        scene.revealTray()
+
+        guard let node = scene.trayNodes.values.first else {
+            Issue.record("expected a tray tile")
+            return
+        }
+        let home = node.position
+        let round = scene.engine.roundIndex
+
+        scene.beginChoiceTouchForTesting(on: node)
+        scene.endDrag()
+
+        #expect(node.position == home)
+        #expect(scene.draggedNode == nil)
+        #expect(scene.dragMoved == false)
+        #expect(scene.engine.roundIndex == round)
+        #expect(node.action(forKey: PitBridgeScene.snapIntoSlotActionKey) == nil)
+        #expect(scene.isUserInteractionEnabled)
+    }
+
+    @Test func dragAssistSnapsOnlyAfterApproachingTheSlot() {
+        let scene = makeScene()
+        scene.buildContentForTesting()
+        scene.revealTray()
+
+        guard let node = scene.trayNodes.values.first else {
+            Issue.record("expected a tray tile")
+            return
+        }
+        let home = node.position
+        let slot = scene.geometry.slotCenter(scene.engine.roundIndex)
+        let nearSlot = CGPoint(
+            x: slot.x + scene.geometry.tileSide * 0.4,
+            y: slot.y
+        )
+
+        scene.beginChoiceTouchForTesting(on: node)
+        // Stay under the tap threshold — still a tap, even if the tile's rest
+        // position sits inside the drop radius.
+        scene.handleTouchMoved(at: CGPoint(x: home.x + 4, y: home.y))
+        scene.endDrag()
+        #expect(node.position == home)
+        #expect(scene.engine.roundIndex == 0)
+        #expect(scene.isUserInteractionEnabled)
+
+        scene.beginChoiceTouchForTesting(on: node)
+        scene.handleTouchMoved(at: CGPoint(x: home.x, y: home.y + scene.tapMoveThreshold + 1))
+        scene.handleTouchMoved(at: nearSlot)
+        scene.endDrag()
+
+        #expect(scene.isUserInteractionEnabled == false)
+        #expect(
+            node.action(forKey: PitBridgeScene.snapIntoSlotActionKey) != nil
+                || hypot(node.position.x - slot.x, node.position.y - slot.y) < 1
+        )
+    }
+
     private func makeScene() -> PitBridgeScene {
         PitBridgeScene(
             size: CGSize(width: 800, height: 600),

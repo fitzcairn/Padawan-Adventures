@@ -14,7 +14,8 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
     /// Tray tile centers as fractions of scene width.
     static let trayXFractions: [CGFloat] = [0.25, 0.5, 0.75]
     /// Drop hit radius as a fraction of the tile side. Larger than the dashed box
-    /// half-diagonal (~0.71) so near-misses still count.
+    /// half-diagonal (~0.71) so near-misses still count. Applied only after the
+    /// tile has moved closer to the slot than it started (see `isDrop(_:onSlot:fromHome:)`).
     static let dropRadiusScale: CGFloat = 1.25
 
     var sceneSize: CGSize
@@ -117,5 +118,13 @@ nonisolated struct PitBridgeGeometry: Equatable, Sendable {
 
     func isDrop(_ point: CGPoint, onSlot index: Int) -> Bool {
         distance(from: point, toSlot: index) <= tileSide * Self.dropRadiusScale
+    }
+
+    /// Snap-assist: the tile is in the drop radius *and* closer to the slot than
+    /// `home`. A tap in place (equal distance) or a drag that never approached
+    /// the dashed square must not count.
+    func isDrop(_ point: CGPoint, onSlot index: Int, fromHome home: CGPoint) -> Bool {
+        guard isDrop(point, onSlot: index) else { return false }
+        return distance(from: point, toSlot: index) < distance(from: home, toSlot: index)
     }
 }

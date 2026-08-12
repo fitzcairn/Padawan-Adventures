@@ -50,6 +50,7 @@ extension PitBridgeScene: PitBridgeDemoStaging {
         playerNode?.removeAllActions()
         draggedNode?.removeAllActions()
         draggedNode = nil
+        dragMoved = false
         didEnd = false
         isJumping = false
         didRevealTrayForRound = false

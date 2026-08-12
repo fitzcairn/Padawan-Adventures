@@ -181,17 +181,37 @@ extension PitBridgeScene {
         SoundEffectsController.shared.play(trackID: trackID)
     }
 
-    /// After a correct drop: pronunciation, then letter name, then `continuation`.
-    func playCorrectLetterCues(letter: String, then continuation: @escaping () -> Void) {
+    /// After a correct drop: pronunciation, then the word, then the correct
+    /// chime together with `continuation` (Kam's jump).
+    func playCorrectLetterCues(
+        letter: String,
+        wordTrackID: String,
+        then continuation: @escaping () -> Void
+    ) {
         var steps: [SKAction] = []
         appendLetterTrackSteps(
             to: &steps,
             trackID: LetterSoundCatalog.pronunciationTrackID(for: letter)
         )
-        appendLetterTrackSteps(
-            to: &steps,
-            trackID: LetterSoundCatalog.nameTrackID(for: letter)
-        )
+        if !wordTrackID.isEmpty {
+            steps.append(SKAction.run { [weak self] in
+                SoundEffectsController.shared.play(trackID: wordTrackID)
+                if let prompt = self?.wordPromptNode {
+                    MinigameCRTPromptPlate.pulseIcons(in: prompt, forTrackID: wordTrackID)
+                }
+            })
+            steps.append(
+                SKAction.wait(forDuration: SoundEffectsController.shared.cueDuration(of: wordTrackID))
+            )
+        }
+        // Correct chime and the jump start together so Kam is in the air during the cue.
+        steps.append(SKAction.run { [weak self] in
+            guard let self else { return }
+            self.playDucked(
+                event: "correct",
+                from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
+            )
+        })
         steps.append(SKAction.run(continuation))
         removeAction(forKey: Self.letterCueActionKey)
         run(SKAction.sequence(steps), withKey: Self.letterCueActionKey)

@@ -358,36 +358,13 @@ extension PitBridgeScene {
     // MARK: - Touch / drag
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !isJumping, isUserInteractionEnabled, let touch = touches.first else { return }
-        let location = touch.location(in: self)
-
-        if wordPromptNode(at: location) != nil {
-            replayWordSound()
-            return
-        }
-
-        guard let node = choiceNode(at: location) else { return }
-        guard node.action(forKey: "springBack") == nil,
-              node.action(forKey: Self.snapIntoSlotActionKey) == nil else { return }
-        draggedNode = node
-        dragStartPosition = node.position
-        dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
-        node.zPosition = Self.draggedZ
-        startForceLiftSparkles(on: node)
-        playForceLiftAnimation(toward: node.position)
-        if let letter = node.userData?["letter"] as? String {
-            playLetterPronunciation(letter)
-        }
+        guard let touch = touches.first else { return }
+        handleTouchBegan(at: touch.location(in: self))
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, let touch = touches.first, let node = draggedNode else { return }
-        let location = touch.location(in: self)
-        var next = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
-        let half = geometry.tileSide * 0.5
-        next.x = min(max(next.x, half), size.width - half)
-        next.y = min(max(next.y, half), size.height - half)
-        node.position = next
+        guard let touch = touches.first else { return }
+        handleTouchMoved(at: touch.location(in: self))
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -398,9 +375,66 @@ extension PitBridgeScene {
         endDrag()
     }
 
+    func handleTouchBegan(at location: CGPoint) {
+        guard !didEnd, !isJumping, isUserInteractionEnabled else { return }
+
+        if wordPromptNode(at: location) != nil {
+            replayWordSound()
+            return
+        }
+
+        guard let node = choiceNode(at: location) else { return }
+        beginChoiceTouch(on: node, at: location)
+    }
+
+    /// Test seam: start a tile touch without SpriteKit hit-testing (needs a live view).
+    func beginChoiceTouchForTesting(on node: SKNode) {
+        beginChoiceTouch(on: node, at: node.position)
+    }
+
+    func beginChoiceTouch(on node: SKNode, at location: CGPoint) {
+        guard node.action(forKey: "springBack") == nil,
+              node.action(forKey: Self.snapIntoSlotActionKey) == nil else { return }
+        draggedNode = node
+        dragStartPosition = node.position
+        dragTouchStart = location
+        dragMoved = false
+        dragOffset = CGPoint(x: node.position.x - location.x, y: node.position.y - location.y)
+        // Letter sound plays on touch-down, whether this becomes a tap or a drag.
+        if let letter = node.userData?["letter"] as? String {
+            playLetterPronunciation(letter)
+        }
+    }
+
+    func handleTouchMoved(at location: CGPoint) {
+        guard !didEnd, let node = draggedNode else { return }
+        if !dragMoved {
+            let travel = hypot(location.x - dragTouchStart.x, location.y - dragTouchStart.y)
+            guard travel > tapMoveThreshold else { return }
+            dragMoved = true
+            node.zPosition = Self.draggedZ
+            startForceLiftSparkles(on: node)
+            playForceLiftAnimation(toward: node.position)
+        }
+        var next = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
+        let half = geometry.tileSide * 0.5
+        next.x = min(max(next.x, half), size.width - half)
+        next.y = min(max(next.y, half), size.height - half)
+        node.position = next
+    }
+
     func endDrag() {
         guard let node = draggedNode else { return }
         draggedNode = nil
+        let moved = dragMoved
+        dragMoved = false
+
+        // A tap in place only plays the letter sound (already fired on touch-down).
+        guard moved else {
+            node.zPosition = Self.trayTilesZ
+            return
+        }
+
         stopForceLiftSparkles(on: node)
         guard let idString = node.userData?["id"] as? String,
               let id = UUID(uuidString: idString) else {
@@ -410,7 +444,7 @@ extension PitBridgeScene {
         }
 
         let slotIndex = engine.roundIndex
-        guard geometry.isDrop(node.position, onSlot: slotIndex) else {
+        guard geometry.isDrop(node.position, onSlot: slotIndex, fromHome: dragStartPosition) else {
             node.zPosition = Self.trayTilesZ
             resumePlayerIdle()
             springBack(node, to: dragStartPosition)
@@ -429,6 +463,7 @@ extension PitBridgeScene {
     func resolveDrop(node: SKNode, id: UUID) {
         // Capture before accept — a correct drop advances `roundIndex` immediately.
         let maskedPrompt = engine.maskedPromptText
+        let wordTrackID = engine.currentSfx
         guard let result = engine.accept(choiceID: id) else {
             node.zPosition = Self.trayTilesZ
             resumePlayerIdle()
@@ -447,7 +482,8 @@ extension PitBridgeScene {
                 slotIndex: slotIndex,
                 won: won,
                 letter: letter,
-                maskedPrompt: maskedPrompt
+                maskedPrompt: maskedPrompt,
+                wordTrackID: wordTrackID
             )
         case .incorrect:
             resumePlayerIdle()

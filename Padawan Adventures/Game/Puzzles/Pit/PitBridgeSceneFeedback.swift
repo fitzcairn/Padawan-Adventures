@@ -8,7 +8,8 @@ extension PitBridgeScene {
         slotIndex: Int,
         won: Bool,
         letter: String,
-        maskedPrompt: String
+        maskedPrompt: String,
+        wordTrackID: String
     ) {
         let target = geometry.slotCenter(slotIndex)
         node.position = target
@@ -20,11 +21,7 @@ extension PitBridgeScene {
         }
         flashOverlay(on: node, color: platformCorrectTint) { [weak self] in
             guard let self else { return }
-            self.playCorrectLetterCues(letter: letter) {
-                self.playDucked(
-                    event: "correct",
-                    from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
-                )
+            self.playCorrectLetterCues(letter: letter, wordTrackID: wordTrackID) {
                 if let label = node.childNode(withName: "letterLabel") {
                     label.run(SKAction.sequence([
                         SKAction.fadeOut(withDuration: 0.3),
@@ -93,6 +90,7 @@ extension PitBridgeScene {
     }
 
     /// Smoothly pulls a near-miss drop into the dashed slot before feedback runs.
+    /// Callers must already have confirmed an assisted drop (dragged closer than home).
     func snapIntoSlot(_ node: SKNode, to position: CGPoint, completion: @escaping () -> Void) {
         let distance = hypot(node.position.x - position.x, node.position.y - position.y)
         guard distance > 1 else {

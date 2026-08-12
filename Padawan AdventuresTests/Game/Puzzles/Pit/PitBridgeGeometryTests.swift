@@ -82,4 +82,38 @@ struct PitBridgeGeometryTests {
         #expect(geo.isDrop(nearMiss, onSlot: 0))
         #expect(geo.distance(from: nearMiss, toSlot: 0) > geo.tileSide * 0.5)
     }
+
+    @Test func assistedDropRequiresApproachingTheSlot() {
+        let geo = makeGeometry(slotCount: 3)
+        let slot = geo.slotCenter(0)
+        let tray = geo.trayCenter(0)
+
+        // Resting on the tray — even if that happens to sit inside the generous
+        // radius — is a tap, not an assisted drop.
+        #expect(!geo.isDrop(tray, onSlot: 0, fromHome: tray))
+
+        // A near-miss that got closer than home does assist.
+        let nearMiss = CGPoint(x: slot.x + geo.tileSide * 0.95, y: slot.y)
+        #expect(geo.isDrop(nearMiss, onSlot: 0, fromHome: tray))
+
+        // Dragging away from the slot, still inside the radius, does not assist.
+        let homeInRadius = CGPoint(x: slot.x + geo.tileSide * 0.4, y: slot.y)
+        let fartherInRadius = CGPoint(x: slot.x + geo.tileSide * 0.9, y: slot.y)
+        #expect(geo.isDrop(homeInRadius, onSlot: 0))
+        #expect(geo.isDrop(fartherInRadius, onSlot: 0))
+        #expect(!geo.isDrop(fartherInRadius, onSlot: 0, fromHome: homeInRadius))
+
+        // Getting closer while already in the radius does assist.
+        #expect(geo.isDrop(homeInRadius, onSlot: 0, fromHome: fartherInRadius))
+    }
+
+    @Test func trayRestDoesNotCountAsAssistedDropOntoAnySlot() {
+        let geo = makeGeometry(slotCount: 3)
+        for trayIndex in 0..<3 {
+            let home = geo.trayCenter(trayIndex)
+            for slotIndex in 0..<3 {
+                #expect(!geo.isDrop(home, onSlot: slotIndex, fromHome: home))
+            }
+        }
+    }
 }
