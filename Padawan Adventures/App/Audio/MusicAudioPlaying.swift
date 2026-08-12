@@ -108,7 +108,7 @@ final class BundleMusicAudioPlayer: MusicAudioPlaying {
     }
 
     private func configureSessionIfNeeded() {
-        AVAudioSessionConfigurator.configureAmbientIfNeeded()
+        AudioSessionController.claimOutputIfNeeded()
     }
 
     static func audioURL(

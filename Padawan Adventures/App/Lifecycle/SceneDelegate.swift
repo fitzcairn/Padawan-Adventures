@@ -32,13 +32,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         enforceLandscape(on: windowScene)
     }
 
-    func sceneDidDisconnect(_ scene: UIScene) {}
+    func sceneDidDisconnect(_ scene: UIScene) {
+        AudioSessionController.releaseForBackground()
+    }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         if let windowScene = scene as? UIWindowScene {
             enforceLandscape(on: windowScene)
         }
-        BackgroundMusicController.shared.resumeFromBackground()
+        AudioSessionController.claimForForeground()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
@@ -46,11 +48,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        BackgroundMusicController.shared.resumeFromBackground()
+        AudioSessionController.claimForForeground()
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        BackgroundMusicController.shared.pauseForBackground()
+        AudioSessionController.releaseForBackground()
     }
 
     /// Re-asserts the landscape mask. `UIRequiresFullScreen` keeps iPad out of portrait, and

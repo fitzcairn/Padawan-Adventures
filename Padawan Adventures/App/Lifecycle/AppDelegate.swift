@@ -15,7 +15,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         GameLogger.installCrashHandlers()
         GameLogger.mark(.lifecycle, "didFinishLaunching")
         MemoryProbe.mark("launch")
+        // Silence whatever else was streaming before the first cue plays.
+        AudioSessionController.claimOutput()
         return true
+    }
+
+    func applicationWillTerminate(_ application: UIApplication) {
+        AudioSessionController.releaseForBackground()
     }
 
     func application(

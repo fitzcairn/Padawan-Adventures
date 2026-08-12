@@ -424,6 +424,6 @@ final class BundleSoundEffectPlayer: SoundEffectPlaying {
     }
 
     private func configureSessionIfNeeded() {
-        AVAudioSessionConfigurator.configureAmbientIfNeeded()
+        AudioSessionController.claimOutputIfNeeded()
     }
 }
