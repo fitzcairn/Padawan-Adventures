@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AAF1EF1C30100CF100DB57A4 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = AAF1EE4A3010075F00DB57A4 /* Yams */; };
+		AAF1EF5230100E0100DB57A4 /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = AAF1EF5130100E0100DB57A4 /* Yams */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AAF1EF5230100E0100DB57A4 /* Yams in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,6 +164,7 @@
 			);
 			name = "Padawan AdventuresTests";
 			packageProductDependencies = (
+				AAF1EF5130100E0100DB57A4 /* Yams */,
 			);
 			productName = "Padawan AdventuresTests";
 			productReference = AAF1EE2C3010075F00DB57A4 /* Padawan AdventuresTests.xctest */;
@@ -223,7 +226,7 @@
 			mainGroup = AAF1EE0A3010075E00DB57A4;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AAF1EE493010075F00DB57A5 /* XCRemoteSwiftPackageReference "Yams" */,
+				AAF1EF5030100E0100DB57A4 /* XCLocalSwiftPackageReference "Vendor/Yams" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AAF1EE143010075E00DB57A4 /* Products */;
@@ -634,21 +637,22 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		AAF1EE493010075F00DB57A5 /* XCRemoteSwiftPackageReference "Yams" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/jpsim/Yams";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		AAF1EF5030100E0100DB57A4 /* XCLocalSwiftPackageReference "Vendor/Yams" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Vendor/Yams;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		AAF1EE4A3010075F00DB57A4 /* Yams */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AAF1EE493010075F00DB57A5 /* XCRemoteSwiftPackageReference "Yams" */;
+			package = AAF1EF5030100E0100DB57A4 /* XCLocalSwiftPackageReference "Vendor/Yams" */;
+			productName = Yams;
+		};
+		AAF1EF5130100E0100DB57A4 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AAF1EF5030100E0100DB57A4 /* XCLocalSwiftPackageReference "Vendor/Yams" */;
 			productName = Yams;
 		};
 /* End XCSwiftPackageProductDependency section */
