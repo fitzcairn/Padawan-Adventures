@@ -1115,4 +1115,103 @@ struct ProceduralGeneratorTests {
             )
         }
     }
+
+    @Test func equalWeightMinigameKindsAreBalancedWithinALevel() throws {
+        var config = roomsDoorsConfig(seed: 42, roomCount: 15)
+        config.enemies = .init(types: ["spider"], spawnChancePerRoom: 1.0)
+        config.generation.room.pitChance = 1.0
+        config.generation.room.gateProbability = 1.0
+        config.combatMinigames = [
+            WeightedCombatKind(kind: .slash, weight: 1),
+            WeightedCombatKind(kind: .startingSoundDeflect, weight: 1),
+            WeightedCombatKind(kind: .endingSoundDeflect, weight: 1),
+        ]
+        config.pitMinigames = [
+            WeightedPitKind(kind: .soundOutWord, weight: 1),
+            WeightedPitKind(kind: .bridge, weight: 1),
+            WeightedPitKind(kind: .startingSoundBridge, weight: 1),
+        ]
+        config.gateMinigames = [
+            WeightedGateKind(kind: .soundOutWord, weight: 1),
+            WeightedGateKind(kind: .graphemeMatch, weight: 1),
+            WeightedGateKind(kind: .wordPlug, weight: 1),
+            WeightedGateKind(kind: .endingSoundPlug, weight: 1),
+        ]
+
+        let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
+
+        let combatKinds = world.entities.filter(\.isEnemy).compactMap(\.combatMinigame)
+        #expect(combatKinds.count == world.entities.filter(\.isEnemy).count)
+        expectBalanced(combatKinds, kinds: config.combatMinigames.map(\.kind))
+
+        let pitKinds = connectedComponents(in: world, where: { $0.isPit }).map { component in
+            world.tile(at: component[0])?.pitMinigame
+        }
+        #expect(pitKinds.allSatisfy { $0 != nil })
+        expectBalanced(pitKinds.compactMap { $0 }, kinds: config.pitMinigames.map(\.kind))
+
+        let gateKinds = connectedComponents(in: world, where: { $0.isGate }).map { component in
+            world.tile(at: component[0])?.gateMinigame
+        }
+        #expect(gateKinds.allSatisfy { $0 != nil })
+        expectBalanced(gateKinds.compactMap { $0 }, kinds: config.gateMinigames.map(\.kind))
+    }
+
+    @Test func generatedEnemiesAndPitsArePinnedToAMinigameKind() throws {
+        var config = roomsDoorsConfig(seed: 99, roomCount: 10)
+        config.enemies = .init(types: ["spider"], spawnChancePerRoom: 1.0)
+        config.generation.room.pitChance = 1.0
+        let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
+        #expect(world.entities.filter(\.isEnemy).allSatisfy { $0.combatMinigame != nil })
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let tile = world.tile(at: GridCoord(x: x, y: y, story: 0))
+                if tile?.isPit == true {
+                    #expect(tile?.pitMinigame != nil)
+                }
+            }
+        }
+    }
+
+    private func expectBalanced<T: Hashable>(_ items: [T], kinds: [T]) {
+        #expect(!items.isEmpty, "expected at least one placed minigame")
+        var counts = Dictionary(uniqueKeysWithValues: kinds.map { ($0, 0) })
+        for item in items {
+            counts[item, default: 0] += 1
+        }
+        let values = kinds.map { counts[$0, default: 0] }
+        #expect(values.max()! - values.min()! <= 1)
+    }
+
+    private func connectedComponents(
+        in world: GameWorld,
+        where matches: (Tile) -> Bool
+    ) -> [[GridCoord]] {
+        var seen = Set<GridCoord>()
+        var components: [[GridCoord]] = []
+        for y in 0..<world.height {
+            for x in 0..<world.width {
+                let coord = GridCoord(x: x, y: y, story: 0)
+                guard !seen.contains(coord),
+                      let tile = world.tile(at: coord),
+                      matches(tile) else { continue }
+                var stack = [coord]
+                var component: [GridCoord] = []
+                seen.insert(coord)
+                while let current = stack.popLast() {
+                    component.append(current)
+                    for (dx, dy) in GridCoord.cardinals {
+                        let next = current.neighbor(dx: dx, dy: dy)
+                        guard !seen.contains(next),
+                              let nextTile = world.tile(at: next),
+                              matches(nextTile) else { continue }
+                        seen.insert(next)
+                        stack.append(next)
+                    }
+                }
+                components.append(component)
+            }
+        }
+        return components
+    }
 }

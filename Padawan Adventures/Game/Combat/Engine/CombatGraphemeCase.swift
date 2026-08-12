@@ -6,25 +6,34 @@ nonisolated enum CombatGraphemeCase: String, Codable, Equatable, Sendable, CaseI
     case upper
     case both
 
-    /// Display form of one catalog grapheme id for this case mode.
+    /// Display form of a catalog grapheme id. Case is a separate draw from identity:
+    /// multi-letter graphemes stay lowercase; single letters follow this mode.
     func displayLetter(
         for grapheme: String,
         rng: inout some RandomNumberGenerator
     ) -> String {
         let base = grapheme.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty else { return base }
+        let identity = base.lowercased()
+        guard identity.count == 1 else { return identity }
         switch self {
         case .lower:
-            return base.lowercased()
+            return identity
         case .upper:
-            return base.uppercased()
+            return identity.uppercased()
         case .both:
-            return Bool.random(using: &rng) ? base.lowercased() : base.uppercased()
+            return Bool.random(using: &rng) ? identity : identity.uppercased()
         }
     }
 
-    /// Expands catalog letter ids into the visual/cue pool for this case mode.
+    /// Unique lowercase grapheme ids. Case is not part of identity — apply
+    /// `displayLetter(for:rng:)` after a grapheme has been chosen.
     func shotLetterPool(from letters: [String]) -> [String] {
+        Self.identityIDs(from: letters)
+    }
+
+    /// Unique lowercase grapheme ids, first-seen order preserved.
+    static func identityIDs(from letters: [String]) -> [String] {
         var seen = Set<String>()
         var bases: [String] = []
         for raw in letters {
@@ -32,13 +41,6 @@ nonisolated enum CombatGraphemeCase: String, Codable, Equatable, Sendable, CaseI
             guard !id.isEmpty, seen.insert(id).inserted else { continue }
             bases.append(id)
         }
-        switch self {
-        case .lower:
-            return bases
-        case .upper:
-            return bases.map { $0.uppercased() }
-        case .both:
-            return bases.flatMap { [$0.lowercased(), $0.uppercased()] }
-        }
+        return bases
     }
 }

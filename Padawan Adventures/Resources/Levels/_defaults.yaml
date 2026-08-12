@@ -62,21 +62,27 @@ world:
     # P(draw from the current level's set); earlier levels split the rest geometrically.
     current_level_probability: 0.75
 
-# Combat minigames (one is picked per encounter, weighted). weight 0 = never.
+# Combat minigames (one is baked onto each enemy at generation, weighted without
+# replacement so equal weights yield equal counts). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Vocabulary for letter rings comes from the level's top-level `vocab:` block (cumulative).
 # `grapheme-sound-combat`: wave-based swipe-to-slash arena. Each wave speaks one grapheme
 #   pronunciation and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
 #   fanned, equal-speed curves. Slash the matching letter to reflect it into the enemy and
 #   score; slashing a decoy stops that letter (flash + explode) while the rest keep flying.
-#   Letting any letter reach you costs one heart. Letter pool and flight time come from
-#   enemies.yaml. Stars = waves cleared.
+#   Letting any letter reach you costs one heart. Target graphemes are sampled without
+#   replacement from the cumulative vocab (current-level graphemes more likely; case is
+#   not part of identity). After a grapheme is chosen, `grapheme_case` is drawn for
+#   single letters only; multi-letter graphemes stay lowercase. Decoys may repeat.
+#   Flight time comes from enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
 #   orb to hear the word, then tap the ring for that missing sound. A wrong ring flashes
 #   the letter in red on the blank and replays the word — the orb keeps flying. `ring_count`
-#   (2–6) picks that many single graphemes from the level pool. Thrown words must have only
-#   one valid ring answer for the visible blank (no sit/sip or tris/trip collisions), and
-#   spellings avoid repeats until the unambiguous pool is exhausted. Stars = orbs deflected.
+#   (2–6) samples that many graphemes without replacement from the cumulative pool
+#   (current-level graphemes more likely). Thrown words are sampled the same way from
+#   imaged pool entries; they must have only one valid ring answer for the visible blank
+#   (no sit/sip or tris/trip collisions). Spellings avoid repeats until the unambiguous
+#   pool is exhausted. Stars = orbs deflected.
 # `ending-sound-combat`: same arena, but the ring must match the word's last grapheme.
 combat:
   music: combat
@@ -100,7 +106,8 @@ combat:
       orb_travel_seconds: 8.0
       ring_count: 4
 
-# Pit minigames (one is picked per pit contact, weighted). weight 0 = never.
+# Pit minigames (one is baked onto each pit area at generation, weighted without
+# replacement so equal weights yield equal counts). weight 0 = never.
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.jump` fires on every hop; `win` falls back to audio.yaml.
 # Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
@@ -109,8 +116,9 @@ combat:
 #   word. Words are imaged entries from the level pool whose graphemes are all in the pool.
 #   Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
-#   Words are imaged pool entries (>= 2 graphemes). The prompt shows that image and plays the
-#   word's sfx. Pool must hold at least `max_word_count` entries. Stars = words placed.
+#   Words are imaged pool entries (>= 2 graphemes), sampled without replacement from the
+#   cumulative vocab (current-level words more likely). The prompt shows that image and
+#   plays the word's sfx. Pool must hold at least `max_word_count` entries. Stars = words placed.
 # `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
 #   FIRST letter (`_og` for dog). Same pool rules. Stars = words placed.
 pit:
@@ -134,12 +142,14 @@ pit:
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Host `fx.opened` plays in the world when the gate strip opens.
 # `minigame_probability` is P(run a puzzle); otherwise the gate opens freely with the opened SFX.
-# Weights pick the kind baked onto each gate tile at generation time (weight 0 = never).
+# Weights pick the kind baked onto each gate tile at generation time (weight 0 = never),
+# without replacement so equal weights yield equal counts.
 # Duplicate `type:` entries are rejected.
 # Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
 # `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
 #   Plays the starting-letter pronunciation when a plug is picked up. Word count snaps to a
-#   multiple of 3 in `min_word_count`...`max_word_count`.
+#   multiple of 3 in `min_word_count`...`max_word_count`. Words are sampled without replacement
+#   from the cumulative vocab (current-level words more likely); tray letters stay unique.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
 #   LAST letter (`do_` for dog) and the socket sits to the right of the plate.
 # `sound-out-word-gate`: sound out the prompted word one grapheme at a time. Each grapheme offers a
@@ -147,7 +157,11 @@ pit:
 #   in the word. Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
 #   Round size is `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
-#   `grapheme_case` is `lower`, `upper`, or `both` (each switch independently lower or upper).
+#   Graphemes are sampled without replacement from the cumulative vocab (current-level
+#   graphemes more likely; case is not part of identity). After a grapheme is chosen,
+#   `grapheme_case` (`lower`, `upper`, or `both`) is drawn for single letters only;
+#   multi-letter graphemes stay lowercase. Idle replay uses `grapheme_sound_repeat_seconds`
+#   from the last sound played.
 gate:
   music: gate
   fx: { opened: gate-open }
@@ -176,4 +190,6 @@ gate:
       grapheme_case: lower
       min_grapheme_count: 4
       max_grapheme_count: 8
+      # Replay the target pronunciation if the player is idle this long after the last sound.
+      grapheme_sound_repeat_seconds: 3
       fx: { switch_push: gate-grapheme_match-switch-push }

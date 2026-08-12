@@ -12,6 +12,9 @@ nonisolated extension ProceduralGenerator {
         config: WorldGenerationConfig,
         enemyConfig: EnemyConfig,
         doorways: inout Set<GridCoord>,
+        gateBag: inout WeightedPicker.Bag<GateMinigameKind>,
+        pitBag: inout WeightedPicker.Bag<PitMinigameKind>,
+        combatBag: inout WeightedPicker.Bag<CombatMinigameKind>,
         rng: inout SeededGenerator
     ) {
         let missing = Self.missingRequiredInteractables(tiles: tiles, entities: entities)
@@ -21,7 +24,7 @@ nonisolated extension ProceduralGenerator {
             forceOneGate(
                 rooms: rooms,
                 in: &tiles[0],
-                gateMinigames: config.gateMinigames,
+                gateBag: &gateBag,
                 doorways: &doorways,
                 rng: &rng
             )
@@ -35,6 +38,7 @@ nonisolated extension ProceduralGenerator {
                 maxSize: config.generation.room.pitMaxSize,
                 excludingRoomID: excludingRoomID,
                 excluding: occupied.union([spawn]),
+                pitBag: &pitBag,
                 rng: &rng
             )
             clearPits(around: spawn, tiles: &tiles, story: 0)
@@ -48,6 +52,7 @@ nonisolated extension ProceduralGenerator {
                 config: config,
                 enemyConfig: enemyConfig,
                 occupied: &occupied,
+                combatBag: &combatBag,
                 rng: &rng
             ) {
                 entities.append(enemy)
@@ -63,6 +68,7 @@ nonisolated extension ProceduralGenerator {
         config: WorldGenerationConfig,
         enemyConfig: EnemyConfig,
         occupied: inout Set<GridCoord>,
+        combatBag: inout WeightedPicker.Bag<CombatMinigameKind>,
         rng: inout SeededGenerator
     ) -> GameEntity? {
         let resolvedTypes: [(id: String, config: EnemyTypeConfig)]
@@ -99,7 +105,8 @@ nonisolated extension ProceduralGenerator {
                 letter: pick.config.letterCharacter,
                 position: position,
                 isPlayer: false,
-                enemyTypeID: pick.id
+                enemyTypeID: pick.id,
+                combatMinigame: combatBag.next(using: &rng)
             )
         }
         return nil
@@ -114,6 +121,7 @@ nonisolated extension ProceduralGenerator {
         types: [(id: String, config: EnemyTypeConfig)],
         chance: Double,
         occupied: inout Set<GridCoord>,
+        combatBag: inout WeightedPicker.Bag<CombatMinigameKind>,
         rng: inout SeededGenerator
     ) -> [GameEntity] {
         var enemies: [GameEntity] = []
@@ -135,7 +143,8 @@ nonisolated extension ProceduralGenerator {
                     letter: pick.config.letterCharacter,
                     position: position,
                     isPlayer: false,
-                    enemyTypeID: pick.id
+                    enemyTypeID: pick.id,
+                    combatMinigame: combatBag.next(using: &rng)
                 )
             )
         }
@@ -334,6 +343,7 @@ nonisolated extension ProceduralGenerator {
                     types: resolvedTypes,
                     chance: spawnConfig.spawnChancePerRoom,
                     occupied: &state.occupied,
+                    combatBag: &state.combatBag,
                     rng: &state.rng
                 )
                 state.entities.append(contentsOf: enemies)
@@ -383,6 +393,9 @@ nonisolated extension ProceduralGenerator {
             config: config,
             enemyConfig: enemyConfig,
             doorways: &state.doorwayCells,
+            gateBag: &state.gateBag,
+            pitBag: &state.pitBag,
+            combatBag: &state.combatBag,
             rng: &state.rng
         )
 

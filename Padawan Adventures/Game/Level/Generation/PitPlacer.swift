@@ -10,6 +10,7 @@ nonisolated extension ProceduralGenerator {
         maxSize: Int,
         excludingRoomID: Int,
         excluding spawn: GridCoord,
+        pitBag: inout WeightedPicker.Bag<PitMinigameKind>,
         rng: inout SeededGenerator
     ) {
         let ordered = rooms.sorted { $0.id < $1.id }
@@ -38,8 +39,9 @@ nonisolated extension ProceduralGenerator {
                 in: story,
                 rng: &rng
             )
+            let kind = pitBag.next(using: &rng)
             for cell in area {
-                story[cell.y][cell.x] = Tile(kind: .floor(isPit: true))
+                story[cell.y][cell.x] = Tile(kind: .floor(isPit: true), pitMinigame: kind)
             }
         }
     }
@@ -142,6 +144,7 @@ nonisolated extension ProceduralGenerator {
         maxSize: Int,
         excludingRoomID: Int,
         excluding blocked: Set<GridCoord>,
+        pitBag: inout WeightedPicker.Bag<PitMinigameKind>,
         rng: inout SeededGenerator
     ) -> Bool {
         let ordered = rooms.sorted { $0.id < $1.id }
@@ -167,8 +170,9 @@ nonisolated extension ProceduralGenerator {
                 in: story,
                 rng: &rng
             )
+            let kind = pitBag.next(using: &rng)
             for cell in area {
-                story[cell.y][cell.x] = Tile(kind: .floor(isPit: true))
+                story[cell.y][cell.x] = Tile(kind: .floor(isPit: true), pitMinigame: kind)
             }
             return !area.isEmpty
         }
@@ -185,6 +189,7 @@ nonisolated extension ProceduralGenerator {
             maxSize: params.room.pitMaxSize,
             excludingRoomID: state.topRight.id,
             excluding: state.spawn,
+            pitBag: &state.pitBag,
             rng: &state.rng
         )
         clearPits(around: state.spawn, tiles: &state.tiles, story: 0)

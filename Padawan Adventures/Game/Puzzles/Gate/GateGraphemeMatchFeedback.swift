@@ -9,6 +9,7 @@ extension GateGraphemeMatchScene {
             playTargetPronunciation()
         case let .playName(trackID):
             SoundEffectsController.shared.play(trackID: trackID)
+            engine.noteSoundPlayed()
         case .playYay:
             playCorrectSound()
         case let .correctMatch(id):
@@ -129,6 +130,7 @@ extension GateGraphemeMatchScene {
             event: "correct",
             from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
         )
+        engine.noteSoundPlayed()
     }
 
     func playErrorSound() {
@@ -136,19 +138,22 @@ extension GateGraphemeMatchScene {
             event: "error",
             from: SoundEffectsController.shared.commonFx.merging(puzzleConfig.fx)
         )
+        engine.noteSoundPlayed()
     }
 
     func playTargetPronunciation() {
         let trackID = engine.targetPronunciationTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
+        engine.noteSoundPlayed()
     }
 
     func appendTrackSteps(to steps: inout [SKAction], trackID: String?) {
         guard let trackID, !trackID.isEmpty else { return }
         let duration = SoundEffectsController.shared.cueDuration(of: trackID)
-        steps.append(SKAction.run {
+        steps.append(SKAction.run { [weak self] in
             SoundEffectsController.shared.play(trackID: trackID)
+            self?.engine.noteSoundPlayed()
         })
         steps.append(SKAction.wait(forDuration: duration))
     }
@@ -210,6 +215,7 @@ extension GateGraphemeMatchScene {
 
         // switch → tapped letter → correct/error → next/current target (see handleTapEvents).
         SoundEffectsController.shared.play(event: "switch_push", from: puzzleConfig.fx)
+        engine.noteSoundPlayed()
         let events = engine.tapLetter(id: id)
         guard !events.isEmpty else { return }
         let pushDuration = SoundEffectsController.shared.cueDuration(

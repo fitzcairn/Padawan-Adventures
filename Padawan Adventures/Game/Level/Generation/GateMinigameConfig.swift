@@ -112,8 +112,11 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     var graphemeCountMin: Int
     /// Inclusive upper bound for letters chosen per round (clamped to the letter pool).
     var graphemeCountMax: Int
-    /// Visual case of switch letters. `both` picks lower or upper per switch.
+    /// Visual case of switch letters, drawn after identity. Applies to single letters
+    /// only; multi-letter graphemes stay lowercase. `both` picks lower or upper per switch.
     var graphemeCase: CombatGraphemeCase
+    /// Replay the target pronunciation after this many idle seconds since the last sound.
+    var graphemeSoundRepeatSeconds: Double
     /// In-puzzle FX (optional `correct` override for shared `sound.yaml`).
     var fx: SoundEffectTable
     /// Resolved letters (sorted). Populated via `resolve(from:)`.
@@ -137,6 +140,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         graphemeCountMin: Int = 4,
         graphemeCountMax: Int = 8,
         graphemeCase: CombatGraphemeCase = .lower,
+        graphemeSoundRepeatSeconds: Double = 3,
         fx: SoundEffectTable = SoundEffectTable(),
         graphemes: [GateGrapheme],
         vocabulary: LevelVocabularyPool? = nil,
@@ -146,6 +150,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         self.graphemeCountMin = graphemeCountMin
         self.graphemeCountMax = graphemeCountMax
         self.graphemeCase = graphemeCase
+        self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
         self.fx = fx
         self.graphemes = Self.normalizedGraphemes(graphemes)
         self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(graphemes: self.graphemes)
@@ -164,6 +169,9 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
                 max: graphemeCountMax
             )
         }
+        guard graphemeSoundRepeatSeconds > 0 else {
+            throw WorldSeedError.invalidGraphemeSoundRepeat(graphemeSoundRepeatSeconds)
+        }
         guard !graphemes.isEmpty else {
             throw WorldSeedError.invalidGateGraphemeMatchGraphemes
         }
@@ -176,7 +184,8 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     }
 
     static func normalizedGraphemes(_ graphemes: [GateGrapheme]) -> [GateGrapheme] {
-        graphemes
+        var seen = Set<String>()
+        return graphemes
             .map {
                 GateGrapheme(
                     grapheme: $0.grapheme.lowercased(),
@@ -185,6 +194,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
                 )
             }
             .sorted { $0.grapheme < $1.grapheme }
+            .filter { seen.insert($0.grapheme).inserted }
     }
 }
 

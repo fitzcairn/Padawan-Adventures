@@ -103,6 +103,7 @@ final class CombatScene: MinigameScene {
         minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
         maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
+        vocabulary: LevelVocabularyPool = .fallback,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -126,7 +127,8 @@ final class CombatScene: MinigameScene {
                 graphemeSoundRepeatSeconds: graphemeSoundRepeatSeconds,
                 minDecoyCount: minDecoyCount,
                 maxDecoyCount: maxDecoyCount,
-                graphemeCase: graphemeCase
+                graphemeCase: graphemeCase,
+                vocabulary: vocabulary
             ),
             startingHealth: startingHealth
         )

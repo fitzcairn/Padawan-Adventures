@@ -10,16 +10,25 @@ nonisolated enum CombatMinigameKind: String, Codable, Equatable, Sendable, CaseI
     case endingSoundDeflect = "ending-sound-combat"
 }
 
+/// Combat kind + pick weight used during generation.
+nonisolated struct WeightedCombatKind: Equatable, Sendable {
+    var kind: CombatMinigameKind
+    var weight: Double
+}
+
 /// Per-entry config for the slash arena.
 nonisolated struct CombatSlashConfig: Equatable, Sendable {
     var weight: Double
     /// Extra non-matching letters launched alongside the cued one, per wave.
     var minDecoyCount: Int
     var maxDecoyCount: Int
-    /// Casing for combat projectile / cue letters.
+    /// Casing for combat projectile / cue letters, drawn after identity.
+    /// Applies to single letters only; multi-letter graphemes stay lowercase.
     var graphemeCase: CombatGraphemeCase
     /// Pronunciation prompt replay interval in seconds.
     var graphemeSoundRepeatSeconds: Double
+    /// Single-character graphemes from the cumulative vocab pool. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
 
     nonisolated static let fallback = CombatSlashConfig(weight: 1)
 
@@ -28,13 +37,25 @@ nonisolated struct CombatSlashConfig: Equatable, Sendable {
         minDecoyCount: Int = CombatMinigameEngine.Config.defaultMinDecoyCount,
         maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
-        graphemeSoundRepeatSeconds: Double = 3
+        graphemeSoundRepeatSeconds: Double = 3,
+        vocabulary: LevelVocabularyPool? = nil
     ) {
         self.weight = weight
         self.minDecoyCount = minDecoyCount
         self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.graphemeSoundRepeatSeconds = graphemeSoundRepeatSeconds
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+            graphemes: GraphemeCatalog.fallback.graphemes.filter { $0.grapheme.count == 1 }
+        )
+    }
+
+    /// Keeps single-character graphemes so slash shots stay one glyph.
+    mutating func resolve(from pool: LevelVocabularyPool) {
+        let filtered = pool.filteringGraphemes { $0.grapheme.count == 1 }
+        if !filtered.allGraphemes.isEmpty {
+            vocabulary = filtered
+        }
     }
 
     func validate() throws {
@@ -60,12 +81,15 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
     /// or word end (`ending-sound-combat`).
     var letterPosition: GateWordPlugLetterPosition
     /// How many deflection rings to draw (`minRingCount`...`maxRingCount`).
+    /// Clamped at `resolve(from:)` to the candidate grapheme count.
     var ringCount: Int
-    /// Resolved ring graphemes in pool order. Populated via `resolve(from:)`.
-    /// Count (2…6) is the number of deflection circles drawn.
+    /// Graphemes that have ≥1 matching imaged word. The fight samples `ringCount`
+    /// of these without replacement (current-level graphemes more likely).
     var graphemes: [GateGrapheme]
     /// Imaged vocabulary used to throw orbs. Populated via `resolve(from:)`.
     var words: [GateWord]
+    /// Tier-weighted pool used for ring and word picks. Populated via `resolve(from:)`.
+    var vocabulary: LevelVocabularyPool
 
     static let defaultMonsterHP = 5
     static let defaultOrbTravelSeconds: Double = 6
@@ -92,7 +116,8 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         letterPosition: GateWordPlugLetterPosition = .starting,
         ringCount: Int = defaultRingCount,
         graphemes: [GateGrapheme] = [],
-        words: [GateWord] = []
+        words: [GateWord] = [],
+        vocabulary: LevelVocabularyPool? = nil
     ) {
         self.weight = weight
         self.monsterHP = monsterHP
@@ -101,23 +126,30 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         self.ringCount = ringCount
         self.graphemes = graphemes
         self.words = GateWord.normalized(words)
+        self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+            words: self.words,
+            graphemes: self.graphemes
+        )
     }
 
-    /// Rings are graphemes that have ≥1 imaged word matching `letterPosition`.
-    /// Count is clamped to `min(ringCount, candidates.count)` with a floor of `minRingCount`.
+    /// Candidates are graphemes that have ≥1 imaged word matching `letterPosition`.
+    /// `ringCount` is clamped to `minRingCount`...`min(candidates.count, maxRingCount)`.
+    /// The fight samples that many rings and throws words from the cumulative pool
+    /// without replacement, with current-level entries more likely.
     mutating func resolve(from pool: LevelVocabularyPool) throws {
-        let imaged = pool.allWords.filter { entry in
+        vocabulary = pool.filteringWords { entry in
             entry.image.map { !$0.isEmpty } == true
         }
-        words = GateWord.normalized(imaged)
+        words = GateWord.normalized(vocabulary.allWords)
+        let imaged = vocabulary.allWords
         let candidates = pool.allGraphemes.filter { grapheme in
             imaged.contains { letterPosition.matches(grapheme: grapheme.grapheme, in: $0) }
         }
         guard candidates.count >= Self.minRingCount else {
             throw WorldSeedError.invalidCombatDeflectGraphemes
         }
-        let count = min(max(ringCount, Self.minRingCount), candidates.count, Self.maxRingCount)
-        graphemes = Array(candidates.prefix(count))
+        ringCount = min(max(ringCount, Self.minRingCount), candidates.count, Self.maxRingCount)
+        graphemes = candidates
     }
 
     func validate() throws {
@@ -127,7 +159,9 @@ nonisolated struct CombatDeflectConfig: Equatable, Sendable {
         guard orbTravelSeconds > 0 else {
             throw WorldSeedError.invalidCombatOrbTravelSeconds(orbTravelSeconds)
         }
-        guard (Self.minRingCount...Self.maxRingCount).contains(graphemes.count) else {
+        guard graphemes.count >= Self.minRingCount,
+              (Self.minRingCount...Self.maxRingCount).contains(ringCount),
+              ringCount <= graphemes.count else {
             throw WorldSeedError.invalidCombatDeflectGraphemes
         }
         try CatalogValidators.validateGraphemeEntries(
@@ -180,8 +214,14 @@ nonisolated struct CombatConfig: Equatable, Sendable {
         minigames.first { $0.kind == kind }
     }
 
-    /// Weighted pick. Entries with weight 0 are never chosen unless every weight is 0,
-    /// in which case the first entry wins so an encounter always has something to run.
+    /// Combat kinds with their pick weights, in declaration order.
+    var weightedMinigameKinds: [WeightedCombatKind] {
+        minigames.map { WeightedCombatKind(kind: $0.kind, weight: $0.weight) }
+    }
+
+    /// One-shot weighted pick used when an enemy has no generation pin (legacy saves).
+    /// New worlds bake kinds without replacement so equal weights yield equal counts.
+    /// Weight 0 is never chosen unless every weight is 0, in which case the first entry wins.
     func pickMinigame(using rng: inout some RandomNumberGenerator) throws -> CombatMinigameConfig {
         guard !minigames.isEmpty else {
             throw WorldSeedError.decodeFailed("combat.minigames must not be empty")
@@ -194,7 +234,11 @@ nonisolated struct CombatConfig: Equatable, Sendable {
 
     mutating func resolveGraphemes(from pool: LevelVocabularyPool) throws {
         for index in minigames.indices {
-            if case .deflect(var config) = minigames[index] {
+            switch minigames[index] {
+            case .slash(var config):
+                config.resolve(from: pool)
+                minigames[index] = .slash(config)
+            case .deflect(var config):
                 try config.resolve(from: pool)
                 minigames[index] = .deflect(config)
             }

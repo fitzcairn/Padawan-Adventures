@@ -15,7 +15,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
     var enemyTypeID: String?
     /// Pickup type when this entity is a collectible; nil otherwise.
     var pickupKind: PickupKind?
-    /// Demo mode pins a specific combat game to this enemy; nil means roll from weights.
+    /// Pinned at generation (and in demo mode); nil means roll from weights (legacy saves).
     var combatMinigame: CombatMinigameKind?
 
     init(

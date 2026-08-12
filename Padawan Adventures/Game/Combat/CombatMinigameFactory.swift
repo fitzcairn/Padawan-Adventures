@@ -13,6 +13,8 @@ struct CombatPresentationContext {
     let minDecoyCount: Int
     let maxDecoyCount: Int
     let graphemeCase: CombatGraphemeCase
+    /// Cumulative vocab used to sample slash targets without replacement.
+    let vocabulary: LevelVocabularyPool
     let slashMaxSeconds: Double
     let slashMaxScreenWidthFraction: Double
     let spriteLibrary: SpriteLibrary
@@ -43,6 +45,7 @@ enum CombatMinigameFactory {
                 minDecoyCount: context.minDecoyCount,
                 maxDecoyCount: context.maxDecoyCount,
                 graphemeCase: context.graphemeCase,
+                vocabulary: context.vocabulary,
                 slashMaxSeconds: context.slashMaxSeconds,
                 slashMaxScreenWidthFraction: context.slashMaxScreenWidthFraction,
                 spriteLibrary: context.spriteLibrary,
@@ -89,6 +92,7 @@ enum CombatMinigameFactory {
                         minDecoyCount: context.minDecoyCount,
                         maxDecoyCount: context.maxDecoyCount,
                         graphemeCase: context.graphemeCase,
+                        vocabulary: context.vocabulary,
                         slashMaxSeconds: context.slashMaxSeconds,
                         slashMaxScreenWidthFraction: context.slashMaxScreenWidthFraction,
                         spriteLibrary: context.spriteLibrary,

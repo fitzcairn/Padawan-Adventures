@@ -137,6 +137,9 @@ nonisolated struct ProceduralGenerator: Sendable {
             topRight: GeneratedRoom(id: 0, cells: [], center: GridCoord(x: 0, y: 0, story: 0), latticeX: 0, latticeY: 0),
             joinEdges: [],
             doorwayCells: [],
+            gateBag: WeightedPicker.Bag(config.gateMinigames, weight: \.weight, value: \.kind),
+            pitBag: WeightedPicker.Bag(config.pitMinigames, weight: \.weight, value: \.kind),
+            combatBag: WeightedPicker.Bag(config.combatMinigames, weight: \.weight, value: \.kind),
             width: config.world.width,
             height: config.world.height,
             stories: config.world.stories

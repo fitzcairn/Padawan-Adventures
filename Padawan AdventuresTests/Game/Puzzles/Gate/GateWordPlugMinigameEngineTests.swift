@@ -434,4 +434,48 @@ struct GateWordPlugMinigameEngineTests {
         #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 2, in: 2...2) == nil)
         #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 4, in: 4...5) == nil)
     }
+
+    @Test func beginSamplesWithoutReplacementFromCumulativePool() {
+        let prior = ["sat", "pat", "tap"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let current = ["dog", "mad", "cat"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(
+                order: 1,
+                weight: 0.25,
+                words: prior,
+                graphemes: letters(["s", "p", "t"])
+            ),
+            .init(
+                order: 2,
+                weight: 0.75,
+                words: current,
+                graphemes: letters(["d", "m", "c"])
+            ),
+        ])
+        let currentIDs = Set(current.map(\.word))
+        var currentHits = 0
+        var seen: Set<String> = []
+        let trials = 80
+        for seed in UInt64(1)...UInt64(trials) {
+            var engine = GateWordPlugMinigameEngine(
+                config: .init(
+                    wordCountMin: 2,
+                    wordCountMax: 2,
+                    words: prior + current,
+                    graphemes: letters(["s", "p", "t", "d", "m", "c"]),
+                    vocabulary: pool
+                ),
+                rng: SeededGenerator(seed: seed)
+            )
+            engine.begin()
+            #expect(Set(engine.slots.map(\.word)).count == engine.slots.count)
+            seen.formUnion(engine.slots.map(\.word))
+            if engine.slots.contains(where: { currentIDs.contains($0.word) }) {
+                currentHits += 1
+            }
+        }
+        #expect(!seen.isDisjoint(with: Set(prior.map(\.word))))
+        #expect(!seen.isDisjoint(with: currentIDs))
+        #expect(currentHits > trials / 2)
+    }
 }

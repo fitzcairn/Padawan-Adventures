@@ -99,7 +99,7 @@ struct CombatDeflectMinigameEngineTests {
         #expect(travel == 3)
         #expect(["a", "b", "c"].contains(letter))
         // The orb's letter must be the letter on the ring that deflects it.
-        #expect(engine.config.graphemes[ring.rawValue].grapheme == letter)
+        #expect(engine.graphemes[ring.rawValue].grapheme == letter)
         #expect(word.hasPrefix(letter))
         #expect(sfx == "sfx_word_\(word)")
         #expect(events[1] == .speakWord(trackID: "sfx_word_\(word)"))
@@ -169,7 +169,7 @@ struct CombatDeflectMinigameEngineTests {
                 return
             }
             #expect(["t", "d"].contains(letter))
-            #expect(engine.config.graphemes[ring.rawValue].grapheme == letter)
+            #expect(engine.graphemes[ring.rawValue].grapheme == letter)
             #expect(word.hasSuffix(letter))
             _ = engine.registerOrbReachedMonster()
         }
@@ -374,7 +374,7 @@ struct CombatDeflectMinigameEngineTests {
     func supportsConfiguredRingCounts(count: Int) {
         let pool = Array("abcdef").prefix(count).map(String.init)
         var engine = makeEngine(monsterHP: 500, pool: pool, seed: 5)
-        #expect(engine.config.ringCount == count)
+        #expect(engine.graphemes.count == count)
         #expect(engine.rings.count == count)
         var seen = Set<CombatDeflectRing>()
         for _ in 0..<120 {
@@ -522,5 +522,76 @@ struct CombatDeflectMinigameEngineTests {
             return
         }
         #expect(["bed", "boat", "bug"].contains(word))
+    }
+
+    @Test func throwSamplesCurrentLevelWordsMoreOftenFromCumulativePool() {
+        let prior = ["sat", "sit", "sip", "sap"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let current = ["sun", "sum", "sob", "sod"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: prior, graphemes: letters(["s"])),
+            .init(order: 2, weight: 0.75, words: current, graphemes: letters(["s"])),
+        ])
+        let currentIDs = Set(current.map(\.word))
+        var currentHits = 0
+        let trials = 200
+        for seed in UInt64(1)...UInt64(trials) {
+            var engine = CombatDeflectMinigameEngine(
+                config: .init(
+                    graphemes: letters(["s"]),
+                    words: prior + current,
+                    monsterHP: 1,
+                    orbTravelSeconds: 3,
+                    vocabulary: pool
+                ),
+                rng: CombatSeededGenerator(seed: seed)
+            )
+            engine.begin()
+            guard case .throwOrb(_, _, let word, _, _, _) = engine.throwNextOrb().first else {
+                Issue.record("expected a throw")
+                return
+            }
+            if currentIDs.contains(word) { currentHits += 1 }
+        }
+        #expect(currentHits > trials / 2)
+    }
+
+    @Test func throwCanPickPriorAndCurrentLevelWords() {
+        let prior = ["sat", "pat", "tap", "at"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let current = ["dog", "mad"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(
+                order: 1,
+                weight: 0.25,
+                words: prior,
+                graphemes: letters(["s", "a", "t", "p"])
+            ),
+            .init(
+                order: 2,
+                weight: 0.75,
+                words: current,
+                graphemes: letters(["d", "m"])
+            ),
+        ])
+        var seen: Set<String> = []
+        for seed in UInt64(1)...80 {
+            var engine = CombatDeflectMinigameEngine(
+                config: .init(
+                    graphemes: letters(["s", "a", "t", "p", "d", "m"]),
+                    words: prior + current,
+                    monsterHP: 1,
+                    orbTravelSeconds: 3,
+                    ringCount: 4,
+                    vocabulary: pool
+                ),
+                rng: CombatSeededGenerator(seed: seed)
+            )
+            engine.begin()
+            guard case .throwOrb(_, _, let word, _, _, _) = engine.throwNextOrb().first else {
+                continue
+            }
+            seen.insert(word)
+        }
+        #expect(!seen.isDisjoint(with: ["sat", "pat", "tap", "at"]))
+        #expect(!seen.isDisjoint(with: ["dog", "mad"]))
     }
 }

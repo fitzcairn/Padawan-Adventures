@@ -50,6 +50,9 @@ nonisolated struct CombatMinigameEngine {
         /// Extra non-matching letters launched alongside the target, per wave.
         var minDecoyCount: Int
         var maxDecoyCount: Int
+        var graphemeCase: CombatGraphemeCase
+        /// Cumulative single-character graphemes; targets are sampled without replacement.
+        var vocabulary: LevelVocabularyPool
 
         static let defaultGraphemeSoundRepeatSeconds: Double = 3
         static let defaultMinDecoyCount = 2
@@ -60,15 +63,35 @@ nonisolated struct CombatMinigameEngine {
             graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             minDecoyCount: Int = defaultMinDecoyCount,
             maxDecoyCount: Int = defaultMaxDecoyCount,
-            graphemeCase: CombatGraphemeCase = .upper
+            graphemeCase: CombatGraphemeCase = .upper,
+            vocabulary: LevelVocabularyPool? = nil
         ) {
-            let letters = graphemeCase.shotLetterPool(from: type.shotLetters)
+            let source = vocabulary.flatMap { pool -> LevelVocabularyPool? in
+                let filtered = pool.filteringGraphemes { $0.grapheme.count == 1 }
+                return filtered.allGraphemes.isEmpty ? nil : filtered
+            } ?? Self.pool(fromShotLetters: type.shotLetters)
+            self.vocabulary = source
+            shotLetters = graphemeCase.shotLetterPool(from: source.letters)
             shotTravelSeconds = type.shotTravelSeconds
             starsToWin = type.starsToWin
-            shotLetters = letters
             self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
             self.minDecoyCount = max(minDecoyCount, 1)
             self.maxDecoyCount = max(maxDecoyCount, self.minDecoyCount)
+            self.graphemeCase = graphemeCase
+        }
+
+        init(
+            from slash: CombatSlashConfig,
+            type: EnemyTypeConfig
+        ) {
+            self.init(
+                from: type,
+                graphemeSoundRepeatSeconds: slash.graphemeSoundRepeatSeconds,
+                minDecoyCount: slash.minDecoyCount,
+                maxDecoyCount: slash.maxDecoyCount,
+                graphemeCase: slash.graphemeCase,
+                vocabulary: slash.vocabulary
+            )
         }
 
         init(
@@ -77,14 +100,34 @@ nonisolated struct CombatMinigameEngine {
             shotLetters: [String] = ["A", "B", "C"],
             graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             minDecoyCount: Int = defaultMinDecoyCount,
-            maxDecoyCount: Int = defaultMaxDecoyCount
+            maxDecoyCount: Int = defaultMaxDecoyCount,
+            graphemeCase: CombatGraphemeCase = .upper,
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             self.shotTravelSeconds = shotTravelSeconds
             self.starsToWin = starsToWin
-            self.shotLetters = shotLetters
             self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
             self.minDecoyCount = max(minDecoyCount, 1)
             self.maxDecoyCount = max(maxDecoyCount, self.minDecoyCount)
+            self.graphemeCase = graphemeCase
+            if let vocabulary, !vocabulary.allGraphemes.isEmpty {
+                self.vocabulary = vocabulary.filteringGraphemes { $0.grapheme.count == 1 }
+                self.shotLetters = graphemeCase.shotLetterPool(from: self.vocabulary.letters)
+            } else {
+                self.vocabulary = Self.pool(fromShotLetters: shotLetters)
+                self.shotLetters = graphemeCase.shotLetterPool(from: shotLetters)
+            }
+        }
+
+        private static func pool(fromShotLetters letters: [String]) -> LevelVocabularyPool {
+            var seen = Set<String>()
+            var graphemes: [GateGrapheme] = []
+            for raw in letters {
+                let id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                guard !id.isEmpty, seen.insert(id).inserted else { continue }
+                graphemes.append(GateGrapheme(grapheme: id, pronunciation: "", name: ""))
+            }
+            return .singleTier(graphemes: graphemes)
         }
     }
 
@@ -107,6 +150,9 @@ nonisolated struct CombatMinigameEngine {
     private var nextCueReplayAt: Double = .infinity
     private var pendingEvents: [CombatEngineEvent] = []
     private var rng: any RandomNumberGenerator
+    private var sampler: LevelVocabularySampler
+    /// Lowercased grapheme id of the last target, used to avoid an immediate repeat.
+    private var lastTargetGrapheme = ""
 
     static let speedJitterRange: ClosedRange<Double> = 0.9...1.1
     static let firstWaveDelaySeconds: Double = 0.4
@@ -128,6 +174,7 @@ nonisolated struct CombatMinigameEngine {
         self.startingHealth = max(startingHealth, 0)
         self.healthCount = self.startingHealth
         self.rng = rng
+        self.sampler = LevelVocabularySampler(pool: config.vocabulary)
     }
 
     mutating func begin() {
@@ -144,6 +191,8 @@ nonisolated struct CombatMinigameEngine {
         nextCueReplayAt = .infinity
         pendingEvents = []
         nextWaveAt = Self.firstWaveDelaySeconds
+        sampler.reset()
+        lastTargetGrapheme = ""
     }
 
     mutating func end() {
@@ -182,17 +231,25 @@ nonisolated struct CombatMinigameEngine {
     }
 
     private mutating func beginWave(_ events: inout [CombatEngineEvent]) {
-        let target = randomDifferentShotLetter(excluding: sequenceRequiredLetter)
+        let excluding = lastTargetGrapheme.isEmpty ? [] : Set([lastTargetGrapheme])
+        guard let entry = sampler.nextGrapheme(excluding: excluding, using: &rng)
+            ?? sampler.nextGrapheme(using: &rng) else {
+            return
+        }
+        lastTargetGrapheme = entry.grapheme.lowercased()
+        let target = config.graphemeCase.displayLetter(for: lastTargetGrapheme, rng: &rng)
         sequenceRequiredLetter = target
 
-        // Decoys repeat freely but never match the target, so a 3-letter pool still fills 4 slots.
-        let decoyPool = config.shotLetters.filter { $0 != target }
+        // Decoys repeat freely but never match the target grapheme (case-insensitive).
+        // Pick the identity first, then draw case the same way as the target.
+        let decoyPool = config.shotLetters.filter { $0.lowercased() != lastTargetGrapheme }
         let requested = Int.random(in: config.minDecoyCount...config.maxDecoyCount, using: &rng)
         let decoyCount = decoyPool.isEmpty ? 0 : requested
 
         var letters: [(letter: String, isTarget: Bool)] = [(target, true)]
         for _ in 0..<decoyCount {
-            letters.append((decoyPool[Int.random(in: 0..<decoyPool.count, using: &rng)], false))
+            let id = decoyPool[Int.random(in: 0..<decoyPool.count, using: &rng)]
+            letters.append((config.graphemeCase.displayLetter(for: id, rng: &rng), false))
         }
 
         // Fisher-Yates so the target's fan slot (and therefore screen position) is unpredictable.
@@ -274,21 +331,5 @@ nonisolated struct CombatMinigameEngine {
         }
         nextWaveAt = elapsed + Self.waveGapSeconds
         return events
-    }
-
-    private mutating func randomUniformShotLetter() -> String {
-        let letters = config.shotLetters
-        guard !letters.isEmpty else { return "A" }
-        let index = Int.random(in: 0..<letters.count, using: &rng)
-        return letters[index]
-    }
-
-    /// Picks uniformly from the alphabet, excluding `current` when other letters exist.
-    private mutating func randomDifferentShotLetter(excluding current: String) -> String {
-        let letters = config.shotLetters
-        let others = letters.filter { $0 != current }
-        guard !others.isEmpty else { return randomUniformShotLetter() }
-        let index = Int.random(in: 0..<others.count, using: &rng)
-        return others[index]
     }
 }

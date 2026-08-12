@@ -237,7 +237,7 @@ final class GameViewController: LandscapeHostingController {
         let slashMaxSeconds = session.enemyConfig.slashMaxSeconds
         let slashMaxScreenWidthFraction = session.enemyConfig.slashMaxScreenWidthFraction
 
-        // Demo mode pins a combat kind onto each enemy; otherwise roll from weights.
+        // Generation pins a combat kind onto each enemy; otherwise roll from weights (legacy saves).
         var minigameRNG = SystemRandomNumberGenerator()
         let chosenMinigame = enemyEntity?.combatMinigame
             .flatMap { session.selectedCombatConfig.minigame(for: $0) }
@@ -257,6 +257,7 @@ final class GameViewController: LandscapeHostingController {
         let maxDecoyCount = slash?.maxDecoyCount
             ?? CombatMinigameEngine.Config.defaultMaxDecoyCount
         let graphemeCase = slash?.graphemeCase ?? .upper
+        let vocabulary = slash?.vocabulary ?? session.selectedLevel.vocabulary
 
         let context = CombatPresentationContext(
             enemyType: enemyType,
@@ -267,6 +268,7 @@ final class GameViewController: LandscapeHostingController {
             minDecoyCount: minDecoyCount,
             maxDecoyCount: maxDecoyCount,
             graphemeCase: graphemeCase,
+            vocabulary: vocabulary,
             slashMaxSeconds: slashMaxSeconds,
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
             spriteLibrary: session.spriteLibrary,
@@ -439,7 +441,7 @@ final class GameViewController: LandscapeHostingController {
         }
 
         let pitConfig = session.selectedPitConfig
-        // Demo mode pins a pit kind onto each pit tile; otherwise roll from weights.
+        // Generation pins a pit kind onto each pit tile; otherwise roll from weights (legacy saves).
         let pinnedKind = scene.currentWorld.playerPosition
             .flatMap { scene.currentWorld.tile(at: $0)?.pitMinigame }
         var minigameRNG = SystemRandomNumberGenerator()

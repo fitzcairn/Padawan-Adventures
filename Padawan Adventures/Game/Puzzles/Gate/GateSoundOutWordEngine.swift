@@ -111,7 +111,8 @@ nonisolated struct GateSoundOutWordEngine {
         isActive = true
         outcome = nil
         placedCount = 0
-        let picked = config.vocabulary.pickWord(using: &rng)
+        var sampler = LevelVocabularySampler(pool: config.vocabulary)
+        let picked = sampler.nextWord(refillWhenEmpty: false, using: &rng)
             ?? config.words.randomElement(using: &rng)
             ?? .fallbackEntry(word: "cat")
         targetEntry = picked

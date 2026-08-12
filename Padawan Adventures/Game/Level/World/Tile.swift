@@ -74,7 +74,7 @@ nonisolated struct Tile: Equatable, Sendable, WorldPersistable {
     var kind: TileKind
     /// Floor tile id from the level's baked floor atlas (`rRRcCC`).
     var floorTileID: String?
-    /// Demo mode pins a specific pit game to this tile; nil means roll from weights.
+    /// Pinned at generation (and in demo mode); nil means roll from weights (legacy saves).
     var pitMinigame: PitMinigameKind?
 
     init(kind: TileKind, floorTileID: String? = nil, pitMinigame: PitMinigameKind? = nil) {

@@ -62,7 +62,7 @@ nonisolated extension ProceduralGenerator {
         segmentsByPair: [RoomPair: [[GridCoord]]],
         tiles: inout [[[Tile]]],
         story: Int,
-        gateMinigames: [WeightedGateKind],
+        gateBag: inout WeightedPicker.Bag<GateMinigameKind>,
         gateProbability: Double,
         doorwayCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
@@ -94,7 +94,7 @@ nonisolated extension ProceduralGenerator {
             }
             guard let segment = chosen else { continue }
             if rng.nextBool(probability: gateProbability) {
-                let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
+                let kind = pickGateMinigameKind(bag: &gateBag, rng: &rng)
                 for cell in segment {
                     tiles[story][cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
                 }
@@ -119,7 +119,7 @@ nonisolated extension ProceduralGenerator {
         segmentsByPair: [RoomPair: [[GridCoord]]],
         tiles: inout [[[Tile]]],
         story: Int,
-        gateMinigames: [WeightedGateKind],
+        gateBag: inout WeightedPicker.Bag<GateMinigameKind>,
         gateProbability: Double,
         doorwayCells: inout Set<GridCoord>,
         rng: inout SeededGenerator
@@ -144,7 +144,7 @@ nonisolated extension ProceduralGenerator {
                         segmentsByPair: segmentsByPair,
                         tiles: &tiles,
                         story: story,
-                        gateMinigames: gateMinigames,
+                        gateBag: &gateBag,
                         gateProbability: gateProbability,
                         doorwayCells: &doorwayCells,
                         rng: &rng
@@ -200,7 +200,7 @@ nonisolated extension ProceduralGenerator {
     func forceOneGate(
         rooms: [GeneratedRoom],
         in story: inout [[Tile]],
-        gateMinigames: [WeightedGateKind],
+        gateBag: inout WeightedPicker.Bag<GateMinigameKind>,
         doorways: inout Set<GridCoord>,
         rng: inout SeededGenerator
     ) -> Bool {
@@ -226,7 +226,7 @@ nonisolated extension ProceduralGenerator {
                 in: story
             ) else { continue }
 
-            let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
+            let kind = pickGateMinigameKind(bag: &gateBag, rng: &rng)
             for cell in segment {
                 story[cell.y][cell.x] = Tile(kind: .gate(minigame: kind))
             }
@@ -240,7 +240,7 @@ nonisolated extension ProceduralGenerator {
                 .map { cell.neighbor(dx: $0.dx, dy: $0.dy) }
                 .first(where: { doorways.contains($0) })
             guard let partner else { continue }
-            let kind = pickGateMinigameKind(from: gateMinigames, rng: &rng)
+            let kind = pickGateMinigameKind(bag: &gateBag, rng: &rng)
             for target in [cell, partner] {
                 story[target.y][target.x] = Tile(kind: .gate(minigame: kind))
                 doorways.remove(target)
@@ -251,14 +251,10 @@ nonisolated extension ProceduralGenerator {
     }
 
     func pickGateMinigameKind(
-        from minigames: [WeightedGateKind],
+        bag: inout WeightedPicker.Bag<GateMinigameKind>,
         rng: inout SeededGenerator
     ) -> GateMinigameKind {
-        let pool = minigames.isEmpty
-            ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
-            : minigames
-        let picked = WeightedPicker.pick(from: pool, weight: \.weight, using: &rng)
-        return (picked ?? pool[0]).kind
+        bag.next(using: &rng) ?? .soundOutWord
     }
 
     /// True when the cells immediately before/after the segment along the wall are solid walls.
@@ -505,7 +501,7 @@ nonisolated extension ProceduralGenerator {
             segmentsByPair: segmentsByPair,
             tiles: &state.tiles,
             story: 0,
-            gateMinigames: config.gateMinigames,
+            gateBag: &state.gateBag,
             gateProbability: params.room.gateProbability,
             doorwayCells: &state.doorwayCells,
             rng: &state.rng
@@ -516,7 +512,7 @@ nonisolated extension ProceduralGenerator {
             segmentsByPair: segmentsByPair,
             tiles: &state.tiles,
             story: 0,
-            gateMinigames: config.gateMinigames,
+            gateBag: &state.gateBag,
             gateProbability: params.room.gateProbability,
             doorwayCells: &state.doorwayCells,
             rng: &state.rng

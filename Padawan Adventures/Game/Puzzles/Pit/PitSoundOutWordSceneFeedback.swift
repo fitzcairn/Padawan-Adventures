@@ -52,7 +52,9 @@ extension PitSoundOutWordScene {
         revealGrapheme(on: keep, grapheme) { [weak self] in
             guard let self else { return }
             if self.engine.isSolved {
-                self.finishWon()
+                self.playWordSound { [weak self] in
+                    self?.finishWon()
+                }
             } else {
                 self.beginStep()
             }

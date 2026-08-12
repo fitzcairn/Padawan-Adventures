@@ -81,7 +81,7 @@ extension CombatDeflectScene {
             sceneSize: size,
             squash: isoSquash,
             playerSpriteWidth: measuredPlayerWidth,
-            ringCount: engine.config.ringCount
+            ringCount: engine.graphemes.count
         )
     }
 

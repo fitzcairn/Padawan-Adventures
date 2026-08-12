@@ -214,4 +214,38 @@ struct PitBridgeMinigameEngineTests {
             #expect(other.accept(choiceID: id) == nil)
         }
     }
+
+    @Test func beginSamplesWithoutReplacementFromCumulativePool() {
+        let prior = ["sat", "sit", "sip", "sap"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let current = ["sun", "sum", "sob", "sod"].map { WordCatalog.imagedFallbackEntry(word: $0) }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: prior, graphemes: []),
+            .init(order: 2, weight: 0.75, words: current, graphemes: []),
+        ])
+        let currentIDs = Set(current.map(\.word))
+        var currentHits = 0
+        var seen: Set<String> = []
+        let trials = 80
+        for seed in UInt64(1)...UInt64(trials) {
+            var engine = PitBridgeMinigameEngine(
+                config: .init(
+                    minWords: 3,
+                    maxWords: 3,
+                    words: prior + current,
+                    vocabulary: pool
+                ),
+                rng: PitSeededGenerator(seed: seed)
+            )
+            engine.begin()
+            #expect(engine.wordCount == 3)
+            #expect(Set(engine.words.map(\.word)).count == 3)
+            seen.formUnion(engine.words.map(\.word))
+            if engine.words.contains(where: { currentIDs.contains($0.word) }) {
+                currentHits += 1
+            }
+        }
+        #expect(!seen.isDisjoint(with: Set(prior.map(\.word))))
+        #expect(!seen.isDisjoint(with: currentIDs))
+        #expect(currentHits > trials / 2)
+    }
 }

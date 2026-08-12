@@ -59,28 +59,39 @@ nonisolated enum CombatDeflectEvent: Equatable, Sendable {
 /// calls, so there is no internal clock and no `tick`.
 nonisolated struct CombatDeflectMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
-        /// Ring letters left to right (2…6 entries).
+        /// Candidate ring graphemes (those with ≥1 matching imaged word). The fight
+        /// samples `ringCount` of these at `begin()`.
         var graphemes: [GateGrapheme]
+        /// How many rings to draw this fight, clamped to the candidate count.
+        var ringCount: Int
         /// Vocabulary used to pick a thrown word for each letter (typically the full catalog).
         var words: [GateWord]
+        /// Tier-weighted pool used for ring and word picks.
+        var vocabulary: LevelVocabularyPool
         var monsterHP: Int
         var orbTravelSeconds: Double
         var letterPosition: GateWordPlugLetterPosition
-
-        var ringCount: Int { graphemes.count }
 
         init(
             graphemes: [GateGrapheme],
             words: [GateWord] = WordCatalog.fallback.words,
             monsterHP: Int,
             orbTravelSeconds: Double,
-            letterPosition: GateWordPlugLetterPosition = .starting
+            letterPosition: GateWordPlugLetterPosition = .starting,
+            ringCount: Int? = nil,
+            vocabulary: LevelVocabularyPool? = nil
         ) {
             self.graphemes = graphemes
             self.words = words
             self.monsterHP = max(monsterHP, 1)
             self.orbTravelSeconds = max(orbTravelSeconds, 0.2)
             self.letterPosition = letterPosition
+            // Tests may pass a 1-letter pool; production `resolve` already clamps to 2...6.
+            self.ringCount = ringCount ?? graphemes.count
+            self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(
+                words: self.words,
+                graphemes: self.graphemes
+            )
         }
 
         init(from deflect: CombatDeflectConfig) {
@@ -89,13 +100,10 @@ nonisolated struct CombatDeflectMinigameEngine {
                 words: deflect.words.isEmpty ? WordCatalog.fallback.words : deflect.words,
                 monsterHP: deflect.monsterHP,
                 orbTravelSeconds: deflect.orbTravelSeconds,
-                letterPosition: deflect.letterPosition
+                letterPosition: deflect.letterPosition,
+                ringCount: deflect.ringCount,
+                vocabulary: deflect.vocabulary
             )
-        }
-
-        /// Ring grapheme strings left to right.
-        var ringGraphemes: Set<String> {
-            Set(graphemes.map(\.grapheme))
         }
 
         /// Imaged vocabulary entries whose first (or last) grapheme equals `grapheme`.
@@ -106,14 +114,14 @@ nonisolated struct CombatDeflectMinigameEngine {
             }
         }
 
-        /// Throw candidates for `grapheme`: imaged, matching, and visually unambiguous among
-        /// the rings. Prefers spellings not in `excluding` when any remain.
+        /// Throw candidates for `grapheme` among `rings`: imaged, matching, and visually
+        /// unambiguous. Prefers spellings not in `excluding` when any remain.
         func throwWords(
             matching grapheme: String,
+            among rings: Set<String>,
             excluding usedWords: Set<String> = [],
             isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
         ) -> [GateWord] {
-            let rings = ringGraphemes
             let unambiguous = words(matching: grapheme).filter { entry in
                 letterPosition.hasUniqueAnswer(
                     in: entry,
@@ -124,6 +132,20 @@ nonisolated struct CombatDeflectMinigameEngine {
             }
             let unused = unambiguous.filter { !usedWords.contains($0.word) }
             return unused.isEmpty ? unambiguous : unused
+        }
+
+        /// Back-compat for tests that omit `among:` — uses every candidate grapheme as a ring.
+        func throwWords(
+            matching grapheme: String,
+            excluding usedWords: Set<String> = [],
+            isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
+        ) -> [GateWord] {
+            throwWords(
+                matching: grapheme,
+                among: Set(graphemes.map(\.grapheme)),
+                excluding: usedWords,
+                isPlausibleSpelling: isPlausibleSpelling
+            )
         }
     }
 
@@ -139,6 +161,8 @@ nonisolated struct CombatDeflectMinigameEngine {
     }
 
     let config: Config
+    /// Rings drawn this fight, left to right. Sampled at `begin()` from `config.graphemes`.
+    private(set) var graphemes: [GateGrapheme]
     private(set) var monsterHP: Int
     private(set) var healthCount: Int
     private(set) var activeOrb: Orb?
@@ -147,10 +171,9 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     private let startingHealth: Int
     private var rng: any RandomNumberGenerator
+    private var sampler: LevelVocabularySampler
     /// Ring of the most recently deflected orb; excluded from the next throw's pool.
     private var lastDeflectedRing: CombatDeflectRing?
-    /// Spellings already thrown this fight; preferred against when picking the next word.
-    private var usedWords: Set<String>
     /// Optional override for tests; defaults to catalog + known collision spellings.
     private let isPlausibleSpelling: @Sendable (String) -> Bool
 
@@ -161,11 +184,12 @@ nonisolated struct CombatDeflectMinigameEngine {
         isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
     ) {
         self.config = config
+        self.graphemes = config.graphemes
         self.startingHealth = max(startingHealth, 0)
         self.healthCount = self.startingHealth
         self.monsterHP = config.monsterHP
         self.rng = rng
-        self.usedWords = []
+        self.sampler = LevelVocabularySampler(pool: config.vocabulary)
         self.isPlausibleSpelling = isPlausibleSpelling
     }
 
@@ -188,7 +212,8 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     var hasWon: Bool { monsterHP <= 0 }
     var hasLost: Bool { healthCount <= 0 }
-    var rings: [CombatDeflectRing] { CombatDeflectRing.all(count: config.ringCount) }
+    var rings: [CombatDeflectRing] { CombatDeflectRing.all(count: graphemes.count) }
+    var ringGraphemes: Set<String> { Set(graphemes.map(\.grapheme)) }
 
     mutating func begin() {
         isActive = true
@@ -197,7 +222,8 @@ nonisolated struct CombatDeflectMinigameEngine {
         monsterHP = config.monsterHP
         activeOrb = nil
         lastDeflectedRing = nil
-        usedWords = []
+        sampler.reset()
+        graphemes = pickFightRings()
     }
 
     mutating func end() {
@@ -205,40 +231,32 @@ nonisolated struct CombatDeflectMinigameEngine {
     }
 
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
-    /// Picks a ring letter (excluding the last successful deflect), then a random imaged
-    /// word whose start or end matches that grapheme, per `letterPosition`. Words are
-    /// required to have a unique right answer among the rings, and unused spellings are
-    /// preferred until the unambiguous pool is exhausted.
+    /// Picks a word from the cumulative pool without replacement (current-level words
+    /// more likely), then the ring whose grapheme matches that word. Unused spellings
+    /// are preferred until the unambiguous pool is exhausted.
     mutating func throwNextOrb() -> [CombatDeflectEvent] {
-        guard isActive, outcome == nil, activeOrb == nil, !config.graphemes.isEmpty else {
+        guard isActive, outcome == nil, activeOrb == nil, !graphemes.isEmpty else {
             return []
         }
-        let withWords = config.graphemes.indices.filter { index in
-            !config.throwWords(
-                matching: config.graphemes[index].grapheme,
-                excluding: usedWords,
-                isPlausibleSpelling: isPlausibleSpelling
-            ).isEmpty
+        let rings = ringGraphemes
+        let excludingLast: Set<String> = {
+            guard let last = lastDeflectedRing, graphemes.indices.contains(last.index) else {
+                return rings
+            }
+            var allowed = rings
+            allowed.remove(graphemes[last.index].grapheme)
+            return allowed.isEmpty ? rings : allowed
+        }()
+        guard let word = pickThrowWord(among: excludingLast)
+            ?? pickThrowWord(among: rings),
+              let answer = config.letterPosition.answerGrapheme(in: word),
+              let index = graphemes.firstIndex(where: { $0.grapheme == answer }) else {
+            return []
         }
-        // Prefer a different letter than the last deflect; if that empties the pool
-        // (only one letter has unambiguous words), allow a repeat.
-        let excludingLast = withWords.filter { index in
-            lastDeflectedRing.map { $0.index != index } ?? true
-        }
-        let candidates = excludingLast.isEmpty ? withWords : excludingLast
-        guard let index = candidates.randomElement(using: &rng) else { return [] }
         let ring = CombatDeflectRing(index)
-        let entry = config.graphemes[index]
-        let wordChoices = config.throwWords(
-            matching: entry.grapheme,
-            excluding: usedWords,
-            isPlausibleSpelling: isPlausibleSpelling
-        )
-        guard let word = wordChoices.randomElement(using: &rng) else { return [] }
-        usedWords.insert(word.word)
         let orb = Orb(
             id: UUID(),
-            letter: entry.grapheme,
+            letter: answer,
             word: word.word,
             imageName: word.image,
             ring: ring,
@@ -256,6 +274,50 @@ nonisolated struct CombatDeflectMinigameEngine {
             ),
             .speakWord(trackID: word.sfx),
         ]
+    }
+
+    /// Samples `config.ringCount` graphemes without replacement from the candidates.
+    /// When the candidate list is already that size (typical in tests), it is kept as-is.
+    private mutating func pickFightRings() -> [GateGrapheme] {
+        let desired = min(max(config.ringCount, 1), config.graphemes.count)
+        guard desired > 0 else { return [] }
+        if config.graphemes.count <= desired {
+            return config.graphemes
+        }
+        let allowed = Set(config.graphemes.map(\.grapheme))
+        var ringSampler = LevelVocabularySampler(
+            pool: config.vocabulary.filteringGraphemes { allowed.contains($0.grapheme) }
+        )
+        let picked = ringSampler.takeGraphemes(count: desired, using: &rng)
+        if picked.count == desired {
+            return picked
+        }
+        return Array(config.graphemes.prefix(desired))
+    }
+
+    /// Weighted pick from the cumulative pool: imaged, unambiguous among the fight's
+    /// rings, matching one of `allowed`. Recycles after the unused set is exhausted.
+    private mutating func pickThrowWord(among allowed: Set<String>) -> GateWord? {
+        let rings = ringGraphemes
+        let letterPosition = config.letterPosition
+        let vocabulary = config.words
+        let plausible = isPlausibleSpelling
+        var localRng = rng
+        let picked = sampler.nextWord(where: { entry in
+            guard entry.image.map({ !$0.isEmpty }) == true,
+                  let answer = letterPosition.answerGrapheme(in: entry),
+                  allowed.contains(answer) else {
+                return false
+            }
+            return letterPosition.hasUniqueAnswer(
+                in: entry,
+                among: rings,
+                vocabulary: vocabulary,
+                isPlausibleSpelling: plausible
+            )
+        }, using: &localRng)
+        rng = localRng
+        return picked
     }
 
     /// Player tapped `ring`. A correct tap marks the orb resolved so a second tap cannot

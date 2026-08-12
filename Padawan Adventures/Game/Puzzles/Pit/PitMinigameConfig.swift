@@ -10,6 +10,12 @@ nonisolated enum PitMinigameKind: String, Codable, Equatable, Sendable, CaseIter
     case startingSoundBridge = "starting-sound-pit"
 }
 
+/// Pit kind + pick weight used during generation.
+nonisolated struct WeightedPitKind: Equatable, Sendable {
+    var kind: PitMinigameKind
+    var weight: Double
+}
+
 /// Per-entry config for the bridge-building pit game.
 /// Words come from the level's cumulative `vocab:` pool (imaged entries).
 nonisolated struct PitBridgeConfig: Equatable, Sendable {
@@ -243,8 +249,14 @@ nonisolated struct PitConfig: Equatable, Sendable {
         minigames.first { $0.kind == kind }
     }
 
-    /// Weighted pick, same semantics as `CombatConfig.pickMinigame`: weight 0 is never
-    /// chosen unless every weight is 0, in which case the first entry wins.
+    /// Pit kinds with their pick weights, in declaration order.
+    var weightedMinigameKinds: [WeightedPitKind] {
+        minigames.map { WeightedPitKind(kind: $0.kind, weight: $0.weight) }
+    }
+
+    /// One-shot weighted pick used when a pit tile has no generation pin (legacy saves).
+    /// New worlds bake kinds without replacement so equal weights yield equal counts.
+    /// Weight 0 is never chosen unless every weight is 0, in which case the first entry wins.
     func pickMinigame(using rng: inout some RandomNumberGenerator) throws -> PitMinigameConfig {
         guard !minigames.isEmpty else {
             throw WorldSeedError.decodeFailed("pit.minigames must not be empty")

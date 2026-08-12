@@ -176,6 +176,8 @@ nonisolated struct LevelVocabularyCatalog: Equatable, Sendable {
 }
 
 /// Resolved cumulative vocabulary pool with geometric tier weights.
+/// Draws go through `LevelVocabularySampler` so every minigame shares the same
+/// without-replacement, current-level-weighted behaviour for words and graphemes.
 nonisolated struct LevelVocabularyPool: Equatable, Sendable {
     nonisolated struct Tier: Equatable, Sendable {
         var order: Int
@@ -203,7 +205,7 @@ nonisolated struct LevelVocabularyPool: Equatable, Sendable {
         var seen = Set<String>()
         var out: [GateGrapheme] = []
         for tier in tiers {
-            for grapheme in tier.graphemes where seen.insert(grapheme.grapheme).inserted {
+            for grapheme in tier.graphemes where seen.insert(grapheme.grapheme.lowercased()).inserted {
                 out.append(grapheme)
             }
         }
@@ -277,16 +279,24 @@ nonisolated struct LevelVocabularyPool: Equatable, Sendable {
         self.tiers = built
     }
 
-    func pickWord(using rng: inout some RandomNumberGenerator) -> GateWord? {
-        pickWords(count: 1, using: &rng).first
+    func pickWord(using rng: inout any RandomNumberGenerator) -> GateWord? {
+        var sampler = LevelVocabularySampler(pool: self)
+        return sampler.nextWord(refillWhenEmpty: false, using: &rng)
     }
 
-    func pickWords(count: Int, using rng: inout some RandomNumberGenerator) -> [GateWord] {
-        pickWithoutReplacement(count: count, entries: \.words, using: &rng)
+    func pickWords(count: Int, using rng: inout any RandomNumberGenerator) -> [GateWord] {
+        var sampler = LevelVocabularySampler(pool: self)
+        return sampler.takeWords(count: count, using: &rng)
     }
 
-    func pickGraphemes(count: Int, using rng: inout some RandomNumberGenerator) -> [GateGrapheme] {
-        pickWithoutReplacement(count: count, entries: \.graphemes, using: &rng)
+    func pickGrapheme(using rng: inout any RandomNumberGenerator) -> GateGrapheme? {
+        var sampler = LevelVocabularySampler(pool: self)
+        return sampler.nextGrapheme(refillWhenEmpty: false, using: &rng)
+    }
+
+    func pickGraphemes(count: Int, using rng: inout any RandomNumberGenerator) -> [GateGrapheme] {
+        var sampler = LevelVocabularySampler(pool: self)
+        return sampler.takeGraphemes(count: count, using: &rng)
     }
 
     func filteringWords(_ isIncluded: (GateWord) -> Bool) -> LevelVocabularyPool {
@@ -309,42 +319,6 @@ nonisolated struct LevelVocabularyPool: Equatable, Sendable {
             return Tier(order: tier.order, weight: tier.weight, words: tier.words, graphemes: graphemes)
         }
         return Self.renormalized(filtered)
-    }
-
-    private func pickWithoutReplacement<T>(
-        count: Int,
-        entries: KeyPath<Tier, [T]>,
-        using rng: inout some RandomNumberGenerator
-    ) -> [T] {
-        guard count > 0, !tiers.isEmpty else { return [] }
-        var remaining = tiers.map { $0[keyPath: entries] }
-        let weights = tiers.map(\.weight)
-        var out: [T] = []
-        out.reserveCapacity(count)
-        while out.count < count {
-            let live = remaining.indices.filter { !remaining[$0].isEmpty }
-            guard !live.isEmpty else { break }
-            let total = live.reduce(0.0) { $0 + max(weights[$1], 0) }
-            guard total > 0 else {
-                // Uniform across non-empty tiers when weights collapsed.
-                let tierIndex = live.randomElement(using: &rng)!
-                let offset = Int.random(in: 0..<remaining[tierIndex].count, using: &rng)
-                out.append(remaining[tierIndex].remove(at: offset))
-                continue
-            }
-            var roll = Double.random(in: 0..<total, using: &rng)
-            var chosen = live[live.count - 1]
-            for index in live {
-                roll -= max(weights[index], 0)
-                if roll < 0 {
-                    chosen = index
-                    break
-                }
-            }
-            let offset = Int.random(in: 0..<remaining[chosen].count, using: &rng)
-            out.append(remaining[chosen].remove(at: offset))
-        }
-        return out
     }
 
     private static func renormalized(_ tiers: [Tier]) -> LevelVocabularyPool {

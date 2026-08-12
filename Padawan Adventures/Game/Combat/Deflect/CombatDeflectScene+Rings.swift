@@ -26,7 +26,7 @@ extension CombatDeflectScene {
     }
 
     func ringColor(for ring: CombatDeflectRing) -> UIColor {
-        let count = max(engine.config.ringCount, 1)
+        let count = max(engine.graphemes.count, 1)
         // Spread the 6-color palette across whatever ring count is configured so
         // the default 3-letter set still lands on red / yellow / blue.
         let paletteIndex = min(
@@ -37,7 +37,7 @@ extension CombatDeflectScene {
     }
 
     func letter(for ring: CombatDeflectRing) -> String? {
-        let letters = engine.config.graphemes
+        let letters = engine.graphemes
         guard ring.index >= 0, ring.index < letters.count else { return nil }
         return letters[ring.index].grapheme
     }

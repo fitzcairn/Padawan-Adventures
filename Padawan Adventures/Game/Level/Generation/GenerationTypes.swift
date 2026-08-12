@@ -39,6 +39,9 @@ nonisolated struct GenerationAttemptState {
     var topRight: GeneratedRoom
     var joinEdges: [(Int, Int)]
     var doorwayCells: Set<GridCoord>
+    var gateBag: WeightedPicker.Bag<GateMinigameKind>
+    var pitBag: WeightedPicker.Bag<PitMinigameKind>
+    var combatBag: WeightedPicker.Bag<CombatMinigameKind>
     let width: Int
     let height: Int
     let stories: Int

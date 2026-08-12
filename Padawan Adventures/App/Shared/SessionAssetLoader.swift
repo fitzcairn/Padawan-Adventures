@@ -108,7 +108,7 @@ extension AppSession {
 
     /// Decodes only the gate art the selected level can actually spawn.
     ///
-    /// Weight-0 kinds are never baked onto a tile by `GateTopology.pickGateMinigameKind`,
+    /// Weight-0 kinds are never baked onto a tile by the generation bag,
     /// so they are unreachable and their art (a 17 MB background each) is not decoded.
     /// Returns the textures so the caller can include them in one `SKTexture.preload`.
     @discardableResult

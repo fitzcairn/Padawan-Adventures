@@ -138,7 +138,7 @@ struct LevelVocabularyTests {
         let pool = LevelVocabularyPool(tiers: [
             .init(order: 1, weight: 1, words: words, graphemes: []),
         ])
-        var rng = SeededGenerator(seed: 11)
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 11)
         let picked = pool.pickWords(count: 4, using: &rng)
         #expect(picked.count == 4)
         #expect(Set(picked.map(\.word)).count == 4)
@@ -149,10 +149,50 @@ struct LevelVocabularyTests {
         let pool = LevelVocabularyPool(tiers: [
             .init(order: 1, weight: 1, words: [], graphemes: graphemes),
         ])
-        var rng = SeededGenerator(seed: 3)
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 3)
         let picked = pool.pickGraphemes(count: 5, using: &rng)
         #expect(picked.count == 5)
         #expect(Set(picked.map(\.grapheme)).count == 5)
+    }
+
+    @Test func pickWordsPrefersCurrentLevelTier() {
+        let prior = ["sat", "sit", "sip", "sap"].map { word($0) }
+        let current = ["sun", "sum", "sob", "sod"].map { word($0) }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: prior, graphemes: []),
+            .init(order: 2, weight: 0.75, words: current, graphemes: []),
+        ])
+        let currentIDs = Set(current.map(\.word))
+        var currentHits = 0
+        let trials = 200
+        for seed in UInt64(1)...UInt64(trials) {
+            var rng: any RandomNumberGenerator = SeededGenerator(seed: seed)
+            let picked = pool.pickWords(count: 1, using: &rng)
+            if picked.contains(where: { currentIDs.contains($0.word) }) {
+                currentHits += 1
+            }
+        }
+        #expect(currentHits > trials / 2)
+    }
+
+    @Test func pickGraphemesPrefersCurrentLevelTier() {
+        let prior = ["s", "a", "t", "p"].map(grapheme)
+        let current = ["m", "d", "g", "o"].map(grapheme)
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: [], graphemes: prior),
+            .init(order: 2, weight: 0.75, words: [], graphemes: current),
+        ])
+        let currentIDs = Set(current.map(\.grapheme))
+        var currentHits = 0
+        let trials = 200
+        for seed in UInt64(1)...UInt64(trials) {
+            var rng: any RandomNumberGenerator = SeededGenerator(seed: seed)
+            let picked = pool.pickGraphemes(count: 1, using: &rng)
+            if picked.contains(where: { currentIDs.contains($0.grapheme) }) {
+                currentHits += 1
+            }
+        }
+        #expect(currentHits > trials / 2)
     }
 
     // MARK: - Grapheme-span masking

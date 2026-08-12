@@ -995,6 +995,7 @@ struct LevelConfigTests {
         #expect(lm.graphemeCountMin == 2)
         #expect(lm.graphemeCountMax == 3)
         #expect(lm.graphemeCase == .lower)
+        #expect(lm.graphemeSoundRepeatSeconds == 3)
         #expect(Set(lm.graphemes.map(\.grapheme)).isSuperset(of: ["a", "b"]))
     }
 
@@ -1094,6 +1095,53 @@ struct LevelConfigTests {
         #expect(lm.graphemeCountMin == 1)
         #expect(lm.graphemeCountMax == 2)
         #expect(Set(lm.graphemes.map(\.grapheme)).isSuperset(of: ["a", "c"]))
+    }
+
+    @Test func decodesGateGraphemeMatchSoundRepeatSeconds() throws {
+        let yaml = """
+        name: Level 1
+        order: 1
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: grapheme-sound-gate
+              grapheme_sound_repeat_seconds: 5
+              min_grapheme_count: 2
+              max_grapheme_count: 3
+        """
+        let level = try LevelConfig.decode(
+            from: yaml,
+            vocabularyCatalog: Self.vocabCatalog(
+                words: ["at"],
+                graphemes: ["b", "a"]
+            )
+        )
+        guard case .graphemeMatch(let lm) = level.gate.minigames.first else {
+            Issue.record("expected letter_match minigame")
+            return
+        }
+        #expect(lm.graphemeSoundRepeatSeconds == 5)
+    }
+
+    @Test func rejectsInvalidGateGraphemeMatchSoundRepeat() {
+        let config = GateGraphemeMatchConfig(
+            graphemeSoundRepeatSeconds: 0,
+            graphemes: [
+                GateGrapheme(grapheme: "a", pronunciation: "p_a", name: "n_a"),
+            ]
+        )
+        #expect(throws: WorldSeedError.invalidGraphemeSoundRepeat(0)) {
+            try config.validate()
+        }
     }
 
     @Test func childCanOverrideInheritedGateGraphemeMatchLetterIDs() throws {
@@ -1487,8 +1535,8 @@ struct LevelConfigTests {
         #expect(deflect.weight == 1)
         #expect(deflect.monsterHP == CombatDeflectConfig.defaultMonsterHP)
         #expect(deflect.orbTravelSeconds == CombatDeflectConfig.defaultOrbTravelSeconds)
-        #expect(deflect.ringCount == CombatDeflectConfig.defaultRingCount)
-        // Ending-sound on the Level-1 pool only has t/p/n candidates.
+        // Ending-sound on the Level-1 pool only has t/p/n candidates, so ring_count clamps to 3.
+        #expect(deflect.ringCount == 3)
         #expect(deflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
     }
 
@@ -1708,7 +1756,8 @@ struct LevelConfigTests {
 
         var tooMany = CombatDeflectConfig(letterPosition: .starting, ringCount: 7)
         try tooMany.resolve(from: LevelVocabularyPool.fallback)
-        #expect(tooMany.graphemes.count <= CombatDeflectConfig.maxRingCount)
+        #expect(tooMany.ringCount <= CombatDeflectConfig.maxRingCount)
+        #expect(tooMany.graphemes.count >= tooMany.ringCount)
         try tooMany.validate()
     }
 
@@ -1733,7 +1782,8 @@ struct LevelConfigTests {
             Issue.record("expected a deflect entry")
             return
         }
-        #expect(deflect.graphemes.count == 4)
+        #expect(deflect.ringCount == 4)
+        #expect(deflect.graphemes.count >= 4)
     }
 
 
@@ -1770,7 +1820,7 @@ struct LevelConfigTests {
             Issue.record("expected starting-sound deflect")
             return
         }
-        #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p", "i", "n"])
         #expect(deflect.ringCount == 4)
     }
 

@@ -18,6 +18,7 @@ final class GateGraphemeMatchScene: MinigameScene {
     /// Side length used by the last `layoutLetterRow` (for hit-testing).
     var laidOutTileSide: CGFloat = 0
     var inputLocked = false
+    var lastUpdateTime: TimeInterval?
 
     let squareFill = UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1)
     let squareMatchedFill = UIColor(red: 0.20, green: 0.65, blue: 0.28, alpha: 1)
@@ -59,6 +60,15 @@ final class GateGraphemeMatchScene: MinigameScene {
         buildPuzzle()
         for id in matched {
             applyMatchedAppearance(id: id)
+        }
+    }
+
+    override func update(_ currentTime: TimeInterval) {
+        guard !didEnd else { return }
+        let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
+        lastUpdateTime = currentTime
+        for event in engine.tick(dt: dt, allowReplay: !inputLocked) {
+            handle(event)
         }
     }
 }

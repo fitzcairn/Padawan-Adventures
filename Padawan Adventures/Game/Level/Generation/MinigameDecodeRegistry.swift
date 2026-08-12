@@ -1,6 +1,6 @@
 import Foundation
 
-/// Weighted random selection shared by combat and pit minigame pools.
+/// Weighted random selection shared by combat, pit, and gate minigame pools.
 nonisolated enum WeightedPicker {
     /// Entries with weight 0 are never chosen unless every weight is 0,
     /// in which case the first entry wins.
@@ -21,6 +21,67 @@ nonisolated enum WeightedPicker {
         }
         return entries[entries.count - 1]
     }
+
+    /// Weighted without-replacement deals. Equal weights yield equal counts
+    /// (differing by at most 1). Unequal weights yield counts in proportion
+    /// to those weights; the bag refills and reshuffles when emptied.
+    ///
+    /// Weight 0 is omitted unless every weight is 0, in which case the first
+    /// entry is dealt every time (same as `pick`).
+    nonisolated struct Bag<T> {
+        private let slots: [T]
+        private var remaining: [T] = []
+
+        init<S: Sequence>(
+            _ items: S,
+            weight: (S.Element) -> Double,
+            value: (S.Element) -> T
+        ) {
+            let entries = items.map { (value: value($0), weight: max(weight($0), 0)) }
+            slots = Self.makeSlots(entries)
+        }
+
+        init<S: Sequence>(_ items: S, weight: (T) -> Double) where S.Element == T {
+            self.init(items, weight: weight, value: { $0 })
+        }
+
+        mutating func next(using rng: inout some RandomNumberGenerator) -> T? {
+            if remaining.isEmpty {
+                remaining = slots
+                remaining.shuffle(using: &rng)
+            }
+            return remaining.popLast()
+        }
+
+        private static func makeSlots(_ entries: [(value: T, weight: Double)]) -> [T] {
+            let copies = entries.map { relativeCopies($0.weight) }
+            if copies.allSatisfy({ $0 == 0 }) {
+                if let first = entries.first { return [first.value] }
+                return []
+            }
+            let divisor = copies.reduce(0, gcd)
+            var slots: [T] = []
+            for (entry, count) in zip(entries, copies) where count > 0 {
+                let n = count / max(divisor, 1)
+                slots.append(contentsOf: repeatElement(entry.value, count: n))
+            }
+            return slots
+        }
+
+        /// Thousandths, so typical YAML weights (`1`, `0.5`, `2`) stay exact ratios.
+        private static func relativeCopies(_ weight: Double) -> Int {
+            Int((max(weight, 0) * 1000).rounded())
+        }
+
+        private static func gcd(_ a: Int, _ b: Int) -> Int {
+            var a = abs(a)
+            var b = abs(b)
+            while b != 0 {
+                (a, b) = (b, a % b)
+            }
+            return a
+        }
+    }
 }
 
 // MARK: - Gate
@@ -37,6 +98,7 @@ nonisolated struct GateMinigameDTO: Decodable {
     var choiceCountMin: Int?
     var choiceCountMax: Int?
     var graphemeCase: String?
+    var graphemeSoundRepeatSeconds: Double?
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -50,6 +112,7 @@ nonisolated struct GateMinigameDTO: Decodable {
         case choiceCountMin = "min_choice_count"
         case choiceCountMax = "max_choice_count"
         case graphemeCase = "grapheme_case"
+        case graphemeSoundRepeatSeconds = "grapheme_sound_repeat_seconds"
     }
 }
 
@@ -76,6 +139,7 @@ nonisolated enum MinigameDecodeRegistry {
                 graphemeCountMax: entry.graphemeCountMax
                     ?? GateGraphemeMatchConfig.fallback.graphemeCountMax,
                 graphemeCase: try parseGraphemeCase(entry.graphemeCase, default: .lower),
+                graphemeSoundRepeatSeconds: entry.graphemeSoundRepeatSeconds ?? 3,
                 fx: entry.fx ?? SoundEffectTable(),
                 graphemes: [],
                 music: entry.music

@@ -142,6 +142,47 @@ struct GateGraphemeMatchMinigameEngineTests {
         #expect(sawUpper)
     }
 
+    @Test func multiLetterGraphemesStayLowercaseWhenCaseModeIsUpperOrBoth() {
+        let pool = letters(["s", "st", "a"])
+        for mode in [CombatGraphemeCase.upper, .both] {
+            var engine = GateGraphemeMatchMinigameEngine(
+                config: .init(
+                    graphemeCountMin: 3,
+                    graphemeCountMax: 3,
+                    graphemeCase: mode,
+                    graphemes: pool
+                ),
+                rng: SeededGenerator(seed: 5)
+            )
+            engine.begin()
+            #expect(engine.letters.contains(where: { $0.letter == "st" }))
+            #expect(!engine.letters.contains(where: { $0.letter == "ST" || $0.letter == "St" }))
+            let singles = engine.letters.filter { $0.letter.lowercased().count == 1 }
+            for token in singles {
+                if mode == .upper {
+                    #expect(token.letter == token.letter.uppercased())
+                }
+            }
+        }
+    }
+
+    @Test func roundNeverRepeatsAGraphemeIdentityRegardlessOfCase() {
+        for seed in UInt64(1)...40 {
+            var engine = GateGraphemeMatchMinigameEngine(
+                config: .init(
+                    graphemeCountMin: 3,
+                    graphemeCountMax: 3,
+                    graphemeCase: .both,
+                    graphemes: letters(["s", "a", "t", "p"])
+                ),
+                rng: SeededGenerator(seed: seed)
+            )
+            engine.begin()
+            let identities = engine.letters.map { $0.letter.lowercased() }
+            #expect(Set(identities).count == identities.count)
+        }
+    }
+
     @Test func correctTapGreensAndAdvancesTowardWin() {
         var engine = makeEngine(
             graphemeCountMin: 2,
@@ -226,5 +267,115 @@ struct GateGraphemeMatchMinigameEngineTests {
         guard let first = engine.currentTarget else { return }
         _ = engine.tapLetter(id: first.id)
         #expect(engine.tapLetter(id: first.id).isEmpty)
+    }
+
+    @Test func idleReplaysTargetPronunciationOnInterval() {
+        var engine = makeEngine(
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        #expect(engine.tick(dt: 2.99).isEmpty)
+        #expect(engine.tick(dt: 0.02) == [.playTargetPronunciation])
+        #expect(engine.tick(dt: 2.99).isEmpty)
+        #expect(engine.tick(dt: 0.02) == [.playTargetPronunciation])
+    }
+
+    @Test func lastSoundResetsIdleReplayTimer() {
+        var engine = makeEngine(
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        #expect(engine.tick(dt: 2.5).isEmpty)
+        engine.noteSoundPlayed()
+        #expect(engine.tick(dt: 2.99).isEmpty)
+        #expect(engine.tick(dt: 0.02) == [.playTargetPronunciation])
+    }
+
+    @Test func tapResetsIdleReplayTimer() {
+        var engine = makeEngine(
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        guard let target = engine.currentTarget,
+              let wrong = engine.letters.first(where: { $0.id != target.id }) else {
+            Issue.record("expected target and wrong letter")
+            return
+        }
+        #expect(engine.tick(dt: 2.5).isEmpty)
+        _ = engine.tapLetter(id: wrong.id)
+        #expect(engine.tick(dt: 2.99).isEmpty)
+        #expect(engine.tick(dt: 0.02) == [.playTargetPronunciation])
+    }
+
+    @Test func idleReplayWaitsWhileFeedbackIsInFlight() {
+        var engine = makeEngine(
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        #expect(engine.tick(dt: 2.5, allowReplay: false).isEmpty)
+        #expect(engine.tick(dt: 1.0, allowReplay: false).isEmpty)
+        engine.noteSoundPlayed()
+        #expect(engine.tick(dt: 2.99).isEmpty)
+        #expect(engine.tick(dt: 0.02) == [.playTargetPronunciation])
+    }
+
+    @Test func doesNotReplayAfterWin() {
+        var engine = makeEngine(
+            graphemeCountMin: 1,
+            graphemeCountMax: 1,
+            pool: ["a"],
+            seed: 1
+        )
+        guard let target = engine.letters.first else { return }
+        _ = engine.tapLetter(id: target.id)
+        #expect(engine.outcome == .won(starsAwarded: 1))
+        #expect(engine.tick(dt: 10).isEmpty)
+    }
+
+    @Test func beginSamplesGraphemesWithoutReplacementFromCumulativePool() {
+        let prior = ["s", "a", "t", "p"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let current = ["m", "d", "g", "o"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: [], graphemes: prior),
+            .init(order: 2, weight: 0.75, words: [], graphemes: current),
+        ])
+        let currentIDs = Set(current.map(\.grapheme))
+        var currentHits = 0
+        var seen: Set<String> = []
+        let trials = 80
+        for seed in UInt64(1)...UInt64(trials) {
+            var engine = GateGraphemeMatchMinigameEngine(
+                config: .init(
+                    graphemeCountMin: 4,
+                    graphemeCountMax: 4,
+                    graphemes: prior + current,
+                    vocabulary: pool
+                ),
+                rng: SeededGenerator(seed: seed)
+            )
+            engine.begin()
+            let ids = engine.letters.map { $0.letter.lowercased() }
+            #expect(Set(ids).count == ids.count)
+            #expect(ids.count == 4)
+            seen.formUnion(ids)
+            if ids.contains(where: { currentIDs.contains($0) }) {
+                currentHits += 1
+            }
+        }
+        #expect(!seen.isDisjoint(with: Set(prior.map(\.grapheme))))
+        #expect(!seen.isDisjoint(with: currentIDs))
+        #expect(currentHits > trials / 2)
     }
 }

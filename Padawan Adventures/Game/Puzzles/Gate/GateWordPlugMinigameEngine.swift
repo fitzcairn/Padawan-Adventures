@@ -204,15 +204,19 @@ nonisolated struct GateWordPlugMinigameEngine {
     private mutating func pickWordsWithDistinctAnswers(count: Int) -> [GateWord] {
         var chosen: [GateWord] = []
         var usedAnswers = Set<String>()
+        var sampler = LevelVocabularySampler(pool: config.vocabulary)
+        let letterPosition = config.letterPosition
         while chosen.count < count {
-            let remaining = config.vocabulary.filteringWords { entry in
-                guard let answer = config.letterPosition.answerGrapheme(in: entry) else {
+            var localRng = rng
+            let picked = sampler.nextWord(where: { entry in
+                guard let answer = letterPosition.answerGrapheme(in: entry) else {
                     return false
                 }
                 return !usedAnswers.contains(answer)
-            }
-            guard let entry = remaining.pickWord(using: &rng),
-                  let answer = config.letterPosition.answerGrapheme(in: entry) else {
+            }, refillWhenEmpty: false, using: &localRng)
+            rng = localRng
+            guard let entry = picked,
+                  let answer = letterPosition.answerGrapheme(in: entry) else {
                 break
             }
             chosen.append(entry)

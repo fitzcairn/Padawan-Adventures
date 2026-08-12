@@ -15,13 +15,17 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         var graphemeCountMin: Int
         var graphemeCountMax: Int
         var graphemeCase: CombatGraphemeCase
+        var graphemeSoundRepeatSeconds: Double
         var graphemes: [GateGrapheme]
         var vocabulary: LevelVocabularyPool
+
+        static let defaultGraphemeSoundRepeatSeconds: Double = 3
 
         init(from puzzle: GateGraphemeMatchConfig) {
             graphemeCountMin = puzzle.graphemeCountMin
             graphemeCountMax = puzzle.graphemeCountMax
             graphemeCase = puzzle.graphemeCase
+            graphemeSoundRepeatSeconds = max(puzzle.graphemeSoundRepeatSeconds, 0.05)
             graphemes = puzzle.graphemes
             vocabulary = puzzle.vocabulary
         }
@@ -30,17 +34,22 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
             graphemeCountMin: Int = 4,
             graphemeCountMax: Int = 8,
             graphemeCase: CombatGraphemeCase = .lower,
+            graphemeSoundRepeatSeconds: Double = defaultGraphemeSoundRepeatSeconds,
             graphemes: [GateGrapheme],
             vocabulary: LevelVocabularyPool? = nil
         ) {
             self.graphemeCountMin = graphemeCountMin
             self.graphemeCountMax = graphemeCountMax
             self.graphemeCase = graphemeCase
-            self.graphemes = graphemes.map {
-                GateGrapheme(
-                    grapheme: $0.grapheme.lowercased(),
-                    pronunciation: $0.pronunciation,
-                    name: $0.name
+            self.graphemeSoundRepeatSeconds = max(graphemeSoundRepeatSeconds, 0.05)
+            var seen = Set<String>()
+            self.graphemes = graphemes.compactMap { entry in
+                let id = entry.grapheme.lowercased()
+                guard !id.isEmpty, seen.insert(id).inserted else { return nil }
+                return GateGrapheme(
+                    grapheme: id,
+                    pronunciation: entry.pronunciation,
+                    name: entry.name
                 )
             }
             self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(graphemes: self.graphemes)
@@ -63,6 +72,8 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
     private(set) var outcome: MinigameOutcome?
     private(set) var isFrozen = false
 
+    private var elapsed: Double = 0
+    private var nextCueReplayAt: Double = .infinity
     private var rng: any RandomNumberGenerator
 
     init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
@@ -84,13 +95,33 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         isFrozen = false
         outcome = nil
         matchedIDs = []
+        elapsed = 0
         letters = pickRoundLetters()
         pickNextTarget()
+        scheduleCueReplay()
     }
 
     mutating func end() {
         isActive = false
         isFrozen = true
+        nextCueReplayAt = .infinity
+    }
+
+    /// Restart the idle prompt clock from the last sound (or player action).
+    mutating func noteSoundPlayed() {
+        guard isActive, !isFrozen, outcome == nil else { return }
+        scheduleCueReplay()
+    }
+
+    /// Advance time. When `allowReplay` is false (tap feedback in flight), the idle
+    /// prompt is deferred without consuming the due time.
+    mutating func tick(dt: Double, allowReplay: Bool = true) -> [GateGraphemeMatchEngineEvent] {
+        guard isActive else { return [] }
+        elapsed += dt
+        guard allowReplay, !isFrozen, outcome == nil, currentTargetID != nil else { return [] }
+        guard elapsed >= nextCueReplayAt else { return [] }
+        scheduleCueReplay()
+        return [.playTargetPronunciation]
     }
 
     /// Handle a tap on a letter tile. Ignores matched / unknown / frozen taps.
@@ -101,6 +132,8 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
               let targetID = currentTargetID else {
             return []
         }
+
+        noteSoundPlayed()
 
         var events: [GateGraphemeMatchEngineEvent] = [
             .playName(trackID: token.nameTrackID),
@@ -138,14 +171,25 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
             poolSize: poolSize,
             rng: &rng
         )
-        return config.vocabulary.pickGraphemes(count: count, using: &rng).map { entry in
-            LetterToken(
-                id: UUID(),
-                letter: config.graphemeCase.displayLetter(for: entry.grapheme, rng: &rng),
-                pronunciationTrackID: entry.pronunciation,
-                nameTrackID: entry.name
+        var sampler = LevelVocabularySampler(pool: config.vocabulary)
+        let picked = sampler.takeGraphemes(count: count, using: &rng)
+        var tokens: [LetterToken] = []
+        tokens.reserveCapacity(picked.count)
+        for entry in picked {
+            tokens.append(
+                LetterToken(
+                    id: UUID(),
+                    letter: config.graphemeCase.displayLetter(for: entry.grapheme, rng: &rng),
+                    pronunciationTrackID: entry.pronunciation,
+                    nameTrackID: entry.name
+                )
             )
         }
+        return tokens
+    }
+
+    private mutating func scheduleCueReplay() {
+        nextCueReplayAt = elapsed + config.graphemeSoundRepeatSeconds
     }
 
     private mutating func pickNextTarget() {

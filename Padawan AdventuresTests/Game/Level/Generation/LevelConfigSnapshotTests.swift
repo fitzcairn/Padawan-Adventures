@@ -78,7 +78,7 @@ struct LevelConfigSnapshotTests {
         #expect(deflect.monsterHP == 5)
         #expect(deflect.orbTravelSeconds == 8)
         #expect(deflect.ringCount == 4)
-        #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p"])
+        #expect(deflect.graphemes.map(\.grapheme) == ["s", "a", "t", "p", "i", "n"])
         guard case .deflect(let endingDeflect) = level.combat.minigames[2] else {
             Issue.record("expected ending-sound deflect combat entry")
             return
@@ -86,7 +86,7 @@ struct LevelConfigSnapshotTests {
         #expect(endingDeflect.letterPosition == .ending)
         #expect(endingDeflect.monsterHP == 5)
         #expect(endingDeflect.orbTravelSeconds == 8)
-        #expect(endingDeflect.ringCount == 4)
+        #expect(endingDeflect.ringCount == 3)
         // Level 1 ending candidates are t/p/n only; ring_count clamps to 3.
         #expect(endingDeflect.graphemes.map(\.grapheme) == ["t", "p", "n"])
 
@@ -99,6 +99,7 @@ struct LevelConfigSnapshotTests {
             return
         }
         #expect(graphemeMatch.graphemeCase == .lower)
+        #expect(graphemeMatch.graphemeSoundRepeatSeconds == 3)
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")
             return
@@ -174,5 +175,67 @@ struct LevelConfigSnapshotTests {
                 #expect(gate.graphemeCase == .both, "\(descriptor.resourceName) gate")
             }
         }
+    }
+
+    @Test func tatooineVocabularyIsCumulativeAcrossMinigames() throws {
+        let level = try LevelConfig.loadFromBundle(
+            named: "2-tatooine",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        let words = Set(level.vocabulary.allWords.map(\.word))
+        #expect(words.isSuperset(of: Self.level1Words))
+        #expect(words.contains("dog"))
+        #expect(words.contains("mad"))
+        #expect(level.vocabulary.tiers.map(\.order) == [1, 2])
+        #expect(level.vocabulary.tiers.last?.weight == 0.75)
+
+        guard case .slash(let slash) = level.combat.minigames[0] else {
+            Issue.record("expected grapheme-sound combat")
+            return
+        }
+        let slashGraphemes = Set(slash.vocabulary.allGraphemes.map(\.grapheme))
+        #expect(slashGraphemes.isSuperset(of: ["s", "a", "t", "p", "m", "d"]))
+        #expect(slash.vocabulary.tiers.last?.weight == 0.75)
+
+        guard case .deflect(let starting) = level.combat.minigames[1],
+              case .deflect(let ending) = level.combat.minigames[2] else {
+            Issue.record("expected starting and ending sound combat")
+            return
+        }
+        #expect(Set(starting.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(starting.words.contains(where: { $0.word == "dog" }))
+        let startingGraphemes = Set(starting.graphemes.map(\.grapheme))
+        #expect(startingGraphemes.isSuperset(of: ["s", "a", "t", "p", "d", "m"]))
+        #expect(starting.ringCount == 4)
+        #expect(Set(ending.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(ending.words.contains(where: { $0.word == "dog" }))
+
+        guard case .bridge(let endingPit) = level.pit.minigames[1],
+              case .bridge(let startingPit) = level.pit.minigames[2] else {
+            Issue.record("expected starting and ending sound pit")
+            return
+        }
+        #expect(Set(endingPit.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(endingPit.words.contains(where: { $0.word == "dog" }))
+        #expect(Set(startingPit.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(startingPit.words.contains(where: { $0.word == "dog" }))
+
+        guard case .wordPlug(let startingGate) = level.gate.minigames[0],
+              case .wordPlug(let endingGate) = level.gate.minigames[1] else {
+            Issue.record("expected starting and ending sound gate")
+            return
+        }
+        #expect(Set(startingGate.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(startingGate.words.contains(where: { $0.word == "dog" }))
+        #expect(Set(endingGate.words.map(\.word)).isSuperset(of: Self.level1Words))
+        #expect(endingGate.words.contains(where: { $0.word == "dog" }))
+
+        guard case .graphemeMatch(let graphemeGate) = level.gate.minigames[3] else {
+            Issue.record("expected grapheme-sound gate")
+            return
+        }
+        let gateGraphemes = Set(graphemeGate.vocabulary.allGraphemes.map(\.grapheme))
+        #expect(gateGraphemes.isSuperset(of: ["s", "a", "t", "p", "m", "d"]))
+        #expect(graphemeGate.vocabulary.tiers.last?.weight == 0.75)
     }
 }

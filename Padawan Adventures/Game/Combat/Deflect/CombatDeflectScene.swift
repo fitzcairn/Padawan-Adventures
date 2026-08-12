@@ -151,17 +151,17 @@ final class CombatDeflectScene: MinigameScene {
     }
 
     override func buildContent() {
+        engine.begin()
         GameLogger.mark(
             .combat,
             """
             deflect arena didMove size=\(Int(size.width))x\(Int(size.height)) \
             hp=\(engine.config.monsterHP) \
             position=\(engine.config.letterPosition.rawValue) \
-            letters=\(engine.config.graphemes.map(\.grapheme).joined())
+            letters=\(engine.graphemes.map(\.grapheme).joined())
             """
         )
         GameLogger.step(.combat, "deflect.buildArena") { buildArena() }
-        engine.begin()
         // Enable before combat FX so hum sits under letter cues; music −20%.
         SoundEffectsController.shared.setCombatMixActive(true)
         BackgroundMusicController.shared.setCombatMixActive(true)

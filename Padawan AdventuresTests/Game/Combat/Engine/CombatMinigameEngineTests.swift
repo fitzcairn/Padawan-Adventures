@@ -63,12 +63,22 @@ struct CombatMinigameEngineTests {
 
     @Test func combatLetterCaseBuildsPools() {
         #expect(CombatGraphemeCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
-        #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
-        #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
+        #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["a", "b"])
+        #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B", "a"]) == ["a", "b"])
         var lowerRng = SeededGenerator(seed: 1)
         var upperRng = SeededGenerator(seed: 1)
+        var bothRng = SeededGenerator(seed: 1)
         #expect(CombatGraphemeCase.lower.displayLetter(for: "S", rng: &lowerRng) == "s")
         #expect(CombatGraphemeCase.upper.displayLetter(for: "s", rng: &upperRng) == "S")
+        #expect(["s", "S"].contains(CombatGraphemeCase.both.displayLetter(for: "s", rng: &bothRng)))
+    }
+
+    @Test func displayLetterKeepsMultiLetterGraphemesLowercase() {
+        var rng = SeededGenerator(seed: 7)
+        #expect(CombatGraphemeCase.lower.displayLetter(for: "ST", rng: &rng) == "st")
+        #expect(CombatGraphemeCase.upper.displayLetter(for: "ST", rng: &rng) == "st")
+        #expect(CombatGraphemeCase.both.displayLetter(for: "Sh", rng: &rng) == "sh")
+        #expect(CombatGraphemeCase.upper.displayLetter(for: "s", rng: &rng) == "S")
     }
 
     @Test func configAppliesDecoyClampsAndLetterCase() {
@@ -92,9 +102,7 @@ struct CombatMinigameEngineTests {
         #expect(config.maxDecoyCount == 2)
 
         let both = CombatMinigameEngine.Config(from: type, graphemeCase: .both)
-        #expect(both.shotLetters == [
-            "a", "A", "i", "I", "n", "N", "p", "P", "s", "S", "t", "T",
-        ])
+        #expect(both.shotLetters == ["a", "i", "n", "p", "s", "t"])
     }
 
     @Test func waveCompositionHasOneTargetAndValidDecoys() throws {
@@ -106,7 +114,7 @@ struct CombatMinigameEngineTests {
         #expect(targets[0].letter == wave.target)
         #expect((2...4).contains(decoys.count))
         for decoy in decoys {
-            #expect(decoy.letter != wave.target)
+            #expect(decoy.letter.lowercased() != wave.target.lowercased())
             #expect(["A", "B", "C"].contains(decoy.letter))
         }
         for shot in wave.shots {
@@ -278,6 +286,122 @@ struct CombatMinigameEngineTests {
         #expect(engine.healthCount == 0)
         #expect(engine.outcome == .lost)
         #expect(engine.isFrozen)
+    }
+
+    @Test func slashTargetsAvoidRepeatsUntilPoolExhausted() throws {
+        var engine = makeEngine(
+            starsToWin: 99,
+            shotLetters: ["A", "B", "C"],
+            minDecoy: 1,
+            maxDecoy: 1,
+            seed: 3
+        )
+        var firstPass: [String] = []
+        for _ in 0..<3 {
+            let wave = try #require(nextWave(&engine))
+            firstPass.append(wave.target)
+            let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+            #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+            _ = engine.finishWaveResolution()
+        }
+        #expect(Set(firstPass) == ["A", "B", "C"])
+
+        let recycled = try #require(nextWave(&engine))
+        #expect(["A", "B", "C"].contains(recycled.target))
+        #expect(recycled.target != firstPass.last)
+    }
+
+    @Test func slashBothModeDrawsCaseAfterGraphemeIdentity() throws {
+        var engine = CombatMinigameEngine(
+            config: .init(
+                shotTravelSeconds: 1.5,
+                starsToWin: 99,
+                shotLetters: ["A", "B", "C"],
+                minDecoyCount: 2,
+                maxDecoyCount: 2,
+                graphemeCase: .both
+            ),
+            rng: CombatSeededGenerator(seed: 11)
+        )
+        engine.begin()
+        var identities: [String] = []
+        for _ in 0..<3 {
+            let wave = try #require(nextWave(&engine))
+            let identity = wave.target.lowercased()
+            identities.append(identity)
+            #expect(["a", "b", "c"].contains(identity))
+            #expect(["a", "A", "b", "B", "c", "C"].contains(wave.target))
+            for decoy in wave.shots.filter({ !$0.isTarget }) {
+                #expect(decoy.letter.lowercased() != identity)
+                #expect(["a", "A", "b", "B", "c", "C"].contains(decoy.letter))
+            }
+            let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+            #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+            _ = engine.finishWaveResolution()
+        }
+        #expect(Set(identities) == ["a", "b", "c"])
+    }
+
+    @Test func slashSamplesCurrentLevelGraphemesMoreOften() throws {
+        let prior = ["s", "a", "t", "p"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let current = ["m", "d", "g", "o"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: [], graphemes: prior),
+            .init(order: 2, weight: 0.75, words: [], graphemes: current),
+        ])
+        let currentIDs = Set(current.map(\.grapheme))
+        var currentHits = 0
+        let trials = 200
+        for seed in UInt64(1)...UInt64(trials) {
+            var engine = CombatMinigameEngine(
+                config: .init(
+                    shotTravelSeconds: 1,
+                    starsToWin: 1,
+                    graphemeCase: .lower,
+                    vocabulary: pool
+                ),
+                rng: CombatSeededGenerator(seed: seed)
+            )
+            engine.begin()
+            let wave = try #require(nextWave(&engine))
+            if currentIDs.contains(wave.target.lowercased()) { currentHits += 1 }
+        }
+        #expect(currentHits > trials / 2)
+    }
+
+    @Test func slashCanPickPriorAndCurrentLevelGraphemes() throws {
+        let prior = ["s", "a"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let current = ["m", "d"].map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        }
+        let pool = LevelVocabularyPool(tiers: [
+            .init(order: 1, weight: 0.25, words: [], graphemes: prior),
+            .init(order: 2, weight: 0.75, words: [], graphemes: current),
+        ])
+        var seen: Set<String> = []
+        for seed in UInt64(1)...80 {
+            var engine = CombatMinigameEngine(
+                config: .init(
+                    shotTravelSeconds: 1,
+                    starsToWin: 1,
+                    graphemeCase: .lower,
+                    vocabulary: pool
+                ),
+                rng: CombatSeededGenerator(seed: seed)
+            )
+            engine.begin()
+            if let wave = nextWave(&engine) {
+                seen.insert(wave.target.lowercased())
+            }
+        }
+        #expect(!seen.isDisjoint(with: ["s", "a"]))
+        #expect(!seen.isDisjoint(with: ["m", "d"]))
     }
 }
 

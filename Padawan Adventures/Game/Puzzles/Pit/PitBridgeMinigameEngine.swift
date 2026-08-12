@@ -139,7 +139,8 @@ nonisolated struct PitBridgeMinigameEngine {
         let upper = min(config.maxWords, poolSize)
         let lower = min(max(1, config.minWords), upper)
         let n = Int.random(in: lower...upper, using: &rng)
-        words = config.vocabulary.pickWords(count: n, using: &rng)
+        var sampler = LevelVocabularySampler(pool: config.vocabulary)
+        words = sampler.takeWords(count: n, using: &rng)
         choices = makeChoices(for: currentAnswer)
     }
 
@@ -170,10 +171,11 @@ nonisolated struct PitBridgeMinigameEngine {
     private mutating func makeChoices(for answer: String) -> [Choice] {
         guard !answer.isEmpty else { return [] }
         var letters = [answer]
-        let decoys = config.vocabulary
-            .filteringGraphemes { $0.grapheme != answer.lowercased() }
-            .pickGraphemes(count: Self.choiceCount - 1, using: &rng)
-            .map(\.grapheme)
+        let pool = config.vocabulary.filteringGraphemes { $0.grapheme != answer.lowercased() }
+        var localRng = rng
+        var sampler = LevelVocabularySampler(pool: pool)
+        let decoys = sampler.takeGraphemes(count: Self.choiceCount - 1, using: &localRng).map(\.grapheme)
+        rng = localRng
         for decoy in decoys where !letters.contains(decoy) {
             letters.append(decoy)
             if letters.count >= Self.choiceCount { break }

@@ -13,6 +13,10 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var cohesion: Double
     /// Gate minigame kinds + pick weights for this level, in declaration order.
     var gateMinigames: [WeightedGateKind]
+    /// Combat minigame kinds + pick weights, baked onto enemies at generation.
+    var combatMinigames: [WeightedCombatKind]
+    /// Pit minigame kinds + pick weights, baked onto each pit area at generation.
+    var pitMinigames: [WeightedPitKind]
 
     nonisolated struct MapSize: Equatable, Sendable {
         var width: Int
@@ -35,7 +39,9 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         floorSet: String = LevelConfig.fallbackFloor.set,
         decorProb: Double = LevelConfig.fallbackFloor.decorProb,
         cohesion: Double = LevelConfig.fallbackFloor.cohesion,
-        gateMinigames: [WeightedGateKind] = GateConfig.fallback.weightedMinigameKinds
+        gateMinigames: [WeightedGateKind] = GateConfig.fallback.weightedMinigameKinds,
+        combatMinigames: [WeightedCombatKind] = CombatConfig.fallback.weightedMinigameKinds,
+        pitMinigames: [WeightedPitKind] = PitConfig.fallback.weightedMinigameKinds
     ) {
         self.seed = seed
         self.world = world
@@ -45,14 +51,18 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.floorSet = floorSet
         self.decorProb = decorProb
         self.cohesion = cohesion
-        let kinds = gateMinigames
-        self.gateMinigames = kinds.isEmpty
+        self.gateMinigames = gateMinigames.isEmpty
             ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
-            : kinds
+            : gateMinigames
+        self.combatMinigames = combatMinigames.isEmpty
+            ? [WeightedCombatKind(kind: .slash, weight: 1)]
+            : combatMinigames
+        self.pitMinigames = pitMinigames.isEmpty
+            ? [WeightedPitKind(kind: .soundOutWord, weight: 1)]
+            : pitMinigames
     }
 
     static func compose(app: AppConfig, level: LevelConfig) -> WorldGenerationConfig {
-        let kinds = level.gate.weightedMinigameKinds
         return WorldGenerationConfig(
             seed: app.seed,
             world: app.demoMode
@@ -67,9 +77,9 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             floorSet: level.floor.set,
             decorProb: level.floor.decorProb,
             cohesion: level.floor.cohesion,
-            gateMinigames: kinds.isEmpty
-                ? [WeightedGateKind(kind: .soundOutWord, weight: 1)]
-                : kinds
+            gateMinigames: level.gate.weightedMinigameKinds,
+            combatMinigames: level.combat.weightedMinigameKinds,
+            pitMinigames: level.pit.weightedMinigameKinds
         )
     }
 
