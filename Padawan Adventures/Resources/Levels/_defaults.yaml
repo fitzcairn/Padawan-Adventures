@@ -137,7 +137,7 @@ pit:
     - type: sound-out-word-pit
       weight: 1.0
       min_choice_count: 3
-      max_choice_count: 3
+      max_choice_count: 4
     - type: ending-sound-pit
       weight: 1.0
       min_word_count: 3
@@ -196,8 +196,8 @@ gate:
     - type: sound-out-word-gate
       weight: 1.0
       # Capacitors offered per grapheme: 2...6.
-      min_choice_count: 2
-      max_choice_count: 4
+      min_choice_count: 3
+      max_choice_count: 5
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
       weight: 1.0
