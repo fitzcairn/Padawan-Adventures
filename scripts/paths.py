@@ -23,6 +23,7 @@ RESOURCES = ROOT / "Padawan Adventures" / "Resources"
 SPRITES = RESOURCES / "Sprites"
 CONFIG = RESOURCES / "Config"
 LEVELS = RESOURCES / "Levels"
+AUDIO = RESOURCES / "Audio"
 
 
 def level_ids() -> list[str]:
