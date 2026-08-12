@@ -11,7 +11,12 @@ import Foundation
 /// One instance is owned by the level run (`AppSession.vocabularySampler`) and shared
 /// across minigames so unused current-level words and graphemes keep being drawn
 /// until the pool wraps.
-final class LevelVocabularySampler {
+///
+/// `nonisolated` because the minigame engines that draw from it are themselves
+/// `nonisolated` (tests and SpriteKit callbacks). The project defaults to
+/// `@MainActor`, which would make every `init` / `take*` call from those engines
+/// a isolation warning.
+nonisolated final class LevelVocabularySampler {
     private(set) var pool: LevelVocabularyPool
     private var remainingWords: [[GateWord]]
     private var remainingGraphemes: [[GateGrapheme]]

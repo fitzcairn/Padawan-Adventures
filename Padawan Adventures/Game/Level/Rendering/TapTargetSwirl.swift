@@ -152,7 +152,7 @@ enum TapTargetSwirl {
         let outerPath = solidOuter.copy(
             dashingWithPhase: 0,
             lengths: [tileWidth * 0.07, tileWidth * 0.04]
-        ) ?? solidOuter
+        )
         let outer = makeGlowStroke(path: outerPath, lineWidth: line, color: blue, glowWidth: glow)
         outer.blendMode = .add
         spinner.addChild(outer)

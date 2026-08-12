@@ -178,7 +178,7 @@ nonisolated struct PitBridgeMinigameEngine {
         var letters = [answer]
         let pool = config.vocabulary.filteringGraphemes { $0.grapheme != answer.lowercased() }
         var localRng = rng
-        var sampler = LevelVocabularySampler(pool: pool)
+        let sampler = LevelVocabularySampler(pool: pool)
         let decoys = sampler.takeGraphemes(count: Self.choiceCount - 1, using: &localRng).map(\.grapheme)
         rng = localRng
         for decoy in decoys where !letters.contains(decoy) {
