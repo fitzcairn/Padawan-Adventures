@@ -2,7 +2,7 @@
 # Monsters:
 # - drone: Security drone of the lower levels.
 # - robot: Armored robot patrol unit.
-inherits: _defaults
+inherits: _both_cases
 # Display name + VO live in Config/Catalogs/strings.yaml under this id.
 name: level_coruscant
 order: 6

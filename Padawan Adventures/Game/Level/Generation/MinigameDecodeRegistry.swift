@@ -36,6 +36,7 @@ nonisolated struct GateMinigameDTO: Decodable {
     var wordCountMax: Int?
     var choiceCountMin: Int?
     var choiceCountMax: Int?
+    var graphemeCase: String?
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -48,6 +49,7 @@ nonisolated struct GateMinigameDTO: Decodable {
         case wordCountMax = "max_word_count"
         case choiceCountMin = "min_choice_count"
         case choiceCountMax = "max_choice_count"
+        case graphemeCase = "grapheme_case"
     }
 }
 
@@ -73,6 +75,7 @@ nonisolated enum MinigameDecodeRegistry {
                     ?? GateGraphemeMatchConfig.fallback.graphemeCountMin,
                 graphemeCountMax: entry.graphemeCountMax
                     ?? GateGraphemeMatchConfig.fallback.graphemeCountMax,
+                graphemeCase: try parseGraphemeCase(entry.graphemeCase, default: .lower),
                 fx: entry.fx ?? SoundEffectTable(),
                 graphemes: [],
                 music: entry.music
@@ -109,21 +112,13 @@ nonisolated enum MinigameDecodeRegistry {
     static func decodeCombatMinigame(from entry: CombatMinigameDTO) throws -> CombatMinigameConfig {
         switch entry.type {
         case CombatMinigameKind.slash.rawValue:
-            var graphemeCase: CombatGraphemeCase = .upper
-            if let rawCase = entry.graphemeCase {
-                let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                guard let parsed = CombatGraphemeCase(rawValue: trimmed) else {
-                    throw WorldSeedError.invalidCombatGraphemeCase(rawCase)
-                }
-                graphemeCase = parsed
-            }
             return .slash(CombatSlashConfig(
                 weight: entry.weight ?? 1,
                 minDecoyCount: entry.minDecoyCount
                     ?? CombatMinigameEngine.Config.defaultMinDecoyCount,
                 maxDecoyCount: entry.maxDecoyCount
                     ?? CombatMinigameEngine.Config.defaultMaxDecoyCount,
-                graphemeCase: graphemeCase,
+                graphemeCase: try parseGraphemeCase(entry.graphemeCase, default: .upper),
                 graphemeSoundRepeatSeconds: entry.graphemeSoundRepeatSeconds ?? 3
             ))
         case CombatMinigameKind.startingSoundDeflect.rawValue:
@@ -187,6 +182,18 @@ nonisolated enum MinigameDecodeRegistry {
             letterPosition: letterPosition,
             words: []
         )
+    }
+
+    static func parseGraphemeCase(
+        _ raw: String?,
+        default defaultCase: CombatGraphemeCase
+    ) throws -> CombatGraphemeCase {
+        guard let rawCase = raw else { return defaultCase }
+        let trimmed = rawCase.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard let parsed = CombatGraphemeCase(rawValue: trimmed) else {
+            throw WorldSeedError.invalidCombatGraphemeCase(rawCase)
+        }
+        return parsed
     }
 }
 

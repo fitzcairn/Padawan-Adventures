@@ -1,7 +1,7 @@
 # Terrain: A desolate planet entirely covered in ice, massive glaciers, and snow-capped mountain ranges.
 # Monsters:
 # - ice_monster: Carnivorous ice creature that uses camouflage to stalk its prey.
-inherits: _defaults
+inherits: _both_cases
 # Display name + VO live in Config/Catalogs/strings.yaml under this id.
 name: level_ilum
 order: 3

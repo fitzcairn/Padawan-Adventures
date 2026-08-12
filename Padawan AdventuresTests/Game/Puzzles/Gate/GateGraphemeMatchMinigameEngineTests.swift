@@ -89,6 +89,59 @@ struct GateGraphemeMatchMinigameEngineTests {
         }
     }
 
+    @Test func lowerGraphemeCaseRendersLowercaseLetters() {
+        var engine = GateGraphemeMatchMinigameEngine(
+            config: .init(
+                graphemeCountMin: 3,
+                graphemeCountMax: 3,
+                graphemeCase: .lower,
+                graphemes: letters(["a", "b", "c"])
+            ),
+            rng: SeededGenerator(seed: 3)
+        )
+        engine.begin()
+        #expect(engine.letters.map(\.letter) == engine.letters.map { $0.letter.lowercased() })
+        #expect(Set(engine.letters.map(\.letter)).isSubset(of: ["a", "b", "c"]))
+    }
+
+    @Test func upperGraphemeCaseRendersUppercaseLetters() {
+        var engine = GateGraphemeMatchMinigameEngine(
+            config: .init(
+                graphemeCountMin: 3,
+                graphemeCountMax: 3,
+                graphemeCase: .upper,
+                graphemes: letters(["a", "b", "c"])
+            ),
+            rng: SeededGenerator(seed: 3)
+        )
+        engine.begin()
+        #expect(engine.letters.map(\.letter) == engine.letters.map { $0.letter.uppercased() })
+        #expect(Set(engine.letters.map(\.letter)).isSubset(of: ["A", "B", "C"]))
+    }
+
+    @Test func bothGraphemeCaseMixesLetterCaseAcrossSeeds() {
+        var sawLower = false
+        var sawUpper = false
+        for seed in UInt64(1)...40 {
+            var engine = GateGraphemeMatchMinigameEngine(
+                config: .init(
+                    graphemeCountMin: 3,
+                    graphemeCountMax: 3,
+                    graphemeCase: .both,
+                    graphemes: letters(["a", "b", "c"])
+                ),
+                rng: SeededGenerator(seed: seed)
+            )
+            engine.begin()
+            for letter in engine.letters.map(\.letter) {
+                if letter == letter.lowercased() { sawLower = true }
+                if letter == letter.uppercased() { sawUpper = true }
+            }
+        }
+        #expect(sawLower)
+        #expect(sawUpper)
+    }
+
     @Test func correctTapGreensAndAdvancesTowardWin() {
         var engine = makeEngine(
             graphemeCountMin: 2,

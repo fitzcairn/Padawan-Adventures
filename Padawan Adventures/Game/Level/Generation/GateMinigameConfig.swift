@@ -112,6 +112,8 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
     var graphemeCountMin: Int
     /// Inclusive upper bound for letters chosen per round (clamped to the letter pool).
     var graphemeCountMax: Int
+    /// Visual case of switch letters. `both` picks lower or upper per switch.
+    var graphemeCase: CombatGraphemeCase
     /// In-puzzle FX (optional `correct` override for shared `sound.yaml`).
     var fx: SoundEffectTable
     /// Resolved letters (sorted). Populated via `resolve(from:)`.
@@ -125,6 +127,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         weight: 1,
         graphemeCountMin: 4,
         graphemeCountMax: 8,
+        graphemeCase: .lower,
         graphemes: GraphemeCatalog.fallback.graphemes,
         music: "gate"
     )
@@ -133,6 +136,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         weight: Double = 1,
         graphemeCountMin: Int = 4,
         graphemeCountMax: Int = 8,
+        graphemeCase: CombatGraphemeCase = .lower,
         fx: SoundEffectTable = SoundEffectTable(),
         graphemes: [GateGrapheme],
         vocabulary: LevelVocabularyPool? = nil,
@@ -141,6 +145,7 @@ nonisolated struct GateGraphemeMatchConfig: Equatable, Sendable {
         self.weight = weight
         self.graphemeCountMin = graphemeCountMin
         self.graphemeCountMax = graphemeCountMax
+        self.graphemeCase = graphemeCase
         self.fx = fx
         self.graphemes = Self.normalizedGraphemes(graphemes)
         self.vocabulary = vocabulary ?? LevelVocabularyPool.singleTier(graphemes: self.graphemes)

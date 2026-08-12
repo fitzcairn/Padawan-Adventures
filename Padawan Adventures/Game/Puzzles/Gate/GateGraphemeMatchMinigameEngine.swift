@@ -14,12 +14,14 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
     nonisolated struct Config: Equatable, Sendable {
         var graphemeCountMin: Int
         var graphemeCountMax: Int
+        var graphemeCase: CombatGraphemeCase
         var graphemes: [GateGrapheme]
         var vocabulary: LevelVocabularyPool
 
         init(from puzzle: GateGraphemeMatchConfig) {
             graphemeCountMin = puzzle.graphemeCountMin
             graphemeCountMax = puzzle.graphemeCountMax
+            graphemeCase = puzzle.graphemeCase
             graphemes = puzzle.graphemes
             vocabulary = puzzle.vocabulary
         }
@@ -27,11 +29,13 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         init(
             graphemeCountMin: Int = 4,
             graphemeCountMax: Int = 8,
+            graphemeCase: CombatGraphemeCase = .lower,
             graphemes: [GateGrapheme],
             vocabulary: LevelVocabularyPool? = nil
         ) {
             self.graphemeCountMin = graphemeCountMin
             self.graphemeCountMax = graphemeCountMax
+            self.graphemeCase = graphemeCase
             self.graphemes = graphemes.map {
                 GateGrapheme(
                     grapheme: $0.grapheme.lowercased(),
@@ -45,7 +49,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
 
     nonisolated struct LetterToken: Equatable, Sendable, Identifiable {
         let id: UUID
-        /// Single lowercase letter.
+        /// Display letter, cased per `grapheme_case`.
         let letter: String
         let pronunciationTrackID: String
         let nameTrackID: String
@@ -137,7 +141,7 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         return config.vocabulary.pickGraphemes(count: count, using: &rng).map { entry in
             LetterToken(
                 id: UUID(),
-                letter: entry.grapheme.lowercased(),
+                letter: config.graphemeCase.displayLetter(for: entry.grapheme, rng: &rng),
                 pronunciationTrackID: entry.pronunciation,
                 nameTrackID: entry.name
             )

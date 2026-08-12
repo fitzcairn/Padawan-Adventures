@@ -2,7 +2,7 @@
 # Monsters:
 # - centipede: Desert centipede predator.
 # - snake: Arid-world snake.
-inherits: _defaults
+inherits: _both_cases
 # Display name + VO live in Config/Catalogs/strings.yaml under this id.
 name: level_geonosis
 order: 8

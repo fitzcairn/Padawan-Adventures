@@ -1,10 +1,27 @@
 import Foundation
 
-/// How combat projectile / cue letters are cased for a level.
+/// How grapheme-sound combat shots and gate switches are cased for a level.
 nonisolated enum CombatGraphemeCase: String, Codable, Equatable, Sendable, CaseIterable {
     case lower
     case upper
     case both
+
+    /// Display form of one catalog grapheme id for this case mode.
+    func displayLetter(
+        for grapheme: String,
+        rng: inout some RandomNumberGenerator
+    ) -> String {
+        let base = grapheme.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty else { return base }
+        switch self {
+        case .lower:
+            return base.lowercased()
+        case .upper:
+            return base.uppercased()
+        case .both:
+            return Bool.random(using: &rng) ? base.lowercased() : base.uppercased()
+        }
+    }
 
     /// Expands catalog letter ids into the visual/cue pool for this case mode.
     func shotLetterPool(from letters: [String]) -> [String] {

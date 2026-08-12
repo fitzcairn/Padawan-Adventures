@@ -65,6 +65,10 @@ struct CombatMinigameEngineTests {
         #expect(CombatGraphemeCase.lower.shotLetterPool(from: ["A", "b", "C"]) == ["a", "b", "c"])
         #expect(CombatGraphemeCase.upper.shotLetterPool(from: ["a", "B"]) == ["A", "B"])
         #expect(CombatGraphemeCase.both.shotLetterPool(from: ["a", "B"]) == ["a", "A", "b", "B"])
+        var lowerRng = SeededGenerator(seed: 1)
+        var upperRng = SeededGenerator(seed: 1)
+        #expect(CombatGraphemeCase.lower.displayLetter(for: "S", rng: &lowerRng) == "s")
+        #expect(CombatGraphemeCase.upper.displayLetter(for: "s", rng: &upperRng) == "S")
     }
 
     @Test func configAppliesDecoyClampsAndLetterCase() {

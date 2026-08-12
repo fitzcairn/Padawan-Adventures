@@ -994,7 +994,75 @@ struct LevelConfigTests {
         }
         #expect(lm.graphemeCountMin == 2)
         #expect(lm.graphemeCountMax == 3)
+        #expect(lm.graphemeCase == .lower)
         #expect(Set(lm.graphemes.map(\.grapheme)).isSuperset(of: ["a", "b"]))
+    }
+
+    @Test func decodesGateGraphemeMatchGraphemeCase() throws {
+        let yaml = """
+        name: Level 1
+        order: 1
+        world:
+          width_tiles: 20
+          height_tiles: 20
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 8
+            pit_probability: 0
+            gate_probability: 0
+        gate:
+          fx: { opened: sfx_gate_opened }
+          minigames:
+            - type: grapheme-sound-gate
+              grapheme_case: both
+              min_grapheme_count: 2
+              max_grapheme_count: 3
+        """
+        let level = try LevelConfig.decode(
+            from: yaml,
+            vocabularyCatalog: Self.vocabCatalog(
+                words: ["at"],
+                graphemes: ["b", "a"]
+            )
+        )
+        guard case .graphemeMatch(let lm) = level.gate.minigames.first else {
+            Issue.record("expected letter_match minigame")
+            return
+        }
+        #expect(lm.graphemeCase == .both)
+    }
+
+    @Test func rejectsInvalidGateGraphemeMatchGraphemeCase() {
+        #expect {
+            try LevelConfig.decode(
+                from: """
+                name: Level 1
+                world:
+                  width_tiles: 20
+                  height_tiles: 20
+                  room_count: 4
+                  room:
+                    min_size_tiles: 4
+                    max_size_tiles: 8
+                    pit_probability: 0
+                    gate_probability: 0
+                gate:
+                  fx: { opened: sfx_gate_opened }
+                  minigames:
+                    - type: grapheme-sound-gate
+                      grapheme_case: sideways
+                """,
+                vocabularyCatalog: Self.vocabCatalog(
+                    words: ["at"],
+                    graphemes: ["a"]
+                )
+            )
+        } throws: { error in
+            guard let error = error as? WorldSeedError,
+                  case .decodeFailed(let reason) = error else { return false }
+            return reason.contains("invalidCombatGraphemeCase")
+        }
     }
 
     @Test func inheritsGateGraphemeMatchConfigFromBase() throws {

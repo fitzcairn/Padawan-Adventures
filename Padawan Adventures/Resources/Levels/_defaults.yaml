@@ -147,6 +147,7 @@ pit:
 #   in the word. Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
 # `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
 #   Round size is `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
+#   `grapheme_case` is `lower`, `upper`, or `both` (each switch independently lower or upper).
 gate:
   music: gate
   fx: { opened: gate-open }
@@ -172,6 +173,7 @@ gate:
       fx: { loop: gate-spelling-loop-arc }
     - type: grapheme-sound-gate
       weight: 1.0
+      grapheme_case: lower
       min_grapheme_count: 4
       max_grapheme_count: 8
       fx: { switch_push: gate-grapheme_match-switch-push }

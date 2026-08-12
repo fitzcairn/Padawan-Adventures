@@ -1,0 +1,46 @@
+# Shared by levels 2+ via `inherits: _both_cases`.
+# Restates combat/gate minigame lists so grapheme-sound types use both letter cases.
+inherits: _defaults
+
+combat:
+  minigames:
+    - type: grapheme-sound-combat
+      weight: 1.0
+      min_decoy_count: 2
+      max_decoy_count: 4
+      grapheme_case: both
+      grapheme_sound_repeat_seconds: 3
+    - type: starting-sound-combat
+      weight: 1.0
+      monster_hit_points: 5
+      orb_travel_seconds: 8.0
+      ring_count: 4
+    - type: ending-sound-combat
+      weight: 1.0
+      monster_hit_points: 5
+      orb_travel_seconds: 8.0
+      ring_count: 4
+
+gate:
+  minigames:
+    - type: starting-sound-gate
+      weight: 1.0
+      min_word_count: 2
+      max_word_count: 2
+      fx: { loop: gate-spelling-loop-arc }
+    - type: ending-sound-gate
+      weight: 1.0
+      min_word_count: 2
+      max_word_count: 2
+      fx: { loop: gate-spelling-loop-arc }
+    - type: sound-out-word-gate
+      weight: 1.0
+      min_choice_count: 2
+      max_choice_count: 4
+      fx: { loop: gate-spelling-loop-arc }
+    - type: grapheme-sound-gate
+      weight: 1.0
+      grapheme_case: both
+      min_grapheme_count: 4
+      max_grapheme_count: 8
+      fx: { switch_push: gate-grapheme_match-switch-push }

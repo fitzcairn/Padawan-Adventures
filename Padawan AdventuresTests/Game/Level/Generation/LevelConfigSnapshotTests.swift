@@ -94,6 +94,11 @@ struct LevelConfigSnapshotTests {
         #expect(level.gate.fx.trackID(for: "opened") == "gate-open")
         #expect(level.gate.minigames.map(\.kind) == [.wordPlug, .endingSoundPlug, .soundOutWord, .graphemeMatch])
         #expect(level.gate.minigames.map(\.weight) == [1, 1, 1, 1])
+        guard case .graphemeMatch(let graphemeMatch) = level.gate.minigames[3] else {
+            Issue.record("expected grapheme-sound gate entry")
+            return
+        }
+        #expect(graphemeMatch.graphemeCase == .lower)
         guard case .wordPlug(let wordPlug) = level.gate.minigames[0] else {
             Issue.record("expected word-plug gate entry")
             return
@@ -141,6 +146,32 @@ struct LevelConfigSnapshotTests {
                 #expect(level.worldTutorial, "1-tython should enable world_tutorial")
             } else {
                 #expect(!level.worldTutorial, "\(descriptor.resourceName) should disable world_tutorial")
+            }
+        }
+    }
+
+    @Test func levelsAfterTythonUseBothGraphemeCases() throws {
+        let catalog = LevelCatalog.loadFromBundle()
+        #expect(!catalog.isEmpty)
+        for descriptor in catalog {
+            let level = try LevelConfig.loadFromBundle(
+                named: descriptor.resourceName,
+                subdirectory: LevelCatalog.subdirectory
+            )
+            guard case .slash(let slash) = level.combat.minigames.first else {
+                Issue.record("expected slash combat on \(descriptor.resourceName)")
+                continue
+            }
+            guard case .graphemeMatch(let gate) = level.gate.minigames.last else {
+                Issue.record("expected grapheme-sound gate on \(descriptor.resourceName)")
+                continue
+            }
+            if descriptor.order == 1 {
+                #expect(slash.graphemeCase == .lower)
+                #expect(gate.graphemeCase == .lower)
+            } else {
+                #expect(slash.graphemeCase == .both, "\(descriptor.resourceName) combat")
+                #expect(gate.graphemeCase == .both, "\(descriptor.resourceName) gate")
             }
         }
     }

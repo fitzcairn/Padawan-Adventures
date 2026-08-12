@@ -1,7 +1,7 @@
 # Terrain: A harsh desert world dominated by massive sand dunes, rocky canyons, and scattered mesa formations.
 # Monsters:
 # - centipede: Desert centipede predator.
-inherits: _defaults
+inherits: _both_cases
 # Display name + VO live in Config/Catalogs/strings.yaml under this id.
 name: level_tatooine
 order: 2
