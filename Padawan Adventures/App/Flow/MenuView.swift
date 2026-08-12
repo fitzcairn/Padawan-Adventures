@@ -54,66 +54,62 @@ struct MenuView: View {
             logoColumn
 
             ZStack(alignment: .bottom) {
-                VStack(spacing: 24) {
-                    welcomeRow
-
-                    VStack(spacing: 16) {
-                        if showContinue {
-                            AppLargeButton(
-                                title: Strings.text("menu_continue"),
-                                accessibilityID: "menu.continue",
-                                style: .console,
-                                icon: menuIcon(.continueGame)
-                            ) {
-                                // Mid-run save → jump back into the world; otherwise reopen
-                                // level select (where the player left after beating / quitting).
-                                switch session.continueDestination {
-                                case .resumeSave:
-                                    router.navigate(to: .preparing(.continueSave))
-                                case .levelSelect, .none:
-                                    router.navigate(to: .levelSelect)
-                                }
+                VStack(spacing: 16) {
+                    if showContinue {
+                        AppLargeButton(
+                            title: Strings.text("menu_continue"),
+                            accessibilityID: "menu.continue",
+                            style: .console,
+                            icon: menuIcon(.continueGame)
+                        ) {
+                            // Mid-run save → jump back into the world; otherwise reopen
+                            // level select (where the player left after beating / quitting).
+                            switch session.continueDestination {
+                            case .resumeSave:
+                                router.navigate(to: .preparing(.continueSave))
+                            case .levelSelect, .none:
+                                router.navigate(to: .levelSelect)
                             }
-                        }
-
-                        AppLargeButton(
-                            title: Strings.text("menu_new_game"),
-                            accessibilityID: "menu.newGame",
-                            style: .console,
-                            icon: menuIcon(.newGame)
-                        ) {
-                            Task {
-                                await session.beginNewGame()
-                                router.navigate(to: .cutscene)
-                            }
-                        }
-
-                        AppLargeButton(
-                            title: Strings.text("menu_settings"),
-                            accessibilityID: "menu.settings",
-                            style: .console,
-                            icon: menuIcon(.settings)
-                        ) {
-                            router.navigate(to: .settings)
-                        }
-
-                        AppLargeButton(
-                            title: Strings.text("menu_quit"),
-                            accessibilityID: "menu.quit",
-                            style: .console,
-                            icon: menuIcon(.exit)
-                        ) {
-                            exit(0)
                         }
                     }
-                    // Shared width = widest label; text is fixedSize so it never elides.
-                    .frame(width: AppLargeButton.consoleWidth(fittingTitles: [
-                        Strings.text("menu_continue"),
-                        Strings.text("menu_new_game"),
-                        Strings.text("menu_settings"),
-                        Strings.text("menu_quit"),
-                    ]))
+
+                    AppLargeButton(
+                        title: Strings.text("menu_new_game"),
+                        accessibilityID: "menu.newGame",
+                        style: .console,
+                        icon: menuIcon(.newGame)
+                    ) {
+                        Task {
+                            await session.beginNewGame()
+                            router.navigate(to: .cutscene)
+                        }
+                    }
+
+                    AppLargeButton(
+                        title: Strings.text("menu_settings"),
+                        accessibilityID: "menu.settings",
+                        style: .console,
+                        icon: menuIcon(.settings)
+                    ) {
+                        router.navigate(to: .settings)
+                    }
+
+                    AppLargeButton(
+                        title: Strings.text("menu_quit"),
+                        accessibilityID: "menu.quit",
+                        style: .console,
+                        icon: menuIcon(.exit)
+                    ) {
+                        exit(0)
+                    }
                 }
+                // Shared width = widest label; text is fixedSize so it never elides.
+                .frame(width: AppLargeButton.consoleWidth(fittingTitles: [
+                    Strings.text("menu_continue"),
+                    Strings.text("menu_new_game"),
+                    Strings.text("menu_settings"),
+                    Strings.text("menu_quit"),
+                ]))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
                 AppTitleText(
@@ -151,16 +147,18 @@ struct MenuView: View {
 
     @ViewBuilder
     private var logoColumn: some View {
-        Group {
+        VStack(spacing: 16) {
             if let logoImage {
                 Image(uiImage: logoImage)
                     .resizable()
                     .interpolation(.high)
-                    .scaledToFit()
+                    .aspectRatio(logoImage.size, contentMode: .fit)
                     .accessibilityIdentifier("menu.logo")
             }
+            welcomeRow
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
+        .frame(maxHeight: .infinity, alignment: .center)
     }
 
     @MainActor
