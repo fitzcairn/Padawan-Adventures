@@ -1,8 +1,9 @@
 import Foundation
 
 /// UI copy from `Config/Catalogs/strings.yaml`.
-enum Strings {
-    private static var loaded: StringCatalog?
+nonisolated enum Strings {
+    /// Process-lifetime cache; tests replace it via `_resetForTesting`.
+    private nonisolated(unsafe) static var loaded: StringCatalog?
 
     static var catalog: StringCatalog {
         if let loaded { return loaded }
@@ -29,6 +30,7 @@ enum Strings {
     }
 
     /// Plays the entry's voice-over clip. Missing ids and missing assets are ignored.
+    @MainActor
     static func speak(_ id: String) {
         guard let entry = catalog.entry(id) else { return }
         SoundEffectsController.shared.play(trackID: entry.sfx)

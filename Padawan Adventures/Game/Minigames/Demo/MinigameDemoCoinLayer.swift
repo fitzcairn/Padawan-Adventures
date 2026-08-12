@@ -5,7 +5,8 @@ final class MinigameDemoCoinLayer {
     static let rootName = "demoCoinLayer"
     static let coinNodeName = "demoCoin"
     /// Default coin edge: previous 44pt size bumped 40% so tutorial awards read clearly.
-    static let defaultSide: CGFloat = 44 * 1.4
+    /// Kept `nonisolated` so it can be used as a default argument.
+    nonisolated static let defaultSide: CGFloat = 44 * 1.4
 
     private let root = SKNode()
     private var coins: [SKSpriteNode] = []

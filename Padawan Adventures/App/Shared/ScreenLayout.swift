@@ -5,7 +5,7 @@ import UIKit
 ///
 /// Engines/backgrounds stay full-bleed. Visual chrome is inset by
 /// `max(safeArea, edgeInsetFraction × dimension)` on each edge.
-enum ScreenLayout {
+nonisolated enum ScreenLayout {
     static let edgeInsetFraction: CGFloat = 0.025
     /// Extra lift under swipeable bottom rows so a drag toward the home indicator
     /// does not leave the app.
@@ -24,6 +24,7 @@ enum ScreenLayout {
         )
     }
 
+    @MainActor
     static func padding(for view: UIView) -> UIEdgeInsets {
         uiInsets(size: view.bounds.size, safeArea: view.safeAreaInsets)
     }

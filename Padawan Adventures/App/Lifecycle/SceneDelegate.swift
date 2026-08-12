@@ -55,10 +55,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         AudioSessionController.releaseForBackground()
     }
 
-    /// Re-asserts the landscape mask. `UIRequiresFullScreen` keeps iPad out of portrait, and
-    /// this covers the window geometry the scene comes back with after a rotation elsewhere.
+    /// Re-asserts the landscape mask. `prefersInterfaceOrientationLocked` on the root
+    /// controller keeps a full-screen iPad scene from rotating, and this covers the
+    /// window geometry the scene comes back with after a rotation elsewhere.
     private func enforceLandscape(on windowScene: UIWindowScene) {
         windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: AppOrientation.mask))
         window?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        window?.rootViewController?.setNeedsUpdateOfPrefersInterfaceOrientationLocked()
     }
 }

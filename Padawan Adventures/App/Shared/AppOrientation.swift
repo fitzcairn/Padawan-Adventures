@@ -17,6 +17,9 @@ class LandscapeHostingController: UIViewController {
     }
 
     override var prefersStatusBarHidden: Bool { true }
+
+    /// Locks landscape while the scene is full-screen. Replaces `UIRequiresFullScreen`.
+    override var prefersInterfaceOrientationLocked: Bool { true }
 }
 
 /// UIKit shell that hosts SwiftUI flow content while preserving landscape policy.
