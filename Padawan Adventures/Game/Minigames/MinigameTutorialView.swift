@@ -49,9 +49,10 @@ struct MinigameTutorialView<Demo: View>: View {
     }
 
     /// Seconds to wait after the demo pointer is on screen before gestures start —
-    /// enough for the tutorial voice-over (spoken on appear) to begin.
-    static func leadInSeconds(forKindRawValue _: String) -> TimeInterval {
-        3
+    /// the whole tutorial voice-over (spoken on appear) plays over a frozen arena.
+    static func leadInSeconds(forKindRawValue key: String) -> TimeInterval {
+        MinigameTutorialVoiceOver.seconds(forStringID: bodyStringID(forKindRawValue: key))
+            ?? MinigameTutorialVoiceOver.fallbackSeconds
     }
 }
 

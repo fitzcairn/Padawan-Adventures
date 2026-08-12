@@ -1,7 +1,8 @@
 import Foundation
 
 /// Loops the gate tutorial: replay taps, a listen to every capacitor, a wrong drag,
-/// the right drag, then a coin to the corner. Runs until its task is cancelled.
+/// the right drag, then a coin to the corner — and the "tap to continue" cue before
+/// a solved word restarts. Runs until its task is cancelled.
 @MainActor
 final class GateSoundOutWordDemoScript: MinigameDemoScript {
     /// Value type kept `nonisolated` so it can be used as a default argument.
@@ -44,13 +45,17 @@ final class GateSoundOutWordDemoScript: MinigameDemoScript {
     func run(performer: MinigameDemoPerforming, coins: MinigameDemoCoinLayer) async {
         await run(performer: performer) { point in
             await coins.flyCoinToCorner(from: point)
+        } onLoopBoundary: {
+            await MinigameTutorialVoiceOver.playContinueCue()
         }
     }
 
-    /// Test seam: the coin flight is injected so tests need no SpriteKit coin layer.
+    /// Test seam: the coin flight and the end-of-pass cue are injected so tests need
+    /// no SpriteKit coin layer and no audio.
     func run(
         performer: MinigameDemoPerforming,
-        flyCoin: (CGPoint) async -> Void
+        flyCoin: (CGPoint) async -> Void,
+        onLoopBoundary: () async -> Void = {}
     ) async {
         while !Task.isCancelled {
             guard let stage else { return }
@@ -84,6 +89,8 @@ final class GateSoundOutWordDemoScript: MinigameDemoScript {
             if stage.demoIsWordSolved || stage.demoIsOver {
                 // Let the full endpoint → letters → endpoint arc read before teardown.
                 await performer.pause(timing.circuitHoldSeconds)
+                await onLoopBoundary()
+                guard !Task.isCancelled else { return }
                 stage.demoRestart()
             }
         }

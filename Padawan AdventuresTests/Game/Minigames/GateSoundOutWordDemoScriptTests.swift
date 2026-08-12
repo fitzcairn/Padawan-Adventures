@@ -211,6 +211,21 @@ struct GateSoundOutWordDemoScriptTests {
         })
     }
 
+    @Test func continueCueRunsBeforeTheSolvedWordRestart() async {
+        let stage = FakeGateStaging(passes: [singlePass()])
+        stage.stopAfterRestarts = 1
+        let performer = RecordingGatePerformer(stage: stage)
+        var restartCountsAtCue: [Int] = []
+        let script = GateSoundOutWordDemoScript(stage: stage, timing: fastTiming())
+
+        await script.run(performer: performer) { _ in } onLoopBoundary: {
+            restartCountsAtCue.append(stage.restartCount)
+        }
+
+        // One cue per solved word, played while the finished circuit is still up.
+        #expect(restartCountsAtCue == [0])
+    }
+
     @Test func neverReadyStageRestartsInsteadOfReturning() async {
         let stage = FakeGateStaging(passes: [singlePass()])
         stage.neverReady = true

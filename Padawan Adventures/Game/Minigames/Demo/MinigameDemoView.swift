@@ -13,7 +13,7 @@ where Scene: MinigameScene & MinigameDemoStage {
     private let make: (CGSize) -> Scene
     private let timing: MinigameDemoRunner.Timing
     /// Delay after the pointer is shown before gestures start, so the tutorial
-    /// voice-over has time to begin. Applied once per tutorial presentation.
+    /// voice-over plays out first. Applied once per tutorial presentation.
     private let leadInSeconds: TimeInterval
     private let restartDelaySeconds: TimeInterval = 0.6
     private let buildTimeoutSeconds: TimeInterval = 5
@@ -72,6 +72,8 @@ where Scene: MinigameScene & MinigameDemoStage {
             if Task.isCancelled || didStop { return }
             // A stage that never becomes ready would otherwise spin forever.
             guard awarded > 0 else { return }
+            await MinigameTutorialVoiceOver.playContinueCue()
+            if Task.isCancelled || didStop { return }
             try? await Task.sleep(
                 nanoseconds: UInt64(restartDelaySeconds * 1_000_000_000)
             )
@@ -127,8 +129,8 @@ where Scene: MinigameScene & MinigameDemoStage {
 
         if applyLeadIn {
             didApplyLeadIn = true
-            // Pointer is already visible. Arena stays frozen while the voice-over
-            // begins. Looped cycles skip this — VO only plays once on appear.
+            // Pointer is already visible. Arena stays frozen until the voice-over
+            // has finished. Looped cycles skip this — VO only plays once on appear.
             try? await Task.sleep(nanoseconds: UInt64(leadInSeconds * 1_000_000_000))
             SoundEffectsController.shared.setGameplaySFXSuppressed(false)
             guard !Task.isCancelled, !didStop else { return 0 }

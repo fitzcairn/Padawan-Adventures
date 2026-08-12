@@ -182,6 +182,23 @@ struct PitBridgeDemoScriptTests {
         #expect(performer.gestures.count >= 6)
     }
 
+    @Test func continueCueRunsBeforeTheRestart() async {
+        let stage = FakePitBridgeStaging(phases: twoTilePhases())
+        stage.stopAfterRestarts = 1
+        let performer = RecordingPitBridgePerformer(stage: stage)
+        var restartCountsAtCue: [Int] = []
+        let script = PitBridgeDemoScript(stage: stage, timing: fastTiming())
+
+        await script.run(performer: performer) { _ in
+            stage.isReady = true
+        } onLoopBoundary: {
+            restartCountsAtCue.append(stage.restartCount)
+        }
+
+        // One cue per finished pass, played while the finished bridge is still up.
+        #expect(restartCountsAtCue == [0])
+    }
+
     @Test func neverReadyStageRestartsInsteadOfReturning() async {
         let stage = FakePitBridgeStaging(phases: twoTilePhases())
         stage.neverReady = true

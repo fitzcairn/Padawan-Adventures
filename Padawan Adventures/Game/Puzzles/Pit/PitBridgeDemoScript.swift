@@ -1,7 +1,8 @@
 import Foundation
 
 /// Loops the pit-bridge tutorial: correct first tile, then wrong→right on the
-/// second tile with a coin each time, then restart. Runs until cancelled.
+/// second tile with a coin each time, then the "tap to continue" cue and a
+/// restart. Runs until cancelled.
 @MainActor
 final class PitBridgeDemoScript: MinigameDemoScript {
     /// Value type kept `nonisolated` so it can be used as a default argument.
@@ -44,13 +45,17 @@ final class PitBridgeDemoScript: MinigameDemoScript {
     func run(performer: MinigameDemoPerforming, coins: MinigameDemoCoinLayer) async {
         await run(performer: performer) { point in
             await coins.flyCoinToCorner(from: point)
+        } onLoopBoundary: {
+            await MinigameTutorialVoiceOver.playContinueCue()
         }
     }
 
-    /// Test seam: the coin flight is injected so tests need no SpriteKit coin layer.
+    /// Test seam: the coin flight and the end-of-pass cue are injected so tests need
+    /// no SpriteKit coin layer and no audio.
     func run(
         performer: MinigameDemoPerforming,
-        flyCoin: (CGPoint) async -> Void
+        flyCoin: (CGPoint) async -> Void,
+        onLoopBoundary: () async -> Void = {}
     ) async {
         while !Task.isCancelled {
             guard let stage else { return }
@@ -84,6 +89,8 @@ final class PitBridgeDemoScript: MinigameDemoScript {
             if let secondAnchor { await flyCoin(secondAnchor) }
 
             await performer.pause(timing.holdSeconds)
+            guard !Task.isCancelled else { return }
+            await onLoopBoundary()
             guard !Task.isCancelled else { return }
             stage.demoRestart()
             if stage.demoIsOver { return }
