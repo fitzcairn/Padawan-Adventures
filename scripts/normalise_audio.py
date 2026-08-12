@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Loudness-normalise every clip under `Resources/Audio` to one baseline level.
+"""Loudness-normalise everything that ships in `Resources` to one baseline level.
+
+That means every clip under `Resources/Audio` plus the soundtrack of the cutscene
+movie, whose picture is copied through untouched.
 
 The assets arrived from several sources (macOS `say`, the Tools/Record browser
 recorder, stock FX packs, music) and most had been peak-normalised, which says
@@ -14,9 +17,10 @@ playback time. Those scales were tuned against the existing spread of assets, so
 the target sits near the current median and the mix keeps its character.
 
 Usage:
-    scripts/normalise_audio.py --dry-run     # report only, touch nothing
-    scripts/normalise_audio.py               # normalise in place
-    scripts/normalise_audio.py --target -18  # different baseline
+    scripts/normalise_audio.py --dry-run          # report only, touch nothing
+    scripts/normalise_audio.py                    # normalise in place
+    scripts/normalise_audio.py --target -18       # different baseline
+    scripts/normalise_audio.py --root <file|dir>  # limit to one file or folder
 
 Requires ffmpeg/ffprobe (`brew install ffmpeg`).
 """
@@ -36,9 +40,13 @@ from pathlib import Path
 
 import numpy as np
 
-from paths import AUDIO
+from paths import AUDIO, RESOURCES
 
 AUDIO_EXTS = {".m4a", ".mp3", ".wav", ".caf", ".aiff"}
+# Cutscene movies carry a soundtrack that has to sit in the same mix as the rest,
+# so they are normalised too. Their video stream is copied through untouched.
+VIDEO_EXTS = {".mp4", ".mov", ".m4v"}
+MEDIA_EXTS = AUDIO_EXTS | VIDEO_EXTS
 
 # Baseline loudness. Chosen near the median of the original assets so the
 # playback mix scales keep working, and low enough that only a handful of very
@@ -125,13 +133,16 @@ class Clip:
     lufs: float
     true_peak: float
     gated: bool
+    has_video: bool = False
 
     @property
     def label(self) -> str:
-        try:
-            return str(self.path.relative_to(AUDIO))
-        except ValueError:
-            return self.path.name
+        for root in (AUDIO, RESOURCES):
+            try:
+                return str(self.path.relative_to(root))
+            except ValueError:
+                continue
+        return self.path.name
 
 
 @dataclass
@@ -168,6 +179,15 @@ def probe(path: Path) -> dict[str, str]:
             key, value = line.split("=", 1)
             fields.setdefault(key, value)
     return fields
+
+
+def probe_has_video(path: Path) -> bool:
+    if path.suffix.lower() not in VIDEO_EXTS:
+        return False
+    out = run(["ffprobe", "-v", "error", "-select_streams", "v",
+               "-show_entries", "stream=codec_name",
+               "-of", "default=nw=1:nk=1", str(path)]).strip()
+    return bool(out)
 
 
 def ebur128(path: Path) -> tuple[float | None, float | None]:
@@ -259,6 +279,7 @@ def measure(path: Path) -> Clip | None:
         lufs=loudness,
         true_peak=peak,
         gated=gated,
+        has_video=probe_has_video(path),
     )
 
 
@@ -315,8 +336,17 @@ def render(clip: Clip, gain_db: float, limit_to_dbfs: float | None, out_path: Pa
         # lookahead from time-shifting the clip.
         chain.append(f"alimiter=limit={limit:.6f}:attack=5:release=50"
                      f":level=disabled:latency=1")
+    if clip.has_video:
+        # Copy every stream through bit-for-bit — picture, poster thumbnail and all —
+        # and let the audio encoder below override the blanket copy for the
+        # soundtrack. Stream copy also carries the video codec tag across, which
+        # matters because AVFoundation will not play HEVC tagged `hev1` rather than
+        # the `hvc1` these assets ship as.
+        streams = ["-map", "0", "-c", "copy"]
+    else:
+        streams = ["-map", "0:a:0"]
     cmd = ["ffmpeg", "-y", "-nostdin", "-hide_banner", "-loglevel", "error",
-           "-i", str(clip.path), "-map", "a:0", "-af", ",".join(chain),
+           "-i", str(clip.path), *streams, "-af", ",".join(chain),
            *encoder_args(clip), "-map_metadata", "0", str(out_path)]
     proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True)
     if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size == 0:
@@ -413,9 +443,11 @@ def normalise(clip: Clip, target: float, ceiling: float, dry_run: bool) -> Resul
     return Result(clip, applied, squash, check.lufs, check.true_peak, "normalised", note)
 
 
-def find_audio(root: Path) -> list[Path]:
+def find_media(root: Path) -> list[Path]:
+    if root.is_file():
+        return [root]
     return sorted(p for p in root.rglob("*")
-                  if p.is_file() and p.suffix.lower() in AUDIO_EXTS)
+                  if p.is_file() and p.suffix.lower() in MEDIA_EXTS)
 
 
 def spread(values: list[float]) -> str:
@@ -429,7 +461,9 @@ def spread(values: list[float]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--audio-dir", type=Path, default=AUDIO)
+    parser.add_argument("--root", type=Path, default=RESOURCES,
+                        help="file or folder to scan (default: everything shipped "
+                             "in Resources, which includes the cutscene movie)")
     parser.add_argument("--target", type=float, default=DEFAULT_TARGET_LUFS,
                         help=f"baseline loudness in LUFS (default {DEFAULT_TARGET_LUFS})")
     parser.add_argument("--ceiling", type=float, default=DEFAULT_CEILING_DBTP,
@@ -443,12 +477,12 @@ def main() -> int:
         sys.stderr.write("ffmpeg and ffprobe are required (brew install ffmpeg)\n")
         return 1
 
-    files = find_audio(args.audio_dir)
+    files = find_media(args.root)
     if not files:
-        sys.stderr.write(f"no audio found under {args.audio_dir}\n")
+        sys.stderr.write(f"no audio found under {args.root}\n")
         return 1
 
-    print(f"measuring {len(files)} clips under {args.audio_dir}")
+    print(f"measuring {len(files)} clips under {args.root}")
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
         clips = [c for c in pool.map(measure, files) if c is not None]
     if len(clips) != len(files):
