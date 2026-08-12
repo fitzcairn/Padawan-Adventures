@@ -52,12 +52,20 @@ extension IsometricRenderer {
         revealFadeEntityIDs.insert(entity.id)
     }
 
+    /// Gate strips entity draw order must respect: the synced ones plus any still dissolving.
+    /// Read once per entity per frame, so the join only happens mid-dissolve.
+    var entityGateOccluders: [PlaceholderFactory.GateOccluder] {
+        dissolvingGateOccluders.isEmpty
+            ? gateOccluders
+            : gateOccluders + dissolvingGateOccluders
+    }
+
     func updateEntityNode(_ node: SKNode, entity: GameEntity) {
         PlaceholderFactory.updateEntityNode(
             node,
             entity: entity,
             config: config,
-            gates: gateOccluders
+            gates: entityGateOccluders
         )
     }
 
@@ -78,9 +86,16 @@ extension IsometricRenderer {
     }
 
     /// Detaches the visible gate sprite for the strip containing `coord`, if any.
+    ///
+    /// The detached sprite keeps its z for the whole dissolve while `openGate` drops the
+    /// strip from `gateOccluders`, so the strip is remembered until the animation ends —
+    /// otherwise a sprite standing in the doorway falls behind the art fading over it.
     func detachGateNode(at coord: GridCoord, in world: GameWorld) -> SKNode? {
         guard case .gate(let minigame) = world.tile(at: coord)?.kind else {
             return detachWallNode(at: coord)
+        }
+        if let occluder = PlaceholderFactory.gateOccluder(at: coord, in: world) {
+            dissolvingGateOccluders.append(occluder)
         }
         if let strip = PlaceholderFactory.gateStrip(at: coord, minigame: minigame, in: world) {
             let canonical = strip.isCanonical ? coord : strip.partner
@@ -116,7 +131,7 @@ extension IsometricRenderer {
             x: sortX,
             y: sortY,
             story: sortStory,
-            gates: gateOccluders,
+            gates: entityGateOccluders,
             config: config
         )
     }

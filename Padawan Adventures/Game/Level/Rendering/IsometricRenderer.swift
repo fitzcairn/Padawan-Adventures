@@ -29,6 +29,9 @@ final class IsometricRenderer {
     var ceilingIdentities: [GridCoord: String] = [:]
     /// Canonical gate strips on the visible story — used for entity/gate occlusion.
     var gateOccluders: [PlaceholderFactory.GateOccluder] = []
+    /// Strips whose sprite is mid-dissolve. `openGate` has already turned their cells into
+    /// floor, so these are all that keeps the fading art sorted against nearby sprites.
+    var dissolvingGateOccluders: [PlaceholderFactory.GateOccluder] = []
     /// Rooms the player can reach without crossing a closed gate; everything else is dark.
     var visibility: RoomVisibility.Result = .empty
     /// Cells revealed by the latest render that are waiting to be faded in.
@@ -81,6 +84,7 @@ final class IsometricRenderer {
         ceilingNodes.removeAll()
         ceilingIdentities.removeAll()
         gateOccluders = []
+        dissolvingGateOccluders = []
         visibility = .empty
         revealFadeCells.removeAll()
         revealFadeEntityIDs.removeAll()

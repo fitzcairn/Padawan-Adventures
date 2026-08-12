@@ -10,6 +10,21 @@ extension PlaceholderFactory {
         var sortCoord: GridCoord
     }
 
+    /// Occluder for the 2-tile gate strip containing `coord`, keyed to the strip's
+    /// canonical cell so both cells of a strip describe the same sprite.
+    static func gateOccluder(at coord: GridCoord, in world: GameWorld) -> GateOccluder? {
+        guard case .gate(let minigame) = world.tile(at: coord)?.kind,
+              let strip = gateStrip(at: coord, minigame: minigame, in: world) else { return nil }
+        let cell = strip.isCanonical ? coord : strip.partner
+        let partner = strip.isCanonical ? strip.partner : coord
+        return GateOccluder(
+            axis: strip.axis,
+            cell: cell,
+            partner: partner,
+            sortCoord: (cell.x + cell.y) >= (partner.x + partner.y) ? cell : partner
+        )
+    }
+
     /// Canonical gate strips in `world` on `story` (one entry per sprite, not per cell).
     static func gateOccluders(in world: GameWorld, story: Int) -> [GateOccluder] {
         var result: [GateOccluder] = []
@@ -18,21 +33,11 @@ extension PlaceholderFactory {
         for y in 0..<world.height {
             for x in 0..<world.width {
                 let coord = GridCoord(x: x, y: y, story: story)
-                guard case .gate(let minigame) = world.tile(at: coord)?.kind else { continue }
-                guard let strip = gateStrip(at: coord, minigame: minigame, in: world) else { continue }
-                guard strip.isCanonical else { continue }
-                guard seen.insert(coord).inserted else { continue }
-                seen.insert(strip.partner)
-                let sortCoord = (coord.x + coord.y) >= (strip.partner.x + strip.partner.y)
-                    ? coord : strip.partner
-                result.append(
-                    GateOccluder(
-                        axis: strip.axis,
-                        cell: coord,
-                        partner: strip.partner,
-                        sortCoord: sortCoord
-                    )
-                )
+                guard let occluder = gateOccluder(at: coord, in: world) else { continue }
+                guard occluder.cell == coord else { continue }
+                guard seen.insert(occluder.cell).inserted else { continue }
+                seen.insert(occluder.partner)
+                result.append(occluder)
             }
         }
         return result
@@ -67,7 +72,13 @@ extension PlaceholderFactory {
     /// True when the entity is on the camera-near side of the gate (should draw above it).
     ///
     /// Gates are thin walls: `alongX` separates rooms in Y (near = higher Y), `alongY`
-    /// separates rooms in X (near = higher X). Standing on the gate line is neither.
+    /// separates rooms in X (near = higher X).
+    ///
+    /// The gate line itself counts as near. Walking into a gate commits occupancy to the
+    /// gate cell, so the renderer sorts the sprite from a pose sitting exactly on the
+    /// strip; without this a sprite on the strip's back cell loses to the art's front-cell
+    /// z and vanishes into the door it is standing in. Only the strip's own two cells are
+    /// enterable on that line — generation flanks every strip with solid wall.
     static func entityIsInFrontOfGate(
         entityX: Double,
         entityY: Double,
@@ -76,9 +87,9 @@ extension PlaceholderFactory {
     ) -> Bool {
         switch axis {
         case .alongX:
-            return entityY > Double(cell.y)
+            return entityY >= Double(cell.y)
         case .alongY:
-            return entityX > Double(cell.x)
+            return entityX >= Double(cell.x)
         }
     }
 

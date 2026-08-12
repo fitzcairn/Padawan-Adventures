@@ -46,9 +46,11 @@ extension IsometricRenderer {
             on: gateNode,
             revealNodes: revealed,
             referenceHeight: referenceHeight,
-            timingNode: worldRoot,
-            completion: completion
-        )
+            timingNode: worldRoot
+        ) { [weak self] in
+            self?.dissolvingGateOccluders.removeAll()
+            completion()
+        }
     }
 
     func playPickupCollectAnimation(id: UUID, completion: @escaping () -> Void) {

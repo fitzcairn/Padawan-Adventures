@@ -436,6 +436,75 @@ struct PlaceholderFactoryTests {
         #expect(z < gateZ, "entity in the doorway on the far side stays behind the gate")
     }
 
+    /// Walking into a gate commits occupancy to the gate cell, so the renderer sorts the
+    /// player from a pose that sits exactly on the strip. Neither strip cell may lose to
+    /// the gate art, or the player vanishes into the door he is standing in.
+    @Test func entityStandingOnGateStripDrawsAboveTheGate() {
+        let config = IsometricConfig()
+        let alongY = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let alongX = PlaceholderFactory.GateOccluder(
+            axis: .alongX,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 6, y: 4, story: 0),
+            sortCoord: GridCoord(x: 6, y: 4, story: 0)
+        )
+        for gate in [alongY, alongX] {
+            let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+            for cell in [gate.cell, gate.partner] {
+                let z = PlaceholderFactory.entitySortValueAccountingForGates(
+                    x: Double(cell.x),
+                    y: Double(cell.y),
+                    story: cell.story,
+                    gates: [gate],
+                    config: config
+                )
+                #expect(z > gateZ, "entity on \(cell) of a \(gate.axis) strip must stay visible")
+            }
+        }
+    }
+
+    /// A diagonal step into a gate can only land on the strip's back cell — the flanking
+    /// wall blocks the corner cut into the front cell — which is the pose that used to
+    /// lose to the gate's front-cell z.
+    @Test func diagonalApproachLandsOnGateBackCellAndStaysVisible() {
+        // Wall column at x = 5 with a 2-cell gate at y = 4...5; rooms east and west.
+        var world = TestWorldFactory.emptyFloor(width: 9, height: 9)
+        for y in 0..<9 {
+            world.setTile(Tile(kind: .wall), at: GridCoord(x: 5, y: y, story: 0))
+        }
+        let back = GridCoord(x: 5, y: 4, story: 0)
+        let front = GridCoord(x: 5, y: 5, story: 0)
+        for cell in [back, front] {
+            world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: cell)
+        }
+
+        let config = IsometricConfig()
+        let pathfinder = Pathfinder()
+        let neighbors = pathfinder.neighbors(of: GridCoord(x: 6, y: 5, story: 0), in: world)
+        #expect(neighbors.contains(back), "diagonal step onto the back cell is legal")
+        #expect(
+            !pathfinder.neighbors(of: GridCoord(x: 6, y: 6, story: 0), in: world).contains(front),
+            "the flanking wall blocks the corner cut onto the front cell"
+        )
+
+        let gates = PlaceholderFactory.gateOccluders(in: world, story: 0)
+        #expect(gates.map(\.sortCoord) == [front])
+        let gateZ = IsometricMath.wallSortValue(for: front, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(back.x),
+            y: Double(back.y),
+            story: back.story,
+            gates: gates,
+            config: config
+        )
+        #expect(z > gateZ)
+    }
+
     @Test func pickupUsesSameGateOcclusionAsPlayer() {
         let config = IsometricConfig()
         let gate = PlaceholderFactory.GateOccluder(
