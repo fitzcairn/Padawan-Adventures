@@ -26,10 +26,14 @@ final class GateGraphemeMatchScene: MinigameScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GateGraphemeMatchConfig
+        puzzleConfig: GateGraphemeMatchConfig,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.puzzleConfig = puzzleConfig
-        self.engine = GateGraphemeMatchMinigameEngine(config: .init(from: puzzleConfig))
+        self.engine = GateGraphemeMatchMinigameEngine(
+            config: .init(from: puzzleConfig),
+            sampler: vocabularySampler
+        )
         super.init(size: size)
     }
 

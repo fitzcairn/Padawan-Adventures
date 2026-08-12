@@ -478,4 +478,39 @@ struct GateWordPlugMinigameEngineTests {
         #expect(!seen.isDisjoint(with: currentIDs))
         #expect(currentHits > trials / 2)
     }
+
+    @Test func sharedSamplerDoesNotRepeatWordsUntilThePoolWraps() {
+        let poolIDs = ["cat", "dog", "sat", "map", "bun", "hen"]
+        let sampler = LevelVocabularySampler(
+            pool: .singleTier(words: words(poolIDs), graphemes: letters(["c", "d", "s", "m", "b", "h"]))
+        )
+        var first = GateWordPlugMinigameEngine(
+            config: .init(
+                wordCountMin: 3,
+                wordCountMax: 3,
+                words: words(poolIDs),
+                graphemes: letters(["c", "d", "s", "m", "b", "h"])
+            ),
+            rng: SeededGenerator(seed: 1),
+            sampler: sampler
+        )
+        first.begin()
+        var second = GateWordPlugMinigameEngine(
+            config: .init(
+                wordCountMin: 3,
+                wordCountMax: 3,
+                words: words(poolIDs),
+                graphemes: letters(["c", "d", "s", "m", "b", "h"])
+            ),
+            rng: SeededGenerator(seed: 2),
+            sampler: sampler
+        )
+        second.begin()
+        let firstIDs = Set(first.slots.map(\.word))
+        let secondIDs = Set(second.slots.map(\.word))
+        #expect(firstIDs.count == 3)
+        #expect(secondIDs.count == 3)
+        #expect(firstIDs.isDisjoint(with: secondIDs))
+        #expect(firstIDs.union(secondIDs) == Set(poolIDs))
+    }
 }

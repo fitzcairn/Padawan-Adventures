@@ -32,6 +32,9 @@ final class PitBridgeScene: MinigameScene {
     var draggedNode: SKNode?
     var dragOffset: CGPoint = .zero
     var dragStartPosition: CGPoint = .zero
+    var dragTouchStart: CGPoint = .zero
+    var dragMoved = false
+    let tapMoveThreshold: CGFloat = 10
 
     var isJumping = false
     var didRevealTrayForRound = false
@@ -74,7 +77,8 @@ final class PitBridgeScene: MinigameScene {
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
-        playerSpriteConfig: SpriteConfig?
+        playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.bridgeConfig = bridgeConfig
         self.pitFx = pitFx
@@ -83,7 +87,10 @@ final class PitBridgeScene: MinigameScene {
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
-        self.engine = PitBridgeMinigameEngine(config: .init(from: bridgeConfig))
+        self.engine = PitBridgeMinigameEngine(
+            config: .init(from: bridgeConfig),
+            sampler: vocabularySampler
+        )
         super.init(size: size)
     }
 

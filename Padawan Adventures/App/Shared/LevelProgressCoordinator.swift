@@ -30,6 +30,12 @@ extension AppSession {
         selectedPitConfig = level.pit
         selectedGateConfig = level.gate
         selectedCombatConfig = level.combat
+        resetVocabularySampler()
+    }
+
+    /// Fresh unused word/grapheme sets for a new run of the selected level.
+    func resetVocabularySampler() {
+        vocabularySampler = LevelVocabularySampler(pool: selectedLevel.vocabulary)
     }
 
     func markLevelStarted(resourceName: String) async {

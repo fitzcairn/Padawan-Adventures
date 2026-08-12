@@ -89,10 +89,14 @@ final class GateSoundOutWordScene: MinigameScene {
 
     init(
         size: CGSize,
-        puzzleConfig: GateSoundOutWordConfig
+        puzzleConfig: GateSoundOutWordConfig,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.puzzleConfig = puzzleConfig
-        self.engine = GateSoundOutWordEngine(config: .init(from: puzzleConfig))
+        self.engine = GateSoundOutWordEngine(
+            config: .init(from: puzzleConfig),
+            sampler: vocabularySampler
+        )
         super.init(size: size)
     }
 

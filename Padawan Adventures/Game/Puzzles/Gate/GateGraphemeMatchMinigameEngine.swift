@@ -75,10 +75,16 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
     private var elapsed: Double = 0
     private var nextCueReplayAt: Double = .infinity
     private var rng: any RandomNumberGenerator
+    private let sampler: LevelVocabularySampler
 
-    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+    init(
+        config: Config,
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        sampler: LevelVocabularySampler? = nil
+    ) {
         self.config = config
         self.rng = rng
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
     }
 
     var currentTarget: LetterToken? {
@@ -171,7 +177,6 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
             poolSize: poolSize,
             rng: &rng
         )
-        var sampler = LevelVocabularySampler(pool: config.vocabulary)
         let picked = sampler.takeGraphemes(count: count, using: &rng)
         var tokens: [LetterToken] = []
         tokens.reserveCapacity(picked.count)

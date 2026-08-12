@@ -104,6 +104,7 @@ final class CombatScene: MinigameScene {
         maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         vocabulary: LevelVocabularyPool = .fallback,
+        vocabularySampler: LevelVocabularySampler? = nil,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -130,7 +131,8 @@ final class CombatScene: MinigameScene {
                 graphemeCase: graphemeCase,
                 vocabulary: vocabulary
             ),
-            startingHealth: startingHealth
+            startingHealth: startingHealth,
+            sampler: vocabularySampler
         )
         super.init(size: size)
     }

@@ -13,6 +13,7 @@ struct EnemyMinigameView: View {
     let maxDecoyCount: Int
     let graphemeCase: CombatGraphemeCase
     let vocabulary: LevelVocabularyPool
+    let vocabularySampler: LevelVocabularySampler?
     let slashMaxSeconds: Double
     let slashMaxScreenWidthFraction: Double
     let spriteLibrary: SpriteLibrary
@@ -34,6 +35,7 @@ struct EnemyMinigameView: View {
         maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         vocabulary: LevelVocabularyPool = .fallback,
+        vocabularySampler: LevelVocabularySampler? = nil,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -52,6 +54,7 @@ struct EnemyMinigameView: View {
         self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.vocabulary = vocabulary
+        self.vocabularySampler = vocabularySampler
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary
@@ -70,6 +73,7 @@ struct EnemyMinigameView: View {
                 maxDecoyCount: maxDecoyCount,
                 graphemeCase: graphemeCase,
                 vocabulary: vocabulary,
+                vocabularySampler: vocabularySampler,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                 spriteLibrary: spriteLibrary,
@@ -132,6 +136,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let maxDecoyCount: Int
     private let graphemeCase: CombatGraphemeCase
     private let vocabulary: LevelVocabularyPool
+    private let vocabularySampler: LevelVocabularySampler?
     private let slashMaxSeconds: Double
     private let slashMaxScreenWidthFraction: Double
     private let spriteLibrary: SpriteLibrary
@@ -141,7 +146,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
     private let wallHeight: CGFloat
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatScene>(
-        make: { [enemyType, playerFx, startingHealth, graphemeSoundRepeatSeconds, minDecoyCount, maxDecoyCount, graphemeCase, vocabulary, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in
+        make: { [enemyType, playerFx, startingHealth, graphemeSoundRepeatSeconds, minDecoyCount, maxDecoyCount, graphemeCase, vocabulary, vocabularySampler, slashMaxSeconds, slashMaxScreenWidthFraction, spriteLibrary, letterSpriteSetLibrary, combatSprite, enemySprite, wallHeight] size in
             CombatScene(
                 size: size,
                 enemyType: enemyType,
@@ -152,6 +157,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
                 maxDecoyCount: maxDecoyCount,
                 graphemeCase: graphemeCase,
                 vocabulary: vocabulary,
+                vocabularySampler: vocabularySampler,
                 slashMaxSeconds: slashMaxSeconds,
                 slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
                 spriteLibrary: spriteLibrary,
@@ -177,6 +183,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         maxDecoyCount: Int = CombatMinigameEngine.Config.defaultMaxDecoyCount,
         graphemeCase: CombatGraphemeCase = .upper,
         vocabulary: LevelVocabularyPool = .fallback,
+        vocabularySampler: LevelVocabularySampler? = nil,
         slashMaxSeconds: Double = EnemyConfig.fallbackSlashMaxSeconds,
         slashMaxScreenWidthFraction: Double = EnemyConfig.fallbackSlashMaxScreenWidthFraction,
         spriteLibrary: SpriteLibrary,
@@ -193,6 +200,7 @@ final class CombatSessionController: ObservableObject, CombatSceneDelegate {
         self.maxDecoyCount = maxDecoyCount
         self.graphemeCase = graphemeCase
         self.vocabulary = vocabulary
+        self.vocabularySampler = vocabularySampler
         self.slashMaxSeconds = slashMaxSeconds
         self.slashMaxScreenWidthFraction = slashMaxScreenWidthFraction
         self.spriteLibrary = spriteLibrary

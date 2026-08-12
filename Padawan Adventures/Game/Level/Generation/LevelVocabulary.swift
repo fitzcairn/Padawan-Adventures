@@ -280,22 +280,22 @@ nonisolated struct LevelVocabularyPool: Equatable, Sendable {
     }
 
     func pickWord(using rng: inout any RandomNumberGenerator) -> GateWord? {
-        var sampler = LevelVocabularySampler(pool: self)
+        let sampler = LevelVocabularySampler(pool: self)
         return sampler.nextWord(refillWhenEmpty: false, using: &rng)
     }
 
     func pickWords(count: Int, using rng: inout any RandomNumberGenerator) -> [GateWord] {
-        var sampler = LevelVocabularySampler(pool: self)
+        let sampler = LevelVocabularySampler(pool: self)
         return sampler.takeWords(count: count, using: &rng)
     }
 
     func pickGrapheme(using rng: inout any RandomNumberGenerator) -> GateGrapheme? {
-        var sampler = LevelVocabularySampler(pool: self)
+        let sampler = LevelVocabularySampler(pool: self)
         return sampler.nextGrapheme(refillWhenEmpty: false, using: &rng)
     }
 
     func pickGraphemes(count: Int, using rng: inout any RandomNumberGenerator) -> [GateGrapheme] {
-        var sampler = LevelVocabularySampler(pool: self)
+        let sampler = LevelVocabularySampler(pool: self)
         return sampler.takeGraphemes(count: count, using: &rng)
     }
 

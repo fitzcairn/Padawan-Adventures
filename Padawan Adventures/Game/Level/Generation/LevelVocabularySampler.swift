@@ -7,23 +7,27 @@ import Foundation
 /// entry from what remains in the tier. Drawn ids are removed until the eligible
 /// remainder is empty; `refillWhenEmpty` then restores the full pool so a long
 /// session can continue.
-nonisolated struct LevelVocabularySampler: Equatable, Sendable {
+///
+/// One instance is owned by the level run (`AppSession.vocabularySampler`) and shared
+/// across minigames so unused current-level words and graphemes keep being drawn
+/// until the pool wraps.
+final class LevelVocabularySampler {
     private(set) var pool: LevelVocabularyPool
     private var remainingWords: [[GateWord]]
     private var remainingGraphemes: [[GateGrapheme]]
 
-    nonisolated init(pool: LevelVocabularyPool) {
+    init(pool: LevelVocabularyPool) {
         self.pool = pool
         remainingWords = pool.tiers.map(\.words)
         remainingGraphemes = Self.identityGraphemes(pool.tiers.map(\.graphemes))
     }
 
-    mutating func reset() {
+    func reset() {
         remainingWords = pool.tiers.map(\.words)
         remainingGraphemes = Self.identityGraphemes(pool.tiers.map(\.graphemes))
     }
 
-    mutating func nextWord(
+    func nextWord(
         excluding excluded: Set<String> = [],
         refillWhenEmpty: Bool = true,
         using rng: inout any RandomNumberGenerator
@@ -35,7 +39,7 @@ nonisolated struct LevelVocabularySampler: Equatable, Sendable {
         )
     }
 
-    mutating func nextWord(
+    func nextWord(
         where isIncluded: (GateWord) -> Bool,
         refillWhenEmpty: Bool = true,
         using rng: inout any RandomNumberGenerator
@@ -49,7 +53,7 @@ nonisolated struct LevelVocabularySampler: Equatable, Sendable {
         )
     }
 
-    mutating func nextGrapheme(
+    func nextGrapheme(
         excluding excluded: Set<String> = [],
         refillWhenEmpty: Bool = true,
         using rng: inout any RandomNumberGenerator
@@ -62,7 +66,7 @@ nonisolated struct LevelVocabularySampler: Equatable, Sendable {
         )
     }
 
-    mutating func nextGrapheme(
+    func nextGrapheme(
         where isIncluded: (GateGrapheme) -> Bool,
         refillWhenEmpty: Bool = true,
         using rng: inout any RandomNumberGenerator
@@ -76,37 +80,66 @@ nonisolated struct LevelVocabularySampler: Equatable, Sendable {
         )
     }
 
-    /// Batch draw that never refills, so the result has no duplicates.
-    mutating func takeWords(
+    /// Batch draw. Does not repeat ids within the batch; if the unused set runs out
+    /// mid-batch, refills the full pool and continues (same wrap as sequential draws).
+    func takeWords(
         count: Int,
         excluding excluded: Set<String> = [],
         using rng: inout any RandomNumberGenerator
     ) -> [GateWord] {
         guard count > 0 else { return [] }
         var out: [GateWord] = []
+        var seen = excluded
+        var didRefill = false
         out.reserveCapacity(count)
         while out.count < count {
-            guard let item = nextWord(excluding: excluded, refillWhenEmpty: false, using: &rng) else {
+            if let item = nextWord(excluding: seen, refillWhenEmpty: false, using: &rng) {
+                seen.insert(item.word)
+                out.append(item)
+                continue
+            }
+            guard !didRefill,
+                  let item = nextWord(excluding: seen, refillWhenEmpty: true, using: &rng) else {
                 break
             }
+            didRefill = true
+            seen.insert(item.word)
             out.append(item)
         }
         return out
     }
 
-    /// Batch draw that never refills, so the result has no duplicates.
-    mutating func takeGraphemes(
+    /// Batch draw. Does not repeat ids within the batch; if the unused set runs out
+    /// mid-batch, refills the full pool and continues (same wrap as sequential draws).
+    func takeGraphemes(
         count: Int,
         excluding excluded: Set<String> = [],
+        where isIncluded: ((GateGrapheme) -> Bool)? = nil,
         using rng: inout any RandomNumberGenerator
     ) -> [GateGrapheme] {
         guard count > 0 else { return [] }
+        let ids = Set(excluded.map { $0.lowercased() })
         var out: [GateGrapheme] = []
+        var seen = ids
+        var didRefill = false
         out.reserveCapacity(count)
         while out.count < count {
-            guard let item = nextGrapheme(excluding: excluded, refillWhenEmpty: false, using: &rng) else {
+            let matches: (GateGrapheme) -> Bool = { entry in
+                let id = entry.grapheme.lowercased()
+                guard !seen.contains(id) else { return false }
+                return isIncluded?(entry) ?? true
+            }
+            if let item = nextGrapheme(where: matches, refillWhenEmpty: false, using: &rng) {
+                seen.insert(item.grapheme.lowercased())
+                out.append(item)
+                continue
+            }
+            guard !didRefill,
+                  let item = nextGrapheme(where: matches, refillWhenEmpty: true, using: &rng) else {
                 break
             }
+            didRefill = true
+            seen.insert(item.grapheme.lowercased())
             out.append(item)
         }
         return out
@@ -123,8 +156,12 @@ nonisolated struct LevelVocabularySampler: Equatable, Sendable {
             return item
         }
         guard refillWhenEmpty else { return nil }
-        remaining = refill()
-        return draw(from: &remaining, isIncluded: isIncluded, using: &rng)
+        var restored = refill()
+        guard let item = draw(from: &restored, isIncluded: isIncluded, using: &rng) else {
+            return nil
+        }
+        remaining = restored
+        return item
     }
 
     private func draw<T>(

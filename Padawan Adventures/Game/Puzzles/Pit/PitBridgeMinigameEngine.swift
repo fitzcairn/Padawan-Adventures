@@ -82,6 +82,7 @@ nonisolated struct PitBridgeMinigameEngine {
     private(set) var outcome: MinigameOutcome?
 
     private var rng: any RandomNumberGenerator
+    private let sampler: LevelVocabularySampler
 
     private static let alphabet = Array("abcdefghijklmnopqrstuvwxyz").map(String.init)
 
@@ -118,9 +119,14 @@ nonisolated struct PitBridgeMinigameEngine {
         return config.letterPosition.maskedText(for: entry)
     }
 
-    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+    init(
+        config: Config,
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        sampler: LevelVocabularySampler? = nil
+    ) {
         self.config = config
         self.rng = rng
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
     }
 
     mutating func begin() {
@@ -139,7 +145,6 @@ nonisolated struct PitBridgeMinigameEngine {
         let upper = min(config.maxWords, poolSize)
         let lower = min(max(1, config.minWords), upper)
         let n = Int.random(in: lower...upper, using: &rng)
-        var sampler = LevelVocabularySampler(pool: config.vocabulary)
         words = sampler.takeWords(count: n, using: &rng)
         choices = makeChoices(for: currentAnswer)
     }

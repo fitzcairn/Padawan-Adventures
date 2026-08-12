@@ -60,6 +60,7 @@ world:
 
   vocabulary:
     # P(draw from the current level's set); earlier levels split the rest geometrically.
+    # Unused words/graphemes persist across minigames in a run, then the pool refills.
     current_level_probability: 0.75
 
 # Combat minigames (one is baked onto each enemy at generation, weighted without
@@ -71,15 +72,17 @@ world:
 #   fanned, equal-speed curves. Slash the matching letter to reflect it into the enemy and
 #   score; slashing a decoy stops that letter (flash + explode) while the rest keep flying.
 #   Letting any letter reach you costs one heart. Target graphemes are sampled without
-#   replacement from the cumulative vocab (current-level graphemes more likely; case is
-#   not part of identity). After a grapheme is chosen, `grapheme_case` is drawn for
-#   single letters only; multi-letter graphemes stay lowercase. Decoys may repeat.
+#   replacement from the run's unused set (current-level graphemes more likely; case is
+#   not part of identity), shared with other minigames until that set is empty, then
+#   refilled. After a grapheme is chosen, `grapheme_case` is drawn for single letters
+#   only; multi-letter graphemes stay lowercase. Decoys may repeat.
 #   Flight time comes from enemies.yaml. Stars = waves cleared.
 # `starting-sound-combat`: monster throws a word with its first grapheme blanked; tap the
 #   orb to hear the word, then tap the ring for that missing sound. A wrong ring flashes
 #   the letter in red on the blank and replays the word — the orb keeps flying. `ring_count`
-#   (2–6) samples that many graphemes without replacement from the cumulative pool
-#   (current-level graphemes more likely). Thrown words are sampled the same way from
+#   (2–6) samples that many graphemes without replacement from the run's unused set
+#   (current-level graphemes more likely), shared with other minigames until that set
+#   is empty, then refilled. Thrown words are sampled the same way from
 #   imaged pool entries; they must have only one valid ring answer for the visible blank
 #   (no sit/sip or tris/trip collisions). Spellings avoid repeats until the unambiguous
 #   pool is exhausted. Stars = orbs deflected.
@@ -113,11 +116,15 @@ combat:
 # Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
 # `sound-out-word-pit`: sound out the word one grapheme at a time. Each grapheme fades in a
 #   set of blank tiles; drag Kam onto the one whose sound comes next. Stars = graphemes in the
-#   word. Words are imaged entries from the level pool whose graphemes are all in the pool.
-#   Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
+#   word. Words are imaged entries from the level pool whose graphemes are all in the pool,
+#   sampled from the run's unused set like other minigames. Each turn's extra option
+#   graphemes are drawn from that same unused grapheme set (same-length preferred) and
+#   added to the correct grapheme. Set size is `min_choice_count`...`max_choice_count`
+#   (2...6), rolled per grapheme.
 # `ending-sound-pit`: drag the tile whose letter is the word's end sound into the dashed slot.
 #   Words are imaged pool entries (>= 2 graphemes), sampled without replacement from the
-#   cumulative vocab (current-level words more likely). The prompt shows that image and
+#   run's unused set (current-level words more likely), shared with other minigames until
+#   that set is empty, then refilled. The prompt shows that image and
 #   plays the word's sfx. Pool must hold at least `max_word_count` entries. Stars = words placed.
 # `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
 #   FIRST letter (`_og` for dog). Same pool rules. Stars = words placed.
@@ -149,16 +156,20 @@ pit:
 # `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
 #   Plays the starting-letter pronunciation when a plug is picked up. Word count snaps to a
 #   multiple of 3 in `min_word_count`...`max_word_count`. Words are sampled without replacement
-#   from the cumulative vocab (current-level words more likely); tray letters stay unique.
+#   from the run's unused set (current-level words more likely), shared with other minigames
+#   until that set is empty, then refilled; tray letters stay unique.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
 #   LAST letter (`do_` for dog) and the socket sits to the right of the plate.
 # `sound-out-word-gate`: sound out the prompted word one grapheme at a time. Each grapheme offers a
 #   set of blank capacitors; drag the right one into the play area, left to right. Stars = graphemes
-#   in the word. Set size is `min_choice_count`...`max_choice_count` (2...6), rolled per grapheme.
+#   in the word. Extra options are drawn from the run's unused grapheme set (same-length preferred)
+#   and added to the correct grapheme. Set size is `min_choice_count`...`max_choice_count` (2...6),
+#   rolled per grapheme.
 # `grapheme-sound-gate`: hear a letter pronunciation and tap the matching switch. Stars = graphemes matched.
 #   Round size is `min_grapheme_count`...`max_grapheme_count` clamped to the pool.
-#   Graphemes are sampled without replacement from the cumulative vocab (current-level
-#   graphemes more likely; case is not part of identity). After a grapheme is chosen,
+#   Graphemes are sampled without replacement from the run's unused set (current-level
+#   graphemes more likely; case is not part of identity), shared with other minigames
+#   until that set is empty, then refilled. After a grapheme is chosen,
 #   `grapheme_case` (`lower`, `upper`, or `both`) is drawn for single letters only;
 #   multi-letter graphemes stay lowercase. Idle replay uses `grapheme_sound_repeat_seconds`
 #   from the last sound played.

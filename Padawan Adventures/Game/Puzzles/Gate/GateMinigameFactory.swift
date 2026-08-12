@@ -6,6 +6,7 @@ enum GateMinigameFactory {
         config: GateMinigameConfig,
         playerFx: SoundEffectTable,
         hudConfig: HudConfig,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         switch config {
@@ -13,17 +14,20 @@ enum GateMinigameFactory {
             GateSoundOutWordMinigameView(
                 puzzleConfig: soundOutWord,
                 hudConfig: hudConfig,
+                vocabularySampler: vocabularySampler,
                 onFinished: onFinished
             )
         case .graphemeMatch(let graphemeMatch):
             GateGraphemeMatchMinigameView(
                 puzzleConfig: graphemeMatch,
+                vocabularySampler: vocabularySampler,
                 onFinished: onFinished
             )
         case .wordPlug(let wordPlug):
             GateWordPlugMinigameView(
                 puzzleConfig: wordPlug,
                 playerFx: playerFx,
+                vocabularySampler: vocabularySampler,
                 onFinished: onFinished
             )
         }

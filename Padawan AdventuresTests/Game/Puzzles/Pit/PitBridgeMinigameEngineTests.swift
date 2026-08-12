@@ -248,4 +248,26 @@ struct PitBridgeMinigameEngineTests {
         #expect(!seen.isDisjoint(with: currentIDs))
         #expect(currentHits > trials / 2)
     }
+
+    @Test func sharedSamplerDoesNotRepeatWordsUntilThePoolWraps() {
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: pool))
+        var first = PitBridgeMinigameEngine(
+            config: .init(minWords: 3, maxWords: 3, words: pool),
+            rng: PitSeededGenerator(seed: 1),
+            sampler: sampler
+        )
+        first.begin()
+        var second = PitBridgeMinigameEngine(
+            config: .init(minWords: 3, maxWords: 3, words: pool),
+            rng: PitSeededGenerator(seed: 2),
+            sampler: sampler
+        )
+        second.begin()
+        let firstIDs = Set(first.words.map(\.word))
+        let secondIDs = Set(second.words.map(\.word))
+        #expect(firstIDs.count == 3)
+        #expect(secondIDs.count == 3)
+        #expect(firstIDs.isDisjoint(with: secondIDs))
+        #expect(firstIDs.union(secondIDs) == Set(poolIDs))
+    }
 }

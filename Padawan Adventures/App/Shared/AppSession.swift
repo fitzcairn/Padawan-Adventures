@@ -21,6 +21,8 @@ final class AppSession {
     var selectedGateConfig: GateConfig
     /// Combat minigame variants + weights for the selected level.
     var selectedCombatConfig: CombatConfig
+    /// Shared without-replacement word/grapheme draws for the current level run.
+    var vocabularySampler: LevelVocabularySampler
 
     /// App + level knobs for procedural generation / save-size checks.
     var generationConfig: WorldGenerationConfig {
@@ -88,6 +90,7 @@ final class AppSession {
         self.selectedPitConfig = selectedPitConfig ?? selectedLevel.pit
         self.selectedGateConfig = selectedGateConfig ?? selectedLevel.gate
         self.selectedCombatConfig = selectedCombatConfig ?? selectedLevel.combat
+        self.vocabularySampler = LevelVocabularySampler(pool: selectedLevel.vocabulary)
         // Default-argument expressions are nonisolated; resolve MainActor defaults in-body.
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback

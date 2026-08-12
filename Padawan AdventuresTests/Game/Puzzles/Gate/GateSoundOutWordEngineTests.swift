@@ -181,6 +181,75 @@ struct GateSoundOutWordEngineTests {
         )
         #expect(engine.drop(choiceID: UUID(), isPlacementValid: true) == .rejected)
     }
+
+    @Test func choiceDecoysPreferMatchingGraphemeLength() {
+        let stop = GateWord(
+            word: "stop",
+            image: nil,
+            sfx: "sfx_word_stop",
+            graphemes: ["st", "o", "p"]
+        )
+        let pool = graphemes(["s", "t", "o", "p", "st", "sh", "th"])
+        var engine = GateSoundOutWordEngine(
+            config: .init(
+                choiceCountMin: 2,
+                choiceCountMax: 2,
+                words: [stop],
+                graphemes: pool
+            ),
+            rng: GateSeededGenerator(seed: 8)
+        )
+        engine.begin()
+        let first = engine.choiceSets[0].map(\.grapheme)
+        #expect(first.contains("st"))
+        #expect(first.allSatisfy { $0.count == 2 })
+        #expect(Set(first).isSubset(of: ["st", "sh", "th"]))
+    }
+
+    @Test func sharedSamplerDoesNotRepeatChoiceDecoysUntilThePoolWraps() {
+        let poolIDs = ["a", "b", "c", "d", "e", "f", "g", "h"]
+        let sampler = LevelVocabularySampler(
+            pool: .singleTier(words: words(["bad"]), graphemes: graphemes(poolIDs))
+        )
+        var first = GateSoundOutWordEngine(
+            config: .init(
+                choiceCountMin: 2,
+                choiceCountMax: 2,
+                words: words(["bad"]),
+                graphemes: graphemes(poolIDs)
+            ),
+            rng: GateSeededGenerator(seed: 1),
+            sampler: sampler
+        )
+        first.begin()
+        var second = GateSoundOutWordEngine(
+            config: .init(
+                choiceCountMin: 2,
+                choiceCountMax: 2,
+                words: words(["bad"]),
+                graphemes: graphemes(poolIDs)
+            ),
+            rng: GateSeededGenerator(seed: 2),
+            sampler: sampler
+        )
+        second.begin()
+        let firstDecoys = decoys(in: first)
+        let secondDecoys = decoys(in: second)
+        #expect(firstDecoys.count == 3)
+        #expect(secondDecoys.count == 3)
+        #expect(firstDecoys.isDisjoint(with: secondDecoys))
+    }
+
+    private func decoys(in engine: GateSoundOutWordEngine) -> Set<String> {
+        var ids: Set<String> = []
+        for (index, set) in engine.choiceSets.enumerated() {
+            let answer = engine.grapheme(at: index)
+            for choice in set where choice.grapheme != answer {
+                ids.insert(choice.grapheme)
+            }
+        }
+        return ids
+    }
 }
 
 /// Deterministic RNG for gate puzzle tests.

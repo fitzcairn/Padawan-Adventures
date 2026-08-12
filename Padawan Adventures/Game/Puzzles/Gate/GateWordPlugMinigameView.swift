@@ -6,6 +6,7 @@ import UIKit
 struct GateWordPlugMinigameView: View {
     let puzzleConfig: GateWordPlugConfig
     let playerFx: SoundEffectTable
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateWordPlugSessionController
@@ -13,15 +14,18 @@ struct GateWordPlugMinigameView: View {
     init(
         puzzleConfig: GateWordPlugConfig,
         playerFx: SoundEffectTable,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateWordPlugSessionController(
                 puzzleConfig: puzzleConfig,
-                playerFx: playerFx
+                playerFx: playerFx,
+                vocabularySampler: vocabularySampler
             )
         )
     }
@@ -58,13 +62,15 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
 
     private let puzzleConfig: GateWordPlugConfig
     private let playerFx: SoundEffectTable
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<GateWordPlugScene>(
-        make: { [puzzleConfig, playerFx] size in
+        make: { [puzzleConfig, playerFx, vocabularySampler] size in
             GateWordPlugScene(
                 size: size,
                 puzzleConfig: puzzleConfig,
-                playerFx: playerFx
+                playerFx: playerFx,
+                vocabularySampler: vocabularySampler
             )
         },
         onReady: { [weak self] created in
@@ -76,10 +82,12 @@ final class GateWordPlugSessionController: ObservableObject, GateWordPlugSceneDe
 
     init(
         puzzleConfig: GateWordPlugConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
+        self.vocabularySampler = vocabularySampler
     }
 
     func ensureScene(size: CGSize) {

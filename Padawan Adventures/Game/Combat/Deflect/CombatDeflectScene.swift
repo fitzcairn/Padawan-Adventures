@@ -128,7 +128,8 @@ final class CombatDeflectScene: MinigameScene {
         enemySprite: (id: String, config: SpriteConfig)?,
         projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
-        isoSquash: CGFloat
+        isoSquash: CGFloat,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.enemyType = enemyType
         self.playerFx = playerFx
@@ -140,7 +141,8 @@ final class CombatDeflectScene: MinigameScene {
         self.isoSquash = isoSquash
         self.engine = CombatDeflectMinigameEngine(
             config: .init(from: deflectConfig),
-            startingHealth: startingHealth
+            startingHealth: startingHealth,
+            sampler: vocabularySampler
         )
         super.init(size: size)
     }

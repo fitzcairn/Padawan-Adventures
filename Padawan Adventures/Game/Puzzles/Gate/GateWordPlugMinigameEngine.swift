@@ -78,10 +78,16 @@ nonisolated struct GateWordPlugMinigameEngine {
     private(set) var outcome: MinigameOutcome?
 
     private var rng: any RandomNumberGenerator
+    private let sampler: LevelVocabularySampler
 
-    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+    init(
+        config: Config,
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        sampler: LevelVocabularySampler? = nil
+    ) {
         self.config = config
         self.rng = rng
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
     }
 
     func slot(id: UUID) -> WordSlot? {
@@ -204,16 +210,21 @@ nonisolated struct GateWordPlugMinigameEngine {
     private mutating func pickWordsWithDistinctAnswers(count: Int) -> [GateWord] {
         var chosen: [GateWord] = []
         var usedAnswers = Set<String>()
-        var sampler = LevelVocabularySampler(pool: config.vocabulary)
+        var didRefill = false
         let letterPosition = config.letterPosition
         while chosen.count < count {
             var localRng = rng
-            let picked = sampler.nextWord(where: { entry in
+            let matches: (GateWord) -> Bool = { entry in
                 guard let answer = letterPosition.answerGrapheme(in: entry) else {
                     return false
                 }
                 return !usedAnswers.contains(answer)
-            }, refillWhenEmpty: false, using: &localRng)
+            }
+            var picked = sampler.nextWord(where: matches, refillWhenEmpty: false, using: &localRng)
+            if picked == nil, !didRefill {
+                picked = sampler.nextWord(where: matches, refillWhenEmpty: true, using: &localRng)
+                didRefill = true
+            }
             rng = localRng
             guard let entry = picked,
                   let answer = letterPosition.answerGrapheme(in: entry) else {

@@ -5,19 +5,23 @@ import UIKit
 
 struct GateGraphemeMatchMinigameView: View {
     let puzzleConfig: GateGraphemeMatchConfig
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateGraphemeMatchSessionController
 
     init(
         puzzleConfig: GateGraphemeMatchConfig,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: GateGraphemeMatchSessionController(
-                puzzleConfig: puzzleConfig
+                puzzleConfig: puzzleConfig,
+                vocabularySampler: vocabularySampler
             )
         )
     }
@@ -49,12 +53,14 @@ final class GateGraphemeMatchSessionController: ObservableObject, GateGraphemeMa
     @Published private(set) var scene: GateGraphemeMatchScene?
 
     private let puzzleConfig: GateGraphemeMatchConfig
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<GateGraphemeMatchScene>(
-        make: { [puzzleConfig] size in
+        make: { [puzzleConfig, vocabularySampler] size in
             GateGraphemeMatchScene(
                 size: size,
-                puzzleConfig: puzzleConfig
+                puzzleConfig: puzzleConfig,
+                vocabularySampler: vocabularySampler
             )
         },
         onReady: { [weak self] created in
@@ -64,8 +70,12 @@ final class GateGraphemeMatchSessionController: ObservableObject, GateGraphemeMa
         }
     )
 
-    init(puzzleConfig: GateGraphemeMatchConfig) {
+    init(
+        puzzleConfig: GateGraphemeMatchConfig,
+        vocabularySampler: LevelVocabularySampler? = nil
+    ) {
         self.puzzleConfig = puzzleConfig
+        self.vocabularySampler = vocabularySampler
     }
 
     func ensureScene(size: CGSize) {

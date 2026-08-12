@@ -33,7 +33,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func takeWordsDoesNotRepeat() {
         let words = ["at", "sat", "sit", "pat", "nap", "pan"].map(word)
-        var sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 11)
         let picked = sampler.takeWords(count: 4, using: &rng)
         #expect(picked.count == 4)
@@ -42,7 +42,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func takeGraphemesDoesNotRepeat() {
         let graphemes = ["s", "a", "t", "p", "i", "n"].map(grapheme)
-        var sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
+        let sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 3)
         let picked = sampler.takeGraphemes(count: 5, using: &rng)
         #expect(picked.count == 5)
@@ -51,7 +51,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func takeWordsStopsWhenPoolIsExhausted() {
         let words = ["at", "sat"].map(word)
-        var sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 1)
         let picked = sampler.takeWords(count: 5, using: &rng)
         #expect(Set(picked.map(\.word)) == ["at", "sat"])
@@ -59,7 +59,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func nextWordRefillsAfterExhaustion() {
         let words = ["at", "sat"].map(word)
-        var sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 2)
         var seen: [String] = []
         for _ in 0..<4 {
@@ -75,7 +75,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func nextGraphemeSkipsExcludedIdsUntilRefill() {
         let graphemes = ["s", "a", "t"].map(grapheme)
-        var sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
+        let sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 4)
         var seen: [String] = []
         var last = ""
@@ -94,7 +94,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func graphemeIdentityIgnoresCase() {
         let graphemes = ["s", "S", "a", "A"].map(grapheme)
-        var sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
+        let sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 1)
         let picked = sampler.takeGraphemes(count: 5, using: &rng)
         #expect(picked.count == 2)
@@ -103,7 +103,7 @@ struct LevelVocabularySamplerTests {
 
     @Test func nextGraphemeExcludingIgnoresCase() {
         let graphemes = ["s", "a"].map(grapheme)
-        var sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
+        let sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 2)
         let first = sampler.nextGrapheme(excluding: ["S"], using: &rng)
         #expect(first?.grapheme == "a")
@@ -114,7 +114,7 @@ struct LevelVocabularySamplerTests {
         var currentHits = 0
         let trials = 200
         for seed in UInt64(1)...UInt64(trials) {
-            var sampler = LevelVocabularySampler(pool: spec.pool)
+            let sampler = LevelVocabularySampler(pool: spec.pool)
             var rng: any RandomNumberGenerator = SeededGenerator(seed: seed)
             guard let picked = sampler.nextWord(using: &rng) else {
                 Issue.record("expected a word")
@@ -130,7 +130,7 @@ struct LevelVocabularySamplerTests {
         var currentHits = 0
         let trials = 200
         for seed in UInt64(1)...UInt64(trials) {
-            var sampler = LevelVocabularySampler(pool: spec.pool)
+            let sampler = LevelVocabularySampler(pool: spec.pool)
             var rng: any RandomNumberGenerator = SeededGenerator(seed: seed)
             guard let picked = sampler.nextGrapheme(using: &rng) else {
                 Issue.record("expected a grapheme")
@@ -145,7 +145,7 @@ struct LevelVocabularySamplerTests {
         let spec = twoTierGraphemePool()
         var seen: Set<String> = []
         for seed in UInt64(1)...80 {
-            var sampler = LevelVocabularySampler(pool: spec.pool)
+            let sampler = LevelVocabularySampler(pool: spec.pool)
             var rng: any RandomNumberGenerator = SeededGenerator(seed: seed)
             seen.formUnion(sampler.takeGraphemes(count: 3, using: &rng).map(\.grapheme))
         }
@@ -155,11 +155,60 @@ struct LevelVocabularySamplerTests {
 
     @Test func resetRestoresTheFullPool() {
         let words = ["at", "sat", "sit"].map(word)
-        var sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
         var rng: any RandomNumberGenerator = SeededGenerator(seed: 8)
         _ = sampler.takeWords(count: 3, using: &rng)
-        #expect(sampler.takeWords(count: 1, using: &rng).isEmpty)
+        #expect(sampler.nextWord(refillWhenEmpty: false, using: &rng) == nil)
         sampler.reset()
         #expect(sampler.takeWords(count: 3, using: &rng).count == 3)
+    }
+
+    @Test func unusedSetPersistsAcrossTakesUntilThePoolWraps() {
+        let words = ["at", "sat", "sit", "pat", "nap", "pan"].map(word)
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 12)
+        let first = Set(sampler.takeWords(count: 3, using: &rng).map(\.word))
+        let second = Set(sampler.takeWords(count: 3, using: &rng).map(\.word))
+        #expect(first.count == 3)
+        #expect(second.count == 3)
+        #expect(first.isDisjoint(with: second))
+        #expect(first.union(second) == Set(words.map(\.word)))
+    }
+
+    @Test func takeWordsRefillsWhenStartingFromAnEmptyUnusedSet() {
+        let words = ["at", "sat", "sit"].map(word)
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 9)
+        #expect(Set(sampler.takeWords(count: 3, using: &rng).map(\.word)) == ["at", "sat", "sit"])
+        let wrapped = sampler.takeWords(count: 3, using: &rng)
+        #expect(Set(wrapped.map(\.word)) == ["at", "sat", "sit"])
+    }
+
+    @Test func takeWordsRefillsMidBatchAfterUnusedRunsOut() {
+        let words = ["at", "sat", "sit", "pat"].map(word)
+        let sampler = LevelVocabularySampler(pool: .singleTier(words: words))
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 10)
+        let first = Set(sampler.takeWords(count: 3, using: &rng).map(\.word))
+        let second = sampler.takeWords(count: 3, using: &rng)
+        #expect(first.count == 3)
+        #expect(second.count == 3)
+        #expect(Set(second.map(\.word)).count == 3)
+        let leftover = Set(words.map(\.word)).subtracting(first)
+        #expect(leftover.count == 1)
+        #expect(leftover.isSubset(of: Set(second.map(\.word))))
+    }
+
+    @Test func takeGraphemesWhereDoesNotConsumeFilteredOutIds() {
+        let graphemes = ["s", "a", "sh", "th"].map(grapheme)
+        let sampler = LevelVocabularySampler(pool: .singleTier(graphemes: graphemes))
+        var rng: any RandomNumberGenerator = SeededGenerator(seed: 6)
+        let singles = sampler.takeGraphemes(count: 10, where: { $0.grapheme.count == 1 }, using: &rng)
+        #expect(Set(singles.map(\.grapheme)) == ["s", "a"])
+        #expect(sampler.nextGrapheme(where: { $0.grapheme.count == 1 }, refillWhenEmpty: false, using: &rng) == nil)
+        let rest = [
+            sampler.nextGrapheme(refillWhenEmpty: false, using: &rng),
+            sampler.nextGrapheme(refillWhenEmpty: false, using: &rng),
+        ].compactMap { $0 }
+        #expect(Set(rest.map(\.grapheme)) == ["sh", "th"])
     }
 }

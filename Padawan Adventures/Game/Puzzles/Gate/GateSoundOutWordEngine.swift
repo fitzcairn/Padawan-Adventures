@@ -72,6 +72,7 @@ nonisolated struct GateSoundOutWordEngine {
     private(set) var outcome: MinigameOutcome?
 
     private var rng: any RandomNumberGenerator
+    private let sampler: LevelVocabularySampler
 
     /// Full-word pronunciation track (opening cue, picture taps, and the win read-back).
     var wordTrackID: String { targetEntry.sound }
@@ -102,17 +103,21 @@ nonisolated struct GateSoundOutWordEngine {
         return currentChoices.contains { $0.grapheme.lowercased() == answer }
     }
 
-    init(config: Config, rng: some RandomNumberGenerator = SystemRandomNumberGenerator()) {
+    init(
+        config: Config,
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        sampler: LevelVocabularySampler? = nil
+    ) {
         self.config = config
         self.rng = rng
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
     }
 
     mutating func begin() {
         isActive = true
         outcome = nil
         placedCount = 0
-        var sampler = LevelVocabularySampler(pool: config.vocabulary)
-        let picked = sampler.nextWord(refillWhenEmpty: false, using: &rng)
+        let picked = sampler.nextWord(using: &rng)
             ?? config.words.randomElement(using: &rng)
             ?? .fallbackEntry(word: "cat")
         targetEntry = picked
@@ -174,27 +179,45 @@ nonisolated struct GateSoundOutWordEngine {
         return config.graphemes.first { $0.grapheme == key }
     }
 
-    /// One shuffled set per grapheme: the answer plus distinct decoys from the catalog.
-    /// Prefer decoys whose character length matches the answer so digraphs do not sit
-    /// beside single letters; fall back to the full pool when that set is empty.
+    /// One shuffled set per grapheme: the answer plus distinct decoys from the run's
+    /// unused grapheme set. Prefer decoys whose character length matches the answer so
+    /// digraphs do not sit beside single letters; fall back to any unused grapheme when
+    /// that filtered set is empty. The answer itself is not consumed.
     private mutating func buildChoiceSets(for graphemes: [String]) -> [[Choice]] {
-        let pool = config.graphemes.map(\.grapheme)
-        return graphemes.map { answer in
-            let requested = Int.random(
-                in: config.choiceCountMin...config.choiceCountMax,
+        var sets: [[Choice]] = []
+        sets.reserveCapacity(graphemes.count)
+        for answer in graphemes {
+            sets.append(makeChoiceSet(answer: answer))
+        }
+        return sets
+    }
+
+    private mutating func makeChoiceSet(answer: String) -> [Choice] {
+        let answerKey = answer.lowercased()
+        let requested = Int.random(
+            in: config.choiceCountMin...config.choiceCountMax,
+            using: &rng
+        )
+        let decoyCount = max(requested - 1, 0)
+        let answerLength = answerKey.count
+        var decoys = sampler.takeGraphemes(
+            count: decoyCount,
+            excluding: [answerKey],
+            where: { $0.grapheme.count == answerLength },
+            using: &rng
+        )
+        if decoys.count < decoyCount {
+            let extra = sampler.takeGraphemes(
+                count: decoyCount - decoys.count,
+                excluding: Set([answerKey] + decoys.map { $0.grapheme.lowercased() }),
                 using: &rng
             )
-            let lengthMatched = pool.filter { $0 != answer && $0.count == answer.count }
-            var decoyPool = lengthMatched.isEmpty
-                ? pool.filter { $0 != answer }
-                : lengthMatched
-            decoyPool.shuffle(using: &rng)
-            let decoyCount = min(max(requested - 1, 1), decoyPool.count)
-            var set = [answer] + decoyPool.prefix(decoyCount)
-            set.shuffle(using: &rng)
-            return set.enumerated().map { index, grapheme in
-                Choice(id: UUID(), grapheme: grapheme, tintIndex: index)
-            }
+            decoys.append(contentsOf: extra)
+        }
+        var set = [answerKey] + decoys.map { $0.grapheme.lowercased() }
+        set.shuffle(using: &rng)
+        return set.enumerated().map { index, grapheme in
+            Choice(id: UUID(), grapheme: grapheme, tintIndex: index)
         }
     }
 }

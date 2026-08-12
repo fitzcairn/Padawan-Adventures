@@ -403,6 +403,57 @@ struct CombatMinigameEngineTests {
         #expect(!seen.isDisjoint(with: ["s", "a"]))
         #expect(!seen.isDisjoint(with: ["m", "d"]))
     }
+
+    @Test func sharedSamplerDoesNotRepeatTargetsUntilThePoolWraps() throws {
+        let ids = ["s", "a", "t", "p", "i", "n"]
+        let pool = LevelVocabularyPool.singleTier(graphemes: ids.map {
+            GateGrapheme(grapheme: $0, pronunciation: "p_\($0)", name: "n_\($0)")
+        })
+        let sampler = LevelVocabularySampler(pool: pool)
+        var first = CombatMinigameEngine(
+            config: .init(
+                shotTravelSeconds: 1,
+                starsToWin: 99,
+                graphemeCase: .lower,
+                vocabulary: pool
+            ),
+            rng: CombatSeededGenerator(seed: 3),
+            sampler: sampler
+        )
+        first.begin()
+        let firstTargets = try collectTargets(&first, count: 3)
+        var second = CombatMinigameEngine(
+            config: .init(
+                shotTravelSeconds: 1,
+                starsToWin: 99,
+                graphemeCase: .lower,
+                vocabulary: pool
+            ),
+            rng: CombatSeededGenerator(seed: 4),
+            sampler: sampler
+        )
+        second.begin()
+        let secondTargets = try collectTargets(&second, count: 3)
+        #expect(Set(firstTargets).count == 3)
+        #expect(Set(secondTargets).count == 3)
+        #expect(Set(firstTargets).isDisjoint(with: Set(secondTargets)))
+        #expect(Set(firstTargets).union(Set(secondTargets)) == Set(ids))
+    }
+
+    private func collectTargets(
+        _ engine: inout CombatMinigameEngine,
+        count: Int
+    ) throws -> [String] {
+        var out: [String] = []
+        for _ in 0..<count {
+            let wave = try #require(nextWave(&engine))
+            out.append(wave.target.lowercased())
+            let targetID = try #require(wave.shots.first(where: \.isTarget)?.id)
+            #expect(engine.registerSlashHit(shotID: targetID) == .correct)
+            _ = engine.finishWaveResolution()
+        }
+        return out
+    }
 }
 
 /// Deterministic RNG for combat scheduling tests.

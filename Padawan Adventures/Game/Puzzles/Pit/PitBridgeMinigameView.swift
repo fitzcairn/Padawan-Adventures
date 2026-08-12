@@ -11,6 +11,7 @@ struct PitBridgeMinigameView: View {
     let isoConfig: IsometricConfig
     let spriteLibrary: SpriteLibrary
     let playerSpriteConfig: SpriteConfig?
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: PitBridgeSessionController
@@ -23,6 +24,7 @@ struct PitBridgeMinigameView: View {
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.bridgeConfig = bridgeConfig
@@ -32,6 +34,7 @@ struct PitBridgeMinigameView: View {
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitBridgeSessionController(
@@ -41,7 +44,8 @@ struct PitBridgeMinigameView: View {
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
+                playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler
             )
         )
     }
@@ -83,6 +87,7 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
     private let isoConfig: IsometricConfig
     private let spriteLibrary: SpriteLibrary
     private let playerSpriteConfig: SpriteConfig?
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<PitBridgeScene>(
         prepare: { [spriteLibrary, playerSpriteConfig] in
@@ -91,7 +96,7 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
                 config: playerSpriteConfig
             )
         },
-        make: { [bridgeConfig, pitFx, playerFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
+        make: { [bridgeConfig, pitFx, playerFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig, vocabularySampler] size in
             PitBridgeScene(
                 size: size,
                 bridgeConfig: bridgeConfig,
@@ -100,7 +105,8 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
+                playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler
             )
         },
         onReady: { [weak self] created in
@@ -117,7 +123,8 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
-        playerSpriteConfig: SpriteConfig?
+        playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.bridgeConfig = bridgeConfig
         self.pitFx = pitFx
@@ -126,6 +133,7 @@ final class PitBridgeSessionController: ObservableObject, PitBridgeSceneDelegate
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
+        self.vocabularySampler = vocabularySampler
     }
 
     func ensureScene(size: CGSize) {

@@ -11,6 +11,7 @@ enum PitMinigameFactory {
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) -> some View {
         // HUD lives in the scene prompt for sound-out-word; keep the param for callers.
@@ -23,6 +24,7 @@ enum PitMinigameFactory {
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
                 playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler,
                 onFinished: onFinished
             )
         case .bridge(let bridge):
@@ -34,6 +36,7 @@ enum PitMinigameFactory {
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
                 playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler,
                 onFinished: onFinished
             )
         }

@@ -67,7 +67,8 @@ final class PitSoundOutWordScene: MinigameScene {
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
-        playerSpriteConfig: SpriteConfig?
+        playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.soundOutConfig = soundOutConfig
         self.pitFx = pitFx
@@ -82,7 +83,8 @@ final class PitSoundOutWordScene: MinigameScene {
                 words: soundOutConfig.words,
                 graphemes: soundOutConfig.graphemes,
                 vocabulary: soundOutConfig.vocabulary
-            )
+            ),
+            sampler: vocabularySampler
         )
         super.init(size: size)
     }

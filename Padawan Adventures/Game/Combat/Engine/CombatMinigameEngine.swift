@@ -150,7 +150,7 @@ nonisolated struct CombatMinigameEngine {
     private var nextCueReplayAt: Double = .infinity
     private var pendingEvents: [CombatEngineEvent] = []
     private var rng: any RandomNumberGenerator
-    private var sampler: LevelVocabularySampler
+    private let sampler: LevelVocabularySampler
     /// Lowercased grapheme id of the last target, used to avoid an immediate repeat.
     private var lastTargetGrapheme = ""
 
@@ -168,13 +168,14 @@ nonisolated struct CombatMinigameEngine {
     init(
         config: Config,
         startingHealth: Int = 3,
-        rng: some RandomNumberGenerator = SystemRandomNumberGenerator()
+        rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
+        sampler: LevelVocabularySampler? = nil
     ) {
         self.config = config
         self.startingHealth = max(startingHealth, 0)
         self.healthCount = self.startingHealth
         self.rng = rng
-        self.sampler = LevelVocabularySampler(pool: config.vocabulary)
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
     }
 
     mutating func begin() {
@@ -191,7 +192,6 @@ nonisolated struct CombatMinigameEngine {
         nextCueReplayAt = .infinity
         pendingEvents = []
         nextWaveAt = Self.firstWaveDelaySeconds
-        sampler.reset()
         lastTargetGrapheme = ""
     }
 
@@ -232,8 +232,11 @@ nonisolated struct CombatMinigameEngine {
 
     private mutating func beginWave(_ events: inout [CombatEngineEvent]) {
         let excluding = lastTargetGrapheme.isEmpty ? [] : Set([lastTargetGrapheme])
-        guard let entry = sampler.nextGrapheme(excluding: excluding, using: &rng)
-            ?? sampler.nextGrapheme(using: &rng) else {
+        let isSingleLetter: (GateGrapheme) -> Bool = { entry in
+            entry.grapheme.count == 1 && !excluding.contains(entry.grapheme.lowercased())
+        }
+        guard let entry = sampler.nextGrapheme(where: isSingleLetter, using: &rng)
+            ?? sampler.nextGrapheme(where: { $0.grapheme.count == 1 }, using: &rng) else {
             return
         }
         lastTargetGrapheme = entry.grapheme.lowercased()

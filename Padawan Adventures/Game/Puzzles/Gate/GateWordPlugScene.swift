@@ -64,11 +64,15 @@ final class GateWordPlugScene: MinigameScene {
     init(
         size: CGSize,
         puzzleConfig: GateWordPlugConfig,
-        playerFx: SoundEffectTable
+        playerFx: SoundEffectTable,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.puzzleConfig = puzzleConfig
         self.playerFx = playerFx
-        self.engine = GateWordPlugMinigameEngine(config: .init(from: puzzleConfig))
+        self.engine = GateWordPlugMinigameEngine(
+            config: .init(from: puzzleConfig),
+            sampler: vocabularySampler
+        )
         super.init(size: size)
     }
 

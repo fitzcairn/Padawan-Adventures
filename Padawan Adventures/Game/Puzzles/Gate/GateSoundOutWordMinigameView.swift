@@ -7,6 +7,7 @@ import SwiftUI
 struct GateSoundOutWordMinigameView: View {
     let puzzleConfig: GateSoundOutWordConfig
     let hudConfig: HudConfig
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: GateSoundOutWordSessionController
@@ -14,13 +15,18 @@ struct GateSoundOutWordMinigameView: View {
     init(
         puzzleConfig: GateSoundOutWordConfig,
         hudConfig: HudConfig,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.puzzleConfig = puzzleConfig
         self.hudConfig = hudConfig
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
-            wrappedValue: GateSoundOutWordSessionController(puzzleConfig: puzzleConfig)
+            wrappedValue: GateSoundOutWordSessionController(
+                puzzleConfig: puzzleConfig,
+                vocabularySampler: vocabularySampler
+            )
         )
     }
 
@@ -51,10 +57,15 @@ final class GateSoundOutWordSessionController: ObservableObject, GateSoundOutWor
     @Published private(set) var scene: GateSoundOutWordScene?
 
     private let puzzleConfig: GateSoundOutWordConfig
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<GateSoundOutWordScene>(
-        make: { [puzzleConfig] size in
-            GateSoundOutWordScene(size: size, puzzleConfig: puzzleConfig)
+        make: { [puzzleConfig, vocabularySampler] size in
+            GateSoundOutWordScene(
+                size: size,
+                puzzleConfig: puzzleConfig,
+                vocabularySampler: vocabularySampler
+            )
         },
         onReady: { [weak self] created in
             guard let self else { return }
@@ -63,8 +74,12 @@ final class GateSoundOutWordSessionController: ObservableObject, GateSoundOutWor
         }
     )
 
-    init(puzzleConfig: GateSoundOutWordConfig) {
+    init(
+        puzzleConfig: GateSoundOutWordConfig,
+        vocabularySampler: LevelVocabularySampler? = nil
+    ) {
         self.puzzleConfig = puzzleConfig
+        self.vocabularySampler = vocabularySampler
     }
 
     func ensureScene(size: CGSize) {

@@ -29,6 +29,7 @@ enum GameWorldPreparer {
                 GameLogger.error(.world, "continue: could not select '\(lastLevel)': \(error)")
             }
         }
+        session.resetVocabularySampler()
 
         if let resourceName = session.selectedLevelResourceName {
             if mode == .newGame {

@@ -378,4 +378,37 @@ struct GateGraphemeMatchMinigameEngineTests {
         #expect(!seen.isDisjoint(with: currentIDs))
         #expect(currentHits > trials / 2)
     }
+
+    @Test func sharedSamplerDoesNotRepeatGraphemesUntilThePoolWraps() {
+        let poolIDs = ["a", "b", "c", "d", "e", "f"]
+        let sampler = LevelVocabularySampler(
+            pool: .singleTier(graphemes: letters(poolIDs))
+        )
+        var first = GateGraphemeMatchMinigameEngine(
+            config: .init(
+                graphemeCountMin: 3,
+                graphemeCountMax: 3,
+                graphemes: letters(poolIDs)
+            ),
+            rng: SeededGenerator(seed: 1),
+            sampler: sampler
+        )
+        first.begin()
+        var second = GateGraphemeMatchMinigameEngine(
+            config: .init(
+                graphemeCountMin: 3,
+                graphemeCountMax: 3,
+                graphemes: letters(poolIDs)
+            ),
+            rng: SeededGenerator(seed: 2),
+            sampler: sampler
+        )
+        second.begin()
+        let firstIDs = Set(first.letters.map { $0.letter.lowercased() })
+        let secondIDs = Set(second.letters.map { $0.letter.lowercased() })
+        #expect(firstIDs.count == 3)
+        #expect(secondIDs.count == 3)
+        #expect(firstIDs.isDisjoint(with: secondIDs))
+        #expect(firstIDs.union(secondIDs) == Set(poolIDs))
+    }
 }

@@ -171,7 +171,7 @@ nonisolated struct CombatDeflectMinigameEngine {
 
     private let startingHealth: Int
     private var rng: any RandomNumberGenerator
-    private var sampler: LevelVocabularySampler
+    private let sampler: LevelVocabularySampler
     /// Ring of the most recently deflected orb; excluded from the next throw's pool.
     private var lastDeflectedRing: CombatDeflectRing?
     /// Optional override for tests; defaults to catalog + known collision spellings.
@@ -181,7 +181,8 @@ nonisolated struct CombatDeflectMinigameEngine {
         config: Config,
         startingHealth: Int = 3,
         rng: some RandomNumberGenerator = SystemRandomNumberGenerator(),
-        isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling
+        isPlausibleSpelling: @escaping @Sendable (String) -> Bool = CombatDeflectMinigameEngine.isPlausibleSpelling,
+        sampler: LevelVocabularySampler? = nil
     ) {
         self.config = config
         self.graphemes = config.graphemes
@@ -189,7 +190,7 @@ nonisolated struct CombatDeflectMinigameEngine {
         self.healthCount = self.startingHealth
         self.monsterHP = config.monsterHP
         self.rng = rng
-        self.sampler = LevelVocabularySampler(pool: config.vocabulary)
+        self.sampler = sampler ?? LevelVocabularySampler(pool: config.vocabulary)
         self.isPlausibleSpelling = isPlausibleSpelling
     }
 
@@ -222,7 +223,6 @@ nonisolated struct CombatDeflectMinigameEngine {
         monsterHP = config.monsterHP
         activeOrb = nil
         lastDeflectedRing = nil
-        sampler.reset()
         graphemes = pickFightRings()
     }
 
@@ -284,11 +284,12 @@ nonisolated struct CombatDeflectMinigameEngine {
         if config.graphemes.count <= desired {
             return config.graphemes
         }
-        let allowed = Set(config.graphemes.map(\.grapheme))
-        var ringSampler = LevelVocabularySampler(
-            pool: config.vocabulary.filteringGraphemes { allowed.contains($0.grapheme) }
+        let allowed = Set(config.graphemes.map { $0.grapheme.lowercased() })
+        let picked = sampler.takeGraphemes(
+            count: desired,
+            where: { allowed.contains($0.grapheme.lowercased()) },
+            using: &rng
         )
-        let picked = ringSampler.takeGraphemes(count: desired, using: &rng)
         if picked.count == desired {
             return picked
         }

@@ -10,6 +10,7 @@ struct PitSoundOutWordMinigameView: View {
     let isoConfig: IsometricConfig
     let spriteLibrary: SpriteLibrary
     let playerSpriteConfig: SpriteConfig?
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: PitSoundOutWordSessionController
@@ -21,6 +22,7 @@ struct PitSoundOutWordMinigameView: View {
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
         playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.soundOutConfig = soundOutConfig
@@ -29,6 +31,7 @@ struct PitSoundOutWordMinigameView: View {
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: PitSoundOutWordSessionController(
@@ -37,7 +40,8 @@ struct PitSoundOutWordMinigameView: View {
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
+                playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler
             )
         )
     }
@@ -74,6 +78,7 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
     private let isoConfig: IsometricConfig
     private let spriteLibrary: SpriteLibrary
     private let playerSpriteConfig: SpriteConfig?
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<PitSoundOutWordScene>(
         prepare: { [spriteLibrary, playerSpriteConfig] in
@@ -82,7 +87,7 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
                 config: playerSpriteConfig
             )
         },
-        make: { [soundOutConfig, pitFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig] size in
+        make: { [soundOutConfig, pitFx, floorTileSetLibrary, isoConfig, spriteLibrary, playerSpriteConfig, vocabularySampler] size in
             PitSoundOutWordScene(
                 size: size,
                 soundOutConfig: soundOutConfig,
@@ -90,7 +95,8 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
                 floorTileSetLibrary: floorTileSetLibrary,
                 isoConfig: isoConfig,
                 spriteLibrary: spriteLibrary,
-                playerSpriteConfig: playerSpriteConfig
+                playerSpriteConfig: playerSpriteConfig,
+                vocabularySampler: vocabularySampler
             )
         },
         onReady: { [weak self] created in
@@ -106,7 +112,8 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
         floorTileSetLibrary: FloorTileSetLibrary,
         isoConfig: IsometricConfig,
         spriteLibrary: SpriteLibrary,
-        playerSpriteConfig: SpriteConfig?
+        playerSpriteConfig: SpriteConfig?,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.soundOutConfig = soundOutConfig
         self.pitFx = pitFx
@@ -114,6 +121,7 @@ final class PitSoundOutWordSessionController: ObservableObject, PitSoundOutWordS
         self.isoConfig = isoConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
+        self.vocabularySampler = vocabularySampler
     }
 
     func ensureScene(size: CGSize) {

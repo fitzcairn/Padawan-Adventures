@@ -269,6 +269,7 @@ final class GameViewController: LandscapeHostingController {
             maxDecoyCount: maxDecoyCount,
             graphemeCase: graphemeCase,
             vocabulary: vocabulary,
+            vocabularySampler: session.vocabularySampler,
             slashMaxSeconds: slashMaxSeconds,
             slashMaxScreenWidthFraction: slashMaxScreenWidthFraction,
             spriteLibrary: session.spriteLibrary,
@@ -488,6 +489,7 @@ final class GameViewController: LandscapeHostingController {
                     isoConfig: self.isoConfig,
                     spriteLibrary: self.session.spriteLibrary,
                     playerSpriteConfig: self.session.playerConfig.sprite,
+                    vocabularySampler: self.session.vocabularySampler,
                     onFinished: finish
                 )
             },
@@ -621,6 +623,7 @@ final class GameViewController: LandscapeHostingController {
                     config: chosen,
                     playerFx: playerFx,
                     hudConfig: hudConfig,
+                    vocabularySampler: self.session.vocabularySampler,
                     onFinished: finish
                 )
             },

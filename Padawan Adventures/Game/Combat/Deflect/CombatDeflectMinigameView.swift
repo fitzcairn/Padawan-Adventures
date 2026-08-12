@@ -15,6 +15,7 @@ struct CombatDeflectMinigameView: View {
     let projectileSprite: (id: String, config: SpriteConfig)?
     let wallHeight: CGFloat
     let isoSquash: CGFloat
+    let vocabularySampler: LevelVocabularySampler?
     let onFinished: (MinigameOutcome) -> Void
 
     @StateObject private var session: CombatDeflectSessionController
@@ -31,6 +32,7 @@ struct CombatDeflectMinigameView: View {
         projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
         isoSquash: CGFloat,
+        vocabularySampler: LevelVocabularySampler? = nil,
         onFinished: @escaping (MinigameOutcome) -> Void
     ) {
         self.deflectConfig = deflectConfig
@@ -44,6 +46,7 @@ struct CombatDeflectMinigameView: View {
         self.projectileSprite = projectileSprite
         self.wallHeight = wallHeight
         self.isoSquash = isoSquash
+        self.vocabularySampler = vocabularySampler
         self.onFinished = onFinished
         _session = StateObject(
             wrappedValue: CombatDeflectSessionController(
@@ -56,7 +59,8 @@ struct CombatDeflectMinigameView: View {
                 enemySprite: enemySprite,
                 projectileSprite: projectileSprite,
                 wallHeight: wallHeight,
-                isoSquash: isoSquash
+                isoSquash: isoSquash,
+                vocabularySampler: vocabularySampler
             )
         )
     }
@@ -120,9 +124,10 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
     private let projectileSprite: (id: String, config: SpriteConfig)?
     private let wallHeight: CGFloat
     private let isoSquash: CGFloat
+    private let vocabularySampler: LevelVocabularySampler?
     private var didFinish = false
     private lazy var sceneHost = MinigameSceneHost<CombatDeflectScene>(
-        make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, projectileSprite, wallHeight, isoSquash] size in
+        make: { [deflectConfig, enemyType, playerFx, startingHealth, spriteLibrary, combatSprite, enemySprite, projectileSprite, wallHeight, isoSquash, vocabularySampler] size in
             CombatDeflectScene(
                 size: size,
                 deflectConfig: deflectConfig,
@@ -134,7 +139,8 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
                 enemySprite: enemySprite,
                 projectileSprite: projectileSprite,
                 wallHeight: wallHeight,
-                isoSquash: isoSquash
+                isoSquash: isoSquash,
+                vocabularySampler: vocabularySampler
             )
         },
         onReady: { [weak self] created in
@@ -154,7 +160,8 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
         enemySprite: (id: String, config: SpriteConfig)?,
         projectileSprite: (id: String, config: SpriteConfig)?,
         wallHeight: CGFloat,
-        isoSquash: CGFloat
+        isoSquash: CGFloat,
+        vocabularySampler: LevelVocabularySampler? = nil
     ) {
         self.deflectConfig = deflectConfig
         self.enemyType = enemyType
@@ -166,6 +173,7 @@ final class CombatDeflectSessionController: ObservableObject, CombatDeflectScene
         self.projectileSprite = projectileSprite
         self.wallHeight = wallHeight
         self.isoSquash = isoSquash
+        self.vocabularySampler = vocabularySampler
         self.health = startingHealth
         self.monsterHP = deflectConfig.monsterHP
         self.monsterHPTotal = deflectConfig.monsterHP
