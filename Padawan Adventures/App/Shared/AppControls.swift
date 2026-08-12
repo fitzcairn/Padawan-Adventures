@@ -82,7 +82,7 @@ enum AppLargeButtonStyle {
 struct AppLargeButton: View {
     let title: String
     var accessibilityID: String? = nil
-    var style: AppLargeButtonStyle = .flat
+    var style: AppLargeButtonStyle = .console
     var icon: UIImage? = nil
     var backgroundColor: Color = AppChrome.buttonBackgroundColor
     var opacity: Double = 1
@@ -190,7 +190,7 @@ struct AppLargeButton: View {
     }
 }
 
-/// Circular chrome control (back, lock, etc.) — filled chrome with light SF Symbol.
+/// Circular CRT chrome control (back, lock, flee, etc.) — bezel + glowing SF Symbol.
 struct AppCircularIconButton: View {
     let systemName: String
     var size: CGFloat = 52
@@ -205,15 +205,40 @@ struct AppCircularIconButton: View {
             playMenuSound(soundEvent)
             action()
         } label: {
-            Image(systemName: systemName)
-                .font(.system(size: size * 0.42, weight: .semibold))
-                .foregroundStyle(AppChrome.buttonForegroundColor)
-                .frame(width: size, height: size)
-                .appButtonChrome(Circle())
+            AppCircularIconPlate(systemName: systemName, size: size)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityID ?? systemName)
         .accessibilityLabel(accessibilityLabel ?? systemName)
+    }
+}
+
+struct AppCircularIconPlate: View {
+    let systemName: String
+    var size: CGFloat = 52
+
+    var body: some View {
+        StarWarsConsoleFrame(shape: .circle) {
+            Image(systemName: systemName)
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                .shadow(
+                    color: StarWarsConsolePalette.crtGlow,
+                    radius: max(2, size * 0.08)
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: size, height: size)
+    }
+
+    @MainActor
+    static func makeUIImage(systemName: String, size: CGFloat, scale: CGFloat = 2) -> UIImage {
+        let plate = AppCircularIconPlate(systemName: systemName, size: size)
+            .frame(width: size, height: size)
+        let renderer = ImageRenderer(content: plate)
+        renderer.scale = scale
+        renderer.proposedSize = ProposedViewSize(width: size, height: size)
+        return renderer.uiImage ?? UIImage()
     }
 }
 

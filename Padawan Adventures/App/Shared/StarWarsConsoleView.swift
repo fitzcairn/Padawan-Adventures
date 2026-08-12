@@ -91,8 +91,15 @@ extension StarWarsConsoleChrome {
 
 // MARK: - Shared console frame
 
+enum StarWarsConsoleFrameShape {
+    case roundedRectangle
+    case circle
+}
+
 /// Metal bezel + CRT screen shell. `screen` is drawn inside the inset display area.
 struct StarWarsConsoleFrame<Screen: View>: View {
+    var shape: StarWarsConsoleFrameShape = .roundedRectangle
+    var showsScanlines: Bool = true
     @ViewBuilder var screen: () -> Screen
 
     var body: some View {
@@ -101,13 +108,13 @@ struct StarWarsConsoleFrame<Screen: View>: View {
             let m = min(geo.size.width, geo.size.height)
 
             ZStack {
-                RoundedRectangle(cornerRadius: chrome.outerRadius + chrome.rim, style: .continuous)
+                chromeShape(.rim, chrome: chrome)
                     .fill(DarkMetalBezel.rimFill)
 
-                RoundedRectangle(cornerRadius: chrome.outerRadius, style: .continuous)
+                chromeShape(.bezel, chrome: chrome)
                     .fill(DarkMetalBezel.outerFill)
                     .overlay(
-                        RoundedRectangle(cornerRadius: chrome.outerRadius, style: .continuous)
+                        chromeShape(.bezel, chrome: chrome)
                             .stroke(DarkMetalBezel.edgeStroke, lineWidth: max(0.4, m * 0.01))
                     )
                     .padding(chrome.rim)
@@ -124,9 +131,11 @@ struct StarWarsConsoleFrame<Screen: View>: View {
 
             screen()
 
-            ScanlineOverlay(spacing: max(2, m * 0.06), lineOpacity: 0.32)
+            if showsScanlines {
+                ScanlineOverlay(spacing: max(2, m * 0.06), lineOpacity: 0.32)
+            }
 
-            RoundedRectangle(cornerRadius: chrome.innerRadius, style: .continuous)
+            chromeShape(.screen, chrome: chrome)
                 .stroke(
                     LinearGradient(
                         colors: [
@@ -140,7 +149,25 @@ struct StarWarsConsoleFrame<Screen: View>: View {
                     lineWidth: max(0.8, m * 0.02)
                 )
         }
-        .clipShape(RoundedRectangle(cornerRadius: chrome.innerRadius, style: .continuous))
+        .clipShape(chromeShape(.screen, chrome: chrome))
+    }
+
+    private func chromeShape(_ layer: ChromeLayer, chrome: StarWarsConsoleChrome) -> AnyShape {
+        switch shape {
+        case .circle:
+            return AnyShape(Circle())
+        case .roundedRectangle:
+            let radius: CGFloat = switch layer {
+            case .rim: chrome.outerRadius + chrome.rim
+            case .bezel: chrome.outerRadius
+            case .screen: chrome.innerRadius
+            }
+            return AnyShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        }
+    }
+
+    private enum ChromeLayer {
+        case rim, bezel, screen
     }
 }
 
@@ -623,4 +650,10 @@ private enum DarkMetalBezel {
     .frame(width: 180, height: 220)
     .padding()
     .background(Color.black)
+}
+
+#Preview("Circular icon") {
+    AppCircularIconPlate(systemName: "figure.run", size: 52)
+        .padding()
+        .background(Color.black)
 }

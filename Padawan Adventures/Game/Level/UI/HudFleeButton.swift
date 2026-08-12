@@ -1,21 +1,18 @@
+import SwiftUI
 import UIKit
 
 extension GameHUDView {
     static let fleeButtonSize: CGFloat = 52
 
+    @MainActor
     static func makeFleeButton() -> UIButton {
-        let symbol = UIImage.SymbolConfiguration(
-            pointSize: fleeButtonSize * 0.42,
-            weight: .semibold
+        let plate = AppCircularIconPlate.makeUIImage(
+            systemName: "figure.run",
+            size: fleeButtonSize
         )
-        var configuration = UIButton.Configuration.filled()
-        configuration.image = UIImage(systemName: "figure.run", withConfiguration: symbol)
-        configuration.baseForegroundColor = AppChrome.uiButtonForegroundColor
-        configuration.baseBackgroundColor = AppChrome.uiButtonBackgroundColor
-        configuration.background.strokeColor = AppChrome.uiButtonOutlineColor
-        configuration.background.strokeWidth = AppChrome.buttonOutlineWidth
-        configuration.background.cornerRadius = fleeButtonSize / 2
-        configuration.cornerStyle = .fixed
+        var configuration = UIButton.Configuration.plain()
+        configuration.background.image = plate
+        configuration.background.imageContentMode = .scaleToFill
         configuration.contentInsets = .zero
 
         let button = UIButton(configuration: configuration)

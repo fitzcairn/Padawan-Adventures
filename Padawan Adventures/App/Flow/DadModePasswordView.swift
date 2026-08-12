@@ -83,12 +83,22 @@ struct DadModePasswordView: View {
                 playMenuSound("button_click")
                 handlePadTap(label)
             } label: {
-                Text(label)
-                    .font(label == "⌫" ? .system(size: 24, weight: .semibold) : AppFont.swiftUI(size: 24, weight: .semibold))
-                    .foregroundStyle(AppChrome.buttonForegroundColor)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .appButtonChrome(RoundedRectangle(cornerRadius: 12))
+                StarWarsConsoleFrame {
+                    Text(label)
+                        .font(
+                            label == "⌫"
+                                ? .system(size: 24, weight: .semibold)
+                                : AppFont.swiftUI(size: 24, weight: .semibold)
+                        )
+                        .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                        .shadow(
+                            color: StarWarsConsolePalette.crtGlow,
+                            radius: max(2, 24 * 0.12)
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(

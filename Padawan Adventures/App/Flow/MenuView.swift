@@ -129,7 +129,9 @@ struct MenuView: View {
             if session.currentPlayerName != nil {
                 PlayerAvatarView(
                     image: avatarImage,
-                    accessibilityID: "menu.welcome.avatar"
+                    accessibilityID: "menu.welcome.avatar",
+                    side: PlayerAvatarView.defaultSide * 1.3,
+                    style: .console
                 )
             }
             AppTitleText(

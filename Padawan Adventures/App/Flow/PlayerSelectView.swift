@@ -234,35 +234,26 @@ struct PlayerSelectView: View {
                 accessibilityID: "playerSelect.avatar.\(name)"
             )
 
-            Button {
-                playMenuSound("button_click")
+            AppLargeButton(
+                title: name,
+                accessibilityID: "playerSelect.player.\(name)"
+            ) {
                 Task {
                     if await model.selectPlayer(named: name) {
                         router.showMenu()
                     }
                 }
-            } label: {
-                Text(name)
-                    .font(AppFont.swiftUI(size: 20, weight: .semibold))
-                    .foregroundStyle(AppChrome.buttonForegroundColor)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                    .appButtonChrome(RoundedRectangle(cornerRadius: 12))
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("playerSelect.player.\(name)")
+            .frame(maxWidth: .infinity)
 
-            Button {
-                playMenuSound("button_click")
+            AppCircularIconButton(
+                systemName: "trash",
+                size: 44,
+                accessibilityID: "playerSelect.delete.\(name)",
+                accessibilityLabel: Strings.text("button_delete")
+            ) {
                 model.confirmDelete(playerName: name)
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(Color(white: 0.85))
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("playerSelect.delete.\(name)")
         }
     }
 }
