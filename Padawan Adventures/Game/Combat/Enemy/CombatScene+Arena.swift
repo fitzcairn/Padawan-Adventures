@@ -96,8 +96,8 @@ extension CombatScene {
     }
 
     func playSequenceCue(requiredLetter: String) {
-        // Prefer shared letter-name tracks so combat matches wall / other letter games.
-        if let shared = LetterSoundCatalog.nameTrackID(for: requiredLetter) {
+        // Prefer shared pronunciation tracks so the player hears the letter sound, not its name.
+        if let shared = LetterSoundCatalog.pronunciationTrackID(for: requiredLetter) {
             SoundEffectsController.shared.play(trackID: shared)
             return
         }

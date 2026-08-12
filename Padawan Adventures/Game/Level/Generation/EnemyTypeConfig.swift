@@ -122,11 +122,11 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         fromLetters: ["s", "a", "t", "p", "i", "n"]
     )
 
-    /// Uppercase-keyed shot map from single-character graphemes (`a` → `"A"` + name track).
+    /// Uppercase-keyed shot map from single-character graphemes (`a` → `"A"` + pronunciation track).
     static func shotTypes(from pool: LevelVocabularyPool) -> [String: EnemyShotTypeConfig] {
         var out: [String: EnemyShotTypeConfig] = [:]
         for entry in pool.allGraphemes where entry.grapheme.count == 1 {
-            let track = entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let track = entry.pronunciation.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !track.isEmpty else { continue }
             out[entry.grapheme.uppercased()] = EnemyShotTypeConfig(trackBasename: track)
         }
@@ -139,7 +139,7 @@ nonisolated struct EnemyTypeConfig: Codable, Equatable, Sendable {
         for raw in letters {
             let id = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard id.count == 1 else { continue }
-            out[id.uppercased()] = EnemyShotTypeConfig(trackBasename: "sfx_letter_\(id)_name")
+            out[id.uppercased()] = EnemyShotTypeConfig(trackBasename: "sfx_letter_\(id)_pronunciation")
         }
         return out
     }

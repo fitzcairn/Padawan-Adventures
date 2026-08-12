@@ -304,8 +304,8 @@ struct EnemyConfigTests {
         )
         let shots = EnemyTypeConfig.shotTypes(from: tython.vocabulary)
         #expect(shots.keys.sorted() == ["A", "I", "N", "P", "S", "T"])
-        #expect(shots["S"]?.fx.trackID(for: "shoot") == "sfx_letter_s_name")
-        #expect(shots["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_name")
+        #expect(shots["S"]?.fx.trackID(for: "shoot") == "sfx_letter_s_pronunciation")
+        #expect(shots["A"]?.fx.trackID(for: "shoot") == "sfx_letter_a_pronunciation")
 
         let base = EnemyTypeConfig(
             letter: "E",

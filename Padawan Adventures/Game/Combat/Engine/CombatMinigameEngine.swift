@@ -45,7 +45,7 @@ nonisolated struct CombatMinigameEngine {
         var shotTravelSeconds: Double
         var starsToWin: Int
         var shotLetters: [String]
-        /// Seconds between letter-name cue replays while a wave is active.
+        /// Seconds between pronunciation cue replays while a wave is active.
         var graphemeSoundRepeatSeconds: Double
         /// Extra non-matching letters launched alongside the target, per wave.
         var minDecoyCount: Int

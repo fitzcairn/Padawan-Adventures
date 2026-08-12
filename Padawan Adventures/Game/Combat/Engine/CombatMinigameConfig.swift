@@ -18,7 +18,7 @@ nonisolated struct CombatSlashConfig: Equatable, Sendable {
     var maxDecoyCount: Int
     /// Casing for combat projectile / cue letters.
     var graphemeCase: CombatGraphemeCase
-    /// Letter-name prompt replay interval in seconds.
+    /// Pronunciation prompt replay interval in seconds.
     var graphemeSoundRepeatSeconds: Double
 
     nonisolated static let fallback = CombatSlashConfig(weight: 1)
