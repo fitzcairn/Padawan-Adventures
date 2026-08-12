@@ -229,7 +229,10 @@ struct PlayerSelectView: View {
 
     private func playerRow(name: String) -> some View {
         HStack(spacing: 12) {
-            avatarView(for: name)
+            PlayerAvatarView(
+                image: model.avatarDataByName[name].flatMap(PlayerAvatarImage.uiImage(from:)),
+                accessibilityID: "playerSelect.avatar.\(name)"
+            )
 
             Button {
                 playMenuSound("button_click")
@@ -261,26 +264,5 @@ struct PlayerSelectView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("playerSelect.delete.\(name)")
         }
-    }
-
-    @ViewBuilder
-    private func avatarView(for name: String) -> some View {
-        Group {
-            if let data = model.avatarDataByName[name],
-               let uiImage = PlayerAvatarImage.uiImage(from: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(AppChrome.secondaryTextColor)
-                    .padding(4)
-            }
-        }
-        .frame(width: 48, height: 48)
-        .clipShape(Circle())
-        .accessibilityIdentifier("playerSelect.avatar.\(name)")
     }
 }

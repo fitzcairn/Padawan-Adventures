@@ -8,6 +8,7 @@ struct MenuView: View {
     @State private var showContinue = false
     @State private var logoImage: UIImage?
     @State private var menuIcons: [UIImage] = []
+    @State private var avatarImage: UIImage?
     @State private var isContentReady = false
 
     init(session: AppSession, router: FlowRouter) {
@@ -40,6 +41,7 @@ struct MenuView: View {
             // Assets are already warm from bootstrap; only resolve continue eligibility.
             await session.refreshContinueEligibility()
             logoImage = session.spriteLibrary.uiImage(id: "logo")
+            await loadCurrentPlayerAvatar()
             await ensureMenuIcons()
             // Mid-run save *or* campaign progress (so CONTINUE survives beating a level).
             showContinue = session.shouldShowContinue
@@ -53,15 +55,7 @@ struct MenuView: View {
 
             ZStack(alignment: .bottom) {
                 VStack(spacing: 24) {
-                    AppTitleText(
-                        text: session.currentPlayerName.map {
-                            Strings.text("menu_welcome_named", ["name": $0])
-                        } ?? Strings.text("menu_welcome"),
-                        size: 24,
-                        weight: .semibold,
-                        speakID: "menu_welcome_named"
-                    )
-                    .accessibilityIdentifier("menu.welcome")
+                    welcomeRow
 
                     VStack(spacing: 16) {
                         if showContinue {
@@ -134,6 +128,27 @@ struct MenuView: View {
         }
     }
 
+    private var welcomeRow: some View {
+        HStack(spacing: 12) {
+            if session.currentPlayerName != nil {
+                PlayerAvatarView(
+                    image: avatarImage,
+                    accessibilityID: "menu.welcome.avatar"
+                )
+            }
+            AppTitleText(
+                text: session.currentPlayerName.map {
+                    Strings.text("menu_welcome_named", ["name": $0])
+                } ?? Strings.text("menu_welcome"),
+                size: 24,
+                weight: .semibold,
+                speakID: "menu_welcome_named"
+            )
+            .fixedSize()
+        }
+        .accessibilityIdentifier("menu.welcome")
+    }
+
     @ViewBuilder
     private var logoColumn: some View {
         Group {
@@ -146,6 +161,16 @@ struct MenuView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    @MainActor
+    private func loadCurrentPlayerAvatar() async {
+        guard let name = session.currentPlayerName,
+              let data = await session.playerStore.loadAvatar(for: name) else {
+            avatarImage = nil
+            return
+        }
+        avatarImage = PlayerAvatarImage.uiImage(from: data)
     }
 
     private func menuIcon(_ icon: MenuSpritesConfig.Icon) -> UIImage? {
