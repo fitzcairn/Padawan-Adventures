@@ -115,6 +115,45 @@ extension IsometricRenderer {
         ]), withKey: "worldFade")
     }
 
+    /// Green/blue particle swirl on the tapped floor tile (tap-to-move destination).
+    func playTapTarget(at coord: GridCoord) {
+        let position: CGPoint
+        if let floorNode = floorNodes[coord] {
+            position = CGPoint(
+                x: floorNode.position.x,
+                y: floorNode.position.y - config.tileHeight * 0.5
+            )
+        } else {
+            position = IsometricMath.entityScreenPosition(coord, config: config)
+        }
+
+        let floorZ = IsometricMath.effectiveFloorZ(for: coord, config: config)
+        let startZ = floorZ + TapTargetSwirl.floorOverlayZ
+        let playerZ = IsometricMath.effectiveEntityZ(for: coord, config: config)
+
+        TapTargetSwirl.play(
+            in: worldRoot,
+            at: position,
+            startZ: startZ,
+            playerZ: playerZ,
+            tileWidth: config.tileWidth,
+            tileHeight: config.tileHeight,
+            playerSpriteHeight: playerSpriteDisplayHeight
+        )
+    }
+
+    /// Live player sprite height, or the configured / placeholder height before the node exists.
+    var playerSpriteDisplayHeight: CGFloat {
+        if let player = entityNodes.values.first(where: { $0.name == "player" }) {
+            let height = player.calculateAccumulatedFrame().height
+            if height > 1 { return height }
+        }
+        return PlaceholderFactory.playerDisplayHeight(
+            isoConfig: config,
+            spriteConfig: playerSpriteConfig
+        )
+    }
+
     func updateViewportFocus(_ focus: CGPoint) {
         viewportFocus = focus
         worldRoot.setScale(worldScale)

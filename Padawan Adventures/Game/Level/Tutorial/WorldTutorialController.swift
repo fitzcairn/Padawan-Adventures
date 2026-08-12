@@ -138,11 +138,7 @@ final class WorldTutorialController: WorldTutorialStaging {
         for step in 1...steps {
             if Task.isCancelled { return }
             let raw = CGFloat(step) / CGFloat(steps)
-            let t = raw * raw * (3 - 2 * raw)
-            scene.setViewportFocus(CGPoint(
-                x: start.x + (end.x - start.x) * t,
-                y: start.y + (end.y - start.y) * t
-            ))
+            scene.setViewportFocus(IsometricMath.interpolatedFocus(from: start, to: end, progress: raw))
             try? await Task.sleep(nanoseconds: UInt64(frameSeconds * 1_000_000_000))
         }
         scene.setViewportFocus(end)

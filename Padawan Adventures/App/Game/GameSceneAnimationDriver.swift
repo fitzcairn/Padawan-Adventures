@@ -10,6 +10,7 @@ extension GameScene {
     func showFixedZoomView() {
         let anchor = world.playerPosition ?? world.spawn
         viewportFocus = IsometricMath.entityScreenPosition(anchor, config: isoConfig)
+        viewportCamera.snapToFollowing()
         renderer.lockWorldScale(1)
         renderer.render(world: world, focus: viewportFocus)
         updatePlayerSpriteAnimation()
@@ -33,9 +34,10 @@ extension GameScene {
         let rebuiltForStory = renderer.updateVisibleStory(for: world, focus: viewportFocus)
         if rebuiltForStory {
             viewportFocus = IsometricMath.entityScreenPosition(occupancy, config: isoConfig)
+            viewportCamera.snapToFollowing()
             renderer.lockWorldScale(1)
             renderer.updateViewportFocus(viewportFocus)
-        } else if !gestureTracker.isPanning, !tutorialOwnsCamera {
+        } else if !gestureTracker.isPanning, !tutorialOwnsCamera, viewportCamera.followsPlayer {
             viewportFocus = IsometricMath.focusKeepingPlayerInDeadzone(
                 focus: viewportFocus,
                 player: displayPoint,
@@ -79,6 +81,15 @@ extension GameScene {
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
         updatePlayerSpriteAnimation()
         updateEnemySpriteAnimations(poses: result.enemyDisplayPoses)
+    }
+
+    /// Glides a parked camera back onto the player after a destination tap.
+    func applyViewportCamera(deltaTime: TimeInterval) {
+        guard !tutorialOwnsCamera, !gestureTracker.isPanning else { return }
+        let playerFocus = movement.interpolatedScreenPosition(in: world, config: isoConfig)
+        if let next = viewportCamera.advance(deltaTime: deltaTime, playerFocus: playerFocus) {
+            setViewportFocus(next)
+        }
     }
 
     func updatePlayerSpriteAnimation() {

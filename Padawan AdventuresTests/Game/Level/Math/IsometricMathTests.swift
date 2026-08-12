@@ -518,6 +518,26 @@ struct IsometricMathTests {
         #expect(next.y == 60)
     }
 
+    @Test func interpolatedFocusUsesSmoothstep() {
+        let start = CGPoint(x: 0, y: 0)
+        let end = CGPoint(x: 100, y: -50)
+        let startPoint = IsometricMath.interpolatedFocus(from: start, to: end, progress: 0)
+        #expect(startPoint.x == 0)
+        #expect(startPoint.y == 0)
+
+        let mid = IsometricMath.interpolatedFocus(from: start, to: end, progress: 0.5)
+        #expect(abs(mid.x - 50) < 0.000_1)
+        #expect(abs(mid.y - (-25)) < 0.000_1)
+
+        let quarter = IsometricMath.interpolatedFocus(from: start, to: end, progress: 0.25)
+        #expect(quarter.x < 25)
+        #expect(quarter.x > 0)
+
+        let endPoint = IsometricMath.interpolatedFocus(from: start, to: end, progress: 1)
+        #expect(endPoint.x == 100)
+        #expect(endPoint.y == -50)
+    }
+
     /// Production display (`app.yaml`: 80×49) after the floor tile-set rewrite.
     @Test func productionTileHeightRoundTripsAndPicksCells() {
         let config = IsometricConfig(tileWidth: 80, tileHeight: 49, wallHeight: 80, storyHeight: 80)

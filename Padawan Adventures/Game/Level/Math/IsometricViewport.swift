@@ -161,4 +161,14 @@ nonisolated extension IsometricMath {
             y: currentFocus.y - dragDelta.y / safeScale
         )
     }
+
+    /// Smoothstep interpolation between two viewport foci. `progress` is 0…1.
+    static func interpolatedFocus(from start: CGPoint, to end: CGPoint, progress: CGFloat) -> CGPoint {
+        let clamped = min(max(progress, 0), 1)
+        let t = clamped * clamped * (3 - 2 * clamped)
+        return CGPoint(
+            x: start.x + (end.x - start.x) * t,
+            y: start.y + (end.y - start.y) * t
+        )
+    }
 }

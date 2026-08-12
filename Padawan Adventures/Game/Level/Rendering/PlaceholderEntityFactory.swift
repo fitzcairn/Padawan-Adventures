@@ -146,6 +146,18 @@ extension PlaceholderFactory {
         isoConfig.wallHeight * CGFloat(spriteConfig.scale) * spriteDisplayScaleMultiplier
     }
 
+    /// Player sprite height used for world VFX. Falls back to the placeholder billboard
+    /// (`tileHeight × 2.2`) when no sprite config is loaded.
+    static func playerDisplayHeight(
+        isoConfig: IsometricConfig,
+        spriteConfig: SpriteConfig?
+    ) -> CGFloat {
+        if let spriteConfig {
+            return spriteDisplayHeight(isoConfig: isoConfig, spriteConfig: spriteConfig)
+        }
+        return isoConfig.tileHeight * 2.2
+    }
+
     /// Provisional square size from wall height (width refined when the texture is known).
     static func spriteDisplaySize(
         isoConfig: IsometricConfig,

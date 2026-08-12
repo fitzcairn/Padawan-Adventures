@@ -19,11 +19,12 @@ final class GameScene: SKScene {
     var renderer: IsometricRenderer
     var viewportFocus = CGPoint.zero
     var gestureTracker = ViewportGestureTracker()
+    var viewportCamera = ViewportCamera()
     private var lastUpdateTime: TimeInterval?
     let saveService: GameSaveService?
     var isPausedForEncounter = false
     var isResolvingPickup = false
-    /// Set while the world tutorial drives the camera, so the deadzone clamp
+    /// Set while the world tutorial drives the camera, so player follow
     /// cannot yank the view back mid-demonstration.
     var tutorialOwnsCamera = false
     weak var worldTutorial: WorldTutorialController?
@@ -124,6 +125,9 @@ final class GameScene: SKScene {
         guard let touch = touches.first,
               let delta = gestureTracker.move(to: touch.location(in: self)) else { return }
 
+        if !tutorialOwnsCamera {
+            viewportCamera.noteUserPan()
+        }
         viewportFocus = IsometricMath.focusAfterPan(
             currentFocus: viewportFocus,
             dragDelta: delta,
@@ -156,10 +160,11 @@ final class GameScene: SKScene {
         // or occupied cells. The normal Pathfinder treats those as walkable.
         if worldTutorial != nil, touch is MinigameDemoTouch {
             beginTutorialSafeMove(to: target)
-            return
+        } else {
+            pendingInput.enqueue(target)
+            beginReturnToPlayerIfNeeded()
         }
-
-        pendingInput.enqueue(target)
+        renderer.playTapTarget(at: target)
     }
 
     /// Begins player movement along a path that stays on ordinary floor tiles only.
@@ -170,6 +175,7 @@ final class GameScene: SKScene {
               path.count >= 2 else { return false }
         pendingInput = PendingInput()
         movement.begin(path: path)
+        beginReturnToPlayerIfNeeded()
         return true
     }
 
@@ -234,6 +240,10 @@ final class GameScene: SKScene {
                 if shouldPause { break }
             }
         }
+
+        if !isPausedForEncounter, !isResolvingPickup {
+            applyViewportCamera(deltaTime: delta)
+        }
     }
 
     var isPlayerMoving: Bool { movement.isMoving }
@@ -243,9 +253,16 @@ final class GameScene: SKScene {
         renderer.updateViewportFocus(point)
     }
 
+    /// After a pan, a destination tap glides the viewport back onto the player.
+    func beginReturnToPlayerIfNeeded() {
+        guard !tutorialOwnsCamera else { return }
+        viewportCamera.noteDestinationChosen(from: viewportFocus)
+    }
+
     /// Clears tutorial state and any half-finished synthetic gesture.
     func finishWorldTutorial() {
         tutorialOwnsCamera = false
+        viewportCamera.snapToFollowing()
         gestureTracker.cancel()
         worldTutorial = nil
     }
