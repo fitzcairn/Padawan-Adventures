@@ -13,9 +13,9 @@ vocab:
   graphemes: [nd, mp, nt]
   words: [sand, pond, jump, camp, fast, nest, tent, ant]
 world:
-  width_tiles: 74
-  height_tiles: 74
-  room_count: 25
+  width_tiles: 93
+  height_tiles: 93
+  room_count: 38
   room:
     min_size_tiles: 6
     max_size_tiles: 10

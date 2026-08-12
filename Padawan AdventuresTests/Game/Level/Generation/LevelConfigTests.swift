@@ -434,8 +434,8 @@ struct LevelConfigTests {
         #expect(tython.sprite?.chromaKey == "#000000")
         #expect(tython.sprite?.chromaKeyTolerance == 2)
         #expect(tython.enemies?.types == ["dino", "treant"])
-        #expect(tython.width == 28)
-        #expect(tython.roomCount == 10)
+        #expect(tython.width == 35)
+        #expect(tython.roomCount == 15)
         guard case .slash(let tythonSlash) = tython.combat.minigames.first else {
             Issue.record("expected slash entry")
             return

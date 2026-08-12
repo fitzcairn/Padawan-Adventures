@@ -12,9 +12,9 @@ vocab:
   graphemes: [m, d, g, o, c, k]
   words: [kam, dog, cat, mad, pig, dad, mat, map, dig, can, pot, mop, kid]
 world:
-  width_tiles: 34
-  height_tiles: 34
-  room_count: 12
+  width_tiles: 43
+  height_tiles: 43
+  room_count: 18
   room:
     min_size_tiles: 4
     max_size_tiles: 7

@@ -12,9 +12,9 @@ vocab:
   graphemes: [ff, ll, ss, zz]
   words: [puff, hill, kiss, buzz]
 world:
-  width_tiles: 92
-  height_tiles: 92
-  room_count: 30
+  width_tiles: 115
+  height_tiles: 115
+  room_count: 45
   room:
     min_size_tiles: 7
     max_size_tiles: 11

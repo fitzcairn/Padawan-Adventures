@@ -23,11 +23,11 @@ world:
   music: level
 
   # Width and height of the level, in floor tiles.
-  width_tiles: 28
-  height_tiles: 28
+  width_tiles: 35
+  height_tiles: 35
 
   # How many rooms to place on the map.
-  room_count: 10
+  room_count: 15
   room:
     # L-shaped rooms stretch one arm to 2x max_size_tiles, so the widest room a level
     # can produce is roughly double this (capped by width/height above).
@@ -66,7 +66,7 @@ world:
 # Overriding `minigames:` replaces the whole list — restate every entry you want to keep.
 # Vocabulary for letter rings comes from the level's top-level `vocab:` block (cumulative).
 # `grapheme-sound-combat`: wave-based swipe-to-slash arena. Each wave speaks one grapheme
-#   name and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
+#   pronunciation and launches that letter plus `min_decoy_count`...`max_decoy_count` other letters on
 #   fanned, equal-speed curves. Slash the matching letter to reflect it into the enemy and
 #   score; slashing a decoy stops that letter (flash + explode) while the rest keep flying.
 #   Letting any letter reach you costs one heart. Letter pool and flight time come from
@@ -87,7 +87,7 @@ combat:
       min_decoy_count: 2
       max_decoy_count: 4
       grapheme_case: lower
-      # How often to replay the current grapheme-name prompt while a wave is in flight.
+      # How often to replay the current grapheme-pronunciation prompt while a wave is in flight.
       grapheme_sound_repeat_seconds: 3
     - type: starting-sound-combat
       weight: 1.0

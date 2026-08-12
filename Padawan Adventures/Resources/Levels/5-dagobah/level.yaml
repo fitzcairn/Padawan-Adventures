@@ -13,9 +13,9 @@ vocab:
   graphemes: [st, sn, sp, fl, pl, sl, tr, fr, br, sh, cr]
   words: [stop, snap, spot, flag, plum, slip, frog, tris, brush, crab, vest]
 world:
-  width_tiles: 62
-  height_tiles: 62
-  room_count: 21
+  width_tiles: 78
+  height_tiles: 78
+  room_count: 32
   room:
     min_size_tiles: 6
     max_size_tiles: 9

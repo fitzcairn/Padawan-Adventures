@@ -13,9 +13,9 @@ vocab:
   graphemes: [ai, ay, ee, ea, oa, ow, igh, bl]
   words: [rain, train, play, day, see, tree, sea, read, boat, coat, snow, blow, night, high]
 world:
-  width_tiles: 116
-  height_tiles: 116
-  room_count: 36
+  width_tiles: 149
+  height_tiles: 149
+  room_count: 54
   room:
     min_size_tiles: 8
     max_size_tiles: 12

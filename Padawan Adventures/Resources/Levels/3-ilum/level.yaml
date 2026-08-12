@@ -12,9 +12,9 @@ vocab:
   graphemes: [e, u, r, h, b, f, l]
   words: [run, bed, bug, sun, hat]
 world:
-  width_tiles: 40
-  height_tiles: 40
-  room_count: 14
+  width_tiles: 50
+  height_tiles: 50
+  room_count: 21
   room:
     min_size_tiles: 5
     max_size_tiles: 7
