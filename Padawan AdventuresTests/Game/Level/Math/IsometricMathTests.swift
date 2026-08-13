@@ -458,6 +458,158 @@ struct IsometricMathTests {
         #expect(pickedTile == pit)
     }
 
+    @Test func pickVisibleFloorReturnsDrawnGate() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let gate = GridCoord(x: 1, y: 1, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: gate)
+        for y in 0..<3 {
+            for x in 0..<3 where !(x == 1 && y == 1) {
+                world.setTile(
+                    Tile(kind: .wall),
+                    at: GridCoord(x: x, y: y, story: 0)
+                )
+            }
+        }
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(gate, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        let pickedFloor = IsometricMath.pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(pickedFloor == gate)
+
+        let pickedTarget = IsometricMath.pickTravelTarget(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: 0,
+            in: world,
+            config: config
+        )
+        #expect(pickedTarget == gate)
+    }
+
+    @Test func pickTravelTargetFallsBackToWallWhenTapMissesFloor() {
+        let config = IsometricConfig()
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        for y in 0..<3 {
+            for x in 0..<3 {
+                world.setTile(
+                    Tile(kind: .wall),
+                    at: GridCoord(x: x, y: y, story: 0)
+                )
+            }
+        }
+        let wall = GridCoord(x: 1, y: 1, story: 0)
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: IsometricMath.entityScreenPosition(wall, config: config),
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        #expect(
+            IsometricMath.pickVisibleFloor(
+                at: viewPoint,
+                focus: focus,
+                viewCenter: viewCenter,
+                story: 0,
+                in: world,
+                config: config
+            ) == nil
+        )
+        #expect(
+            IsometricMath.pickTravelTarget(
+                at: viewPoint,
+                focus: focus,
+                viewCenter: viewCenter,
+                story: 0,
+                in: world,
+                config: config
+            ) == wall
+        )
+    }
+
+    /// A flanking wall in front of a gate strip shares the pavement diamond's
+    /// front edge. Travel targeting must keep the paved gate, not the wall.
+    @Test func pickTravelTargetPrefersGatePavementOverFrontWall() {
+        let config = IsometricConfig(tileWidth: 64, tileHeight: 32, wallHeight: 48)
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
+        for y in 0..<4 {
+            for x in 0..<4 {
+                world.setTile(
+                    Tile(kind: .wall),
+                    at: GridCoord(x: x, y: y, story: 0)
+                )
+            }
+        }
+        let gate = GridCoord(x: 0, y: 0, story: 0)
+        let wall = GridCoord(x: 1, y: 0, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: gate)
+
+        // Midpoint of the shared edge between (0,0) east–south and (1,0) west–north.
+        let edgePoint = CGPoint(x: 16, y: -24)
+        #expect(IsometricTileGeometry.containsFloorPoint(edgePoint, at: gate, config: config))
+        #expect(IsometricTileGeometry.containsFloorPoint(edgePoint, at: wall, config: config))
+        #expect(
+            IsometricMath.floorSortValue(for: wall, config: config)
+                > IsometricMath.floorSortValue(for: gate, config: config)
+        )
+
+        let focus = CGPoint.zero
+        let viewCenter = CGPoint(x: 200, y: 200)
+        let viewPoint = IsometricMath.viewPosition(
+            worldPoint: edgePoint,
+            focus: focus,
+            viewCenter: viewCenter
+        )
+
+        #expect(
+            IsometricMath.pickTile(
+                at: viewPoint,
+                focus: focus,
+                viewCenter: viewCenter,
+                story: 0,
+                in: world,
+                config: config
+            ) == wall
+        )
+        #expect(
+            IsometricMath.pickVisibleFloor(
+                at: viewPoint,
+                focus: focus,
+                viewCenter: viewCenter,
+                story: 0,
+                in: world,
+                config: config
+            ) == gate
+        )
+        #expect(
+            IsometricMath.pickTravelTarget(
+                at: viewPoint,
+                focus: focus,
+                viewCenter: viewCenter,
+                story: 0,
+                in: world,
+                config: config
+            ) == gate
+        )
+    }
+
     @Test func fitScaleShrinksLargeMapToView() {
         let config = IsometricConfig()
         let bounds = IsometricMath.mapScreenBounds(width: 40, height: 40, story: 0, config: config)

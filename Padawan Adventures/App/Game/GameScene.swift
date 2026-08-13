@@ -144,7 +144,7 @@ final class GameScene: SKScene {
         guard let touch = touches.first else { return }
 
         let location = touch.location(in: self)
-        guard let target = IsometricMath.pickTile(
+        guard let target = IsometricMath.pickTravelTarget(
             at: location,
             focus: viewportFocus,
             viewCenter: renderer.sceneViewCenter,

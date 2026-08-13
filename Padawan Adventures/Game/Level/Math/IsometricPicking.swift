@@ -3,7 +3,7 @@ import Foundation
 
 nonisolated extension IsometricMath {
     /// Picks the frontmost drawn floor-surface tile under a tap on `story`.
-    /// Walls, pits, doors, and entities are ignored; only non-pit floors, ramps, and slides count.
+    /// Walls are ignored; floors (including pits) and paved gate cells count.
     static func pickVisibleFloor(
         at viewPoint: CGPoint,
         focus: CGPoint,
@@ -21,7 +21,37 @@ nonisolated extension IsometricMath {
             in: world,
             scale: scale,
             config: config
-        ) { isDrawnFloorSurface($0) }
+        ) { isTravelTargetSurface($0) }
+    }
+
+    /// Tap-to-move target: paved floor (including pits and gate cells) first, then any
+    /// tile so a wall-only tap can still snap to a nearby movement goal.
+    static func pickTravelTarget(
+        at viewPoint: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        story: Int,
+        in world: GameWorld,
+        scale: CGFloat = 1,
+        config: IsometricConfig = IsometricConfig()
+    ) -> GridCoord? {
+        pickVisibleFloor(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: story,
+            in: world,
+            scale: scale,
+            config: config
+        ) ?? pickTile(
+            at: viewPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            story: story,
+            in: world,
+            scale: scale,
+            config: config
+        )
     }
 
     /// Picks the frontmost in-bounds tile under a tap on `story` (any kind).
@@ -83,5 +113,18 @@ nonisolated extension IsometricMath {
     /// Matches tiles that `PlaceholderFactory` actually draws as floor diamonds.
     static func isDrawnFloorSurface(_ tile: Tile?) -> Bool {
         IsometricTileGeometry.isDrawnFloorSurface(tile)
+    }
+
+    /// Floor diamonds the player can tap to walk onto: ordinary floors, pits, and
+    /// paved gate cells. Walls are excluded so a flanking wall cannot steal a
+    /// doorway-floor tap.
+    static func isTravelTargetSurface(_ tile: Tile?) -> Bool {
+        guard let tile else { return false }
+        switch tile.kind {
+        case .floor, .gate:
+            return true
+        case .wall:
+            return false
+        }
     }
 }
