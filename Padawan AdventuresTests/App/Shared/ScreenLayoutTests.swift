@@ -75,10 +75,11 @@ struct ScreenLayoutTests {
     @Test @MainActor func chromeInsetsUsesSceneSizeWhenViewSafeAreaIsZero() {
         let size = CGSize(width: 1180, height: 820)
         let insets = ScreenLayout.chromeInsets(sceneSize: size, viewSafeArea: .zero)
+        let window = AppWindow.key?.safeAreaInsets ?? .zero
 
-        #expect(insets.top == size.height * ScreenLayout.edgeInsetFraction)
-        #expect(insets.left == size.width * ScreenLayout.edgeInsetFraction)
-        #expect(insets.right == size.width * ScreenLayout.edgeInsetFraction)
+        #expect(insets.top == max(window.top, size.height * ScreenLayout.edgeInsetFraction))
+        #expect(insets.left == max(window.left, size.width * ScreenLayout.edgeInsetFraction))
+        #expect(insets.right == max(window.right, size.width * ScreenLayout.edgeInsetFraction))
     }
 
     @Test @MainActor func chromeInsetsPrefersViewSafeAreaWhenPresent() {

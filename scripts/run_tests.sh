@@ -30,9 +30,14 @@ args=(
   -resultBundlePath "$resultBundle"
 )
 
-for filter in "$@"; do
-  args+=(-only-testing:"Padawan AdventuresTests/$filter")
-done
+if [ $# -eq 0 ]; then
+  # Scheme Testables also lists UI tests; keep the default run on the unit target.
+  args+=(-only-testing:"Padawan AdventuresTests")
+else
+  for filter in "$@"; do
+    args+=(-only-testing:"Padawan AdventuresTests/$filter")
+  done
+fi
 
 echo "Running: xcodebuild ${args[*]}"
 set +e

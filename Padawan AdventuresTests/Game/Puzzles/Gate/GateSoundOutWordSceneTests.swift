@@ -72,15 +72,24 @@ struct GateSoundOutWordSceneTests {
     }
 
     private func sRGB(_ color: UIColor) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat)? {
-        let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
         let label = SKLabelNode()
-        label.fontColor = resolved
-        guard let stored = label.fontColor,
-              let converted = stored.cgColor.converted(
-                to: CGColorSpaceCreateDeviceRGB(),
-                intent: .defaultIntent,
-                options: nil
-              ),
+        label.fontColor = color
+        let stored = label.fontColor ?? color
+        if let components = rgbComponents(stored) { return components }
+        let resolved = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        return rgbComponents(resolved)
+    }
+
+    private func rgbComponents(_ color: UIColor) -> (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat)? {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        if color.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            return (r, g, b, a)
+        }
+        guard let converted = color.cgColor.converted(
+            to: CGColorSpaceCreateDeviceRGB(),
+            intent: .defaultIntent,
+            options: nil
+        ),
               let components = converted.components,
               components.count >= 3 else {
             return nil

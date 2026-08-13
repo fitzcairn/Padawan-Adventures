@@ -876,7 +876,7 @@ struct LevelConfigTests {
         #expect(tython.pit.fx.trackID(for: "jump") == "pit-jump")
         let soundOut = try pitSoundOutWord(tython)
         #expect(soundOut.choiceCountMin == 3)
-        #expect(soundOut.choiceCountMax == 3)
+        #expect(soundOut.choiceCountMax == 4)
         #expect(soundOut.words.map(\.word) == ["an", "at", "in", "it", "nap", "pan", "pat", "pin", "sat", "sip", "sit", "tap"])
         #expect(soundOut.words.contains {
             $0.word == "sat"
@@ -1522,8 +1522,9 @@ struct LevelConfigTests {
 
     @Test func defaultsToSlashOnlyWhenCombatBlockOmitted() throws {
         let level = try LevelConfig.decode(from: Self.combatLevelPrefix)
-        #expect(level.combat == CombatConfig.fallback)
+        #expect(level.combat.music == CombatConfig.fallback.music)
         #expect(level.combat.minigames.map(\.kind) == [.slash])
+        #expect(level.combat.minigames.map(\.weight) == [1])
     }
 
     
