@@ -29,8 +29,8 @@ world:
   # How many rooms to place on the map.
   room_count: 15
   room:
-    # Primary room bounding box: each side is rolled in [min, max].
-    # L-shaped packing fillers may still stretch an arm to ~2x max_size_tiles.
+    # Primary rooms: each axis of the final bounding box stays in [min, max].
+    # Rect-mode L fillers may still stretch an arm to ~2x max_size_tiles.
     # shape: organic (cave blobs) | round-ish (nibbled disk) | rect
     min_size_tiles: 4
     max_size_tiles: 6

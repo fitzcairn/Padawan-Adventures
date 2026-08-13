@@ -30,7 +30,12 @@ nonisolated extension ProceduralGenerator {
                 }
             guard let seed = rng.pick(candidates) else { continue }
 
-            let target = samplePitTileCount(mean: meanSize, maxSize: maxSize, rng: &rng)
+            let (cappedMean, cappedMax) = pitSizeCap(
+                mean: meanSize,
+                maxSize: maxSize,
+                roomCellCount: room.cells.count
+            )
+            let target = samplePitTileCount(mean: cappedMean, maxSize: cappedMax, rng: &rng)
             let area = growContiguousPit(
                 from: seed,
                 targetCount: target,
@@ -44,6 +49,15 @@ nonisolated extension ProceduralGenerator {
                 story[cell.y][cell.x] = Tile(kind: .floor(isPit: true), pitMinigame: kind)
             }
         }
+    }
+
+    /// Keep pits from swallowing a small room: at most one third of its floor, and never
+    /// above the configured max.
+    func pitSizeCap(mean: Double, maxSize: Int, roomCellCount: Int) -> (mean: Double, max: Int) {
+        let roomCap = max(1, roomCellCount / 3)
+        let cappedMax = min(max(1, maxSize), roomCap)
+        let cappedMean = min(max(1, mean), Double(cappedMax))
+        return (cappedMean, cappedMax)
     }
 
     /// Samples a pit size in `1...maxSize` with expected value ≈ `mean` via successive growth.
@@ -161,7 +175,12 @@ nonisolated extension ProceduralGenerator {
                 }
             guard let seed = rng.pick(candidates) else { continue }
 
-            let target = samplePitTileCount(mean: meanSize, maxSize: maxSize, rng: &rng)
+            let (cappedMean, cappedMax) = pitSizeCap(
+                mean: meanSize,
+                maxSize: maxSize,
+                roomCellCount: room.cells.count
+            )
+            let target = samplePitTileCount(mean: cappedMean, maxSize: cappedMax, rng: &rng)
             let area = growContiguousPit(
                 from: seed,
                 targetCount: target,

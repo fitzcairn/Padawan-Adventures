@@ -257,6 +257,40 @@ struct ProceduralGeneratorTests {
         #expect(gen.isAtLeastTwoWide(ell))
     }
 
+    @Test func primaryIrregularRoomsRespectMinMaxBoundingBox() throws {
+        let minSize = 5
+        let maxSize = 7
+        for shape: LevelConfig.RoomShape in [.organic, .roundIsh] {
+            for seed: UInt64 in [11, 42, 99] {
+                var config = roomsDoorsConfig(seed: seed, roomCount: 8)
+                config.generation.room.minRoomSize = minSize
+                config.generation.room.maxRoomSize = maxSize
+                config.generation.room.shape = shape
+                let result = try ProceduralGenerator().generateDetailed(from: config)
+                #expect(result.rooms.count >= 3, "\(shape) seed \(seed)")
+                let gen = ProceduralGenerator()
+                for room in result.rooms {
+                    let bbox = gen.boundingSize(of: room.cells)
+                    #expect(
+                        bbox.w >= minSize && bbox.w <= maxSize
+                            && bbox.h >= minSize && bbox.h <= maxSize,
+                        "\(shape) room \(room.id) bbox \(bbox.w)x\(bbox.h) outside \(minSize)...\(maxSize)"
+                    )
+                }
+            }
+        }
+    }
+
+    @Test func pitSizeCapLeavesMostOfASmallRoom() {
+        let gen = ProceduralGenerator()
+        let cap = gen.pitSizeCap(mean: 5, maxSize: 10, roomCellCount: 16)
+        #expect(cap.max == 5)
+        #expect(cap.mean == 5)
+        let tiny = gen.pitSizeCap(mean: 5, maxSize: 10, roomCellCount: 9)
+        #expect(tiny.max == 3)
+        #expect(tiny.mean == 3)
+    }
+
     @Test func packedRoomsAreAtLeastTwoTilesWide() throws {
         for shape: LevelConfig.RoomShape in [.organic, .roundIsh, .rect] {
             for seed: UInt64 in [11, 42, 99] {

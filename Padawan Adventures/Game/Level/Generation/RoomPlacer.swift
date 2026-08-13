@@ -29,9 +29,11 @@ nonisolated extension ProceduralGenerator {
     ) -> [GeneratedRoom] {
         var rooms: [GeneratedRoom] = []
         var occupied = Set<GridCoord>()
-        let attemptsPerRoom = 32
-        /// After this many misses, prefer L-rooms to fill leftover pockets.
+        let attemptsPerRoom = 40
+        /// After this many misses, organic/round-ish use compact L-rooms to fill leftover pockets.
         let lFallbackAfter = attemptsPerRoom / 4
+        /// Last-ditch compact rect if an L will not seat; keeps tight maps at full room_count.
+        let rectLastResortAfter = attemptsPerRoom - 8
 
         while rooms.count < count {
             var placed = false
@@ -47,6 +49,9 @@ nonisolated extension ProceduralGenerator {
                 }
 
                 let raw: Set<GridCoord>
+                // Last-ditch organic/round-ish rects may shrink below `minSize` to fill a
+                // leftover pocket that cannot host another primary room.
+                var shapeMinSize = minSize
                 if useLFallback {
                     switch shape {
                     case .rect:
@@ -60,12 +65,11 @@ nonisolated extension ProceduralGenerator {
                             rng: &rng
                         )
                     case .organic, .roundIsh:
-                        // Straight-edged compact fillers pack and gate more reliably
-                        // than another irregular blob in a leftover pocket.
-                        if rng.nextBool(probability: 0.5) {
+                        if attempt >= rectLastResortAfter {
+                            shapeMinSize = min(minSize, 3)
                             raw = makeRectRoom(
-                                minSize: minSize,
-                                maxSize: cap,
+                                minSize: shapeMinSize,
+                                maxSize: minSize,
                                 width: width,
                                 height: height,
                                 rng: &rng
@@ -111,6 +115,15 @@ nonisolated extension ProceduralGenerator {
                 }
                 let shapeCells = normalizeShape(raw)
                 guard !shapeCells.isEmpty, isAtLeastTwoWide(Set(shapeCells)) else { continue }
+                let bbox = boundingSize(of: shapeCells)
+                guard bbox.w >= shapeMinSize, bbox.h >= shapeMinSize else { continue }
+                // Stretched rect-mode L fillers may exceed max, but a filled rectangle
+                // is a primary room (or a degenerate L) and must stay in range.
+                let isFilledRect = shapeCells.count == bbox.w * bbox.h
+                let mayExceedMax = useLFallback && shape == .rect && !isFilledRect
+                if !mayExceedMax {
+                    guard bbox.w <= maxSize, bbox.h <= maxSize else { continue }
+                }
 
                 let cells: Set<GridCoord>?
                 if rooms.isEmpty {
@@ -123,7 +136,7 @@ nonisolated extension ProceduralGenerator {
                     )
                 } else {
                     var found: Set<GridCoord>?
-                    let anchors = rooms.shuffled(using: &rng).prefix(6)
+                    let anchors = rooms.shuffled(using: &rng)
                     for anchor in anchors {
                         if let placement = firstLegalPlacement(
                             shape: shapeCells,
@@ -204,8 +217,8 @@ nonisolated extension ProceduralGenerator {
         let anchorCells = anchor.cells
             .sorted { ($0.x, $0.y) < ($1.x, $1.y) }
             .shuffled(using: &rng)
-            .prefix(8)
-        let shapeCells = shape.shuffled(using: &rng).prefix(8)
+            .prefix(16)
+        let shapeCells = shape.shuffled(using: &rng).prefix(16)
         let dirs = GridCoord.cardinals.shuffled(using: &rng)
         var origins: [GridCoord] = []
         var seen = Set<GridCoord>()
@@ -379,8 +392,24 @@ nonisolated extension ProceduralGenerator {
             }
             frontier.sort { ($0.x, $0.y) < ($1.x, $1.y) }
         }
+        // Keep growing toward unused box edges so the final bbox stays the rolled min–max size.
+        while !touchesBoxEdges(cells, x: x, y: y, w: w, h: h), !frontier.isEmpty {
+            let ranked = frontier.sorted { a, b in
+                let sa = boxEdgeScore(a, x: x, y: y, w: w, h: h)
+                let sb = boxEdgeScore(b, x: x, y: y, w: w, h: h)
+                if sa != sb { return sa > sb }
+                return (a.x, a.y) < (b.x, b.y)
+            }
+            guard let pick = ranked.first else { break }
+            frontier.removeAll { $0 == pick }
+            cells.insert(pick)
+            for (dx, dy) in GridCoord.cardinals {
+                consider(pick.neighbor(dx: dx, dy: dy))
+            }
+        }
         thickenToMinimumWidth(&cells, allowed: inBox)
-        guard isAtLeastTwoWide(cells) else { return [] }
+        guard isAtLeastTwoWide(cells), isPrimarySize(cells, minSize: minSize, maxSize: maxSize)
+        else { return [] }
         return cells
     }
 
@@ -428,11 +457,39 @@ nonisolated extension ProceduralGenerator {
             guard let victim = rng.pick(candidates), cells.count > 4 else { break }
             var next = cells
             next.remove(victim)
-            guard isAtLeastTwoWide(next) else { continue }
+            guard isAtLeastTwoWide(next), isPrimarySize(next, minSize: minSize, maxSize: maxSize)
+            else { continue }
             cells = next
         }
-        guard isAtLeastTwoWide(cells) else { return [] }
+        guard isAtLeastTwoWide(cells), isPrimarySize(cells, minSize: minSize, maxSize: maxSize)
+        else { return [] }
         return cells
+    }
+
+    func boundingSize(of cells: some Collection<GridCoord>) -> (w: Int, h: Int) {
+        guard let minX = cells.map(\.x).min(), let maxX = cells.map(\.x).max(),
+              let minY = cells.map(\.y).min(), let maxY = cells.map(\.y).max()
+        else { return (0, 0) }
+        return (maxX - minX + 1, maxY - minY + 1)
+    }
+
+    func isPrimarySize(_ cells: some Collection<GridCoord>, minSize: Int, maxSize: Int) -> Bool {
+        let bbox = boundingSize(of: cells)
+        return bbox.w >= minSize && bbox.w <= maxSize && bbox.h >= minSize && bbox.h <= maxSize
+    }
+
+    func touchesBoxEdges(_ cells: Set<GridCoord>, x: Int, y: Int, w: Int, h: Int) -> Bool {
+        cells.contains { $0.x == x }
+            && cells.contains { $0.x == x + w - 1 }
+            && cells.contains { $0.y == y }
+            && cells.contains { $0.y == y + h - 1 }
+    }
+
+    func boxEdgeScore(_ cell: GridCoord, x: Int, y: Int, w: Int, h: Int) -> Int {
+        var score = 0
+        if cell.x == x || cell.x == x + w - 1 { score += 1 }
+        if cell.y == y || cell.y == y + h - 1 { score += 1 }
+        return score
     }
 
     /// True when every cell sits in a filled 2×2, so the room is never a 1-tile corridor.

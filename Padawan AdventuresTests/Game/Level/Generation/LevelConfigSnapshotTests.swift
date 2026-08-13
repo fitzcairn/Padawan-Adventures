@@ -52,8 +52,8 @@ struct LevelConfigSnapshotTests {
         #expect(level.sprite?.root == "Levels/1-tython")
         #expect(level.width == 35)
         #expect(level.roomCount == 15)
-        #expect(level.room.minRoomSize == 5)
-        #expect(level.room.maxRoomSize == 8)
+        #expect(level.room.minRoomSize == 4)
+        #expect(level.room.maxRoomSize == 7)
         #expect(level.room.shape == .organic)
         #expect(level.enemies?.types == ["dino", "treant"])
         #expect(level.currentLevelProbability == 0.75)
@@ -140,7 +140,7 @@ struct LevelConfigSnapshotTests {
 
     @Test func shippedLevelsUseExpectedRoomShapesAndSizes() throws {
         let expected: [String: (shape: LevelConfig.RoomShape, min: Int, max: Int)] = [
-            "1-tython": (.organic, 5, 8),
+            "1-tython": (.organic, 4, 7),
             "2-tatooine": (.roundIsh, 5, 8),
             "3-ilum": (.roundIsh, 5, 7),
             "4-kashyyyk": (.organic, 5, 7),
