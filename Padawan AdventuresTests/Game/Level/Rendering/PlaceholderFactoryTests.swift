@@ -362,8 +362,9 @@ struct PlaceholderFactoryTests {
     }
 
     @Test func entityInFrontOfAlongYGateDrawsAboveEvenAtLowerY() {
-        // Gate runs along Y at x=5; front cell is (5,5). Entity east at (6,4) is on the
-        // camera-near side of the doorway but has lower Y than the front pillar.
+        // Gate runs along Y at x=5; front cell is (5,5). Entity east at (6,4) has lower Y
+        // than the front pillar but the same camera depth — must draw above. West-and-south
+        // at (4,6) is camera-front too (higher Y), so it must also stay above the art.
         let config = IsometricConfig()
         let gate = PlaceholderFactory.GateOccluder(
             axis: .alongY,
@@ -372,14 +373,14 @@ struct PlaceholderFactoryTests {
             sortCoord: GridCoord(x: 5, y: 5, story: 0)
         )
         let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
-        let nearZ = PlaceholderFactory.entitySortValueAccountingForGates(
+        let eastZ = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 6, y: 4, story: 0, gates: [gate], config: config
         )
-        let farZ = PlaceholderFactory.entitySortValueAccountingForGates(
+        let westSouthZ = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 4, y: 6, story: 0, gates: [gate], config: config
         )
-        #expect(nearZ > gateZ, "near-side entity must draw above the gate")
-        #expect(farZ < gateZ, "far-side entity must draw below the gate")
+        #expect(eastZ > gateZ, "east entity at same camera depth must draw above the gate")
+        #expect(westSouthZ > gateZ, "camera-front west entity must draw above the gate")
     }
 
     @Test func entityInFrontOfAlongXGateDrawsAboveEvenAtLowerX() {
@@ -391,20 +392,20 @@ struct PlaceholderFactoryTests {
             sortCoord: GridCoord(x: 6, y: 4, story: 0)
         )
         let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
-        let nearZ = PlaceholderFactory.entitySortValueAccountingForGates(
+        let southZ = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 4, y: 5, story: 0, gates: [gate], config: config
         )
-        let farZ = PlaceholderFactory.entitySortValueAccountingForGates(
+        let northEastZ = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 7, y: 3, story: 0, gates: [gate], config: config
         )
-        #expect(nearZ > gateZ)
-        #expect(farZ < gateZ)
+        #expect(southZ > gateZ)
+        #expect(northEastZ > gateZ, "camera-front pose on the depth line must draw above")
     }
 
     @Test func gateDoesNotOccludeEntityStandingWellInFrontOfIt() {
         // Gate runs along Y at x=5 (cells (5,4),(5,5)). An entity in the west room at
-        // (4,8) is on the far side by X, but eight rows south — visually well in front of
-        // the gate and outside the art's reach, so plain depth sorting must stand.
+        // (4,8) is well south of the strip — visually in front and outside the art's
+        // reach, so plain depth sorting must stand.
         let config = IsometricConfig()
         let gate = PlaceholderFactory.GateOccluder(
             axis: .alongY,
@@ -417,7 +418,7 @@ struct PlaceholderFactoryTests {
         let z = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 4, y: 8, story: 0, gates: [gate], config: config
         )
-        #expect(z == natural, "far-but-distant entity must keep its natural depth")
+        #expect(z == natural, "distant camera-front entity must keep its natural depth")
         #expect(z > gateZ, "entity rows in front of the gate must draw above it")
     }
 
@@ -433,7 +434,95 @@ struct PlaceholderFactoryTests {
         let z = PlaceholderFactory.entitySortValueAccountingForGates(
             x: 4, y: 5, story: 0, gates: [gate], config: config
         )
-        #expect(z < gateZ, "entity in the doorway on the far side stays behind the gate")
+        #expect(z < gateZ, "entity at back-corner depth west of the door stays behind")
+    }
+
+    /// Walking south past an alongY door on the west side is camera-front (higher Y) and
+    /// must not be buried by the old room-side far-half-plane cap.
+    @Test func entitySouthWestOfAlongYGateDrawsAbove() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 4, y: 6, story: 0, gates: [gate], config: config
+        )
+        #expect(z > gateZ)
+    }
+
+    /// East of an alongY door but camera-behind it must not show through the art.
+    @Test func entityNorthEastOfAlongYGateStaysBehind() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 6, y: 3, story: 0, gates: [gate], config: config
+        )
+        #expect(z < gateZ, "camera-behind east entity must stay below the gate")
+    }
+
+    /// Mid-move onto the strip's back cell can sit just off the dividing line with depth
+    /// still below the front cell — it must stay visible above the art.
+    @Test func fractionalApproachOntoGateBackCellDrawsAbove() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 5.5, y: 4, story: 0, gates: [gate], config: config
+        )
+        #expect(z > gateZ)
+    }
+
+    /// Gate art overhangs several tiles past the strip (off-center anchors). Camera-front
+    /// poses under that edge used to miss the pad=1 span and lose to Y-sort until the
+    /// player stepped onto the doorway — the edge-occludes-until-right-in-front glitch.
+    @Test func cameraFrontPoseUnderGateOverhangDrawsAbove() {
+        let config = IsometricConfig()
+        let alongY = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let alongX = PlaceholderFactory.GateOccluder(
+            axis: .alongX,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 6, y: 4, story: 0),
+            sortCoord: GridCoord(x: 6, y: 4, story: 0)
+        )
+        let alongYZ = IsometricMath.wallSortValue(for: alongY.sortCoord, config: config)
+        let alongXZ = IsometricMath.wallSortValue(for: alongX.sortCoord, config: config)
+        // East of alongY, lower Y than the front pillar, outside the old ±1 box.
+        #expect(
+            PlaceholderFactory.entitySortValueAccountingForGates(
+                x: 7, y: 4, story: 0, gates: [alongY], config: config
+            ) > alongYZ
+        )
+        #expect(
+            PlaceholderFactory.entitySortValueAccountingForGates(
+                x: 8, y: 4, story: 0, gates: [alongY], config: config
+            ) > alongYZ
+        )
+        // North-east of alongX on the same depth line as the front cell.
+        #expect(
+            PlaceholderFactory.entitySortValueAccountingForGates(
+                x: 8, y: 2, story: 0, gates: [alongX], config: config
+            ) > alongXZ
+        )
     }
 
     /// Walking into a gate commits occupancy to the gate cell, so the renderer sorts the
@@ -513,28 +602,29 @@ struct PlaceholderFactoryTests {
             partner: GridCoord(x: 6, y: 4, story: 0),
             sortCoord: GridCoord(x: 6, y: 4, story: 0)
         )
-        let near = GridCoord(x: 4, y: 5, story: 0)
-        let far = GridCoord(x: 7, y: 3, story: 0)
-        let playerNear = PlaceholderFactory.entitySortValueAccountingForGates(
-            x: Double(near.x), y: Double(near.y), story: near.story,
+        let south = GridCoord(x: 4, y: 5, story: 0)
+        let depthLine = GridCoord(x: 7, y: 3, story: 0)
+        let playerSouth = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(south.x), y: Double(south.y), story: south.story,
             gates: [gate], config: config
         )
-        let pickupNear = PlaceholderFactory.entitySortValueAccountingForGates(
-            x: Double(near.x), y: Double(near.y), story: near.story,
+        let pickupSouth = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(south.x), y: Double(south.y), story: south.story,
             gates: [gate], config: config
         )
-        let playerFar = PlaceholderFactory.entitySortValueAccountingForGates(
-            x: Double(far.x), y: Double(far.y), story: far.story,
+        let playerDepthLine = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(depthLine.x), y: Double(depthLine.y), story: depthLine.story,
             gates: [gate], config: config
         )
-        let pickupFar = PlaceholderFactory.entitySortValueAccountingForGates(
-            x: Double(far.x), y: Double(far.y), story: far.story,
+        let pickupDepthLine = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: Double(depthLine.x), y: Double(depthLine.y), story: depthLine.story,
             gates: [gate], config: config
         )
-        #expect(pickupNear == playerNear)
-        #expect(pickupFar == playerFar)
-        #expect(pickupNear > IsometricMath.wallSortValue(for: gate.sortCoord, config: config))
-        #expect(pickupFar < IsometricMath.wallSortValue(for: gate.sortCoord, config: config))
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        #expect(pickupSouth == playerSouth)
+        #expect(pickupDepthLine == playerDepthLine)
+        #expect(pickupSouth > gateZ)
+        #expect(pickupDepthLine > gateZ, "camera-front depth-line pose draws above for pickups too")
     }
 
     @Test func solidWallTileNodeDrawsNothing() {

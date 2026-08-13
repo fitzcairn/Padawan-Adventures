@@ -43,72 +43,101 @@ extension PlaceholderFactory {
         return result
     }
 
-    /// Tiles of slack beyond the 2-cell strip where gate art can still overlap a sprite.
-    static let gateSpanPadding: Double = 1
-
-    /// True when the entity is close enough along the strip axis for the gate art to
-    /// overlap it on screen.
+    /// Tiles of slack beyond the 2-cell strip for the *behind* cap only.
     ///
-    /// The near/far side tests below are half-planes, so without this bound a gate would
-    /// reorder every sprite sharing its row or column — including sprites far away that
-    /// the art cannot touch. Outside the span, plain depth sorting is correct.
+    /// Camera-front bumps do not use this box — `max(z, gateZ + 0.5)` is safe map-wide
+    /// (poses that already beat the gate keep their natural z). The behind cap must stay
+    /// local: without a bound it would bury every sprite sharing a lower depth line.
+    static let gateSpanPadding: Double = 2
+
+    /// Camera depth (`x + y`) of the strip's far corner — the back cell of the doorway.
+    static func gateBackDepth(for gate: GateOccluder) -> Double {
+        Double(min(gate.cell.x + gate.cell.y, gate.partner.x + gate.partner.y))
+    }
+
+    /// True when the pose sits on the strip's two cells (including fractional mid-move).
+    static func entityIsOnGateStrip(
+        entityX: Double,
+        entityY: Double,
+        gate: GateOccluder
+    ) -> Bool {
+        let minX = Double(min(gate.cell.x, gate.partner.x))
+        let maxX = Double(max(gate.cell.x, gate.partner.x))
+        let minY = Double(min(gate.cell.y, gate.partner.y))
+        let maxY = Double(max(gate.cell.y, gate.partner.y))
+        return entityX >= minX && entityX <= maxX && entityY >= minY && entityY <= maxY
+    }
+
+    /// True when a camera-behind entity is close enough that the gate art can cover it.
+    ///
+    /// Bounds both axes around the 2-cell strip. Used only for the behind cap — front
+    /// bumps ignore this so lateral overhang past the old pad box still lifts the sprite.
     static func entityOverlapsGateSpan(
         entityX: Double,
         entityY: Double,
         gate: GateOccluder
     ) -> Bool {
-        switch gate.axis {
-        case .alongX:
-            let low = Double(min(gate.cell.x, gate.partner.x)) - gateSpanPadding
-            let high = Double(max(gate.cell.x, gate.partner.x)) + gateSpanPadding
-            return entityX >= low && entityX <= high
-        case .alongY:
-            let low = Double(min(gate.cell.y, gate.partner.y)) - gateSpanPadding
-            let high = Double(max(gate.cell.y, gate.partner.y)) + gateSpanPadding
-            return entityY >= low && entityY <= high
-        }
+        let minX = Double(min(gate.cell.x, gate.partner.x)) - gateSpanPadding
+        let maxX = Double(max(gate.cell.x, gate.partner.x)) + gateSpanPadding
+        let minY = Double(min(gate.cell.y, gate.partner.y)) - gateSpanPadding
+        let maxY = Double(max(gate.cell.y, gate.partner.y)) + gateSpanPadding
+        return entityX >= minX && entityX <= maxX && entityY >= minY && entityY <= maxY
     }
 
     /// True when the entity is on the camera-near side of the gate (should draw above it).
     ///
-    /// Gates are thin walls: `alongX` separates rooms in Y (near = higher Y), `alongY`
-    /// separates rooms in X (near = higher X).
-    ///
-    /// The gate line itself counts as near. Walking into a gate commits occupancy to the
-    /// gate cell, so the renderer sorts the sprite from a pose sitting exactly on the
-    /// strip; without this a sprite on the strip's back cell loses to the art's front-cell
-    /// z and vanishes into the door it is standing in. Only the strip's own two cells are
-    /// enterable on that line — generation flanks every strip with solid wall.
+    /// Camera-near means higher `x + y` (bottom of the screen), or feet at/south of the
+    /// cobblestone lip. The lip is the strip's south tip; an entity standing on the front
+    /// cell has feet half a tile *behind* that lip, so without the screen-space slop the
+    /// threshold paints over their body. The strip AABB covers the back cell and fractional
+    /// walks onto it.
     static func entityIsInFrontOfGate(
         entityX: Double,
         entityY: Double,
-        axis: GateSpriteSet.Axis,
-        cell: GridCoord
+        story: Int = 0,
+        gate: GateOccluder,
+        config: IsometricConfig = IsometricConfig()
     ) -> Bool {
-        switch axis {
-        case .alongX:
-            return entityY >= Double(cell.y)
-        case .alongY:
-            return entityX >= Double(cell.x)
+        if entityIsOnGateStrip(entityX: entityX, entityY: entityY, gate: gate) {
+            return true
         }
+        if entityX + entityY > gateBackDepth(for: gate) {
+            return true
+        }
+        let feet = IsometricMath.entityScreenPosition(
+            x: entityX,
+            y: entityY,
+            story: story,
+            config: config
+        )
+        let lip = gateStripSouthTip(coord: gate.cell, partner: gate.partner, config: config)
+        // Half a tile covers front-cell feet sitting behind the lip; a full tile would
+        // also lift the cell *north* of an alongX strip (show-through from behind).
+        return feet.y <= lip.y + config.tileHeight * 0.5
     }
 
-    /// True when the entity is on the camera-far side of the gate (gate should draw above).
+    /// True when the entity is strictly camera-behind the gate (gate should draw above).
     static func entityIsBehindGate(
         entityX: Double,
         entityY: Double,
-        axis: GateSpriteSet.Axis,
-        cell: GridCoord
+        story: Int = 0,
+        gate: GateOccluder,
+        config: IsometricConfig = IsometricConfig()
     ) -> Bool {
-        switch axis {
-        case .alongX:
-            return entityY < Double(cell.y)
-        case .alongY:
-            return entityX < Double(cell.x)
+        if entityIsInFrontOfGate(
+            entityX: entityX,
+            entityY: entityY,
+            story: story,
+            gate: gate,
+            config: config
+        ) {
+            return false
         }
+        return entityX + entityY < gateBackDepth(for: gate)
     }
 
-    /// Entity sort z adjusted so near-side poses beat the gate and far-side poses lose to it.
+    /// Entity sort z adjusted so camera-near poses beat the gate and nearby camera-far
+    /// poses lose to it.
     ///
     /// Used for players, enemies, and pickup items alike — any sprite that shares the
     /// occlusion layer with gate art.
@@ -125,11 +154,25 @@ extension PlaceholderFactory {
         var aboveFloor = -CGFloat.greatestFiniteMagnitude
         var belowCap = CGFloat.greatestFiniteMagnitude
         for gate in gates {
-            guard entityOverlapsGateSpan(entityX: x, entityY: y, gate: gate) else { continue }
             let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
-            if entityIsInFrontOfGate(entityX: x, entityY: y, axis: gate.axis, cell: gate.cell) {
+            // Front bump is map-wide: gate art overhangs several tiles past the strip, and
+            // max() is a no-op when natural z already clears the gate.
+            if entityIsInFrontOfGate(
+                entityX: x,
+                entityY: y,
+                story: story,
+                gate: gate,
+                config: config
+            ) {
                 aboveFloor = max(aboveFloor, gateZ + 0.5)
-            } else if entityIsBehindGate(entityX: x, entityY: y, axis: gate.axis, cell: gate.cell) {
+            } else if entityIsBehindGate(
+                entityX: x,
+                entityY: y,
+                story: story,
+                gate: gate,
+                config: config
+            ),
+                      entityOverlapsGateSpan(entityX: x, entityY: y, gate: gate) {
                 belowCap = min(belowCap, gateZ - 0.5)
             }
         }
@@ -145,5 +188,24 @@ extension PlaceholderFactory {
             }
         }
         return z
+    }
+
+    /// Pushes painter z onto the wrapper *and* every drawn sprite/shape so
+    /// `ignoresSiblingOrder` cannot sort a child `SKSpriteNode` at local z 0 against
+    /// a sibling wrapper whose only z lives on the parent.
+    static func applyOcclusionSortZ(to node: SKNode, z: CGFloat) {
+        node.zPosition = z
+        applyDrawnSortZ(to: node, sortZ: z)
+    }
+
+    private static func applyDrawnSortZ(to node: SKNode, sortZ: CGFloat) {
+        for child in node.children {
+            if child is SKSpriteNode || child is SKShapeNode {
+                child.zPosition = sortZ
+            } else {
+                child.zPosition = 0
+            }
+            applyDrawnSortZ(to: child, sortZ: sortZ)
+        }
     }
 }

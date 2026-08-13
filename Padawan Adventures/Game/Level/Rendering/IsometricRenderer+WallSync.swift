@@ -37,6 +37,12 @@ extension IsometricRenderer {
                     gateSpriteSetLibrary: gateSpriteSetLibrary
                 ) ?? IsometricMath.gridToScreen(coord, config: config)
                 node.zPosition = IsometricMath.wallSortValue(for: sort, config: config)
+                if case .gate = tile.kind {
+                    PlaceholderFactory.applyOcclusionSortZ(
+                        to: node,
+                        z: IsometricMath.wallSortValue(for: sort, config: config)
+                    )
+                }
             },
             makeNode: { coord, tile in
                 PlaceholderFactory.tileNode(
