@@ -16,6 +16,7 @@ struct LevelLayoutFeasibilityTests {
                     count: level.roomCount,
                     minSize: level.room.minRoomSize,
                     maxSize: level.room.maxRoomSize,
+                    shape: level.room.shape,
                     width: level.width,
                     height: level.height,
                     rng: &rng

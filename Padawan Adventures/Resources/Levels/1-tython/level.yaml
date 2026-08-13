@@ -15,8 +15,9 @@ world:
   height_tiles: 35
   room_count: 15
   room:
-    min_size_tiles: 4
-    max_size_tiles: 6
+    min_size_tiles: 5
+    max_size_tiles: 8
+    shape: organic
     pit_probability: 0.60
   enemies:
     types: [dino, treant]

@@ -17,8 +17,9 @@ world:
   height_tiles: 149
   room_count: 54
   room:
-    min_size_tiles: 8
-    max_size_tiles: 12
+    min_size_tiles: 5
+    max_size_tiles: 7
+    shape: round-ish
     pit_probability: 1.00
   enemies:
     types: [centipede, snake]

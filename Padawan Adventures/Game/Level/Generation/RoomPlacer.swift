@@ -22,43 +22,100 @@ nonisolated extension ProceduralGenerator {
         count: Int,
         minSize: Int,
         maxSize: Int,
+        shape: LevelConfig.RoomShape = .organic,
         width: Int,
         height: Int,
         rng: inout SeededGenerator
     ) -> [GeneratedRoom] {
         var rooms: [GeneratedRoom] = []
         var occupied = Set<GridCoord>()
-        let attemptsPerRoom = 24
+        let attemptsPerRoom = 32
+        /// After this many misses, prefer L-rooms to fill leftover pockets.
+        let lFallbackAfter = attemptsPerRoom / 4
 
         while rooms.count < count {
             var placed = false
             for attempt in 0..<attemptsPerRoom {
                 let cap = max(minSize, maxSize - (maxSize - minSize) * attempt / attemptsPerRoom)
-                let raw: Set<GridCoord>
-                if rng.nextBool(probability: 0.55) {
-                    raw = makeOrganicLRoom(
-                        minSize: minSize,
-                        maxSize: cap,
-                        width: width,
-                        height: height,
-                        rng: &rng
-                    )
-                } else {
-                    raw = makeOrganicRectRoom(
-                        minSize: minSize,
-                        maxSize: cap,
-                        width: width,
-                        height: height,
-                        rng: &rng
-                    )
+                let useLFallback: Bool
+                switch shape {
+                case .rect:
+                    // Coruscant: keep today's rect/L mix (no rect stretch).
+                    useLFallback = rng.nextBool(probability: 0.55)
+                case .organic, .roundIsh:
+                    useLFallback = attempt >= lFallbackAfter
                 }
-                let shape = normalizeShape(raw)
-                guard !shape.isEmpty else { continue }
+
+                let raw: Set<GridCoord>
+                if useLFallback {
+                    switch shape {
+                    case .rect:
+                        // Coruscant: long-arm L fillers for leftover map.
+                        raw = makeOrganicLRoom(
+                            minSize: minSize,
+                            maxSize: cap,
+                            width: width,
+                            height: height,
+                            allowStretch: true,
+                            rng: &rng
+                        )
+                    case .organic, .roundIsh:
+                        // Straight-edged compact fillers pack and gate more reliably
+                        // than another irregular blob in a leftover pocket.
+                        if rng.nextBool(probability: 0.5) {
+                            raw = makeRectRoom(
+                                minSize: minSize,
+                                maxSize: cap,
+                                width: width,
+                                height: height,
+                                rng: &rng
+                            )
+                        } else {
+                            raw = makeOrganicLRoom(
+                                minSize: minSize,
+                                maxSize: cap,
+                                width: width,
+                                height: height,
+                                allowStretch: false,
+                                rng: &rng
+                            )
+                        }
+                    }
+                } else {
+                    switch shape {
+                    case .organic:
+                        raw = makeOrganicBlobRoom(
+                            minSize: minSize,
+                            maxSize: cap,
+                            width: width,
+                            height: height,
+                            rng: &rng
+                        )
+                    case .roundIsh:
+                        raw = makeRoundIshRoom(
+                            minSize: minSize,
+                            maxSize: cap,
+                            width: width,
+                            height: height,
+                            rng: &rng
+                        )
+                    case .rect:
+                        raw = makeRectRoom(
+                            minSize: minSize,
+                            maxSize: cap,
+                            width: width,
+                            height: height,
+                            rng: &rng
+                        )
+                    }
+                }
+                let shapeCells = normalizeShape(raw)
+                guard !shapeCells.isEmpty, isAtLeastTwoWide(Set(shapeCells)) else { continue }
 
                 let cells: Set<GridCoord>?
                 if rooms.isEmpty {
                     cells = firstOriginPlacement(
-                        shape: shape,
+                        shape: shapeCells,
                         occupied: occupied,
                         width: width,
                         height: height,
@@ -66,10 +123,10 @@ nonisolated extension ProceduralGenerator {
                     )
                 } else {
                     var found: Set<GridCoord>?
-                    let anchors = rooms.shuffled(using: &rng).prefix(3)
+                    let anchors = rooms.shuffled(using: &rng).prefix(6)
                     for anchor in anchors {
                         if let placement = firstLegalPlacement(
-                            shape: shape,
+                            shape: shapeCells,
                             anchor: anchor,
                             occupied: occupied,
                             width: width,
@@ -242,7 +299,8 @@ nonisolated extension ProceduralGenerator {
         return false
     }
 
-    func makeOrganicRectRoom(
+    /// Axis-aligned rectangle with both sides rolled in `[minSize, maxSize]`.
+    func makeRectRoom(
         minSize: Int,
         maxSize: Int,
         width: Int,
@@ -251,33 +309,222 @@ nonisolated extension ProceduralGenerator {
     ) -> Set<GridCoord> {
         let w = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
         let h = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
-        // Occasional long corridor-like rooms.
-        let stretch = rng.nextBool(probability: 0.25)
-        let finalW = stretch && rng.nextBool(probability: 0.5) ? min(width - 2, w + maxSize) : w
-        let finalH = stretch && finalW == w ? min(height - 2, h + maxSize) : h
-        guard width > finalW + 2, height > finalH + 2 else { return [] }
+        guard width > w + 2, height > h + 2 else { return [] }
 
-        let x = rng.nextInt(upperBound: width - finalW - 1) + 1
-        let y = rng.nextInt(upperBound: height - finalH - 1) + 1
+        let x = rng.nextInt(upperBound: width - w - 1) + 1
+        let y = rng.nextInt(upperBound: height - h - 1) + 1
 
         var cells = Set<GridCoord>()
-        for row in y..<(y + finalH) {
-            for col in x..<(x + finalW) {
+        for row in y..<(y + h) {
+            for col in x..<(x + w) {
                 cells.insert(GridCoord(x: col, y: row, story: 0))
             }
         }
         return cells
     }
 
-    /// L-shape from two overlapping rects; arms may be long (up to ~2× maxSize).
-    func makeOrganicLRoom(
+    /// Cave-like blob grown inside a `w×h` box rolled in `[minSize, maxSize]`.
+    func makeOrganicBlobRoom(
         minSize: Int,
         maxSize: Int,
         width: Int,
         height: Int,
         rng: inout SeededGenerator
     ) -> Set<GridCoord> {
-        let longMax = maxSize * 2
+        let w = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
+        let h = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
+        guard width > w + 2, height > h + 2 else { return [] }
+
+        let x = rng.nextInt(upperBound: width - w - 1) + 1
+        let y = rng.nextInt(upperBound: height - h - 1) + 1
+        let boxArea = w * h
+        let fillFraction = 0.65 + Double(rng.nextInt(upperBound: 21)) / 100.0  // 65–85%
+        let target = max(minSize * minSize, Int((Double(boxArea) * fillFraction).rounded()))
+
+        let seed = GridCoord(
+            x: x + w / 2 + rng.nextInt(upperBound: 3) - 1,
+            y: y + h / 2 + rng.nextInt(upperBound: 3) - 1,
+            story: 0
+        )
+        let clampedSeed = GridCoord(
+            x: min(max(seed.x, x), x + w - 1),
+            y: min(max(seed.y, y), y + h - 1),
+            story: 0
+        )
+
+        var cells: Set<GridCoord> = [clampedSeed]
+        var frontier: [GridCoord] = []
+
+        func inBox(_ cell: GridCoord) -> Bool {
+            cell.x >= x && cell.x < x + w && cell.y >= y && cell.y < y + h
+        }
+        func consider(_ cell: GridCoord) {
+            guard inBox(cell), !cells.contains(cell) else { return }
+            if !frontier.contains(where: { $0 == cell }) {
+                frontier.append(cell)
+            }
+        }
+
+        for (dx, dy) in GridCoord.cardinals {
+            consider(clampedSeed.neighbor(dx: dx, dy: dy))
+        }
+        frontier.sort { ($0.x, $0.y) < ($1.x, $1.y) }
+
+        while cells.count < target, !frontier.isEmpty {
+            guard let pick = rng.pick(frontier) else { break }
+            frontier.removeAll { $0 == pick }
+            cells.insert(pick)
+            for (dx, dy) in GridCoord.cardinals {
+                consider(pick.neighbor(dx: dx, dy: dy))
+            }
+            frontier.sort { ($0.x, $0.y) < ($1.x, $1.y) }
+        }
+        thickenToMinimumWidth(&cells, allowed: inBox)
+        guard isAtLeastTwoWide(cells) else { return [] }
+        return cells
+    }
+
+    /// Disk/ellipse inscribed in a min–max box, then lightly nibbled on the perimeter.
+    func makeRoundIshRoom(
+        minSize: Int,
+        maxSize: Int,
+        width: Int,
+        height: Int,
+        rng: inout SeededGenerator
+    ) -> Set<GridCoord> {
+        let w = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
+        let h = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
+        guard width > w + 2, height > h + 2 else { return [] }
+
+        let originX = rng.nextInt(upperBound: width - w - 1) + 1
+        let originY = rng.nextInt(upperBound: height - h - 1) + 1
+        let cx = Double(originX) + Double(w - 1) / 2.0
+        let cy = Double(originY) + Double(h - 1) / 2.0
+        let rx = Double(w) / 2.0
+        let ry = Double(h) / 2.0
+        guard rx > 0, ry > 0 else { return [] }
+
+        var cells = Set<GridCoord>()
+        for row in originY..<(originY + h) {
+            for col in originX..<(originX + w) {
+                let dx = (Double(col) - cx) / rx
+                let dy = (Double(row) - cy) / ry
+                if dx * dx + dy * dy <= 1.0 {
+                    cells.insert(GridCoord(x: col, y: row, story: 0))
+                }
+            }
+        }
+        guard cells.count >= 4 else { return cells }
+
+        // Chew a modest fraction of perimeter cells without breaking contiguity.
+        let nibbleBudget = max(1, cells.count / 8)
+        for _ in 0..<nibbleBudget {
+            let perimeter = cells.filter { cell in
+                GridCoord.cardinals.contains { dx, dy in
+                    !cells.contains(cell.neighbor(dx: dx, dy: dy))
+                }
+            }
+            let candidates = Array(perimeter).filter { !isArticulationPoint($0, in: cells) }
+            guard let victim = rng.pick(candidates), cells.count > 4 else { break }
+            var next = cells
+            next.remove(victim)
+            guard isAtLeastTwoWide(next) else { continue }
+            cells = next
+        }
+        guard isAtLeastTwoWide(cells) else { return [] }
+        return cells
+    }
+
+    /// True when every cell sits in a filled 2×2, so the room is never a 1-tile corridor.
+    func isAtLeastTwoWide(_ cells: Set<GridCoord>) -> Bool {
+        !cells.isEmpty && cells.allSatisfy { cellBelongsToTwoByTwo($0, in: cells) }
+    }
+
+    func cellBelongsToTwoByTwo(_ cell: GridCoord, in cells: Set<GridCoord>) -> Bool {
+        let origins = [
+            cell,
+            cell.neighbor(dx: -1, dy: 0),
+            cell.neighbor(dx: 0, dy: -1),
+            cell.neighbor(dx: -1, dy: -1),
+        ]
+        return origins.contains { origin in
+            cells.contains(origin)
+                && cells.contains(origin.neighbor(dx: 1, dy: 0))
+                && cells.contains(origin.neighbor(dx: 0, dy: 1))
+                && cells.contains(origin.neighbor(dx: 1, dy: 1))
+        }
+    }
+
+    /// Adds in-bounds neighbors so 1-tile fingers become 2-wide, when a single fill-in will do it.
+    func thickenToMinimumWidth(
+        _ cells: inout Set<GridCoord>,
+        allowed: (GridCoord) -> Bool
+    ) {
+        var changed = true
+        while changed {
+            changed = false
+            let thin = cells
+                .filter { !cellBelongsToTwoByTwo($0, in: cells) }
+                .sorted { ($0.x, $0.y) < ($1.x, $1.y) }
+            for cell in thin {
+                let origins = [
+                    cell,
+                    cell.neighbor(dx: -1, dy: 0),
+                    cell.neighbor(dx: 0, dy: -1),
+                    cell.neighbor(dx: -1, dy: -1),
+                ]
+                var added: GridCoord?
+                for origin in origins {
+                    let quad = [
+                        origin,
+                        origin.neighbor(dx: 1, dy: 0),
+                        origin.neighbor(dx: 0, dy: 1),
+                        origin.neighbor(dx: 1, dy: 1),
+                    ]
+                    let missing = quad.filter { !cells.contains($0) }
+                    guard missing.count == 1, let fill = missing.first, allowed(fill) else { continue }
+                    added = fill
+                    break
+                }
+                if let added {
+                    cells.insert(added)
+                    changed = true
+                }
+            }
+        }
+    }
+
+    /// True when removing `cell` would split the remaining set into multiple components.
+    func isArticulationPoint(_ cell: GridCoord, in cells: Set<GridCoord>) -> Bool {
+        var remaining = cells
+        remaining.remove(cell)
+        guard let start = remaining.first else { return true }
+        var seen: Set<GridCoord> = [start]
+        var queue = [start]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            for (dx, dy) in GridCoord.cardinals {
+                let next = current.neighbor(dx: dx, dy: dy)
+                guard remaining.contains(next), seen.insert(next).inserted else { continue }
+                queue.append(next)
+            }
+        }
+        return seen.count != remaining.count
+    }
+
+    /// L-shape from two overlapping rects.
+    /// When `allowStretch` is true, arms may be long (up to ~2× maxSize).
+    func makeOrganicLRoom(
+        minSize: Int,
+        maxSize: Int,
+        width: Int,
+        height: Int,
+        allowStretch: Bool = true,
+        rng: inout SeededGenerator
+    ) -> Set<GridCoord> {
+        let longMax = allowStretch ? maxSize * 2 : maxSize
         let armW = rng.nextInt(upperBound: maxSize - minSize + 1) + minSize
         let armH = rng.nextInt(upperBound: longMax - minSize + 1) + minSize
         let crossW = rng.nextInt(upperBound: longMax - minSize + 1) + minSize
@@ -373,6 +620,7 @@ nonisolated extension ProceduralGenerator {
             count: params.roomCount,
             minSize: params.room.minRoomSize,
             maxSize: params.room.maxRoomSize,
+            shape: params.room.shape,
             width: state.width,
             height: state.height,
             rng: &state.rng

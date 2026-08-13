@@ -16,8 +16,9 @@ world:
   height_tiles: 115
   room_count: 45
   room:
-    min_size_tiles: 7
-    max_size_tiles: 11
+    min_size_tiles: 4
+    max_size_tiles: 6
+    shape: organic
     pit_probability: 1.00
   enemies:
     types: [lava_lizard]

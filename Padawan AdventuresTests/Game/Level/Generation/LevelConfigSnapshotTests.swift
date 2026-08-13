@@ -52,6 +52,9 @@ struct LevelConfigSnapshotTests {
         #expect(level.sprite?.root == "Levels/1-tython")
         #expect(level.width == 35)
         #expect(level.roomCount == 15)
+        #expect(level.room.minRoomSize == 5)
+        #expect(level.room.maxRoomSize == 8)
+        #expect(level.room.shape == .organic)
         #expect(level.enemies?.types == ["dino", "treant"])
         #expect(level.currentLevelProbability == 0.75)
         #expect(level.vocabulary.allWords.map(\.word) == Self.level1Words)
@@ -133,6 +136,34 @@ struct LevelConfigSnapshotTests {
         }
         #expect(starting.letterPosition == .starting)
         #expect(starting.words.map(\.word) == Self.level1Words)
+    }
+
+    @Test func shippedLevelsUseExpectedRoomShapesAndSizes() throws {
+        let expected: [String: (shape: LevelConfig.RoomShape, min: Int, max: Int)] = [
+            "1-tython": (.organic, 5, 8),
+            "2-tatooine": (.roundIsh, 5, 8),
+            "3-ilum": (.roundIsh, 5, 7),
+            "4-kashyyyk": (.organic, 5, 7),
+            "5-dagobah": (.organic, 5, 7),
+            "6-coruscant": (.rect, 4, 6),
+            "7-mustafar": (.organic, 4, 6),
+            "8-geonosis": (.roundIsh, 5, 7),
+        ]
+        let catalog = LevelCatalog.loadFromBundle()
+        #expect(catalog.count == expected.count)
+        for descriptor in catalog {
+            guard let want = expected[descriptor.resourceName] else {
+                Issue.record("unexpected level \(descriptor.resourceName)")
+                continue
+            }
+            let level = try LevelConfig.loadFromBundle(
+                named: descriptor.resourceName,
+                subdirectory: LevelCatalog.subdirectory
+            )
+            #expect(level.room.shape == want.shape, "\(descriptor.resourceName) shape")
+            #expect(level.room.minRoomSize == want.min, "\(descriptor.resourceName) min")
+            #expect(level.room.maxRoomSize == want.max, "\(descriptor.resourceName) max")
+        }
     }
 
     @Test func onlyTythonOptsIntoWorldTutorial() throws {

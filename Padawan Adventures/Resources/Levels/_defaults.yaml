@@ -29,10 +29,12 @@ world:
   # How many rooms to place on the map.
   room_count: 15
   room:
-    # L-shaped rooms stretch one arm to 2x max_size_tiles, so the widest room a level
-    # can produce is roughly double this (capped by width/height above).
+    # Primary room bounding box: each side is rolled in [min, max].
+    # L-shaped packing fillers may still stretch an arm to ~2x max_size_tiles.
+    # shape: organic (cave blobs) | round-ish (nibbled disk) | rect
     min_size_tiles: 4
     max_size_tiles: 6
+    shape: organic
     # Probability that a room contains a pit (at most one pit area per room).
     pit_probability: 0.60
     # Pit area size: mean tile count, capped at max.

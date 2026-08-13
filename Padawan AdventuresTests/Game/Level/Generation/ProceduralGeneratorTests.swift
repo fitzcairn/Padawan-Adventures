@@ -169,6 +169,113 @@ struct ProceduralGeneratorTests {
         #expect(roomCells < result.world.width * result.world.height * 3 / 4)
     }
 
+    @Test func rectRoomsRespectHardMinMaxAxes() throws {
+        let minSize = 4
+        let maxSize = 6
+        var config = roomsDoorsConfig(seed: 42, roomCount: 10)
+        config.generation.room.minRoomSize = minSize
+        config.generation.room.maxRoomSize = maxSize
+        config.generation.room.shape = .rect
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        #expect(result.rooms.count >= 3)
+
+        var sawRect = false
+        for room in result.rooms {
+            let xs = room.cells.map(\.x)
+            let ys = room.cells.map(\.y)
+            let w = (xs.max() ?? 0) - (xs.min() ?? 0) + 1
+            let h = (ys.max() ?? 0) - (ys.min() ?? 0) + 1
+            // Filled rectangles are primary rooms; L-fillers may exceed max.
+            guard room.cells.count == w * h else { continue }
+            sawRect = true
+            #expect(w >= minSize && w <= maxSize, "rect width \(w) outside \(minSize)...\(maxSize)")
+            #expect(h >= minSize && h <= maxSize, "rect height \(h) outside \(minSize)...\(maxSize)")
+        }
+        #expect(sawRect, "expected at least one filled rectangle room")
+    }
+
+    @Test func roundIshRoomsAreNonRectangularAndCompact() throws {
+        let minSize = 5
+        let maxSize = 7
+        var config = roomsDoorsConfig(seed: 77, roomCount: 10)
+        config.generation.room.minRoomSize = minSize
+        config.generation.room.maxRoomSize = maxSize
+        config.generation.room.shape = .roundIsh
+        let result = try ProceduralGenerator().generateDetailed(from: config)
+        #expect(result.rooms.count >= 3)
+
+        let footprints = result.rooms.map { room -> (w: Int, h: Int, count: Int) in
+            let xs = room.cells.map(\.x)
+            let ys = room.cells.map(\.y)
+            return (
+                w: (xs.max() ?? 0) - (xs.min() ?? 0) + 1,
+                h: (ys.max() ?? 0) - (ys.min() ?? 0) + 1,
+                count: room.cells.count
+            )
+        }
+        let hasNonRect = footprints.contains { $0.count < $0.w * $0.h }
+        #expect(hasNonRect)
+
+        // Primary round-ish rooms stay inside the min–max box; L-fillers may exceed.
+        let primary = footprints.filter {
+            $0.count < $0.w * $0.h
+                && $0.w >= minSize && $0.w <= maxSize
+                && $0.h >= minSize && $0.h <= maxSize
+        }
+        #expect(!primary.isEmpty, "expected at least one primary round-ish room")
+        for footprint in primary {
+            let longer = max(footprint.w, footprint.h)
+            let shorter = min(footprint.w, footprint.h)
+            #expect(longer <= shorter * 2, "round-ish bbox too elongated \(footprint.w)x\(footprint.h)")
+        }
+    }
+
+    @Test func oneTileCorridorIsNotTwoWide() {
+        let gen = ProceduralGenerator()
+        // 1×4 corridor
+        let corridor: Set<GridCoord> = [
+            GridCoord(x: 0, y: 0, story: 0),
+            GridCoord(x: 1, y: 0, story: 0),
+            GridCoord(x: 2, y: 0, story: 0),
+            GridCoord(x: 3, y: 0, story: 0),
+        ]
+        #expect(!gen.isAtLeastTwoWide(corridor))
+
+        // 2×4 hall
+        var hall = corridor
+        for x in 0...3 {
+            hall.insert(GridCoord(x: x, y: 1, story: 0))
+        }
+        #expect(gen.isAtLeastTwoWide(hall))
+
+        // 2-wide L
+        var ell = hall
+        for y in 2...4 {
+            ell.insert(GridCoord(x: 0, y: y, story: 0))
+            ell.insert(GridCoord(x: 1, y: y, story: 0))
+        }
+        #expect(gen.isAtLeastTwoWide(ell))
+    }
+
+    @Test func packedRoomsAreAtLeastTwoTilesWide() throws {
+        for shape: LevelConfig.RoomShape in [.organic, .roundIsh, .rect] {
+            for seed: UInt64 in [11, 42, 99] {
+                var config = roomsDoorsConfig(seed: seed, roomCount: 10)
+                config.generation.room.shape = shape
+                config.generation.room.minRoomSize = 4
+                config.generation.room.maxRoomSize = 6
+                let result = try ProceduralGenerator().generateDetailed(from: config)
+                #expect(result.rooms.count >= 3, "\(shape) seed \(seed) placed too few rooms")
+                for room in result.rooms {
+                    #expect(
+                        ProceduralGenerator().isAtLeastTwoWide(room.cells),
+                        "\(shape) room \(room.id) has a 1-tile pinch (seed \(seed))"
+                    )
+                }
+            }
+        }
+    }
+
     @Test func noFloorOutsideRooms() throws {
         let config = roomsDoorsConfig(seed: 22, roomCount: 9)
         let result = try ProceduralGenerator().generateDetailed(from: config)

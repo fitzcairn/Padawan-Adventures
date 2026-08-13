@@ -597,10 +597,19 @@ extension LevelConfig {
         }
     }
 
+    /// Primary room footprint for packed placement (L-rooms remain a packing fallback).
+    nonisolated enum RoomShape: String, Codable, Equatable, Sendable, CaseIterable {
+        case organic
+        case rect
+        case roundIsh = "round-ish"
+    }
+
     /// Per-room generation knobs (sizes, pit/gate chances, etc.).
     nonisolated struct RoomParams: Codable, Equatable, Sendable {
         var minRoomSize: Int
         var maxRoomSize: Int
+        /// Primary footprint; L-shaped rooms are only used to fill leftover gaps.
+        var shape: RoomShape
         /// Probability that a room contains a pit (at most one pit area per room).
         var pitChance: Double
         /// Expected pit area size in tiles (clamped to `1...pitMaxSize`).
@@ -613,6 +622,7 @@ extension LevelConfig {
         enum CodingKeys: String, CodingKey {
             case minRoomSize = "min_size_tiles"
             case maxRoomSize = "max_size_tiles"
+            case shape
             case pitChance = "pit_probability"
             case pitMeanSize = "pit_mean_size_tiles"
             case pitMaxSize = "pit_max_size_tiles"
@@ -622,6 +632,7 @@ extension LevelConfig {
         nonisolated init(
             minRoomSize: Int = 4,
             maxRoomSize: Int = 12,
+            shape: RoomShape = .organic,
             pitChance: Double,
             pitMeanSize: Double = 2,
             pitMaxSize: Int = 5,
@@ -629,6 +640,7 @@ extension LevelConfig {
         ) {
             self.minRoomSize = minRoomSize
             self.maxRoomSize = maxRoomSize
+            self.shape = shape
             self.pitChance = pitChance
             self.pitMeanSize = pitMeanSize
             self.pitMaxSize = pitMaxSize
@@ -639,6 +651,7 @@ extension LevelConfig {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             minRoomSize = try container.decodeIfPresent(Int.self, forKey: .minRoomSize) ?? 4
             maxRoomSize = try container.decodeIfPresent(Int.self, forKey: .maxRoomSize) ?? 12
+            shape = try container.decodeIfPresent(RoomShape.self, forKey: .shape) ?? .organic
             pitChance = try container.decode(Double.self, forKey: .pitChance)
             pitMeanSize = try container.decodeIfPresent(Double.self, forKey: .pitMeanSize) ?? 2
             pitMaxSize = try container.decodeIfPresent(Int.self, forKey: .pitMaxSize) ?? 5

@@ -18,7 +18,8 @@ world:
   room_count: 26
   room:
     min_size_tiles: 5
-    max_size_tiles: 8
+    max_size_tiles: 7
+    shape: organic
     pit_probability: 1.00
   enemies:
     types: [spider, moth]

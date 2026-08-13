@@ -130,6 +130,7 @@ struct LevelConfigTests {
         #expect(level.roomCount == 100)
         #expect(level.room.minRoomSize == 4)
         #expect(level.room.maxRoomSize == 12)
+        #expect(level.room.shape == .organic)
         #expect(level.room.pitChance == 0.2)
         #expect(level.room.pitMeanSize == 2)
         #expect(level.room.pitMaxSize == 5)
@@ -144,6 +145,50 @@ struct LevelConfigTests {
         #expect(level.letters.set == LevelConfig.fallbackLetters.set)
     }
 
+    @Test func decodesRoomShapeVariants() throws {
+        let roundIsh = try LevelConfig.decode(from: """
+        name: Round
+        world:
+          width_tiles: 24
+          height_tiles: 24
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 6
+            shape: round-ish
+            pit_probability: 0.2
+        """)
+        #expect(roundIsh.room.shape == .roundIsh)
+
+        let rect = try LevelConfig.decode(from: """
+        name: Rect
+        world:
+          width_tiles: 24
+          height_tiles: 24
+          room_count: 4
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 6
+            shape: rect
+            pit_probability: 0.2
+        """)
+        #expect(rect.room.shape == .rect)
+
+        #expect(throws: (any Error).self) {
+            _ = try LevelConfig.decode(from: """
+            name: Bad
+            world:
+              width_tiles: 24
+              height_tiles: 24
+              room_count: 4
+              room:
+                min_size_tiles: 4
+                max_size_tiles: 6
+                shape: blobular
+                pit_probability: 0.2
+            """)
+        }
+    }
 
     @Test func decodesLetterSpriteSet() throws {
         let level = try LevelConfig.decode(from: """

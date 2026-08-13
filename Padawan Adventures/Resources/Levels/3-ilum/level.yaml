@@ -18,6 +18,7 @@ world:
   room:
     min_size_tiles: 5
     max_size_tiles: 7
+    shape: round-ish
     pit_probability: 1.00
   enemies:
     types: [ice_monster]

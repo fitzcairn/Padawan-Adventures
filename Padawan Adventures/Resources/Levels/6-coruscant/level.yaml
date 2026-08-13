@@ -17,8 +17,9 @@ world:
   height_tiles: 93
   room_count: 38
   room:
-    min_size_tiles: 6
-    max_size_tiles: 10
+    min_size_tiles: 4
+    max_size_tiles: 6
+    shape: rect
     pit_probability: 1.00
   enemies:
     types: [drone, robot]
