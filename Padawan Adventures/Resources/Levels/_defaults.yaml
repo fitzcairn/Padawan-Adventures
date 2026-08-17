@@ -159,8 +159,8 @@ pit:
 # Duplicate `type:` entries are rejected.
 # Vocabulary comes from the level's top-level `vocab:` block (cumulative across earlier levels).
 # `starting-sound-gate`: plug each word's missing first letter into its socket. Stars = words plugged.
-#   Plays the starting-letter pronunciation when a plug is picked up. Word count snaps to a
-#   multiple of 3 in `min_word_count`...`max_word_count`. Words are sampled without replacement
+#   Plays the starting-letter pronunciation when a plug is picked up. Word count is a uniform pick
+#   in `min_word_count`...`max_word_count`. Words are sampled without replacement
 #   from the run's unused set (current-level words more likely), shared with other minigames
 #   until that set is empty, then refilled; tray letters stay unique.
 # `ending-sound-gate`: same board as `starting-sound-gate`, but the plug must match the word's
@@ -186,15 +186,15 @@ gate:
   minigames:
     - type: starting-sound-gate
       weight: 1.0
-      # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
-      min_word_count: 2
-      max_word_count: 2
+      # Words per round: 1...9.
+      min_word_count: 3
+      max_word_count: 8
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
       weight: 1.0
-      # Words per round: 1...9. Runtime snaps to a multiple of 3 in range when one exists.
-      min_word_count: 2
-      max_word_count: 2
+      # Words per round: 1...9.
+      min_word_count: 3
+      max_word_count: 8
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
       weight: 1.0

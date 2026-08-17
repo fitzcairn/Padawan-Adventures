@@ -145,8 +145,8 @@ extension GateWordPlugScene {
             if let socket = socketNodes[slotID], let token = tokenNodes[letterID] {
                 token.position = socket.position
             }
-        case let .incorrectPlug(letterID):
-            animateTokenHome(id: letterID)
+        case .incorrectPlug(letterID: _):
+            shuffleAndAnimateRemainingTray()
         case .won:
             finishWon()
         }
@@ -250,8 +250,7 @@ extension GateWordPlugScene {
                 ]),
             ]),
             SKAction.run { [weak self] in
-                self?.animateTokenHome(id: letterID)
-                self?.inputLocked = false
+                self?.shuffleAndAnimateRemainingTray()
             },
         ]))
     }
@@ -274,6 +273,45 @@ extension GateWordPlugScene {
     func animateTokenHome(id: UUID) {
         guard let node = tokenNodes[id], let home = tokenHome[id] else { return }
         node.run(SKAction.move(to: home, duration: 0.15).withTimingMode(.easeOut))
+    }
+
+    /// Flash-then-slide unused tray plugs into a new order after a wrong drop.
+    func shuffleAndAnimateRemainingTray() {
+        inputLocked = true
+        let remainingBefore = engine.tray.filter { !engine.isTokenPlugged($0.id) }
+        let slotPoints = remainingBefore.compactMap { tokenHome[$0.id] }.sorted { a, b in
+            if abs(a.y - b.y) > 1 { return a.y > b.y }
+            return a.x < b.x
+        }
+        engine.shuffleRemainingTray()
+        let remaining = engine.tray.filter { !engine.isTokenPlugged($0.id) }
+        let duration = Self.shuffleDuration
+        for (token, home) in zip(remaining, slotPoints) {
+            tokenHome[token.id] = home
+            if let socket = homeSocketNodes[token.id] {
+                socket.removeAllActions()
+                socket.run(
+                    SKAction.move(to: home, duration: duration).withTimingMode(.easeInEaseOut),
+                    withKey: Self.shuffleActionKey
+                )
+            }
+            if let node = tokenNodes[token.id] {
+                node.removeAllActions()
+                node.zPosition = 20
+                node.run(
+                    SKAction.move(to: home, duration: duration).withTimingMode(.easeInEaseOut),
+                    withKey: Self.shuffleActionKey
+                )
+            }
+        }
+        removeAction(forKey: Self.shuffleActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: duration),
+                SKAction.run { [weak self] in self?.inputLocked = false },
+            ]),
+            withKey: Self.shuffleActionKey
+        )
     }
 
     /// Gold particle ring around every empty word socket while a plug is in motion.

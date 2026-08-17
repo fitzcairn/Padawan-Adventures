@@ -48,20 +48,20 @@ struct GateWordPlugMinigameEngineTests {
         #expect(engine.tray.isEmpty)
     }
 
-    @Test func beginSnapsToMultipleOfThreeWhenAvailableInRange() {
+    @Test func beginSamplesWordCountInRange() {
         for seed in UInt64(1)...40 {
             let engine = makeEngine(
                 wordCountMin: 3,
                 wordCountMax: 6,
-                pool: ["cat", "dog", "sat", "map", "can"],
+                pool: ["cat", "dog", "sat", "map", "bed"],
                 seed: seed
             )
-            // Pool has 5 unique first letters; range snaps to 3.
-            #expect(engine.slots.count == 3)
+            // Pool has 5 unique first letters; count stays in the clamped range.
+            #expect((3...5).contains(engine.slots.count))
         }
     }
 
-    @Test func beginKeepsCountWhenNoMultipleOfThreeInRange() {
+    @Test func beginKeepsFixedCountWhenMinEqualsMax() {
         for seed in UInt64(1)...20 {
             let engine = makeEngine(
                 wordCountMin: 2,
@@ -364,11 +364,27 @@ struct GateWordPlugMinigameEngineTests {
                 rng: &rng
             )
             #expect(count <= 9)
-            #expect(count.isMultiple(of: 3))
+            #expect(count >= 3)
         }
     }
 
-    @Test func sampleWordCountKeepsPickWhenNoMultipleOfThreeInRange() {
+    @Test func sampleWordCountPicksAnyValueInRange() {
+        var rng = SeededGenerator(seed: 3)
+        var seen: Set<Int> = []
+        for _ in 0..<240 {
+            let count = GateWordPlugMinigameEngine.sampleWordCount(
+                minimum: 3,
+                maximum: 8,
+                poolSize: 20,
+                rng: &rng
+            )
+            #expect((3...8).contains(count))
+            seen.insert(count)
+        }
+        #expect(seen == Set(3...8))
+    }
+
+    @Test func sampleWordCountKeepsPickWhenRangeHasNoRoomToVary() {
         var rng = SeededGenerator(seed: 1)
         for _ in 0..<20 {
             let count = GateWordPlugMinigameEngine.sampleWordCount(
@@ -390,49 +406,41 @@ struct GateWordPlugMinigameEngineTests {
         }
     }
 
-    @Test func sampleWordCountSnapsToNearestMultipleOfThreeInRange() {
-        var rng = SeededGenerator(seed: 7)
-        // Only 3 is a multiple of 3 in [2, 5].
-        for _ in 0..<40 {
-            let count = GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 2,
-                maximum: 5,
-                poolSize: 10,
-                rng: &rng
-            )
-            #expect(count == 3)
+    @Test func shuffleRemainingTrayReordersUnpluggedTokens() {
+        var engine = makeEngine(
+            wordCountMin: 4,
+            wordCountMax: 4,
+            pool: ["cat", "dog", "sat", "map"],
+            letterPool: ["c", "d", "s", "m", "a", "o", "t", "p"],
+            seed: 3
+        )
+        #expect(engine.tray.count == 4)
+        let pluggedSlot = engine.slots[0]
+        guard let pluggedToken = engine.tray.first(where: { $0.letter == pluggedSlot.letter }) else {
+            Issue.record("expected a tray token for \(pluggedSlot.letter)")
+            return
         }
-        // Only 6 is a multiple of 3 in [4, 6].
-        for _ in 0..<40 {
-            let count = GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 4,
-                maximum: 6,
-                poolSize: 10,
-                rng: &rng
-            )
-            #expect(count == 6)
-        }
-        // [2, 8] can snap to 3 or 6.
-        var seen: Set<Int> = []
-        for _ in 0..<80 {
-            let count = GateWordPlugMinigameEngine.sampleWordCount(
-                minimum: 2,
-                maximum: 8,
-                poolSize: 20,
-                rng: &rng
-            )
-            #expect([3, 6].contains(count))
-            seen.insert(count)
-        }
-        #expect(seen == [3, 6])
+        _ = engine.plug(letterID: pluggedToken.id, intoSlotID: pluggedSlot.id)
+        let beforeRemaining = engine.tray.filter { !engine.isTokenPlugged($0.id) }.map(\.id)
+        engine.shuffleRemainingTray()
+        let afterRemaining = engine.tray.filter { !engine.isTokenPlugged($0.id) }.map(\.id)
+        #expect(Set(afterRemaining) == Set(beforeRemaining))
+        #expect(afterRemaining != beforeRemaining)
+        #expect(engine.isTokenPlugged(pluggedToken.id))
+        #expect(engine.tray.contains { $0.id == pluggedToken.id })
     }
 
-    @Test func nearestMultipleOfThreePrefersCloserThenLower() {
-        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 2, in: 2...5) == 3)
-        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 5, in: 3...6) == 6)
-        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 4, in: 3...6) == 3)
-        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 2, in: 2...2) == nil)
-        #expect(GateWordPlugMinigameEngine.nearestMultipleOfThree(to: 4, in: 4...5) == nil)
+    @Test func shuffleRemainingTrayIsNoOpForOnePlug() {
+        var engine = makeEngine(
+            wordCountMin: 1,
+            wordCountMax: 1,
+            pool: ["cat"],
+            letterPool: ["c", "a", "t"],
+            seed: 1
+        )
+        let before = engine.tray.map(\.id)
+        engine.shuffleRemainingTray()
+        #expect(engine.tray.map(\.id) == before)
     }
 
     @Test func beginSamplesWithoutReplacementFromCumulativePool() {

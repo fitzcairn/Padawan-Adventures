@@ -847,8 +847,8 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wordPlug = wordPlugConfigs[0]
-        #expect(wordPlug.wordCountMin == 2)
-        #expect(wordPlug.wordCountMax == 2)
+        #expect(wordPlug.wordCountMin == 3)
+        #expect(wordPlug.wordCountMax == 8)
         #expect(wordPlug.words.map(\.word).contains("sat"))
         #expect(wordPlug.words.contains {
             $0.word == "sat"
@@ -1294,8 +1294,8 @@ struct LevelConfigTests {
         }
         #expect(!wordPlugConfigs.isEmpty)
         let wp = wordPlugConfigs[0]
-        #expect(wp.wordCountMin == 2)
-        #expect(wp.wordCountMax == 2)
+        #expect(wp.wordCountMin == 3)
+        #expect(wp.wordCountMax == 8)
         #expect(wp.words.map(\.word) == ["an", "at", "in", "it", "nap", "pan", "pat", "pin", "sat", "sip", "sit", "tap"])
         #expect(tython.artifact == "leaf.fill")
     }

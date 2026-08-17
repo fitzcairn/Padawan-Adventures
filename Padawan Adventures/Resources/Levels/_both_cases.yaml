@@ -25,13 +25,13 @@ gate:
   minigames:
     - type: starting-sound-gate
       weight: 1.0
-      min_word_count: 2
-      max_word_count: 2
+      min_word_count: 3
+      max_word_count: 8
       fx: { loop: gate-spelling-loop-arc }
     - type: ending-sound-gate
       weight: 1.0
-      min_word_count: 2
-      max_word_count: 2
+      min_word_count: 3
+      max_word_count: 8
       fx: { loop: gate-spelling-loop-arc }
     - type: sound-out-word-gate
       weight: 1.0

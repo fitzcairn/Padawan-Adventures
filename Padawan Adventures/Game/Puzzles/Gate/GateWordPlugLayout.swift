@@ -13,6 +13,7 @@ extension GateWordPlugScene {
         tokenNodes = [:]
         tokenPlugs = [:]
         tokenHome = [:]
+        homeSocketNodes = [:]
         openPlugSwirlsActive = false
 
         if let background = GateMinigameBackground.wordPlug(sceneSize: size) {
@@ -33,8 +34,7 @@ extension GateWordPlugScene {
             dy: playArea.height * gridInsetYRatio
         )
 
-        // Prefer 2 equal columns; use 3 equal columns when 2 can't balance or the board is too wide.
-        // Sampling prefers multiples of 3 in range so a 3-column board can stay balanced.
+        // Prefer 2 columns; use 3 when the 2-column board is too wide. Last row may be short.
         boardColumnCount = preferredColumnCount
         var rows = max(1, Int((Double(slots.count) / Double(boardColumnCount)).rounded(.up)))
         let columnGap = size.width * columnGapRatio
@@ -87,12 +87,10 @@ extension GateWordPlugScene {
         }
 
         var layout = metrics(columns: boardColumnCount, rows: rows)
-        let cannotBalanceTwoColumns = !slots.count.isMultiple(of: preferredColumnCount)
         let twoColumnBoardTooWide = layout.gridWidth > gridArea.width + 0.5
-        if (cannotBalanceTwoColumns || twoColumnBoardTooWide),
-           slots.count.isMultiple(of: expandedColumnCount) {
+        if twoColumnBoardTooWide {
             boardColumnCount = expandedColumnCount
-            rows = max(1, slots.count / boardColumnCount)
+            rows = max(1, Int((Double(slots.count) / Double(boardColumnCount)).rounded(.up)))
             layout = metrics(columns: boardColumnCount, rows: rows)
         }
         layout = fit(layout)
@@ -109,9 +107,9 @@ extension GateWordPlugScene {
 
         let gridWidth = layout.gridWidth
         let gridHeight = layout.gridHeight
-        // Center the board group in the middle of the screen.
+        // Center the board in the play area so it stays above the tray.
         let gridMinX = size.width * 0.5 - gridWidth * 0.5
-        let gridMinY = size.height * 0.5 - gridHeight * 0.5
+        let gridMinY = playArea.minY + (playArea.height - gridHeight) * 0.5
 
         for (index, slot) in slots.enumerated() {
             let row = index / boardColumnCount
@@ -167,7 +165,7 @@ extension GateWordPlugScene {
             socketNodes[slot.id] = socket
         }
 
-        layoutTrayTokens(diameter: diameter)
+        layoutTrayTokens(boardDiameter: diameter, boardBottomY: gridMinY)
     }
 
     func plateTextWidth(_ text: String, fontSize: CGFloat) -> CGFloat {
@@ -181,30 +179,38 @@ extension GateWordPlugScene {
         return ceil(bounds.width)
     }
 
-    func layoutTrayTokens(diameter: CGFloat) {
+    func layoutTrayTokens(boardDiameter: CGFloat, boardBottomY: CGFloat) {
         let tokens = engine.tray
         guard !tokens.isEmpty else { return }
 
-        let spacing = diameter * 1.2
-        let span = CGFloat(tokens.count - 1) * spacing
-        let startX = size.width * 0.5 - span * 0.5
-        // Anchor the letter row to the bottom of the screen. Centring it in the tray band
-        // left the plugs stranded mid-screen wherever the band is tall (iPad).
-        let y = bottomRowCenterY(
-            rowHeight: diameter,
-            ceiling: size.height * trayHeightRatio - diameter * 0.5
+        let insets = chromeInsets
+        let bottomInset = ScreenLayout.swipeRowBottomInset(
+            sceneHeight: size.height,
+            chromeBottom: insets.bottom
         )
+        let fitted = GateWordPlugTrayGeometry.layout(
+            count: tokens.count,
+            boardDiameter: boardDiameter,
+            sceneSize: size,
+            leftInset: insets.left,
+            rightInset: insets.right,
+            bottomInset: bottomInset,
+            boardBottomY: boardBottomY
+        )
+        let trayDiameter = fitted.diameter
+        let homes = fitted.homes
+        guard homes.count == tokens.count else { return }
 
-        for (index, token) in tokens.enumerated() {
-            let position = CGPoint(x: startX + CGFloat(index) * spacing, y: y)
+        for (token, position) in zip(tokens, homes) {
             // Home socket stays put under the letter so the empty outlet is visible while dragging.
-            let homeSocket = makeSocketSprite(side: diameter) ?? makeSocketFallback(side: diameter)
+            let homeSocket = makeSocketSprite(side: trayDiameter) ?? makeSocketFallback(side: trayDiameter)
             homeSocket.position = position
             homeSocket.name = "homeSocket:\(token.id.uuidString)"
             homeSocket.zPosition = 14
             addChild(homeSocket)
+            homeSocketNodes[token.id] = homeSocket
 
-            let node = makeTokenNode(token: token, diameter: diameter)
+            let node = makeTokenNode(token: token, diameter: trayDiameter)
             node.position = position
             addChild(node)
             tokenNodes[token.id] = node

@@ -236,9 +236,23 @@ nonisolated struct GateWordPlugMinigameEngine {
         return chosen
     }
 
+    /// Reorders unplugged tray letters after a wrong drop. Same tokens; new order.
+    /// Retries until the remaining order changes when more than one letter is left.
+    mutating func shuffleRemainingTray() {
+        let remainingIndices = tray.indices.filter { !isTokenPlugged(tray[$0].id) }
+        guard remainingIndices.count > 1 else { return }
+        var remaining = remainingIndices.map { tray[$0] }
+        let before = remaining.map(\.id)
+        for _ in 0..<8 {
+            remaining.shuffle(using: &rng)
+            if remaining.map(\.id) != before { break }
+        }
+        for (offset, index) in remainingIndices.enumerated() {
+            tray[index] = remaining[offset]
+        }
+    }
+
     /// Uniform pick in `[minimum, maximum]`, clamped to the pool and `maxWordsPerRound`.
-    /// When that range contains a multiple of 3, snaps to the nearest one still in range
-    /// (ties prefer the lower value) so 3-column boards stay balanced when possible.
     static func sampleWordCount(
         minimum: Int,
         maximum: Int,
@@ -249,29 +263,6 @@ nonisolated struct GateWordPlugMinigameEngine {
         let lo = max(1, min(minimum, maximum))
         let hi = min(max(minimum, maximum), cap)
         guard lo <= hi else { return cap }
-
-        let chosen = Int.random(in: lo...hi, using: &rng)
-        return Self.nearestMultipleOfThree(to: chosen, in: lo...hi) ?? chosen
-    }
-
-    /// Nearest multiple of 3 in `range` to `value`, if any. Ties prefer the lower multiple.
-    static func nearestMultipleOfThree(to value: Int, in range: ClosedRange<Int>) -> Int? {
-        let lo = range.lowerBound
-        let hi = range.upperBound
-        let first = lo.isMultiple(of: 3) ? lo : lo + (3 - lo % 3)
-        guard first <= hi else { return nil }
-
-        var best = first
-        var bestDistance = abs(value - first)
-        var candidate = first + 3
-        while candidate <= hi {
-            let distance = abs(value - candidate)
-            if distance < bestDistance {
-                best = candidate
-                bestDistance = distance
-            }
-            candidate += 3
-        }
-        return best
+        return Int.random(in: lo...hi, using: &rng)
     }
 }

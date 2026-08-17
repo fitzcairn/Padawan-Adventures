@@ -19,6 +19,7 @@ final class GateWordPlugScene: MinigameScene {
     var tokenNodes: [UUID: SKNode] = [:]
     var tokenPlugs: [UUID: SKSpriteNode] = [:]
     var tokenHome: [UUID: CGPoint] = [:]
+    var homeSocketNodes: [UUID: SKSpriteNode] = [:]
     var laidOutDiameter: CGFloat = 0
     var laidOutRectSize: CGSize = .zero
 
@@ -39,9 +40,12 @@ final class GateWordPlugScene: MinigameScene {
     var activeLoopTrackID: String?
     static let arcLoopQuietScale: Float = 0.35
     static let arcLoopFallbackTrackID = "gate-spelling-loop-arc"
+    /// Duration for the post-miss tray reshuffle slide.
+    static let shuffleDuration: TimeInterval = 0.35
+    static let shuffleActionKey = "gateWordPlugTrayShuffle"
 
     let trayHeightRatio: CGFloat = 0.30
-    /// Preferred column count; becomes 3 when 2 columns can't balance or the board is too wide.
+    /// Preferred column count; becomes 3 when the 2-column board is too wide.
     var boardColumnCount = 2
     let preferredColumnCount = 2
     let expandedColumnCount = 3

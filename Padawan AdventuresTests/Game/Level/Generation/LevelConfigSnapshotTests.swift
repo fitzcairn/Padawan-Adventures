@@ -107,14 +107,16 @@ struct LevelConfigSnapshotTests {
             Issue.record("expected word-plug gate entry")
             return
         }
-        #expect(wordPlug.wordCountMin == 2)
-        #expect(wordPlug.wordCountMax == 2)
+        #expect(wordPlug.wordCountMin == 3)
+        #expect(wordPlug.wordCountMax == 8)
         #expect(wordPlug.words.map(\.word) == Self.level1Words)
         guard case .wordPlug(let endingSound) = level.gate.minigames[1] else {
             Issue.record("expected ending-sound gate entry")
             return
         }
         #expect(endingSound.letterPosition == .ending)
+        #expect(endingSound.wordCountMin == 3)
+        #expect(endingSound.wordCountMax == 8)
         #expect(endingSound.words.map(\.word) == Self.level1Words)
 
         #expect(level.pit.minigames.map(\.kind) == [.soundOutWord, .bridge, .startingSoundBridge])
