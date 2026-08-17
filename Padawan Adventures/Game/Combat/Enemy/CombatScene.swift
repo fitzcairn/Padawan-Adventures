@@ -29,6 +29,9 @@ final class CombatScene: MinigameScene {
         var pathDurationSeconds: Double
         let scaleStartedAt: Double
         let scaleDurationSeconds: Double
+        /// Arc-length fraction already covered when the inbound clock last restarted
+        /// (wrong-slash speed-up). Position eases from here to 1 over the current duration.
+        var pathArcStart: CGFloat = 0
         /// Inbound fan-curve length, used to test remaining distance to the player center.
         let pathLength: CGFloat
         let letter: String
@@ -84,6 +87,8 @@ final class CombatScene: MinigameScene {
     static let sweepOffSeconds: Double = 0.35
     /// Return flight is this many times faster than the remaining inbound travel time.
     static let returnSpeedMultiplier: Double = 2.5
+    /// Wrong slash: remaining inbound letters finish the rest of their curves this many times faster.
+    static let wrongSlashSpeedMultiplier: Double = 6.48
     static let returnSecondsRange: ClosedRange<Double> = 0.18...0.4
     /// Charge duration for a sprite a full screen height away; scaled by distance and clamped.
     static let chargeReferenceSeconds: Double = 0.5

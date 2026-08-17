@@ -69,8 +69,9 @@ extension CombatScene {
 
     // MARK: - Wrong slash (soft miss)
 
-    /// Stops the decoy in place, then flashes / fades it with an explosion. Other inbound
-    /// letters keep flying so the player can still slash the cued target.
+    /// Stops the decoy in place, then flashes / fades it with an explosion. Remaining
+    /// inbound letters stay on their curves but finish the rest of the flight faster
+    /// so the player can still slash the cued target under more time pressure.
     func discardWrongShot(shotID: UUID) {
         playSlashErrorSound()
         guard let visual = shotVisuals[shotID] else { return }
@@ -78,6 +79,25 @@ extension CombatScene {
         let position = node.position
         shotVisuals[shotID] = nil
         flashRedFadeAndExplode(node, at: position)
+        accelerateRemainingInboundShots()
+    }
+
+    /// Restarts each inbound letter's leftover arc at twice the remaining speed.
+    func accelerateRemainingInboundShots() {
+        for id in Array(shotVisuals.keys) {
+            guard var visual = shotVisuals[id], visual.role == .inbound else { continue }
+            let segment = CombatShotMotion.accelerateRemainingSegment(
+                elapsed: sceneElapsed,
+                startedAt: visual.pathStartedAt,
+                duration: visual.pathDurationSeconds,
+                arcStart: visual.pathArcStart,
+                multiplier: Self.wrongSlashSpeedMultiplier
+            )
+            visual.pathStartedAt = segment.startedAt
+            visual.pathDurationSeconds = segment.duration
+            visual.pathArcStart = segment.arcStart
+            shotVisuals[id] = visual
+        }
     }
 
     // MARK: - Failed

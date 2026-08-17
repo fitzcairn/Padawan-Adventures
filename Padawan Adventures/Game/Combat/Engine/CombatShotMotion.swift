@@ -101,6 +101,38 @@ nonisolated enum CombatShotMotion {
         return remainingArcLength <= reach
     }
 
+    /// Normalized inbound clock, matching `CombatScene.pathProgress`.
+    static func pathProgress(elapsed: Double, startedAt: Double, duration: Double) -> Double {
+        min(1, max(0, (elapsed - startedAt) / max(duration, 0.05)))
+    }
+
+    /// Arc-length fraction along the inbound curve for clock progress `t`.
+    /// `arcStart` is how far the sprite had already traveled when this segment began.
+    static func inboundArcFraction(progress t: Double, arcStart: CGFloat) -> CGFloat {
+        let start = min(max(arcStart, 0), 1)
+        return start + (1 - start) * easeOut(CGFloat(min(max(t, 0), 1)))
+    }
+
+    /// Restarts the remaining inbound arc from the current point so the leftover
+    /// distance plays with a fresh ease-out in `remaining / multiplier` seconds.
+    /// Keeping the old `t` would stay in the slow tail and look like no speed-up.
+    /// No-ops when already finished (`t >= 1`) or when `multiplier` would not speed up.
+    static func accelerateRemainingSegment(
+        elapsed: Double,
+        startedAt: Double,
+        duration: Double,
+        arcStart: CGFloat,
+        multiplier: Double
+    ) -> (startedAt: Double, duration: Double, arcStart: CGFloat) {
+        let t = pathProgress(elapsed: elapsed, startedAt: startedAt, duration: duration)
+        guard t < 1, multiplier > 1 else {
+            return (startedAt, duration, arcStart)
+        }
+        let currentArc = inboundArcFraction(progress: t, arcStart: arcStart)
+        let remaining = duration * (1 - t)
+        return (elapsed, remaining / multiplier, currentArc)
+    }
+
     private static func sampleCubicBezier(
         start: CGPoint,
         c1: CGPoint,

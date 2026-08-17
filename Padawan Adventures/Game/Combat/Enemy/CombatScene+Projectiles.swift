@@ -101,7 +101,11 @@ extension CombatScene {
 
     func pathProgress(for visual: ShotVisual) -> CGFloat {
         CGFloat(
-            min(1, max(0, (sceneElapsed - visual.pathStartedAt) / max(visual.pathDurationSeconds, 0.05)))
+            CombatShotMotion.pathProgress(
+                elapsed: sceneElapsed,
+                startedAt: visual.pathStartedAt,
+                duration: visual.pathDurationSeconds
+            )
         )
     }
 
@@ -114,18 +118,18 @@ extension CombatScene {
             if visual.role == .inbound {
                 // Ease distance along the curve, not the bezier parameter — otherwise the
                 // cubic bunches the dive to the player into the fast part of the ease.
-                let eased = CombatShotMotion.easeOut(t)
+                let fraction = CombatShotMotion.inboundArcFraction(
+                    progress: Double(t),
+                    arcStart: visual.pathArcStart
+                )
                 visual.node.position = CombatShotMotion.pointAlongCubicBezier(
-                    fraction: eased,
+                    fraction: fraction,
                     start: visual.pathStart,
                     c1: visual.pathControl1,
                     c2: visual.pathControl2,
                     end: visual.pathEnd
                 )
-                let scaleT = CGFloat(
-                    min(1, max(0, (sceneElapsed - visual.scaleStartedAt) / max(visual.scaleDurationSeconds, 0.05)))
-                )
-                visual.node.setScale(CombatShotMotion.inboundScale(t: scaleT))
+                visual.node.setScale(CombatShotMotion.inboundScale(t: fraction))
             } else {
                 visual.node.position = cubicBezier(
                     t: t,
@@ -163,9 +167,12 @@ extension CombatScene {
     func checkImpacts() {
         let playerRadius = playerImpactRadius()
         for (id, visual) in shotVisuals where visual.role == .inbound {
-            let eased = CombatShotMotion.easeOut(pathProgress(for: visual))
+            let fraction = CombatShotMotion.inboundArcFraction(
+                progress: Double(pathProgress(for: visual)),
+                arcStart: visual.pathArcStart
+            )
             let remaining = CombatShotMotion.remainingArcLength(
-                fraction: eased,
+                fraction: fraction,
                 total: visual.pathLength
             )
             let projectileRadius = shotImpactRadius(for: visual.node)

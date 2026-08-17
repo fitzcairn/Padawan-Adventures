@@ -133,4 +133,108 @@ struct CombatShotMotionTests {
             )
         )
     }
+
+    @Test func accelerateRemainingSegmentRestartsTheLeftoverArcAtDoubleSpeed() {
+        let elapsed = 6.0
+        let startedAt = 2.0
+        let duration = 8.0
+        let beforeT = CombatShotMotion.pathProgress(
+            elapsed: elapsed, startedAt: startedAt, duration: duration
+        )
+        #expect(abs(beforeT - 0.5) < 0.0001)
+        let beforeArc = CombatShotMotion.inboundArcFraction(progress: beforeT, arcStart: 0)
+
+        let segment = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: elapsed,
+            startedAt: startedAt,
+            duration: duration,
+            arcStart: 0,
+            multiplier: 2
+        )
+        #expect(abs(segment.duration - 2) < 0.0001)
+        #expect(abs(segment.startedAt - elapsed) < 0.0001)
+        #expect(abs(segment.arcStart - beforeArc) < 0.0001)
+        let afterT = CombatShotMotion.pathProgress(
+            elapsed: elapsed, startedAt: segment.startedAt, duration: segment.duration
+        )
+        #expect(afterT == 0)
+        let afterArc = CombatShotMotion.inboundArcFraction(
+            progress: afterT, arcStart: segment.arcStart
+        )
+        #expect(abs(afterArc - beforeArc) < 0.0001)
+
+        let later = elapsed + 1
+        let rushed = CombatShotMotion.inboundArcFraction(
+            progress: CombatShotMotion.pathProgress(
+                elapsed: later, startedAt: segment.startedAt, duration: segment.duration
+            ),
+            arcStart: segment.arcStart
+        )
+        let unaccelerated = CombatShotMotion.inboundArcFraction(
+            progress: CombatShotMotion.pathProgress(
+                elapsed: later, startedAt: startedAt, duration: duration
+            ),
+            arcStart: 0
+        )
+        #expect(rushed > unaccelerated)
+    }
+
+    @Test func accelerateRemainingSegmentStacksOnASecondApply() {
+        let elapsed = 6.0
+        let first = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: elapsed,
+            startedAt: 2,
+            duration: 8,
+            arcStart: 0,
+            multiplier: 2
+        )
+        let second = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: elapsed,
+            startedAt: first.startedAt,
+            duration: first.duration,
+            arcStart: first.arcStart,
+            multiplier: 2
+        )
+        #expect(abs(first.duration - 2) < 0.0001)
+        #expect(abs(second.duration - 1) < 0.0001)
+        #expect(abs(second.arcStart - first.arcStart) < 0.0001)
+        #expect(
+            CombatShotMotion.pathProgress(
+                elapsed: elapsed, startedAt: second.startedAt, duration: second.duration
+            ) == 0
+        )
+    }
+
+    @Test func accelerateRemainingSegmentSkipsFinishedAndNonSpeedingMultipliers() {
+        let finished = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: 10,
+            startedAt: 0,
+            duration: 8,
+            arcStart: 0.4,
+            multiplier: 2
+        )
+        #expect(finished.startedAt == 0)
+        #expect(finished.duration == 8)
+        #expect(finished.arcStart == 0.4)
+
+        let identity = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: 4,
+            startedAt: 0,
+            duration: 8,
+            arcStart: 0,
+            multiplier: 1
+        )
+        #expect(identity.startedAt == 0)
+        #expect(identity.duration == 8)
+
+        let slower = CombatShotMotion.accelerateRemainingSegment(
+            elapsed: 4,
+            startedAt: 0,
+            duration: 8,
+            arcStart: 0,
+            multiplier: 0.5
+        )
+        #expect(slower.startedAt == 0)
+        #expect(slower.duration == 8)
+    }
 }
