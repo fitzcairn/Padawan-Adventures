@@ -65,7 +65,7 @@ struct LevelDetailOverlayTests {
     }
 
     @Test func replayPromptIsHighScoreLabel() {
-        #expect(Strings.text("level_detail_replay_prompt") == "Your last high score:")
+        #expect(Strings.text("level_detail_replay_prompt") == "Highest score:")
     }
 
     @Test func continuePromptInterpolatesPlanet() {

@@ -198,13 +198,13 @@ strings:
     sfx: sfx_ui_level_default
     context: "Fallback level name from defaults"
   planet_high_score:
-    text: "high score: {stars}"
-    spoken: "high score"
+    text: "High Score: {stars}"
+    spoken: "High Score"
     sfx: sfx_ui_planet_high_score
     context: "Completed planet high-score chip"
   level_detail_replay_prompt:
-    text: "Your last high score:"
-    spoken: "Your last high score"
+    text: "Highest score:"
+    spoken: "Highest score"
     sfx: sfx_ui_level_detail_replay_prompt
     context: "Level detail replay challenge"
   level_detail_continue_prompt:
