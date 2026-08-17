@@ -44,13 +44,22 @@ extension GateSoundOutWordScene {
 
     var capacitorGap: CGFloat { 6 }
 
-    /// Capacitor size for this round: shrunk when the word needs more room than the
-    /// play area gives at the preferred size, so a full word always fits side by side.
+    /// Center-to-center spacing of the bottom choice row, as a multiple of diameter.
+    var choiceRowSpacingFactor: CGFloat { 1.35 }
+
+    /// Capacitor size for this round: shrunk so the assembled word fits the play area
+    /// and the widest choice row (`choiceCountMax`) fits the chrome-inset width.
     var capacitorDiameter: CGFloat {
-        let count = max(engine.targetGraphemes.count, 1)
-        let available = playAreaRect.width - capacitorGap * CGFloat(count + 1)
-        let widthCap = available / CGFloat(count)
-        return max(min(preferredCapacitorDiameter, widthCap), 16)
+        let wordCount = max(engine.targetGraphemes.count, 1)
+        let playAvailable = playAreaRect.width - capacitorGap * CGFloat(wordCount + 1)
+        let playCap = playAvailable / CGFloat(wordCount)
+
+        let choiceCount = max(engine.config.choiceCountMax, 1)
+        let choiceAvailable = max(size.width - chromeInsets.left - chromeInsets.right, 1)
+        let choiceCap = choiceAvailable
+            / (CGFloat(choiceCount - 1) * choiceRowSpacingFactor + 1)
+
+        return max(min(preferredCapacitorDiameter, playCap, choiceCap), 16)
     }
 
     /// Minimum center-to-center spacing so neighbouring capacitors don't overlap.
@@ -136,12 +145,14 @@ extension GateSoundOutWordScene {
         )
     }
 
-    /// Evenly spaced, horizontally centered slots for a set of `count` capacitors.
+    /// Evenly spaced slots for a set of `count` capacitors, centered in the chrome-inset band.
     func choiceRowPositions(count: Int) -> [CGPoint] {
         guard count > 0 else { return [] }
-        let spacing = laidOutDiameter * 1.35
+        let spacing = laidOutDiameter * choiceRowSpacingFactor
         let span = CGFloat(count - 1) * spacing
-        let startX = size.width * 0.5 - span * 0.5
+        let insetWidth = size.width - chromeInsets.left - chromeInsets.right
+        let midX = chromeInsets.left + insetWidth * 0.5
+        let startX = midX - span * 0.5
         let y = choiceRowCenterY
         return (0..<count).map { CGPoint(x: startX + CGFloat($0) * spacing, y: y) }
     }

@@ -51,11 +51,62 @@ struct GateSoundOutWordSceneTests {
         }
     }
 
-    private func makeScene() -> GateSoundOutWordScene {
-        GateSoundOutWordScene(
-            size: CGSize(width: 800, height: 600),
-            puzzleConfig: .fallback
+    @Test func sixChoiceRowFitsInsideChromeInsetsOnANarrowScene() {
+        let scene = makeScene(
+            size: CGSize(width: 500, height: 400),
+            choiceCountMin: 6,
+            choiceCountMax: 6
         )
+        scene.buildContentForTesting()
+        scene.layoutCurrentChoiceSet(fadeIn: false)
+
+        #expect(scene.engine.currentChoices.count == 6)
+        #expect(scene.choiceNodes.count == 6)
+
+        let insets = scene.chromeInsets
+        let bounds = CGRect(
+            x: insets.left,
+            y: 0,
+            width: scene.size.width - insets.left - insets.right,
+            height: scene.size.height
+        )
+        for node in scene.choiceNodes.values {
+            let frame = node.calculateAccumulatedFrame()
+            #expect(frame.minX >= bounds.minX - 0.5)
+            #expect(frame.maxX <= bounds.maxX + 0.5)
+            #expect(frame.minY >= bounds.minY - 0.5)
+            #expect(frame.maxY <= bounds.maxY + 0.5)
+        }
+    }
+
+    @Test func wideSceneKeepsPreferredCapacitorDiameterWhenSixFit() {
+        let scene = makeScene(
+            size: CGSize(width: 1600, height: 900),
+            choiceCountMin: 6,
+            choiceCountMax: 6
+        )
+        scene.buildContentForTesting()
+
+        #expect(abs(scene.laidOutDiameter - scene.preferredCapacitorDiameter) < 0.01)
+    }
+
+    private func makeScene(
+        size: CGSize = CGSize(width: 800, height: 600),
+        choiceCountMin: Int? = nil,
+        choiceCountMax: Int? = nil
+    ) -> GateSoundOutWordScene {
+        let puzzleConfig: GateSoundOutWordConfig
+        if let choiceCountMin, let choiceCountMax {
+            puzzleConfig = GateSoundOutWordConfig(
+                choiceCountMin: choiceCountMin,
+                choiceCountMax: choiceCountMax,
+                words: WordCatalog.fallback.words,
+                graphemes: GraphemeCatalog.fallback.graphemes
+            )
+        } else {
+            puzzleConfig = .fallback
+        }
+        return GateSoundOutWordScene(size: size, puzzleConfig: puzzleConfig)
     }
 
     private func promptFill(_ scene: GateSoundOutWordScene, at index: Int) -> UIColor? {

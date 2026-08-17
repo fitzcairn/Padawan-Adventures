@@ -23,7 +23,7 @@ nonisolated struct GateSoundOutWordConfig: Equatable, Sendable {
 
     /// One correct capacitor plus at least one decoy.
     nonisolated static let minChoiceCount = 2
-    /// Wider sets stop fitting the bottom row on phone-sized scenes.
+    /// Gameplay cap; the choice row shrinks so a full set still fits on screen.
     nonisolated static let maxChoiceCount = 6
 
     nonisolated static let fallback = GateSoundOutWordConfig(
