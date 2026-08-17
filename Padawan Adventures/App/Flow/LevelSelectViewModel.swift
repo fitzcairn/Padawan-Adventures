@@ -1,6 +1,27 @@
 import Foundation
 import UIKit
 
+enum LevelDetailMode: Equatable, Sendable {
+    case firstStart
+    case continueAdventure
+    case replay(highestStars: Int)
+
+    var launchMode: GameLaunchMode {
+        switch self {
+        case .continueAdventure: return .continueSave
+        case .firstStart, .replay: return .newGame
+        }
+    }
+
+    var promptSpeakID: String? {
+        switch self {
+        case .firstStart: return nil
+        case .continueAdventure: return "level_detail_continue_prompt"
+        case .replay: return "level_detail_replay_prompt"
+        }
+    }
+}
+
 @MainActor
 struct LevelSelectViewModel {
     let session: AppSession
@@ -15,6 +36,43 @@ struct LevelSelectViewModel {
         return Set(progress.compactMap { name, level in
             level.completed ? name : nil
         })
+    }
+
+    /// Best coins for completed planets (`starsEarned`), including 0.
+    var completedHighScores: [String: Int] {
+        let progress = session.playerState?.levels ?? [:]
+        var scores: [String: Int] = [:]
+        for (name, level) in progress where level.completed {
+            scores[name] = level.starsEarned
+        }
+        return scores
+    }
+
+    nonisolated static func detailMode(
+        resourceName: String,
+        started: Bool,
+        starsEarned: Int,
+        hasCompatibleSave: Bool,
+        lastLevelStarted: String?
+    ) -> LevelDetailMode {
+        if hasCompatibleSave, lastLevelStarted == resourceName {
+            return .continueAdventure
+        }
+        if started {
+            return .replay(highestStars: starsEarned)
+        }
+        return .firstStart
+    }
+
+    func detailMode(for resourceName: String) -> LevelDetailMode {
+        let progress = session.playerState?.levels[resourceName]
+        return Self.detailMode(
+            resourceName: resourceName,
+            started: progress?.started == true,
+            starsEarned: progress?.starsEarned ?? 0,
+            hasCompatibleSave: session.hasCompatibleSave,
+            lastLevelStarted: session.playerState?.lastLevelStarted
+        )
     }
 
     func inventoryLevels(progressionEpoch: Int) -> [LevelDescriptor] {
@@ -97,8 +155,6 @@ struct LevelSelectViewModel {
             return .completeCurrentFirst
         }
 
-        // Name VO plays on planet tap; overlay title can replay it.
-        Strings.speak(level.nameStringID)
         return nil
     }
 }

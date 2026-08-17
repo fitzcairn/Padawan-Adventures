@@ -32,4 +32,10 @@ struct LevelSelectViewModelTests {
             ) == nil
         )
     }
+
+    @Test func continueLaunchModeResumesSave() {
+        #expect(LevelDetailMode.continueAdventure.launchMode == .continueSave)
+        #expect(LevelDetailMode.firstStart.launchMode == .newGame)
+        #expect(LevelDetailMode.replay(highestStars: 3).launchMode == .newGame)
+    }
 }

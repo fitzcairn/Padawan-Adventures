@@ -9,6 +9,7 @@ struct LevelSelectView: View {
 
     @State private var messageOverlay: LevelSelectMessage?
     @State private var selectedLevel: LevelDescriptor?
+    @State private var detailMode: LevelDetailMode?
     @State private var showPassword = false
     /// Bumps when Dad mode / progression changes so buttons re-read session state.
     @State private var progressionEpoch = 0
@@ -145,26 +146,33 @@ struct LevelSelectView: View {
                 )
             }
 
-            if let selectedLevel {
-                let progress = session.playerState?.levels[selectedLevel.resourceName]
-                let hasBeenPlayed = progress?.started == true
+            if let selectedLevel, let detailMode {
                 let menuIcons = session.spriteLibrary.uiImages(id: MenuSpritesConfig.iconsID)?
                     .map(\.image) ?? []
+                let continueIcon = menuIcons.indices.contains(MenuSpritesConfig.Icon.continueGame.rawValue)
+                    ? menuIcons[MenuSpritesConfig.Icon.continueGame.rawValue]
+                    : nil
+                let newGameIcon = menuIcons.indices.contains(MenuSpritesConfig.Icon.newGame.rawValue)
+                    ? menuIcons[MenuSpritesConfig.Icon.newGame.rawValue]
+                    : nil
+                let exitIcon = menuIcons.indices.contains(MenuSpritesConfig.Icon.exit.rawValue)
+                    ? menuIcons[MenuSpritesConfig.Icon.exit.rawValue]
+                    : nil
                 LevelDetailOverlay(
                     levelName: selectedLevel.displayName,
                     nameStringID: selectedLevel.nameStringID,
-                    highestStars: hasBeenPlayed ? (progress?.starsEarned ?? 0) : nil,
-                    startIcon: menuIcons.indices.contains(MenuSpritesConfig.Icon.newGame.rawValue)
-                        ? menuIcons[MenuSpritesConfig.Icon.newGame.rawValue]
-                        : nil,
-                    dismissIcon: menuIcons.indices.contains(MenuSpritesConfig.Icon.exit.rawValue)
-                        ? menuIcons[MenuSpritesConfig.Icon.exit.rawValue]
-                        : nil,
+                    mode: detailMode,
+                    startIcon: detailMode == .continueAdventure ? continueIcon : newGameIcon,
+                    secondaryIcon: detailMode == .continueAdventure ? newGameIcon : exitIcon,
                     onStart: {
-                        startLevel(selectedLevel)
+                        startLevel(selectedLevel, launchMode: detailMode.launchMode)
+                    },
+                    onStartOver: {
+                        let stars = session.playerState?.levels[selectedLevel.resourceName]?.starsEarned ?? 0
+                        self.detailMode = .replay(highestStars: stars)
                     },
                     onDismiss: {
-                        self.selectedLevel = nil
+                        dismissLevelDetail()
                     }
                 )
             }
@@ -172,6 +180,7 @@ struct LevelSelectView: View {
         .playScreenMusic("level_select")
         .onAppear { MemoryProbe.mark("level-select") }
         .task {
+            await session.refreshContinueEligibility()
             // Assets are warmed on the loading screen; refresh icons if progression changed.
             let ids = viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch)
             inventoryIcons = viewModel.refreshInventoryIcons(ids: ids)
@@ -319,6 +328,7 @@ struct LevelSelectView: View {
                 session: session,
                 orderedResourceNames: viewModel.orderedResourceNames,
                 completedLevels: viewModel.completedLevels,
+                completedHighScores: viewModel.completedHighScores,
                 dadModeUnlocked: viewModel.dadModeUnlocked(progressionEpoch: progressionEpoch),
                 celebratingUnlockResource: celebratingUnlockResource,
                 celebrationRevealed: celebrationRevealed,
@@ -405,18 +415,29 @@ struct LevelSelectView: View {
         }
 
         playMenuSound("button_click")
+        let mode = viewModel.detailMode(for: level.resourceName)
+        if mode == .firstStart {
+            Strings.speak(level.nameStringID)
+        }
         selectedLevel = level
+        detailMode = mode
     }
 
-    private func startLevel(_ level: LevelDescriptor) {
+    private func dismissLevelDetail() {
         selectedLevel = nil
+        detailMode = nil
+    }
+
+    private func startLevel(_ level: LevelDescriptor, launchMode: GameLaunchMode) {
+        dismissLevelDetail()
         Task {
-            if viewModel.dadModeUnlocked(progressionEpoch: progressionEpoch) {
+            if launchMode == .newGame,
+               viewModel.dadModeUnlocked(progressionEpoch: progressionEpoch) {
                 await session.applyDadModeProgression(to: level.resourceName)
             }
             do {
                 try session.selectLevel(resourceName: level.resourceName)
-                router.navigate(to: .preparing(.newGame))
+                router.navigate(to: .preparing(launchMode))
             } catch {
                 // Ignore invalid/missing level resources.
             }

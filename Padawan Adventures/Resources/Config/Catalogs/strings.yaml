@@ -197,11 +197,25 @@ strings:
     text: "Level"
     sfx: sfx_ui_level_default
     context: "Fallback level name from defaults"
-  level_detail_highest_score:
-    text: "Your highest score: {stars}"
-    spoken: "Your highest score"
-    sfx: sfx_ui_level_detail_highest_score
-    context: "Level detail highest-score row"
+  planet_high_score:
+    text: "high score: {stars}"
+    spoken: "high score"
+    sfx: sfx_ui_planet_high_score
+    context: "Completed planet high-score chip"
+  level_detail_replay_prompt:
+    text: "Your last high score:"
+    spoken: "Your last high score"
+    sfx: sfx_ui_level_detail_replay_prompt
+    context: "Level detail replay challenge"
+  level_detail_continue_prompt:
+    text: "Continue your adventure on {planet}?"
+    spoken: "Continue your adventure?"
+    sfx: sfx_ui_level_detail_continue_prompt
+    context: "Level detail continue prompt"
+  level_detail_start_over:
+    text: "Start over!"
+    sfx: sfx_ui_level_detail_start_over
+    context: "Level detail start-over button"
   level_detail_take_off:
     text: "Let's go!"
     sfx: sfx_ui_level_detail_take_off
@@ -231,7 +245,7 @@ strings:
     sfx: sfx_ui_you_win
     context: "Level-complete overlay title"
   you_win_high_score:
-    text: "New high score: {score}!"
+    text: "New high score!"
     spoken: "New high score!"
     sfx: sfx_ui_you_win_high_score
     context: "Level-complete high-score line"

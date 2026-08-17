@@ -19,17 +19,31 @@ struct YouWinView: View {
                         accessibilityID: "youWin.title"
                     )
 
+                    HStack(spacing: 8) {
+                        ModalCRTText(
+                            text: String(newScore),
+                            size: 28,
+                            weight: .semibold,
+                            accessibilityID: "youWin.score"
+                        )
+                        ScoreCoinIcon.Image(side: 28)
+                            .shadow(
+                                color: StarWarsConsolePalette.crtGlow.opacity(0.45),
+                                radius: 2
+                            )
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("youWin.coins")
+
                     if didBeatPreviousScore {
                         ModalCRTText(
-                            text: Strings.text(
-                                "you_win_high_score",
-                                ["score": String(newScore)]
-                            ),
+                            text: Strings.text("you_win_high_score"),
                             size: 22,
                             weight: .semibold,
                             color: StarWarsConsolePalette.solvedGreen,
                             glow: StarWarsConsolePalette.solvedGlow,
-                            accessibilityID: "youWin.highScore"
+                            accessibilityID: "youWin.highScore",
+                            speakID: "you_win_high_score"
                         )
                     }
                 }

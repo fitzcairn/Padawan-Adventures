@@ -5,25 +5,51 @@ import UIKit
 struct LevelDetailOverlay: View {
     let levelName: String
     let nameStringID: String
-    /// `nil` for a first start — hides the highest-score row.
-    let highestStars: Int?
+    let mode: LevelDetailMode
     var startIcon: UIImage? = nil
-    var dismissIcon: UIImage? = nil
+    var secondaryIcon: UIImage? = nil
     let onStart: () -> Void
+    var onStartOver: (() -> Void)? = nil
     let onDismiss: () -> Void
 
-    private var isReplay: Bool { highestStars != nil }
-
     private var startTitle: String {
-        Strings.text(isReplay ? "level_detail_try_again" : "level_detail_take_off")
+        switch mode {
+        case .firstStart, .continueAdventure:
+            return Strings.text("level_detail_take_off")
+        case .replay:
+            return Strings.text("level_detail_try_again")
+        }
     }
 
-    private var dismissTitle: String {
-        Strings.text(isReplay ? "level_detail_no_thanks" : "level_detail_not_ready")
+    private var secondaryTitle: String {
+        switch mode {
+        case .continueAdventure:
+            return Strings.text("level_detail_start_over")
+        case .firstStart:
+            return Strings.text("level_detail_not_ready")
+        case .replay:
+            return Strings.text("level_detail_no_thanks")
+        }
+    }
+
+    private var startAccessibilityID: String {
+        switch mode {
+        case .firstStart: return "levelSelect.detail.takeOff"
+        case .continueAdventure: return "levelSelect.detail.continue"
+        case .replay: return "levelSelect.detail.tryAgain"
+        }
+    }
+
+    private var secondaryAccessibilityID: String {
+        switch mode {
+        case .firstStart: return "levelSelect.detail.notReady"
+        case .continueAdventure: return "levelSelect.detail.startOver"
+        case .replay: return "levelSelect.detail.noThanks"
+        }
     }
 
     private var buttonWidth: CGFloat {
-        AppLargeButton.consoleWidth(fittingTitles: [startTitle, dismissTitle], includeIcon: true)
+        AppLargeButton.consoleWidth(fittingTitles: [startTitle, secondaryTitle], includeIcon: true)
     }
 
     var body: some View {
@@ -41,31 +67,11 @@ struct LevelDetailOverlay: View {
                         speakID: nameStringID
                     )
 
-                    if let highestStars {
-                        HStack(spacing: 8) {
-                            ModalCRTText(
-                                text: Strings.text(
-                                    "level_detail_highest_score",
-                                    ["stars": String(highestStars)]
-                                ),
-                                size: 20,
-                                weight: .semibold
-                            )
-                            ScoreCoinIcon.Image(side: 20)
-                                .shadow(
-                                    color: StarWarsConsolePalette.crtGlow.opacity(0.45),
-                                    radius: 2
-                                )
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("levelSelect.detail.highestScore")
-                    }
+                    promptRow
 
                     AppLargeButton(
                         title: startTitle,
-                        accessibilityID: isReplay
-                            ? "levelSelect.detail.tryAgain"
-                            : "levelSelect.detail.takeOff",
+                        accessibilityID: startAccessibilityID,
                         style: .console,
                         icon: startIcon,
                         soundEvent: "takeoff",
@@ -74,18 +80,72 @@ struct LevelDetailOverlay: View {
                     .frame(width: buttonWidth)
 
                     AppLargeButton(
-                        title: dismissTitle,
-                        accessibilityID: isReplay
-                            ? "levelSelect.detail.noThanks"
-                            : "levelSelect.detail.notReady",
+                        title: secondaryTitle,
+                        accessibilityID: secondaryAccessibilityID,
                         style: .console,
-                        icon: dismissIcon,
-                        action: onDismiss
+                        icon: secondaryIcon,
+                        action: secondaryAction
                     )
                     .frame(width: buttonWidth)
                 }
             }
             .frame(maxWidth: AppChrome.maxContentWidth * 0.85)
+        }
+        .onChange(of: mode, initial: true) { _, newMode in
+            if let speakID = newMode.promptSpeakID {
+                Strings.speak(speakID)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var promptRow: some View {
+        switch mode {
+        case .firstStart:
+            EmptyView()
+        case .continueAdventure:
+            ModalCRTText(
+                text: Strings.text(
+                    "level_detail_continue_prompt",
+                    ["planet": levelName]
+                ),
+                size: 20,
+                weight: .semibold,
+                accessibilityID: "levelSelect.detail.continuePrompt",
+                speakID: "level_detail_continue_prompt"
+            )
+        case .replay(let highestStars):
+            HStack(alignment: .center, spacing: 8) {
+                ModalCRTText(
+                    text: Strings.text("level_detail_replay_prompt"),
+                    size: 20,
+                    weight: .semibold
+                )
+                HStack(alignment: .center, spacing: 4) {
+                    ScoreCoinIcon.Image(side: 20)
+                        .shadow(
+                            color: StarWarsConsolePalette.crtGlow.opacity(0.45),
+                            radius: 2
+                        )
+                    ModalCRTText(
+                        text: String(highestStars),
+                        size: 20,
+                        weight: .semibold,
+                        accessibilityID: "levelSelect.detail.highestScoreValue"
+                    )
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("levelSelect.detail.highestScore")
+        }
+    }
+
+    private func secondaryAction() {
+        switch mode {
+        case .continueAdventure:
+            onStartOver?()
+        case .firstStart, .replay:
+            onDismiss()
         }
     }
 }

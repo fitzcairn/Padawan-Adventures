@@ -6,6 +6,7 @@ struct PlanetStripView: View {
     let session: AppSession
     let orderedResourceNames: [String]
     let completedLevels: Set<String>
+    let completedHighScores: [String: Int]
     let dadModeUnlocked: Bool
     let celebratingUnlockResource: String?
     let celebrationRevealed: Bool
@@ -25,12 +26,15 @@ struct PlanetStripView: View {
     private static let planetSpacingToDiameter: CGFloat = 0.26
     /// Vertical jitter half-range relative to planet diameter.
     private static let planetJitterToDiameter: CGFloat = 0.32
+    /// Space above each planet so the high-score chip is not clipped.
+    private static let highScoreChipToDiameter: CGFloat = 0.22
 
     var body: some View {
         GeometryReader { geo in
             let diameter = geo.size.width * Self.planetDiameterFraction
             let spacing = diameter * Self.planetSpacingToDiameter
             let jitterBand = diameter * Self.planetJitterToDiameter
+            let chipReserve = diameter * Self.highScoreChipToDiameter
 
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -43,6 +47,7 @@ struct PlanetStripView: View {
                     }
                     // Internal scroll content inset (planet-to-edge breathing room), not screen margin.
                     .padding(.horizontal, spacing)
+                    .padding(.top, chipReserve)
                     .frame(maxHeight: .infinity)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
@@ -93,6 +98,10 @@ struct PlanetStripView: View {
             : nil
         let lockIconSize = diameter * 0.19
         let completedStroke = max(2, diameter * 0.027)
+        let chipHeight = max(18, diameter * 0.14)
+        let highScore = state == .completed
+            ? (completedHighScores[level.resourceName] ?? 0)
+            : nil
 
         return Button {
             onLevelTap(level)
@@ -115,6 +124,12 @@ struct PlanetStripView: View {
                     }
                 }
                 .opacity(visuallyLocked ? 0.5 : 1)
+                .overlay(alignment: .top) {
+                    if let highScore {
+                        planetHighScoreChip(score: highScore, height: chipHeight)
+                            .offset(y: -(chipHeight + 4))
+                    }
+                }
 
                 if showLockOverlay {
                     Image(systemName: "lock.fill")
@@ -136,8 +151,28 @@ struct PlanetStripView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(level.displayName)
+        .accessibilityLabel(planetAccessibilityLabel(level: level, highScore: highScore))
         .accessibilityIdentifier("levelSelect.\(level.resourceName)")
+    }
+
+    private func planetHighScoreChip(score: Int, height: CGFloat) -> some View {
+        HStack(spacing: 4) {
+            Text(Strings.text("planet_high_score", ["stars": String(score)]))
+                .font(AppFont.swiftUI(size: max(12, height * 0.72), weight: .semibold))
+                .foregroundStyle(AppChrome.primaryTextColor)
+                .appCopyShadow()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            ScoreCoinIcon.Image(side: height * 0.78)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("levelSelect.planetHighScore")
+        .allowsHitTesting(false)
+    }
+
+    private func planetAccessibilityLabel(level: LevelDescriptor, highScore: Int?) -> String {
+        guard let highScore else { return level.displayName }
+        return "\(level.displayName), \(Strings.text("planet_high_score", ["stars": String(highScore)]))"
     }
 
     private func centerOnPlayerIfNeeded(proxy: ScrollViewProxy, contentIsLaidOut: Bool) {
