@@ -166,6 +166,18 @@ struct PitBridgeMinigameEngineTests {
         #expect(!engine.isFrozen)
     }
 
+    @Test func shuffleCurrentChoicesReordersWithoutLosingTheAnswer() {
+        var engine = makeEngine(seed: 3)
+        let beforeIDs = engine.choices.map(\.id)
+        let beforeLetters = Set(engine.choices.map(\.letter))
+        #expect(beforeIDs.count > 1)
+        engine.shuffleCurrentChoices()
+        #expect(Set(engine.choices.map(\.id)) == Set(beforeIDs))
+        #expect(Set(engine.choices.map(\.letter)) == beforeLetters)
+        #expect(engine.choices.contains { $0.letter == engine.currentAnswer })
+        #expect(engine.choices.map(\.id) != beforeIDs)
+    }
+
     @Test func correctAcceptsAdvanceAndWinAfterN() {
         var engine = makeEngine(minWords: 2, maxWords: 2, seed: 11)
         let n = engine.wordCount

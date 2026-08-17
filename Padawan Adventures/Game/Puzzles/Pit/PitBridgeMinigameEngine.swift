@@ -173,6 +173,17 @@ nonisolated struct PitBridgeMinigameEngine {
         return .correct(slotIndex: placed, won: false)
     }
 
+    /// Reorders the active tray after a wrong drop. Same letters and ids; new slots.
+    /// Retries until the order changes when there is more than one choice.
+    mutating func shuffleCurrentChoices() {
+        guard choices.count > 1 else { return }
+        let before = choices.map(\.id)
+        for _ in 0..<8 {
+            choices.shuffle(using: &rng)
+            if choices.map(\.id) != before { break }
+        }
+    }
+
     private mutating func makeChoices(for answer: String) -> [Choice] {
         guard !answer.isEmpty else { return [] }
         var letters = [answer]

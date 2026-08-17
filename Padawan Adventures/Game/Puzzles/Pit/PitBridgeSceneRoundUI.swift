@@ -394,7 +394,8 @@ extension PitBridgeScene {
 
     func beginChoiceTouch(on node: SKNode, at location: CGPoint) {
         guard node.action(forKey: "springBack") == nil,
-              node.action(forKey: Self.snapIntoSlotActionKey) == nil else { return }
+              node.action(forKey: Self.snapIntoSlotActionKey) == nil,
+              node.action(forKey: Self.trayShuffleActionKey) == nil else { return }
         draggedNode = node
         dragStartPosition = node.position
         dragTouchStart = location

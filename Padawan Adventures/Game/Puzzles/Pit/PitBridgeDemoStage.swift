@@ -47,6 +47,7 @@ extension PitBridgeScene: PitBridgeDemoStaging {
         removeAction(forKey: Self.promptSoundKey)
         removeAction(forKey: Self.letterCueActionKey)
         removeAction(forKey: Self.winSoundActionKey)
+        removeAction(forKey: Self.shuffleActionKey)
         playerNode?.removeAllActions()
         draggedNode?.removeAllActions()
         draggedNode = nil

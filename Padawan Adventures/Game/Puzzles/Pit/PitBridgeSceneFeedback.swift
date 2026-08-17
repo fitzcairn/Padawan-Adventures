@@ -66,12 +66,48 @@ extension PitBridgeScene {
                 event: "error",
                 from: SoundEffectsController.shared.commonFx.merging(self.pitFx)
             )
-            self.springBack(node, to: self.dragStartPosition) {
+            guard node.parent != nil, self.trayNodes.values.contains(where: { $0 === node }) else {
+                return
+            }
+            self.shuffleAndAnimateTray {
                 self.playWordSound {
                     self.isUserInteractionEnabled = true
                 }
             }
         }
+    }
+
+    /// Reorders the active set and slides every tray tile into its new slot.
+    func shuffleAndAnimateTray(completion: (() -> Void)? = nil) {
+        guard !trayNodes.isEmpty else {
+            completion?()
+            return
+        }
+        engine.shuffleCurrentChoices()
+
+        let geo = geometry
+        for (index, choice) in engine.choices.enumerated() {
+            guard let node = trayNodes[choice.id] else { continue }
+            node.removeAction(forKey: Self.trayShuffleActionKey)
+            let move = SKAction.move(to: geo.trayCenter(index), duration: Self.shuffleDuration)
+            move.timingMode = .easeInEaseOut
+            node.run(move, withKey: Self.trayShuffleActionKey)
+        }
+
+        removeAction(forKey: Self.shuffleActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: Self.shuffleDuration),
+                SKAction.run { [weak self] in
+                    guard let self else { return }
+                    for node in self.trayNodes.values {
+                        node.zPosition = Self.trayTilesZ
+                    }
+                    completion?()
+                },
+            ]),
+            withKey: Self.shuffleActionKey
+        )
     }
 
     func springBack(_ node: SKNode, to position: CGPoint, completion: (() -> Void)? = nil) {

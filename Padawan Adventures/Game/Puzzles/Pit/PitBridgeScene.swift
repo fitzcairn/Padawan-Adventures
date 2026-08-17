@@ -60,6 +60,10 @@ final class PitBridgeScene: MinigameScene {
     static let letterCueActionKey = "pitBridgeLetterCue"
     static let winSoundActionKey = "pitBridgeWinSound"
     static let springBackDuration: TimeInterval = 0.18
+    /// Duration for the post-miss tray reshuffle slide.
+    static let shuffleDuration: TimeInterval = 0.35
+    static let shuffleActionKey = "pitBridgeTrayShuffle"
+    static let trayShuffleActionKey = "trayShuffle"
     /// Ease a near-miss drop into the dashed slot before resolving correct/incorrect.
     static let snapIntoSlotDuration: TimeInterval = 0.18
     static let snapIntoSlotActionKey = "snapIntoSlot"
@@ -110,6 +114,7 @@ final class PitBridgeScene: MinigameScene {
         removeAction(forKey: Self.promptWatchdogKey)
         removeAction(forKey: Self.promptSoundKey)
         removeAction(forKey: Self.letterCueActionKey)
+        removeAction(forKey: Self.shuffleActionKey)
     }
 
     override func rebuildLayout() {

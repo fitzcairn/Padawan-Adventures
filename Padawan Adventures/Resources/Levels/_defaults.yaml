@@ -129,7 +129,8 @@ combat:
 #   Words are imaged pool entries (>= 2 graphemes), sampled without replacement from the
 #   run's unused set (current-level words more likely), shared with other minigames until
 #   that set is empty, then refilled. The prompt shows that image and
-#   plays the word's sfx. Pool must hold at least `max_word_count` entries. Stars = words placed.
+#   plays the word's sfx. A wrong drop reshuffles the tray (same letters, new order).
+#   Pool must hold at least `max_word_count` entries. Stars = words placed.
 # `starting-sound-pit`: same board as `ending-sound-pit`, but the tile must match the word's
 #   FIRST letter (`_og` for dog). Same pool rules. Stars = words placed.
 pit:

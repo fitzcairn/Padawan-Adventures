@@ -82,6 +82,7 @@ final class PitBridgeDemoScript: MinigameDemoScript {
                 await performer.pause(timing.beatSeconds)
             }
 
+            // Re-read after the reshuffle: every tray tile has moved.
             guard let second = stage.demoCorrectMove else { continue }
             let secondAnchor = second.coinAnchor
             await performer.perform(second, gestureSeconds: timing.gestureSeconds)

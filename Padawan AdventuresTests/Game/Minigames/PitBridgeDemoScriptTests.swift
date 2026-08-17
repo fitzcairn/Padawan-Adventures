@@ -235,6 +235,56 @@ struct PitBridgeDemoScriptTests {
 
 @MainActor
 struct PitBridgeDemoStageTests {
+    @Test func shuffleAndAnimateTraySlidesWithEaseInEaseOut() {
+        let scene = makeScene()
+        scene.buildContentForTesting()
+        scene.revealTray()
+
+        let beforeIDs = scene.engine.choices.map(\.id)
+        #expect(beforeIDs.count == PitBridgeMinigameEngine.choiceCount)
+        scene.shuffleAndAnimateTray()
+
+        #expect(scene.engine.choices.map(\.id) != beforeIDs)
+        #expect(Set(scene.engine.choices.map(\.id)) == Set(beforeIDs))
+        for choice in scene.engine.choices {
+            guard let node = scene.trayNodes[choice.id] else {
+                Issue.record("expected a tray node for \(choice.letter)")
+                return
+            }
+            let action = node.action(forKey: PitBridgeScene.trayShuffleActionKey)
+            #expect(action != nil)
+            if let action {
+                #expect(abs(action.duration - PitBridgeScene.shuffleDuration) < 0.001)
+                #expect(action.timingMode == .easeInEaseOut)
+            }
+        }
+
+        // SKActions do not tick here; teleport to the post-shuffle homes so
+        // live demo moves read the settled layout.
+        for (index, choice) in scene.engine.choices.enumerated() {
+            scene.trayNodes[choice.id]?.position = scene.geometry.trayCenter(index)
+        }
+        guard case let .drag(correctFrom, _)? = scene.demoCorrectMove?.gesture else {
+            Issue.record("expected a correct demo drag")
+            return
+        }
+        guard let correctIndex = scene.engine.choices.firstIndex(where: \.isCorrect) else {
+            Issue.record("expected a correct choice")
+            return
+        }
+        #expect(correctFrom == scene.geometry.trayCenter(correctIndex))
+
+        guard case let .drag(wrongFrom, _)? = scene.demoWrongMove?.gesture else {
+            Issue.record("expected a wrong demo drag")
+            return
+        }
+        guard let wrongIndex = scene.engine.choices.firstIndex(where: { !$0.isCorrect }) else {
+            Issue.record("expected a wrong choice")
+            return
+        }
+        #expect(wrongFrom == scene.geometry.trayCenter(wrongIndex))
+    }
+
     @Test func demoScriptIsWiredAndMovesArePresent() {
         let scene = makeScene()
         scene.buildContentForTesting()
