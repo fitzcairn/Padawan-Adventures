@@ -20,8 +20,8 @@ final class CombatDeflectScene: MinigameScene {
         let word: String
         /// Pronunciation track, replayed when the player taps the orb.
         let sfx: String
-        /// The ring that deflects this orb.
-        let ring: CombatDeflectRing
+        /// The ring that deflects this orb. Updated when a wrong tap shuffles seats.
+        var ring: CombatDeflectRing
         let travelSeconds: Double
         /// `CACurrentMediaTime()` when the inbound flight began.
         let flightStartedAt: TimeInterval
@@ -72,7 +72,7 @@ final class CombatDeflectScene: MinigameScene {
     /// crowds the edge.
     static let orbWordFitFraction: CGFloat = 0.62 * 1.3
     /// Word font size as a fraction of `orbBaseSize`.
-    static let orbWordFontFraction: CGFloat = 0.26 * 1.3
+    static let orbWordFontFraction: CGFloat = 0.26 * 1.3 * 1.15
     /// Extra gap between the blank square and the nearest letter, as a fraction of
     /// blank width.
     static let orbBlankLetterGapFraction: CGFloat = 0.35
@@ -87,15 +87,21 @@ final class CombatDeflectScene: MinigameScene {
 
     let ringLineWidth: CGFloat = 2
     let ringDashLengths: [CGFloat] = [10, 8]
-    /// Indexed by ring index — left to right (supports up to `maxRingCount`).
+    /// Indexed by the fight's initial left-to-right order (supports up to `maxRingCount`).
     let ringColors: [UIColor] = [
         .systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple,
     ]
+    /// Color stays with the grapheme across shuffles and layout rebuilds.
+    var ringColorByGrapheme: [String: UIColor] = [:]
+    /// Fired when the orbit lands or `rebuildRings` snaps a mid-shuffle layout.
+    var ringShuffleCompletion: (() -> Void)?
+    /// Wrong-tap orbit. `SKAction.customAction` ignores `timingMode`; ease lives in geometry.
+    static let ringShuffleDuration: TimeInterval = 0.45
     let interOrbDelaySeconds: TimeInterval = 0.6
     /// The deflected orb returns at double speed.
     let deflectSpeedMultiplier: Double = 2
     let minimumReturnSeconds: TimeInterval = 0.25
-    /// True while a wrong-letter flash is on the live orb; blocks further ring taps.
+    /// True while a wrong-letter flash or ring shuffle is in flight; blocks further ring taps.
     var isWrongLetterFeedbackActive = false
 
     let playerCombatLibraryID = "player_combat"
@@ -107,6 +113,7 @@ final class CombatDeflectScene: MinigameScene {
     let deflectFlashActionKey = "deflectFlash"
     let orbWordPulseActionKey = "orbWordPulse"
     let orbWrongLetterActionKey = "orbWrongLetter"
+    let ringShuffleActionKey = "ringShuffle"
 
     enum Layer {
         static let sprites: CGFloat = 10

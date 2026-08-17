@@ -100,12 +100,29 @@ nonisolated struct CombatDeflectGeometry: Equatable, Sendable {
     }
 
     func ringCenter(_ ring: CombatDeflectRing) -> CGPoint {
-        let theta = angle(for: ring)
+        pointOnOrbit(angle: angle(for: ring))
+    }
+
+    /// Seat on the small-ring orbit at `angle` (radians, same convention as `angle(for:)`).
+    func pointOnOrbit(angle: CGFloat) -> CGPoint {
         let t = Self.ringOrbitFraction
         return CGPoint(
-            x: center.x + outerRadii.width * t * cos(theta),
-            y: center.y + outerRadii.height * t * sin(theta)
+            x: center.x + outerRadii.width * t * cos(angle),
+            y: center.y + outerRadii.height * t * sin(angle)
         )
+    }
+
+    /// Cosine ease-in-out on `t` in 0…1. Used by the wrong-tap orbit so
+    /// `SKAction.customAction` (which ignores `timingMode`) still eases.
+    static func easeInEaseOut(_ t: CGFloat) -> CGFloat {
+        let t = min(max(t, 0), 1)
+        return 0.5 - 0.5 * cos(.pi * t)
+    }
+
+    /// Point on the upper-arc orbit between `from` and `to`, with cosine ease-in-out.
+    func pointOnOrbit(from fromAngle: CGFloat, to toAngle: CGFloat, t: CGFloat) -> CGPoint {
+        let eased = Self.easeInEaseOut(t)
+        return pointOnOrbit(angle: fromAngle + (toAngle - fromAngle) * eased)
     }
 
     /// The letter overlays the top of its ring.

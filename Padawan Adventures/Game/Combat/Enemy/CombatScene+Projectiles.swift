@@ -29,7 +29,9 @@ extension CombatScene {
             // Fixed travel window (± speed jitter). Parameterizing by t over that duration
             // makes along-path speed proportional to each sprite's path length.
             let duration = max(
-                travelSeconds / shot.speedJitter / Double(CombatShotMotion.inboundSpeedScale),
+                travelSeconds / shot.speedJitter
+                    / Double(CombatShotMotion.inboundSpeedScale)
+                    / CombatProjectileTuning.speedMultiplier,
                 0.2
             )
             let pathLength = CombatShotMotion.cubicBezierArcLength(

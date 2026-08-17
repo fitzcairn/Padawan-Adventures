@@ -219,6 +219,46 @@ struct CombatDeflectGeometryTests {
         #expect(makeGeometry(ringCount: 9).ringCount == 6)
     }
 
+    @Test func pointOnOrbitMatchesRingCenter() {
+        let geo = makeGeometry()
+        for ring in geo.rings {
+            let seat = geo.ringCenter(ring)
+            let orbit = geo.pointOnOrbit(angle: geo.angle(for: ring))
+            #expect(abs(seat.x - orbit.x) < 0.001)
+            #expect(abs(seat.y - orbit.y) < 0.001)
+        }
+    }
+
+    @Test func easeInEaseOutPinsTheEndpoints() {
+        #expect(abs(CombatDeflectGeometry.easeInEaseOut(0)) < 0.0001)
+        #expect(abs(CombatDeflectGeometry.easeInEaseOut(1) - 1) < 0.0001)
+        #expect(abs(CombatDeflectGeometry.easeInEaseOut(0.5) - 0.5) < 0.0001)
+        #expect(abs(CombatDeflectGeometry.easeInEaseOut(-0.2)) < 0.0001)
+        #expect(abs(CombatDeflectGeometry.easeInEaseOut(1.4) - 1) < 0.0001)
+    }
+
+    @Test func orbitLerpEndpointsMatchSeatsAndMidpointStaysOnTheEllipse() {
+        let geo = makeGeometry()
+        let from = geo.angle(for: CombatDeflectRing(0))
+        let to = geo.angle(for: CombatDeflectRing(2))
+        let start = geo.pointOnOrbit(from: from, to: to, t: 0)
+        let end = geo.pointOnOrbit(from: from, to: to, t: 1)
+        let left = geo.ringCenter(CombatDeflectRing(0))
+        let right = geo.ringCenter(CombatDeflectRing(2))
+        #expect(abs(start.x - left.x) < 0.001)
+        #expect(abs(start.y - left.y) < 0.001)
+        #expect(abs(end.x - right.x) < 0.001)
+        #expect(abs(end.y - right.y) < 0.001)
+
+        let mid = geo.pointOnOrbit(from: from, to: to, t: 0.5)
+        let rx = geo.outerRadii.width * CombatDeflectGeometry.ringOrbitFraction
+        let ry = geo.outerRadii.height * CombatDeflectGeometry.ringOrbitFraction
+        let nx = (mid.x - geo.center.x) / rx
+        let ny = (mid.y - geo.center.y) / ry
+        #expect(abs(nx * nx + ny * ny - 1) < 0.001)
+        #expect(mid.y > 0)
+    }
+
     @Test func borderPointNearestProjectileLiesOnTheRingRim() {
         let geo = makeGeometry()
         let ring = CombatDeflectRing(1)

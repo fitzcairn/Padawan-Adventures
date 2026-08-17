@@ -1,6 +1,20 @@
 import SpriteKit
 import UIKit
 
+/// Inbound projectile travel shared by slash and deflect. YAML keeps the designer
+/// base seconds; scenes divide stored flight time by this so progress math stays consistent.
+enum CombatProjectileTuning {
+    static let speedMultiplier: Double = 1.1
+}
+
+/// Combat-only enemy size and placement, shared so slash and deflect cannot drift.
+enum CombatArenaLayout {
+    /// Combat-only enemy height vs world (`2 × 0.7`), then +5%.
+    static let enemyHeightMultiplier: CGFloat = 1.4 * 1.05
+    /// Extra drop toward the player after pinning the sprite top, as a fraction of scene height.
+    static let enemyTowardPlayerFraction: CGFloat = 0.05
+}
+
 /// Layout, motion, and VFX helpers shared by the combat arenas (`CombatScene`,
 /// `CombatDeflectScene`) so the two cannot drift apart.
 ///
@@ -22,6 +36,12 @@ extension SKScene {
         // Quad top → scene top, then nudge up by transparent padding above content.
         let dy = size.height - frame.maxY + topPadding
         node.position = CGPoint(x: size.width * 0.5, y: dy)
+    }
+
+    /// Pins the enemy to the scene top, then drops it toward the player.
+    func pinCombatEnemy(_ node: AnimatedSpriteNode, height: CGFloat) {
+        pinToTopOfView(node, height: height)
+        node.position.y -= size.height * CombatArenaLayout.enemyTowardPlayerFraction
     }
 
     /// Transparent padding above the opaque content, in scene points.

@@ -6,10 +6,11 @@ extension CombatDeflectScene {
     /// 40% screen height × 1.2 (20% larger) — same as the slash arena.
     var playerSpriteHeight: CGFloat { size.height * 0.48 }
 
-    /// 2× world height, then −30%, then ×1.2 (`2 × 0.7 × 1.2 × wallHeight × scale`).
+    /// 2× world height, then −30%, then ×1.2, then +5% (`1.4 × 1.05 × 1.2 × wallHeight × scale`).
     var enemySpriteHeight: CGFloat {
         guard let enemySprite else { return size.height * 0.084 }
-        return 1.4 * PlaceholderFactory.spriteDisplayScaleMultiplier
+        return CombatArenaLayout.enemyHeightMultiplier
+            * PlaceholderFactory.spriteDisplayScaleMultiplier
             * wallHeight * CGFloat(enemySprite.config.scale)
     }
 
@@ -65,13 +66,14 @@ extension CombatDeflectScene {
         ringLayer = SKNode()
         addChild(ringLayer)
         // Rings need the fitted player texture to measure its visible width.
+        captureRingColors()
         rebuildRings()
         buildMonsterHPBar()
     }
 
     func placeEnemyAtTopOfView() {
         guard let enemyNode else { return }
-        pinToTopOfView(enemyNode, height: enemySpriteHeight)
+        pinCombatEnemy(enemyNode, height: enemySpriteHeight)
     }
 
     /// Geometry is derived fresh so it always matches the current scene size and

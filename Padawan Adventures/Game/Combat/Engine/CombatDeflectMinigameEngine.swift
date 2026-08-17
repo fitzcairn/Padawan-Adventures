@@ -230,6 +230,41 @@ nonisolated struct CombatDeflectMinigameEngine {
         isActive = false
     }
 
+    /// Permutes fight rings left to right after a wrong tap. Remaps `activeOrb.ring`
+    /// and `lastDeflectedRing` so they still name the same graphemes. Returns `false`
+    /// when there is only one ring or the order could not change.
+    @discardableResult
+    mutating func shuffleRingOrder() -> Bool {
+        guard graphemes.count > 1 else { return false }
+        let before = graphemes.map(\.grapheme)
+        let answerLetter = activeOrb?.letter
+        let lastLetter = lastDeflectedRing.flatMap { ring in
+            graphemes.indices.contains(ring.index) ? graphemes[ring.index].grapheme : nil
+        }
+        for _ in 0..<8 {
+            graphemes.shuffle(using: &rng)
+            if graphemes.map(\.grapheme) != before { break }
+        }
+        guard graphemes.map(\.grapheme) != before else { return false }
+        if let answerLetter,
+           let index = graphemes.firstIndex(where: { $0.grapheme == answerLetter }),
+           let orb = activeOrb {
+            activeOrb = Orb(
+                id: orb.id,
+                letter: orb.letter,
+                word: orb.word,
+                imageName: orb.imageName,
+                ring: CombatDeflectRing(index),
+                isResolved: orb.isResolved
+            )
+        }
+        if let lastLetter,
+           let index = graphemes.firstIndex(where: { $0.grapheme == lastLetter }) {
+            lastDeflectedRing = CombatDeflectRing(index)
+        }
+        return true
+    }
+
     /// Throws the next orb. Returns no events when inactive, finished, or an orb is live.
     /// Picks a word from the cumulative pool without replacement (current-level words
     /// more likely), then the ring whose grapheme matches that word. Unused spellings

@@ -63,7 +63,7 @@ extension CombatDeflectScene {
         travelSeconds: Double
     ) {
         guard let playerNode, let enemyNode else { return }
-        let travel = max(travelSeconds, 0.2)
+        let travel = max(travelSeconds, 0.2) / CombatProjectileTuning.speedMultiplier
         // A previous deflect may have left the player mirrored.
         setPlayerFacingLeft(false)
         let start = bodyCenter(of: enemyNode, height: enemySpriteHeight)
@@ -342,20 +342,20 @@ extension CombatDeflectScene {
     }
 
     /// Wrong ring: show the tapped letter in red on the blank, play error, flash it,
-    /// restore the blank, and replay the word. The inbound flight keeps going so the
-    /// player can keep trying until the orb lands or they deflect it.
+    /// scramble the rings along the orbit, restore the blank, and replay the word.
+    /// The inbound flight keeps going so the player can keep trying until the orb
+    /// lands or they deflect it. Shuffle still runs if the letter overlay cannot.
     func playWrongTap(letter: String) {
         guard let orb = activeOrb, !isWrongLetterFeedbackActive else { return }
-        guard let presented = presentWrongOrbLetter(letter, on: orb) else { return }
         isWrongLetterFeedbackActive = true
         let orbID = orb.id
         SoundEffectsController.shared.playCommon(event: "error")
-        flashPresentedWrongOrbLetter(
-            presented.letterNode,
-            blanks: presented.blanks,
-            on: orb
-        ) { [weak self] in
+
+        var pending = 1
+        let finish: () -> Void = { [weak self] in
             guard let self else { return }
+            pending -= 1
+            guard pending == 0 else { return }
             self.isWrongLetterFeedbackActive = false
             guard let live = self.activeOrb, live.id == orbID,
                   self.engine.activeOrb?.isResolved == false else { return }
@@ -369,6 +369,17 @@ extension CombatDeflectScene {
                 withKey: self.orbWordPulseActionKey
             )
         }
+
+        if let presented = presentWrongOrbLetter(letter, on: orb) {
+            pending += 1
+            flashPresentedWrongOrbLetter(
+                presented.letterNode,
+                blanks: presented.blanks,
+                on: orb,
+                completion: finish
+            )
+        }
+        shuffleAndAnimateRings(completion: finish)
     }
 
     func resolveMonsterHit(at position: CGPoint) {

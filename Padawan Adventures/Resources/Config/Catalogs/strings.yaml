@@ -277,11 +277,11 @@ strings:
     sfx: sfx_ui_minigame_tutorial_grapheme_sound_combat
     context: "First-encounter tutorial for grapheme-sound-combat"
   minigame_tutorial_starting_sound_combat:
-    text: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
+    text: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
     sfx: sfx_ui_minigame_tutorial_starting_sound_combat
     context: "First-encounter tutorial for starting-sound-combat"
   minigame_tutorial_ending_sound_combat:
-    text: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back."
+    text: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
     sfx: sfx_ui_minigame_tutorial_ending_sound_combat
     context: "First-encounter tutorial for ending-sound-combat"
   minigame_tutorial_continue:

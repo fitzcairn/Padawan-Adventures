@@ -263,6 +263,72 @@ struct CombatDeflectMinigameEngineTests {
         #expect(engine.activeOrb?.isResolved == true)
     }
 
+    @Test func shuffleRingOrderChangesSeatOrder() {
+        var engine = makeEngine()
+        let before = engine.graphemes.map(\.grapheme)
+        let didShuffle = engine.shuffleRingOrder()
+        #expect(didShuffle)
+        #expect(engine.graphemes.map(\.grapheme) != before)
+        #expect(Set(engine.graphemes.map(\.grapheme)) == Set(before))
+    }
+
+    @Test func shuffleRingOrderRemapsLiveOrbAndKeepsCorrectTap() {
+        var engine = makeEngine()
+        let events = engine.throwNextOrb()
+        guard case .throwOrb(_, let letter, _, _, let originalRing, _) = events.first else {
+            Issue.record("expected a thrown orb")
+            return
+        }
+        #expect(engine.graphemes[originalRing.index].grapheme == letter)
+        let didShuffle = engine.shuffleRingOrder()
+        #expect(didShuffle)
+        guard let remapped = engine.activeOrb?.ring else {
+            Issue.record("expected a live orb after shuffle")
+            return
+        }
+        #expect(engine.graphemes[remapped.index].grapheme == letter)
+        #expect(engine.registerTap(ring: remapped) == .correct(remapped))
+        #expect(engine.activeOrb?.isResolved == true)
+    }
+
+    @Test func shuffleRingOrderIsNoOpForASingleRing() {
+        var engine = makeEngine(pool: ["a"])
+        #expect(engine.graphemes.map(\.grapheme) == ["a"])
+        let didShuffle = engine.shuffleRingOrder()
+        #expect(!didShuffle)
+        #expect(engine.graphemes.map(\.grapheme) == ["a"])
+    }
+
+    /// After a deflect, the next throw excludes that letter. A shuffle must remap
+    /// `lastDeflectedRing` or the exclusion would follow the old seat instead.
+    @Test func shuffleRingOrderRemapsLastDeflectedRingExclusion() {
+        var engine = makeEngine(pool: ["a", "b"], seed: 1)
+        let first = engine.throwNextOrb()
+        guard case .throwOrb(_, let firstLetter, _, _, let firstRing, _) = first.first else {
+            Issue.record("expected a first throw")
+            return
+        }
+        #expect(engine.registerTap(ring: firstRing) == .correct(firstRing))
+        _ = engine.registerOrbReachedMonster()
+
+        let second = engine.throwNextOrb()
+        guard case .throwOrb(_, let secondLetter, _, _, _, _) = second.first else {
+            Issue.record("expected a second throw")
+            return
+        }
+        #expect(secondLetter != firstLetter)
+        let didShuffle = engine.shuffleRingOrder()
+        #expect(didShuffle)
+        _ = engine.registerOrbHitPlayer()
+
+        let third = engine.throwNextOrb()
+        guard case .throwOrb(_, let thirdLetter, _, _, _, _) = third.first else {
+            Issue.record("expected a third throw")
+            return
+        }
+        #expect(thirdLetter != firstLetter)
+    }
+
     @Test func tapWithNoLiveOrbIsIgnored() {
         var engine = makeEngine()
         #expect(engine.registerTap(ring: CombatDeflectRing(1)) == .ignored)
