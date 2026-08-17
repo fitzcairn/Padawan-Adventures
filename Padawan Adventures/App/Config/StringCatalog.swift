@@ -45,6 +45,7 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "menu_welcome_named": "Welcome, {name}",
         "menu_continue": "CONTINUE",
         "menu_new_game": "NEW GAME",
+        "menu_new_game_confirm": "This will restart your game!  Are you sure?",
         "menu_settings": "SETTINGS",
         "menu_quit": "EXIT",
         "cutscene_tap_to_skip": "Tap to skip",

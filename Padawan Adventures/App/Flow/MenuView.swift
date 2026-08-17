@@ -6,6 +6,7 @@ struct MenuView: View {
     let router: FlowRouter
     private let screenBackground: String?
     @State private var showContinue = false
+    @State private var showNewGameConfirm = false
     @State private var logoImage: UIImage?
     @State private var menuIcons: [UIImage] = []
     @State private var avatarImage: UIImage?
@@ -24,16 +25,32 @@ struct MenuView: View {
     }
 
     var body: some View {
-        AppScreen(
-            backgroundNamed: screenBackground,
-            backgroundLibrary: session.backgroundLibrary
-        ) {
-            if isContentReady {
-                menuContent
-            } else {
-                Color.clear
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityIdentifier("menu.loading")
+        ZStack {
+            AppScreen(
+                backgroundNamed: screenBackground,
+                backgroundLibrary: session.backgroundLibrary
+            ) {
+                if isContentReady {
+                    menuContent
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityIdentifier("menu.loading")
+                }
+            }
+
+            if showNewGameConfirm {
+                NewGameConfirmOverlay(
+                    confirmIcon: menuIcon(.newGame),
+                    cancelIcon: menuIcon(.exit),
+                    onConfirm: {
+                        showNewGameConfirm = false
+                        startNewGame()
+                    },
+                    onCancel: {
+                        showNewGameConfirm = false
+                    }
+                )
             }
         }
         .playScreenMusic("menu")
@@ -79,9 +96,10 @@ struct MenuView: View {
                         style: .console,
                         icon: menuIcon(.newGame)
                     ) {
-                        Task {
-                            await session.beginNewGame()
-                            router.navigate(to: .cutscene)
+                        if showContinue {
+                            showNewGameConfirm = true
+                        } else {
+                            startNewGame()
                         }
                     }
 
@@ -171,6 +189,13 @@ struct MenuView: View {
             return
         }
         avatarImage = PlayerAvatarImage.uiImage(from: data)
+    }
+
+    private func startNewGame() {
+        Task {
+            await session.beginNewGame()
+            router.navigate(to: .cutscene)
+        }
     }
 
     private func menuIcon(_ icon: MenuSpritesConfig.Icon) -> UIImage? {
