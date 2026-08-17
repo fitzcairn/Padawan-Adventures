@@ -7,6 +7,12 @@ protocol GateGraphemeMatchSceneDelegate: AnyObject {
 
 /// SpriteKit gate letter-match puzzle: switch letter buttons.
 final class GateGraphemeMatchScene: MinigameScene {
+    /// Duration for the post-miss unmatched-switch slide.
+    static let shuffleDuration: TimeInterval = 0.35
+    static let feedbackActionKey = "gateGraphemeMatchFeedback"
+    static let letterNodeZPosition: CGFloat = 10
+    static let shuffleSlideZPosition: CGFloat = 20
+
     weak var graphemeMatchDelegate: GateGraphemeMatchSceneDelegate?
 
     let puzzleConfig: GateGraphemeMatchConfig
@@ -47,6 +53,29 @@ final class GateGraphemeMatchScene: MinigameScene {
         GameLogger.step(.world, "gateGraphemeMatch.buildPuzzle") { buildPuzzle() }
         playTargetPronunciation()
     }
+
+    override func willMove(from view: SKView) {
+        GameLogger.mark(.world, "gateGraphemeMatch.willMove teardown")
+        stopSession(fadeSFX: false)
+    }
+
+    /// Ends the session and cancels in-flight tap/shuffle work. `fadeSFX` is only
+    /// for the Leave button — `willMove` must not fade, or the tutorial demo
+    /// detach can kill the real minigame's opening pronunciation.
+    func stopSession(fadeSFX: Bool) {
+        didEnd = true
+        inputLocked = true
+        isUserInteractionEnabled = false
+        engine.end()
+        removeAction(forKey: Self.feedbackActionKey)
+        for node in letterNodes.values {
+            node.removeAllActions()
+        }
+        if fadeSFX {
+            SoundEffectsController.shared.fadeOutAndStopAll()
+        }
+    }
+
     /// Preferred gap as a fraction of tile side; compress toward `minGapRatio` before shrinking tiles.
     let preferredGapRatio: CGFloat = 0.18
     let minGapRatio: CGFloat = 0.04

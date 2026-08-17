@@ -72,6 +72,20 @@ extension GateGraphemeMatchScene {
         )
     }
 
+    /// Slot centers left to right for `letterCount` tiles. Shared by initial layout
+    /// and the post-miss shuffle so the two cannot drift.
+    func letterSlotCenters(letterCount: Int) -> (layout: LetterRowLayout, centers: [CGPoint]) {
+        let layout = letterRowLayout(letterCount: letterCount)
+        var centers: [CGPoint] = []
+        centers.reserveCapacity(letterCount)
+        var x = layout.firstCenterX
+        for _ in 0..<letterCount {
+            centers.append(CGPoint(x: x, y: layout.centerY))
+            x += layout.side + layout.gap
+        }
+        return (layout, centers)
+    }
+
     func buildPuzzle() {
         removeAllChildren()
         letterNodes = [:]
@@ -90,16 +104,14 @@ extension GateGraphemeMatchScene {
         let tokens = engine.letters
         guard !tokens.isEmpty else { return }
 
-        let layout = letterRowLayout(letterCount: tokens.count)
+        let (layout, centers) = letterSlotCenters(letterCount: tokens.count)
         laidOutTileSide = layout.side
-        var x = layout.firstCenterX
 
-        for token in tokens {
+        for (token, center) in zip(tokens, centers) {
             let node = makeLetterNode(token: token, side: layout.side)
-            node.position = CGPoint(x: x, y: layout.centerY)
+            node.position = center
             addChild(node)
             letterNodes[token.id] = node
-            x += layout.side + layout.gap
         }
     }
 
@@ -107,7 +119,7 @@ extension GateGraphemeMatchScene {
         let root = SKNode()
         root.name = "letter:\(token.id.uuidString)"
         root.userData = ["id": token.id.uuidString, "letter": token.letter]
-        root.zPosition = 10
+        root.zPosition = Self.letterNodeZPosition
 
         let matched = engine.matchedIDs.contains(token.id)
         if let textures = switchTextures {

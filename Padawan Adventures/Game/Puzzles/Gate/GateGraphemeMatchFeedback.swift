@@ -28,7 +28,8 @@ extension GateGraphemeMatchScene {
     }
 
     /// Tap audio/visual chain (each cue starts when the previous finishes):
-    /// switch → tapped letter → correct/error (+ light green / flash red) → next/current target.
+    /// switch → tapped letter → correct/error (+ light green / flash red) →
+    /// unmatched shuffle on miss → next/current target.
     func handleTapEvents(_ events: [GateGraphemeMatchEngineEvent]) {
         let nameTrack = events.compactMap { event -> String? in
             if case let .playName(trackID) = event { return trackID }
@@ -100,6 +101,11 @@ extension GateGraphemeMatchScene {
                     SKAction.wait(forDuration: feedbackDuration),
                 ]),
             ]))
+            steps.append(SKAction.run { [weak self] in
+                self?.runWrongShuffleThenPrompt(playTargetPrompt: playTargetPrompt)
+            })
+            run(SKAction.sequence(steps), withKey: Self.feedbackActionKey)
+            return
         }
 
         if playTargetPrompt {
@@ -114,7 +120,44 @@ extension GateGraphemeMatchScene {
             self.inputLocked = false
         })
 
-        run(SKAction.sequence(steps))
+        run(SKAction.sequence(steps), withKey: Self.feedbackActionKey)
+    }
+
+    /// Slides unmatched switches (if any), then replays the prompt and unlocks.
+    func runWrongShuffleThenPrompt(playTargetPrompt: Bool) {
+        guard !didEnd else { return }
+        var steps: [SKAction] = []
+        if shuffleAndAnimateUnmatchedSwitches() {
+            steps.append(SKAction.wait(forDuration: Self.shuffleDuration))
+        }
+        if playTargetPrompt {
+            steps.append(SKAction.run { [weak self] in self?.playTargetPronunciation() })
+        }
+        steps.append(SKAction.run { [weak self] in self?.inputLocked = false })
+        run(SKAction.sequence(steps), withKey: Self.feedbackActionKey)
+    }
+
+    /// Permutes unmatched switches among their slots and starts the slide.
+    /// Returns `false` when there is nothing to move (skip the slide wait).
+    @discardableResult
+    func shuffleAndAnimateUnmatchedSwitches() -> Bool {
+        guard !didEnd, engine.shuffleUnmatchedLetters() else { return false }
+        let tokens = engine.letters
+        let (_, centers) = letterSlotCenters(letterCount: tokens.count)
+        for (index, token) in tokens.enumerated() {
+            guard !engine.matchedIDs.contains(token.id),
+                  let node = letterNodes[token.id],
+                  centers.indices.contains(index) else { continue }
+            node.zPosition = Self.shuffleSlideZPosition
+            node.run(
+                SKAction.sequence([
+                    SKAction.move(to: centers[index], duration: Self.shuffleDuration)
+                        .withTimingMode(.easeInEaseOut),
+                    SKAction.run { node.zPosition = Self.letterNodeZPosition },
+                ])
+            )
+        }
+        return true
     }
 
     var correctSoundTrackID: String? {
@@ -142,6 +185,7 @@ extension GateGraphemeMatchScene {
     }
 
     func playTargetPronunciation() {
+        guard !didEnd else { return }
         let trackID = engine.targetPronunciationTrackID
         guard !trackID.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: trackID)
@@ -222,12 +266,15 @@ extension GateGraphemeMatchScene {
             of: puzzleConfig.fx.trackID(for: "switch_push")
         )
         inputLocked = true
-        run(SKAction.sequence([
-            SKAction.wait(forDuration: pushDuration),
-            SKAction.run { [weak self] in
-                self?.handleTapEvents(events)
-            },
-        ]))
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: pushDuration),
+                SKAction.run { [weak self] in
+                    self?.handleTapEvents(events)
+                },
+            ]),
+            withKey: Self.feedbackActionKey
+        )
     }
 
     func letterID(at point: CGPoint) -> UUID? {

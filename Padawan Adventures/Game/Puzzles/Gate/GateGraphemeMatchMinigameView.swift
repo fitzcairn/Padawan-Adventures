@@ -95,6 +95,7 @@ final class GateGraphemeMatchSessionController: ObservableObject, GateGraphemeMa
     func confirmLeave(onFinished: (MinigameOutcome) -> Void) {
         guard !didFinish else { return }
         didFinish = true
+        scene?.stopSession(fadeSFX: true)
         onFinished(.abandoned)
     }
 

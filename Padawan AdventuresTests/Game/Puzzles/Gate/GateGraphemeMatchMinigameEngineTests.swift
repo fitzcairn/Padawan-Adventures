@@ -411,4 +411,84 @@ struct GateGraphemeMatchMinigameEngineTests {
         #expect(firstIDs.isDisjoint(with: secondIDs))
         #expect(firstIDs.union(secondIDs) == Set(poolIDs))
     }
+
+    @Test func shuffleUnmatchedLettersReordersWithoutLosingTokens() {
+        var engine = makeEngine(
+            graphemeCountMin: 4,
+            graphemeCountMax: 4,
+            pool: ["a", "b", "c", "d"],
+            seed: 3
+        )
+        let beforeIDs = engine.letters.map(\.id)
+        let targetID = engine.currentTargetID
+        #expect(beforeIDs.count > 1)
+        let didShuffle = engine.shuffleUnmatchedLetters()
+        #expect(didShuffle)
+        #expect(Set(engine.letters.map(\.id)) == Set(beforeIDs))
+        #expect(engine.letters.map(\.id) != beforeIDs)
+        #expect(engine.currentTargetID == targetID)
+        #expect(engine.matchedIDs.isEmpty)
+    }
+
+    @Test func shuffleUnmatchedLettersKeepsMatchedSlots() {
+        var engine = makeEngine(
+            graphemeCountMin: 3,
+            graphemeCountMax: 3,
+            pool: ["a", "b", "c"],
+            seed: 5
+        )
+        guard let matched = engine.currentTarget else {
+            Issue.record("expected a target")
+            return
+        }
+        _ = engine.tapLetter(id: matched.id)
+        let matchedIndex = engine.letters.firstIndex { $0.id == matched.id }
+        #expect(matchedIndex != nil)
+        let beforeIDs = engine.letters.map(\.id)
+        let targetID = engine.currentTargetID
+        let didShuffle = engine.shuffleUnmatchedLetters()
+        #expect(didShuffle)
+        #expect(engine.letters.map(\.id) != beforeIDs)
+        if let matchedIndex {
+            #expect(engine.letters[matchedIndex].id == matched.id)
+        }
+        #expect(engine.matchedIDs == [matched.id])
+        #expect(engine.currentTargetID == targetID)
+        #expect(Set(engine.letters.map(\.id)) == Set(beforeIDs))
+    }
+
+    @Test func shuffleUnmatchedLettersNoOpsWhenFewerThanTwoRemain() {
+        var single = makeEngine(
+            graphemeCountMin: 1,
+            graphemeCountMax: 1,
+            pool: ["a"],
+            seed: 1
+        )
+        let singleIDs = single.letters.map(\.id)
+        let singleUnchanged = single.shuffleUnmatchedLetters()
+        #expect(!singleUnchanged)
+        #expect(single.letters.map(\.id) == singleIDs)
+
+        guard let only = single.letters.first else { return }
+        _ = single.tapLetter(id: only.id)
+        let singleAfterWin = single.shuffleUnmatchedLetters()
+        #expect(!singleAfterWin)
+        #expect(single.letters.map(\.id) == singleIDs)
+
+        var pair = makeEngine(
+            graphemeCountMin: 2,
+            graphemeCountMax: 2,
+            pool: ["a", "b"],
+            seed: 5
+        )
+        guard let first = pair.currentTarget else {
+            Issue.record("expected a target")
+            return
+        }
+        _ = pair.tapLetter(id: first.id)
+        let pairIDs = pair.letters.map(\.id)
+        let pairUnchanged = pair.shuffleUnmatchedLetters()
+        #expect(!pairUnchanged)
+        #expect(pair.letters.map(\.id) == pairIDs)
+    }
 }

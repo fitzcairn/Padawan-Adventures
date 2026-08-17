@@ -167,6 +167,27 @@ nonisolated struct GateGraphemeMatchMinigameEngine {
         return events
     }
 
+    /// Permutes unmatched letters among their current slots after a wrong tap.
+    /// Returns `true` when the unmatched order changed and nodes should slide.
+    @discardableResult
+    mutating func shuffleUnmatchedLetters() -> Bool {
+        let unmatchedIndices = letters.indices.filter { !matchedIDs.contains(letters[$0].id) }
+        guard unmatchedIndices.count > 1 else { return false }
+
+        var unmatched = unmatchedIndices.map { letters[$0] }
+        let before = unmatched.map(\.id)
+        for _ in 0..<8 {
+            unmatched.shuffle(using: &rng)
+            if unmatched.map(\.id) != before { break }
+        }
+        guard unmatched.map(\.id) != before else { return false }
+
+        for (slot, token) in zip(unmatchedIndices, unmatched) {
+            letters[slot] = token
+        }
+        return true
+    }
+
     private mutating func pickRoundLetters() -> [LetterToken] {
         let poolSize = max(config.vocabulary.allGraphemes.count, config.graphemes.count)
         guard poolSize > 0 else { return [] }
