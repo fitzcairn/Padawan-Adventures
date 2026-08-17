@@ -58,6 +58,21 @@ struct LevelSelectViewModel {
         }
     }
 
+    nonisolated static func lastPlayedResourceName(
+        lastLevelStarted: String?,
+        orderedLevels: [String]
+    ) -> String? {
+        guard let lastLevelStarted, orderedLevels.contains(lastLevelStarted) else { return nil }
+        return lastLevelStarted
+    }
+
+    var lastPlayedResourceName: String? {
+        Self.lastPlayedResourceName(
+            lastLevelStarted: session.playerState?.lastLevelStarted,
+            orderedLevels: orderedResourceNames
+        )
+    }
+
     func refreshInventoryIcons(ids: [String]) -> [String: UIImage] {
         var icons: [String: UIImage] = [:]
         for id in ids {

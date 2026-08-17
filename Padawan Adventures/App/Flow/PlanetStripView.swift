@@ -10,10 +10,14 @@ struct PlanetStripView: View {
     let celebratingUnlockResource: String?
     let celebrationRevealed: Bool
     let planetSparklesActive: Bool
+    let playerLocationResourceName: String?
+    let playerAvatarImage: UIImage?
     let onLevelTap: (LevelDescriptor) -> Void
 
     @Binding var canScrollLeft: Bool
     @Binding var canScrollRight: Bool
+    @State private var hasCenteredOnPlayer = false
+    @State private var contentIsLaidOut = false
 
     /// Planet diameter as a fraction of available content width (~18% ≈ 150pt on phone landscape).
     private static let planetDiameterFraction: CGFloat = 0.18
@@ -28,28 +32,40 @@ struct PlanetStripView: View {
             let spacing = diameter * Self.planetSpacingToDiameter
             let jitterBand = diameter * Self.planetJitterToDiameter
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .center, spacing: spacing) {
-                    ForEach(levels, id: \.resourceName) { level in
-                        planetSprite(for: level, diameter: diameter)
-                            .offset(y: verticalOffset(for: level.resourceName, band: jitterBand))
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .center, spacing: spacing) {
+                        ForEach(levels, id: \.resourceName) { level in
+                            planetSprite(for: level, diameter: diameter)
+                                .offset(y: verticalOffset(for: level.resourceName, band: jitterBand))
+                                .id(level.resourceName)
+                        }
                     }
+                    // Internal scroll content inset (planet-to-edge breathing room), not screen margin.
+                    .padding(.horizontal, spacing)
+                    .frame(maxHeight: .infinity)
                 }
-                // Internal scroll content inset (planet-to-edge breathing room), not screen margin.
-                .padding(.horizontal, spacing)
-                .frame(maxHeight: .infinity)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .onScrollGeometryChange(for: ScrollOverflow.self) { geometry in
-                let leading = geometry.contentOffset.x
-                let trailing = geometry.contentSize.width - geometry.containerSize.width - geometry.contentOffset.x
-                return ScrollOverflow(
-                    canScrollLeft: leading > 2,
-                    canScrollRight: trailing > 2
-                )
-            } action: { _, newValue in
-                canScrollLeft = newValue.canScrollLeft
-                canScrollRight = newValue.canScrollRight
+                .frame(width: geo.size.width, height: geo.size.height)
+                .onAppear {
+                    centerOnPlayerIfNeeded(proxy: proxy, contentIsLaidOut: contentIsLaidOut)
+                }
+                .onChange(of: playerLocationResourceName) { _, _ in
+                    centerOnPlayerIfNeeded(proxy: proxy, contentIsLaidOut: contentIsLaidOut)
+                }
+                .onScrollGeometryChange(for: ScrollOverflow.self) { geometry in
+                    let leading = geometry.contentOffset.x
+                    let trailing = geometry.contentSize.width - geometry.containerSize.width - geometry.contentOffset.x
+                    return ScrollOverflow(
+                        canScrollLeft: leading > 2,
+                        canScrollRight: trailing > 2,
+                        contentIsLaidOut: geometry.contentSize.width > 0
+                    )
+                } action: { _, newValue in
+                    canScrollLeft = newValue.canScrollLeft
+                    canScrollRight = newValue.canScrollRight
+                    contentIsLaidOut = newValue.contentIsLaidOut
+                    centerOnPlayerIfNeeded(proxy: proxy, contentIsLaidOut: newValue.contentIsLaidOut)
+                }
             }
         }
     }
@@ -108,6 +124,10 @@ struct PlanetStripView: View {
                         .opacity(lockOpacity)
                 }
 
+                if playerLocationResourceName == level.resourceName {
+                    PlayerLocationAvatar(image: playerAvatarImage)
+                }
+
                 if isCelebratingUnlock {
                     SparkleBurstView(isActive: planetSparklesActive, diameter: diameter)
                         .frame(width: diameter, height: diameter)
@@ -118,6 +138,16 @@ struct PlanetStripView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(level.displayName)
         .accessibilityIdentifier("levelSelect.\(level.resourceName)")
+    }
+
+    private func centerOnPlayerIfNeeded(proxy: ScrollViewProxy, contentIsLaidOut: Bool) {
+        guard !hasCenteredOnPlayer, let playerLocationResourceName, contentIsLaidOut else { return }
+        hasCenteredOnPlayer = true
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(playerLocationResourceName, anchor: .center)
+        }
     }
 
     /// Stable pseudo-random vertical jitter so planets don't share one baseline.
@@ -134,6 +164,45 @@ struct PlanetStripView: View {
     private struct ScrollOverflow: Equatable {
         var canScrollLeft: Bool
         var canScrollRight: Bool
+        var contentIsLaidOut: Bool
+    }
+}
+
+/// Menu-sized console avatar that bobs ±5% of its plate height (10% peak-to-peak) on a 3s sine.
+private struct PlayerLocationAvatar: View {
+    let image: UIImage?
+
+    private static let side = PlayerAvatarView.menuSide * 0.8
+    private static let period: TimeInterval = 3
+    /// Peak-to-peak travel as a fraction of the rendered photo height.
+    private static let totalAmplitudeFraction: CGFloat = 0.10
+
+    @State private var startedAt: Date?
+
+    var body: some View {
+        let photoHeight = StarWarsConsoleChrome.plateSize(
+            forContent: CGSize(width: Self.side, height: Self.side)
+        ).height
+        let halfAmplitude = photoHeight * Self.totalAmplitudeFraction / 2
+
+        TimelineView(.animation) { context in
+            let elapsed = context.date.timeIntervalSince(startedAt ?? context.date)
+            let y = -sin(elapsed * 2 * .pi / Self.period) * halfAmplitude
+            PlayerAvatarView(
+                image: image,
+                accessibilityID: "levelSelect.playerLocation",
+                side: Self.side,
+                style: .console
+            )
+            .offset(y: y)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear {
+            if startedAt == nil {
+                startedAt = Date()
+            }
+        }
     }
 }
 

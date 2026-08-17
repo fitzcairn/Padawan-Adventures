@@ -34,6 +34,8 @@ struct LevelSelectView: View {
     @State private var campaignWinInteractive = false
     @State private var campaignWinArtifactsOffsetY: CGFloat = 0
     @State private var campaignWinSparklesActive = false
+    @State private var playerAvatarImage: UIImage?
+    @State private var playerAvatarReady = false
 
     private static let celebrationHoldNanoseconds: UInt64 = 350_000_000
     private static let contentFadeSeconds: Double = 0.35
@@ -173,6 +175,7 @@ struct LevelSelectView: View {
             // Assets are warmed on the loading screen; refresh icons if progression changed.
             let ids = viewModel.inventoryTreasureIDs(progressionEpoch: progressionEpoch)
             inventoryIcons = viewModel.refreshInventoryIcons(ids: ids)
+            await loadCurrentPlayerAvatar()
             isContentReady = true
         }
         .task(id: showsContent) {
@@ -320,6 +323,8 @@ struct LevelSelectView: View {
                 celebratingUnlockResource: celebratingUnlockResource,
                 celebrationRevealed: celebrationRevealed,
                 planetSparklesActive: planetSparklesActive,
+                playerLocationResourceName: playerLocationResourceName,
+                playerAvatarImage: playerAvatarImage,
                 onLevelTap: handleLevelTap,
                 canScrollLeft: $canScrollLeft,
                 canScrollRight: $canScrollRight
@@ -372,6 +377,21 @@ struct LevelSelectView: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("levelSelect.totalStars")
+    }
+
+    private var playerLocationResourceName: String? {
+        playerAvatarReady ? viewModel.lastPlayedResourceName : nil
+    }
+
+    @MainActor
+    private func loadCurrentPlayerAvatar() async {
+        defer { playerAvatarReady = true }
+        guard let name = session.currentPlayerName,
+              let data = await session.playerStore.loadAvatar(for: name) else {
+            playerAvatarImage = nil
+            return
+        }
+        playerAvatarImage = PlayerAvatarImage.uiImage(from: data)
     }
 
     private func handleLevelTap(_ level: LevelDescriptor) {

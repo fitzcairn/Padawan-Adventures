@@ -148,7 +148,7 @@ struct MenuView: View {
                 PlayerAvatarView(
                     image: avatarImage,
                     accessibilityID: "menu.welcome.avatar",
-                    side: PlayerAvatarView.defaultSide * 1.3,
+                    side: PlayerAvatarView.menuSide,
                     style: .console
                 )
             }

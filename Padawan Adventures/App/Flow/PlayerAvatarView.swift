@@ -9,6 +9,7 @@ struct PlayerAvatarView: View {
     }
 
     static let defaultSide: CGFloat = 48
+    static let menuSide: CGFloat = defaultSide * 1.3
 
     var image: UIImage?
     var accessibilityID: String
