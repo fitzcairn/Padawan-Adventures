@@ -6,8 +6,12 @@ nonisolated extension IsometricMath {
     /// tall decor) never paints over sprites. Local depth still orders floors among themselves.
     static let floorBandBase: CGFloat = 0
     /// Walls and entities share this band and interleave by grid Y (front walls occlude sprites).
+    ///
     /// Must stay above any floor local depth (`y * 10_000 * maxStories` on large maps).
-    static let occlusionBandBase: CGFloat = 1_000_000_000
+    /// Kept well below 1e9: `SKView.ignoresSiblingOrder` sorts through a depth buffer
+    /// that cannot resolve a one-row Y-stride (10_000) once parent z sits in the billions,
+    /// so a player standing on the cobblestone lip in front of a gate was painted under it.
+    static let occlusionBandBase: CGFloat = 10_000_000
 
     /// Painter order: increasing grid **Y** draws on top (X, then story, break ties).
     /// Walls and entities share occlusion space so front walls can occlude sprites.

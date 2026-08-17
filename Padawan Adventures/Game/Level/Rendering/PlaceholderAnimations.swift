@@ -145,15 +145,12 @@ extension PlaceholderFactory {
         gates: [GateOccluder] = []
     ) {
         node.position = IsometricMath.entityScreenPosition(entity.position, config: config)
-        applyOcclusionSortZ(
-            to: node,
-            z: entitySortValueAccountingForGates(
-                x: Double(entity.position.x),
-                y: Double(entity.position.y),
-                story: entity.position.story,
-                gates: gates,
-                config: config
-            )
+        node.zPosition = entitySortValueAccountingForGates(
+            x: Double(entity.position.x),
+            y: Double(entity.position.y),
+            story: entity.position.story,
+            gates: gates,
+            config: config
         )
     }
 }

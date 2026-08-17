@@ -627,6 +627,49 @@ struct PlaceholderFactoryTests {
         #expect(pickupDepthLine > gateZ, "camera-front depth-line pose draws above for pickups too")
     }
 
+    /// Standing one tile south of an alongX door puts feet on the cobblestone lip — the
+    /// pose in the occlusion screenshot. Y-sort must already beat the gate; the bump is
+    /// a no-op.
+    @Test func entityOnTileSouthOfAlongXGateDrawsAbove() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongX,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 6, y: 4, story: 0),
+            sortCoord: GridCoord(x: 6, y: 4, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let z = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: 6, y: 5, story: 0, gates: [gate], config: config
+        )
+        #expect(z > gateZ)
+        #expect(
+            z - gateZ > PlaceholderFactory.gateOcclusionZBias,
+            "lip pose is a full row in front, not a same-cell half-step"
+        )
+    }
+
+    /// `ignoresSiblingOrder` feeds accumulated z through a depth buffer. The old 1e9
+    /// band collapsed a one-row Y-stride (and the 0.5 same-cell bias) into a single
+    /// bucket, so the gate sprite won even when sort math said the player was in front.
+    @Test func gateFrontSortSurvivesSpriteKitDepthPrecision() {
+        let band = IsometricMath.occlusionBandBase
+        let gateLocal: CGFloat = 40_006
+        let gateAccum = band + gateLocal
+        let lipAccum = band + gateLocal + 10_000
+        let onStripAccum = band + gateLocal + PlaceholderFactory.gateOcclusionZBias
+        #expect(Float(lipAccum) > Float(gateAccum), "one-row Y-stride must survive float32")
+        #expect(Float(onStripAccum) > Float(gateAccum), "on-strip bump must survive float32")
+
+        let tutorialZ = band * 2
+        let depthBucket = tutorialZ / 65_536
+        #expect(10_000 > depthBucket, "Y-stride must clear a 16-bit depth bucket")
+        #expect(
+            PlaceholderFactory.gateOcclusionZBias > depthBucket,
+            "on-strip bump must clear a 16-bit depth bucket"
+        )
+    }
+
     @Test func solidWallTileNodeDrawsNothing() {
         let config = IsometricConfig()
         let node = PlaceholderFactory.tileNode(

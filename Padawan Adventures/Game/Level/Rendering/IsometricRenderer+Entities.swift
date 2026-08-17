@@ -127,15 +127,12 @@ extension IsometricRenderer {
     ) {
         guard let node = entityNodes[entity.id] else { return }
         node.position = screenPosition
-        PlaceholderFactory.applyOcclusionSortZ(
-            to: node,
-            z: PlaceholderFactory.entitySortValueAccountingForGates(
-                x: sortX,
-                y: sortY,
-                story: sortStory,
-                gates: entityGateOccluders,
-                config: config
-            )
+        node.zPosition = PlaceholderFactory.entitySortValueAccountingForGates(
+            x: sortX,
+            y: sortY,
+            story: sortStory,
+            gates: entityGateOccluders,
+            config: config
         )
     }
 
