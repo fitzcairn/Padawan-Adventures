@@ -131,7 +131,7 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
         ),
         enemies: .init(types: ["spider"], spawnChancePerRoom: 0.8),
         pickups: .init(
-            health: .init(spawnChancePerRoom: 0.8),
+            health: .init(count: 3),
             energy: .init(spawnChancePerRoom: 0.8)
         ),
         pit: .fallback,
@@ -328,14 +328,22 @@ nonisolated struct LevelConfig: Decodable, Equatable, Sendable {
     }
 
     struct PickupChanceConfig: Codable, Equatable, Sendable {
-        var spawnChancePerRoom: Double
+        var spawnChancePerRoom: Double?
+        var count: Int?
 
         enum CodingKeys: String, CodingKey {
             case spawnChancePerRoom = "spawn_probability_per_room"
+            case count
         }
 
         init(spawnChancePerRoom: Double) {
             self.spawnChancePerRoom = spawnChancePerRoom
+            self.count = nil
+        }
+
+        init(count: Int) {
+            self.spawnChancePerRoom = nil
+            self.count = count
         }
     }
 

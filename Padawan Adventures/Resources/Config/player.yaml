@@ -1,7 +1,7 @@
 # Player defaults for a new game (HUD starts with these heart / lightning counts).
 
 letter: P
-starting_health: 3
+starting_health: 1
 starting_energy: 2
 
 # Event key → sound track basename (Resources/Audio/FX/<name>.m4a).

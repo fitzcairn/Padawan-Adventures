@@ -122,7 +122,6 @@ enum GameWorldPreparer {
 
         case .newGame:
             try? await session.saveService.delete()
-            await session.resetVitalsToStarting()
             report(0.05)
             return await generateWorld(session: session, onProgress: onProgress)
         }

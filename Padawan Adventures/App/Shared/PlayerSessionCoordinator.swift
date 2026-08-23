@@ -67,16 +67,6 @@ extension AppSession {
         await persistPlayerState()
     }
 
-    /// Restores health/energy to `player.yaml` starting values for a new game.
-    func resetVitalsToStarting() async {
-        guard playerState != nil else { return }
-        playerState?.resetVitals(
-            health: playerConfig.startingHealth,
-            energy: playerConfig.startingEnergy
-        )
-        await persistPlayerState()
-    }
-
     /// Starts a fresh game: empty inventory, zero stars, default vitals, no mid-run save.
     func beginNewGame() async {
         await GameLogger.step(.session, "beginNewGame") {

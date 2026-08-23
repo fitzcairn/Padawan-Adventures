@@ -1977,6 +1977,31 @@ struct LevelConfigTests {
         try level.validate()
     }
 
+    @Test func decodesPickupCount() throws {
+        let yaml = """
+        name: Level
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          pickups:
+            health:
+              count: 3
+            energy:
+              spawn_probability_per_room: 0.8
+        """
+
+        let level = try LevelConfig.decode(from: yaml)
+        #expect(level.pickups?.health?.count == 3)
+        #expect(level.pickups?.health?.spawnChancePerRoom == nil)
+        #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
+        try level.validate()
+    }
+
     @Test func rejectsInvalidPickupSpawnChance() throws {
         let yaml = """
         name: Level
@@ -1994,6 +2019,27 @@ struct LevelConfigTests {
         """
 
         #expect(throws: WorldSeedError.invalidPickupSpawnChance(kind: .health, chance: -0.1)) {
+            try LevelConfig.decode(from: yaml)
+        }
+    }
+
+    @Test func rejectsNegativePickupCount() throws {
+        let yaml = """
+        name: Level
+        world:
+          width_tiles: 10
+          height_tiles: 10
+          room_count: 2
+          room:
+            min_size_tiles: 4
+            max_size_tiles: 12
+            pit_probability: 0.0
+          pickups:
+            health:
+              count: -1
+        """
+
+        #expect(throws: WorldSeedError.invalidPickupSpawnCount(kind: .health, count: -1)) {
             try LevelConfig.decode(from: yaml)
         }
     }
@@ -2537,7 +2583,7 @@ struct LevelConfigTests {
         world:
           pickups:
             health:
-              spawn_probability_per_room: 0.25
+              count: 5
         """
         let merged = try ConfigStore.rawTree(
             from: Data(child.utf8),
@@ -2548,7 +2594,7 @@ struct LevelConfigTests {
         let pickups = world?["pickups"] as? [String: Any]
         let health = pickups?["health"] as? [String: Any]
         let energy = pickups?["energy"] as? [String: Any]
-        #expect(health?["spawn_probability_per_room"] as? Double == 0.25)
+        #expect(health?["count"] as? Int == 5)
         #expect(energy?["spawn_probability_per_room"] as? Double == 0.8)
 
         let level = try LevelConfig.decode(
@@ -2557,7 +2603,7 @@ struct LevelConfigTests {
             fileLabel: "test",
             levelID: "1-tython"
         )
-        #expect(level.pickups?.health?.spawnChancePerRoom == 0.25)
+        #expect(level.pickups?.health?.count == 5)
         #expect(level.pickups?.energy?.spawnChancePerRoom == 0.8)
     }
 

@@ -163,7 +163,7 @@ nonisolated extension ProceduralGenerator {
         return types[rng.nextInt(upperBound: types.count)]
     }
 
-    /// One roll per room per kind (except the spawn room); visible room floor only.
+    /// Places pickups by `count` (preferred) or one roll per room; never the spawn room.
     ///
     /// Never places two pickups on the same or orthogonally adjacent tiles.
     func spawnPickups(
@@ -176,39 +176,119 @@ nonisolated extension ProceduralGenerator {
         rng: inout SeededGenerator
     ) -> [GameEntity] {
         var pickups: [GameEntity] = []
-        var kinds: [(PickupKind, Double?)] = [
-            (.health, config.health?.spawnChancePerRoom),
+        var kinds: [(PickupKind, LevelConfig.PickupChanceConfig?)] = [
+            (.health, config.health),
         ]
         if EnergyMechanic.isEnabled {
-            kinds.append((.energy, config.energy?.spawnChancePerRoom))
+            kinds.append((.energy, config.energy))
         }
 
-        for (kind, chance) in kinds {
-            guard let chance else { continue }
-            for room in rooms where room.id != excludingRoomID {
-                guard rng.nextBool(probability: chance) else { continue }
-                guard let position = pickVisiblePickupFloorCell(
-                    in: room,
+        for (kind, spec) in kinds {
+            guard let spec else { continue }
+            if let count = spec.count {
+                pickups.append(contentsOf: spawnCountedPickups(
+                    kind: kind,
+                    count: count,
+                    in: rooms,
+                    excludingRoomID: excludingRoomID,
                     tiles: tiles,
-                    occupied: occupied,
-                    pickupCells: pickupCells,
+                    occupied: &occupied,
+                    pickupCells: &pickupCells,
                     rng: &rng
-                ) else { continue }
-
-                occupied.insert(position)
-                pickupCells.insert(position)
-                pickups.append(
-                    GameEntity(
-                        letter: " ",
-                        position: position,
-                        isPlayer: false,
-                        pickupKind: kind
-                    )
-                )
+                ))
+            } else if let chance = spec.spawnChancePerRoom {
+                for room in rooms where room.id != excludingRoomID {
+                    guard rng.nextBool(probability: chance) else { continue }
+                    if let pickup = placePickup(
+                        kind: kind,
+                        in: room,
+                        tiles: tiles,
+                        occupied: &occupied,
+                        pickupCells: &pickupCells,
+                        rng: &rng
+                    ) {
+                        pickups.append(pickup)
+                    }
+                }
             }
         }
 
         return pickups
+    }
+
+    /// Shuffles non-spawn rooms and places up to `count` pickups (one per room first).
+    func spawnCountedPickups(
+        kind: PickupKind,
+        count: Int,
+        in rooms: [GeneratedRoom],
+        excludingRoomID: Int,
+        tiles: [[[Tile]]],
+        occupied: inout Set<GridCoord>,
+        pickupCells: inout Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> [GameEntity] {
+        guard count > 0 else { return [] }
+        var eligible = rooms.filter { $0.id != excludingRoomID }
+        if eligible.count > 1 {
+            for i in stride(from: eligible.count - 1, through: 1, by: -1) {
+                eligible.swapAt(i, rng.nextInt(upperBound: i + 1))
+            }
+        }
+
+        var pickups: [GameEntity] = []
+        func tryPlace(in room: GeneratedRoom) -> Bool {
+            guard pickups.count < count else { return false }
+            guard let pickup = placePickup(
+                kind: kind,
+                in: room,
+                tiles: tiles,
+                occupied: &occupied,
+                pickupCells: &pickupCells,
+                rng: &rng
+            ) else { return false }
+            pickups.append(pickup)
+            return true
+        }
+
+        for room in eligible {
+            _ = tryPlace(in: room)
+        }
+        while pickups.count < count {
+            var placedThisRound = false
+            for room in eligible {
+                if tryPlace(in: room) {
+                    placedThisRound = true
+                }
+            }
+            if !placedThisRound { break }
+        }
+        return pickups
+    }
+
+    func placePickup(
+        kind: PickupKind,
+        in room: GeneratedRoom,
+        tiles: [[[Tile]]],
+        occupied: inout Set<GridCoord>,
+        pickupCells: inout Set<GridCoord>,
+        rng: inout SeededGenerator
+    ) -> GameEntity? {
+        guard let position = pickVisiblePickupFloorCell(
+            in: room,
+            tiles: tiles,
+            occupied: occupied,
+            pickupCells: pickupCells,
+            rng: &rng
+        ) else { return nil }
+
+        occupied.insert(position)
+        pickupCells.insert(position)
+        return GameEntity(
+            letter: " ",
+            position: position,
+            isPlayer: false,
+            pickupKind: kind
+        )
     }
 
     /// Places exactly one treasure on a visible floor tile in the farthest room that has one.

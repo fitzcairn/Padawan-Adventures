@@ -20,7 +20,7 @@ struct GameWorldPreparerTests {
         #expect(try await session.saveService.load() == nil)
     }
 
-    @Test func newGameRestoresStartingVitalsFromPlayerConfig() async throws {
+    @Test func newGameKeepsSessionVitals() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Rex")
         var depleted = TestWorldFactory.emptyFloor(
@@ -28,12 +28,33 @@ struct GameWorldPreparerTests {
             height: session.generationConfig.world.height,
             stories: session.generationConfig.world.stories
         )
-        depleted.healthCount = 1
+        depleted.healthCount = 5
         depleted.energyCount = 0
         await session.syncVitals(from: depleted)
-        #expect(session.playerState?.health == 1)
+        #expect(session.playerState?.health == 5)
         #expect(session.playerState?.energy == 0)
 
+        let world = await GameWorldPreparer.loadWorld(session: session, mode: .newGame)
+
+        #expect(world.healthCount == 5)
+        #expect(world.energyCount == 0)
+        #expect(session.playerState?.health == 5)
+        #expect(session.playerState?.energy == 0)
+    }
+
+    @Test func beginNewGameThenNewGameRestoresStartingVitals() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Rex")
+        var depleted = TestWorldFactory.emptyFloor(
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
+        )
+        depleted.healthCount = 5
+        depleted.energyCount = 0
+        await session.syncVitals(from: depleted)
+
+        await session.beginNewGame()
         let world = await GameWorldPreparer.loadWorld(session: session, mode: .newGame)
 
         #expect(world.healthCount == session.playerConfig.startingHealth)

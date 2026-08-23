@@ -977,6 +977,23 @@ struct ProceduralGeneratorTests {
         }
     }
 
+    @Test func healthPickupCountPlacesExactlyThreeOutsideSpawnRoom() throws {
+        for seed: UInt64 in [11, 42, 55, 99, 123] {
+            var config = roomsDoorsConfig(seed: seed, roomCount: 12)
+            config.pickups = .init(health: .init(count: 3))
+            let result = try ProceduralGenerator().generateDetailed(from: config)
+            let hearts = result.world.entities.filter { $0.pickupKind == .health }
+            #expect(hearts.count == 3, "expected 3 health pickups (seed \(seed))")
+
+            let spawnRoom = result.rooms.first { $0.id == result.topRightRoomID }!
+            for heart in hearts {
+                #expect(!spawnRoom.cells.contains(heart.position), "heart in spawn room (seed \(seed))")
+                #expect(heart.position != result.world.spawn)
+            }
+            #expect(result.world.entities.contains { $0.pickupKind == .treasure })
+        }
+    }
+
     @Test func energyPickupsDoNotSpawnWhenMechanicDisabled() throws {
         #expect(!EnergyMechanic.isEnabled)
         var config = roomsDoorsConfig(seed: 55, roomCount: 12)

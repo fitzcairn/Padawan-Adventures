@@ -56,7 +56,8 @@ world:
 
   pickups:
     health:
-      spawn_probability_per_room: 0.8
+      # Fixed hearts per level (not a per-room roll).
+      count: 3
     energy:
       spawn_probability_per_room: 0.8
 

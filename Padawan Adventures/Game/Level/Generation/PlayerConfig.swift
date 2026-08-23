@@ -60,7 +60,7 @@ nonisolated struct PlayerConfig: Codable, Equatable, Sendable {
 
     nonisolated static let fallback = PlayerConfig(
         letter: "P",
-        startingHealth: 3,
+        startingHealth: 1,
         startingEnergy: 2,
         spawn: nil,
         fx: .empty,

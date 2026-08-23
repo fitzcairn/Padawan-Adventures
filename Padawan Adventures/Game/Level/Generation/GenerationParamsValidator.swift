@@ -51,15 +51,28 @@ nonisolated enum GenerationParamsValidator {
             }
         }
         if let pickups {
-            try validatePickupChance(pickups.health?.spawnChancePerRoom, kind: .health)
-            try validatePickupChance(pickups.energy?.spawnChancePerRoom, kind: .energy)
+            try validatePickup(pickups.health, kind: .health)
+            try validatePickup(pickups.energy, kind: .energy)
         }
+    }
+
+    static func validatePickup(_ config: LevelConfig.PickupChanceConfig?, kind: PickupKind) throws {
+        guard let config else { return }
+        try validatePickupChance(config.spawnChancePerRoom, kind: kind)
+        try validatePickupCount(config.count, kind: kind)
     }
 
     static func validatePickupChance(_ chance: Double?, kind: PickupKind) throws {
         guard let chance else { return }
         guard chance >= 0, chance <= 1 else {
             throw WorldSeedError.invalidPickupSpawnChance(kind: kind, chance: chance)
+        }
+    }
+
+    static func validatePickupCount(_ count: Int?, kind: PickupKind) throws {
+        guard let count else { return }
+        guard count >= 0 else {
+            throw WorldSeedError.invalidPickupSpawnCount(kind: kind, count: count)
         }
     }
 }

@@ -37,6 +37,7 @@ nonisolated enum WorldSeedError: Error, Equatable {
     case invalidEnemyType
     case invalidEnemySpawnChance(Double)
     case invalidPickupSpawnChance(kind: PickupKind, chance: Double)
+    case invalidPickupSpawnCount(kind: PickupKind, count: Int)
     /// Generated map is missing one or more required interactables after retries.
     case missingRequiredInteractables([RequiredInteractable])
     case missingResource
