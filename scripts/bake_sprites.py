@@ -1514,6 +1514,9 @@ def bake_job(job: BakeJob) -> tuple[Path, Path]:
         meta["duration_s"] = src_meta["duration_s"]
     if "background_mode" in src_meta:
         meta["background_mode"] = src_meta["background_mode"]
+    for key in ("loopStart", "loopEnd"):
+        if key in src_meta:
+            meta[key] = src_meta[key]
     # frame_size is often wrong after trim/repack; omit unless all frames equal.
     sizes = {(f["w"], f["h"]) for f in packed.frames.values()}
     if len(sizes) == 1:

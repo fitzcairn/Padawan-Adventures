@@ -98,7 +98,6 @@ final class GameViewController: LandscapeHostingController {
             self?.playMerchantFx(merchantID: merchantID, event: "visible")
         }
         scene.onMerchantContact = { [weak self] merchantID, approach in
-            self?.playMerchantFx(merchantID: merchantID, event: "contact")
             self?.presentMerchant(merchantID: merchantID, approach: approach)
         }
         scene.onPickupCollected = { [weak self] kind in
@@ -174,7 +173,7 @@ final class GameViewController: LandscapeHostingController {
         )
         hud.onInventorySlotTapped = { [weak self] index, itemID in
             guard let self else { return }
-            if let sound = self.session.itemsConfig.merchantItem(itemID)?.sprite.sound,
+            if let sound = self.session.itemsConfig.merchantItem(itemID)?.sound,
                !sound.isEmpty
             {
                 SoundEffectsController.shared.play(trackID: sound)

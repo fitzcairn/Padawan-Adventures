@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MerchantInspectModal: View {
+    let itemID: String
     let item: MerchantItemDefinition
     let onDismiss: () -> Void
 
@@ -11,8 +12,8 @@ struct MerchantInspectModal: View {
         ) {
             ModalCRTPanel {
                 VStack(alignment: .leading, spacing: 20) {
-                    MerchantItemShapeView(shape: item.sprite.shape)
-                        .frame(width: 96, height: 96)
+                    MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
+                        .frame(width: inspectSpriteSize.width, height: inspectSpriteSize.height)
                         .frame(maxWidth: .infinity, alignment: .center)
                     ModalCRTText(
                         text: Strings.text(item.description),
@@ -30,6 +31,13 @@ struct MerchantInspectModal: View {
         .onAppear { Strings.speak(item.description) }
         .contentShape(Rectangle())
         .onTapGesture(perform: onDismiss)
+    }
+
+    private var inspectSpriteSize: CGSize {
+        MerchantWares.fittedSize(
+            pixelSize: MerchantWareIcon.pixelSize(id: itemID, sprite: item.sprite),
+            slotSide: 96
+        )
     }
 }
 

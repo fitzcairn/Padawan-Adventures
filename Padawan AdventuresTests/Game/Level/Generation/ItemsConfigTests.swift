@@ -143,43 +143,82 @@ struct ItemsConfigTests {
           sprite:
             root: Sprites/Items/Energy
         merchant:
-          square:
+          merchant-ware-bridge:
             min_level: 1
-            price: 1
-            description: merchant_item_square
+            price: 10
+            description: merchant_item_bridge
             sprite:
-              shape: square
-              sound: square
-          circle:
+              root: Sprites/Items/Merchant
+              chroma: black_soft
+              height_fraction: 0.5
+              animations:
+                idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
+          merchant-ware-jetpack:
             min_level: 2
             price: 4
-            description: merchant_item_circle
+            description: merchant_item_jetpack
             sprite:
-              shape: circle
+              root: Sprites/Items/Merchant
+              chroma: black_soft
         """
         let config = try ItemsConfig.decode(from: yaml)
         #expect(config.items["merchant"] == nil)
         #expect(config.spriteConfig(id: "merchant") == nil)
-        let square = try #require(config.merchant["square"])
-        #expect(square.minLevel == 1)
-        #expect(square.price == 1)
-        #expect(square.description == "merchant_item_square")
-        #expect(square.sprite.shape == .square)
-        #expect(square.sprite.sound == "square")
-        #expect(square.displayedPrice(levelOrder: 3) == 3)
-        #expect(config.merchant["circle"]?.displayedPrice(levelOrder: 2) == 8)
+        #expect(config.items["merchant-ware-bridge"] == nil)
+        let bridge = try #require(config.merchant["merchant-ware-bridge"])
+        #expect(bridge.minLevel == 1)
+        #expect(bridge.price == 10)
+        #expect(bridge.description == "merchant_item_bridge")
+        #expect(bridge.sprite.root == "Sprites/Items/Merchant")
+        #expect(bridge.sprite.chromaKey == "#000000")
+        #expect(bridge.sprite.chromaKeyTolerance == 2)
+        #expect(bridge.limit == 0)
+        #expect(bridge.displayedPrice(levelOrder: 3) == 30)
+        #expect(config.merchant["merchant-ware-jetpack"]?.displayedPrice(levelOrder: 2) == 8)
+        try config.validate()
+    }
+
+    @Test func decodesMerchantWareLimit() throws {
+        let yaml = """
+        merchant:
+          merchant-ware-bridge:
+            min_level: 1
+            price: 10
+            limit: 2
+            description: merchant_item_bridge
+            sprite:
+              root: Sprites/Items/Merchant
+        """
+        let config = try ItemsConfig.decode(from: yaml)
+        #expect(config.merchant["merchant-ware-bridge"]?.limit == 2)
+        #expect(config.merchant["merchant-ware-bridge"]?.canHoldAnother(held: 1) == true)
+        #expect(config.merchant["merchant-ware-bridge"]?.canHoldAnother(held: 2) == false)
         try config.validate()
     }
 
     @Test func validateRejectsBadMerchantPrice() {
         var config = ItemsConfig()
-        config.merchant["square"] = MerchantItemDefinition(
+        config.merchant["merchant-ware-bridge"] = MerchantItemDefinition(
             minLevel: 1,
             price: 0,
-            description: "merchant_item_square",
-            sprite: MerchantSpriteSpec(shape: .square)
+            description: "merchant_item_bridge",
+            sprite: SpriteConfig(root: "Sprites/Items/Merchant")
         )
-        #expect(throws: ItemsConfigError.invalid("merchant.square.price must be greater than 0")) {
+        #expect(throws: ItemsConfigError.invalid("merchant.merchant-ware-bridge.price must be greater than 0")) {
+            try config.validate()
+        }
+    }
+
+    @Test func validateRejectsNegativeMerchantLimit() {
+        var config = ItemsConfig()
+        config.merchant["merchant-ware-bridge"] = MerchantItemDefinition(
+            minLevel: 1,
+            price: 1,
+            limit: -1,
+            description: "merchant_item_bridge",
+            sprite: SpriteConfig(root: "Sprites/Items/Merchant")
+        )
+        #expect(throws: ItemsConfigError.invalid("merchant.merchant-ware-bridge.limit must be >= 0")) {
             try config.validate()
         }
     }
@@ -188,8 +227,13 @@ struct ItemsConfigTests {
         let config = try ItemsConfig.loadFromBundle()
         try config.validate()
         #expect(config.items["merchant"] == nil)
-        #expect(config.merchant.count == 3)
-        #expect(config.merchant["square"]?.minLevel == 1)
-        #expect(config.merchant["triangle"]?.price == 3)
+        #expect(config.merchant.count == 9)
+        #expect(config.merchant.values.allSatisfy { $0.minLevel == 1 })
+        #expect(config.merchant.values.allSatisfy { $0.price == 10 })
+        #expect(config.merchant.values.allSatisfy { $0.limit == 1 })
+        #expect(config.merchant["merchant-ware-bridge"]?.sprite.root == "Sprites/Items/Merchant")
+        #expect(config.items["merchant-ware-bridge"] == nil)
+        #expect(config.merchant["square"] == nil)
+        #expect(config.merchant.values.allSatisfy { $0.limit >= 0 })
     }
 }

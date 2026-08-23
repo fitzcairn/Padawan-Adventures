@@ -66,11 +66,14 @@ enum SpriteSheetLoader {
             throw SpriteLoadError.invalidImage(sheet)
         }
 
-        let ordered = atlasDoc.orderedFrames
-        guard !ordered.isEmpty else {
+        let allOrdered = atlasDoc.orderedFrames
+        guard !allOrdered.isEmpty else {
             throw SpriteLoadError.noFrames(atlas)
         }
-        let durations = atlasDoc.frameDurationsSeconds(ordered: ordered.map(\.frame))
+        let allDurations = atlasDoc.frameDurationsSeconds(ordered: allOrdered.map(\.frame))
+        let loopRange = atlasDoc.loopFrameRange(count: allOrdered.count)
+        let ordered = Array(allOrdered[loopRange])
+        let durations = Array(allDurations[loopRange])
 
         // Runtime trim needs per-frame CGImage crops. Otherwise share one parent texture
         // and slice frames with normalized SKTexture(rect:in:) sub-rects.

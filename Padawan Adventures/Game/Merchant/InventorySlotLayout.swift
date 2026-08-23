@@ -1,11 +1,11 @@
 import CoreGraphics
 import Foundation
 
-/// Trailing inventory column: 3 CRT plates with a gap of `0.10 ×` plate height.
+/// Leading inventory column: 3 CRT plates with a gap of `0.10 ×` plate height.
 nonisolated struct InventorySlotLayout: Equatable, Sendable {
     static let sideFractionOfHUD: CGFloat = 0.14
     static let gapFractionOfSide: CGFloat = 0.10
-    /// Trailing column width as a fraction of HUD height (matches `GameHUDView`).
+    /// Leading column width as a fraction of HUD height (matches `GameHUDView`).
     static let columnWidthFraction: CGFloat = 0.16
 
     var side: CGFloat

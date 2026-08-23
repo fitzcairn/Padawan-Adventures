@@ -234,13 +234,13 @@ final class GameHUDView: UIView {
         ])
         inventoryHosting = host
 
-        let trailing = inventoryHostView.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let leading = inventoryHostView.leadingAnchor.constraint(equalTo: leadingAnchor)
         let centerY = inventoryHostView.centerYAnchor.constraint(equalTo: centerYAnchor)
         let height = inventoryHostView.heightAnchor.constraint(equalToConstant: 1)
         inventoryHeightConstraint = height
-        edgeInsets.addTrailing(trailing)
+        edgeInsets.addLeading(leading)
         NSLayoutConstraint.activate([
-            trailing,
+            leading,
             centerY,
             height,
             inventoryHostView.widthAnchor.constraint(

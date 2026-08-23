@@ -23,12 +23,18 @@ nonisolated struct SpriteAtlas: Codable, Equatable, Sendable {
         var frameSize: Size?
         var backgroundMode: String?
         var durationS: Double?
+        /// Inclusive first frame index of the looping range (`0` if omitted).
+        var loopStart: Int?
+        /// Inclusive last frame index of the looping range (last frame if omitted).
+        var loopEnd: Int?
 
         enum CodingKeys: String, CodingKey {
             case size
             case frameSize = "frame_size"
             case backgroundMode = "background_mode"
             case durationS = "duration_s"
+            case loopStart
+            case loopEnd
         }
 
         struct Size: Codable, Equatable, Sendable {
@@ -46,6 +52,22 @@ nonisolated struct SpriteAtlas: Codable, Equatable, Sendable {
             }
             .sorted { $0.0 < $1.0 }
             .map { ($0.1, $0.2) }
+    }
+
+    /// Inclusive `meta.loopStart...loopEnd` into `orderedFrames`. Missing bounds use the
+    /// full clip. Out-of-range values clamp so a bad atlas still plays something.
+    func loopFrameRange(count: Int) -> Range<Int> {
+        guard count > 0 else { return 0..<0 }
+        let last = count - 1
+        let start = min(max(meta.loopStart ?? 0, 0), last)
+        let endInclusive = min(max(meta.loopEnd ?? last, start), last)
+        return start..<(endInclusive + 1)
+    }
+
+    /// Ordered frames restricted to the looping range.
+    var loopingOrderedFrames: [(key: String, frame: SpriteAtlasFrame)] {
+        let ordered = orderedFrames
+        return Array(ordered[loopFrameRange(count: ordered.count)])
     }
 
     /// Pixel rect for a named frame (image top-left origin). Used by floor terrains.

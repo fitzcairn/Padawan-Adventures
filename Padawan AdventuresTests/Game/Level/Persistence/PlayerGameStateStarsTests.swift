@@ -138,4 +138,54 @@ struct PlayerGameStateStarsTests {
         state.resetForNewGame(health: 5, energy: 4)
         #expect(state.itemSlots == PlayerGameState.emptyItemSlots)
     }
+
+    @Test func purchaseMerchantWareHonorsInventoryHoldLimit() {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.addLevelStars("level_1", count: 10)
+
+        let first = state.purchaseMerchantWare(
+            resourceName: "level_1", itemID: "square", slot: 0, price: 1, limit: 1
+        )
+        #expect(first)
+        #expect(state.itemSlotID(at: 0) == "square")
+        #expect(state.levels["level_1"]?.starsCurrent == 9)
+
+        let second = state.purchaseMerchantWare(
+            resourceName: "level_1", itemID: "square", slot: 1, price: 1, limit: 1
+        )
+        #expect(second == false)
+        #expect(state.itemSlotID(at: 1) == nil)
+        #expect(state.levels["level_1"]?.starsCurrent == 9)
+
+        let unlimited = state.purchaseMerchantWare(
+            resourceName: "level_1", itemID: "circle", slot: 1, price: 2, limit: 0
+        )
+        #expect(unlimited)
+        #expect(state.itemSlotID(at: 1) == "circle")
+
+        state.resetLevelStarsCurrent("level_1")
+        state.addLevelStars("level_1", count: 5)
+        #expect(state.itemSlotID(at: 0) == "square")
+        let stillBlocked = state.purchaseMerchantWare(
+            resourceName: "level_1", itemID: "square", slot: 2, price: 1, limit: 1
+        )
+        #expect(stillBlocked == false)
+
+        state.setItemSlot(index: 0, itemID: nil)
+        let afterUse = state.purchaseMerchantWare(
+            resourceName: "level_1", itemID: "square", slot: 0, price: 1, limit: 1
+        )
+        #expect(afterUse)
+        #expect(state.itemSlotID(at: 0) == "square")
+    }
+
+    @Test func merchantPurchasesRoundTripInPlayerState() throws {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.recordMerchantPurchase("level_1", itemID: "triangle")
+        state.recordMerchantPurchase("level_1", itemID: "triangle")
+        let data = try PropertyListEncoder().encode(state)
+        let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.merchantPurchaseCount("level_1", itemID: "triangle") == 2)
+        #expect(decoded.merchantPurchaseCount("level_1", itemID: "square") == 0)
+    }
 }

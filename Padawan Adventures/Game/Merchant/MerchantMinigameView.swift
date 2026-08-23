@@ -42,6 +42,7 @@ struct MerchantMinigameView: View {
             hud: { EmptyView() },
             overlay: { merchantOverlay }
         )
+        .onAppear { session.playStartFxIfNeeded() }
     }
 
     @ViewBuilder
@@ -54,10 +55,16 @@ struct MerchantMinigameView: View {
             let hudHeight = geo.size.height
             let displayed = MerchantWares.aspectFit(imageSize: session.backgroundImageSize, in: geo.size)
             let disk = MerchantWares.disk(in: displayed)
+            let slotSide = InventorySlotLayout.compute(
+                hudHeight: hudHeight,
+                availableHeight: hudHeight
+            ).side
             let layout = MerchantWares.layout(
-                itemIDs: session.wareIDs,
+                itemIDs: session.matWareIDs,
                 diskCenter: disk.center,
-                radius: disk.radius
+                radius: disk.radius,
+                slotSide: slotSide,
+                pixelSizes: session.warePixelSizes
             )
             ZStack {
                 waresLayer(layout: layout, size: geo.size)
@@ -70,8 +77,8 @@ struct MerchantMinigameView: View {
                     highlightedIndex: session.highlightedSlot
                 )
                 .frame(width: hudHeight * InventorySlotLayout.columnWidthFraction)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                .padding(.trailing, insets.trailing)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.leading, insets.leading)
                 .allowsHitTesting(false)
 
                 coinHUD
@@ -91,7 +98,7 @@ struct MerchantMinigameView: View {
                 switch session.activeModal {
                 case .inspect(let id):
                     if let item = session.catalog[id] {
-                        MerchantInspectModal(item: item) {
+                        MerchantInspectModal(itemID: id, item: item) {
                             session.activeModal = nil
                         }
                     }
@@ -130,9 +137,10 @@ struct MerchantMinigameView: View {
                         item: item,
                         price: item.displayedPrice(levelOrder: session.levelOrder),
                         frame: stack,
-                        isGhost: session.draggedID == stack.itemID,
-                        flashesRed: session.flashingID == stack.itemID,
-                        enabled: session.activeModal == nil
+                        isPickedUp: session.draggedID == stack.itemID,
+                        flashesRed: session.flashingID == stack.itemID
+                            && session.draggedID != stack.itemID,
+                        enabled: session.canBeginWareGesture(stack.itemID)
                     ) { event in
                         session.handleWareGesture(itemID: stack.itemID, event: event)
                     }
@@ -142,7 +150,7 @@ struct MerchantMinigameView: View {
             }
         }
         .frame(width: size.width, height: size.height)
-        .allowsHitTesting(session.activeModal == nil)
+        .allowsHitTesting(session.activeModal == nil && !session.isReturningHome)
     }
 
     @ViewBuilder
@@ -151,12 +159,25 @@ struct MerchantMinigameView: View {
            let item = session.catalog[itemID],
            let stack = layout.stacks.first(where: { $0.itemID == itemID })
         {
-            MerchantItemShapeView(shape: item.sprite.shape)
+            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
                 .frame(width: stack.spriteFrame.width, height: stack.spriteFrame.height)
+                .overlay {
+                    if session.flashingID == itemID {
+                        Color.red.opacity(0.45)
+                    }
+                }
                 .position(
                     x: stack.spriteFrame.midX + session.dragTranslation.width,
                     y: stack.spriteFrame.midY + session.dragTranslation.height
                 )
+                .animation(
+                    session.isReturningHome
+                        ? .easeInOut(duration: session.returnAnimationDuration)
+                        : nil,
+                    value: session.dragTranslation
+                )
+                .transition(.identity)
+                .zIndex(50)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
@@ -173,7 +194,7 @@ private struct MerchantWareStackView: View {
     let item: MerchantItemDefinition
     let price: Int
     let frame: MerchantWareStackFrame
-    let isGhost: Bool
+    let isPickedUp: Bool
     let flashesRed: Bool
     let enabled: Bool
     let onGesture: (MerchantWareGesture) -> Void
@@ -181,9 +202,9 @@ private struct MerchantWareStackView: View {
     var body: some View {
         let local = frame.bounds
         ZStack(alignment: .topLeading) {
-            MerchantItemShapeView(shape: item.sprite.shape)
+            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
                 .frame(width: frame.spriteFrame.width, height: frame.spriteFrame.height)
-                .opacity(isGhost ? 0.35 : 1)
+                .opacity(isPickedUp ? 0 : 1)
                 .position(x: localX(frame.spriteFrame.midX), y: localY(frame.spriteFrame.midY))
                 .overlay {
                     if flashesRed {
@@ -257,8 +278,12 @@ final class MerchantShopSession: ObservableObject {
     @Published var dragTranslation: CGSize = .zero
     @Published var highlightedSlot: Int?
     @Published var flashingID: String?
+    @Published var isReturningHome = false
+    @Published var returnAnimationDuration: TimeInterval = 0.32
     @Published var slotFrames: [Int: CGRect] = [:]
     @Published var burstProgress: CGFloat = 1
+    @Published var warePixelSizes: [String: CGSize] = [:]
+    @Published private var purchasedThisVisit: Set<String> = []
 
     var backgroundImageSize: CGSize {
         appSession.backgroundLibrary.uiImage(named: "merchant-bg")?.size
@@ -268,8 +293,10 @@ final class MerchantShopSession: ObservableObject {
     private let backgroundLibrary: BackgroundLibrary
     private var dragIsMove = false
     private var spendTask: Task<Void, Never>?
+    private var returnTask: Task<Void, Never>?
     private let tapSlop: CGFloat = 12
     private let spendDuration: TimeInterval = 1.2
+    private var didPlayStartFx = false
 
     private lazy var sceneHost = MinigameSceneHost<MerchantScene>(
         prepare: { [backgroundLibrary] in
@@ -299,6 +326,11 @@ final class MerchantShopSession: ObservableObject {
         self.slots = PlayerGameState.normalizedItemSlots(appSession.playerState?.itemSlots ?? [])
         self.displayedCoins = appSession.playerState?.levels[resourceName]?.starsCurrent ?? 0
         self.backgroundLibrary = appSession.backgroundLibrary
+        var sizes: [String: CGSize] = [:]
+        for (id, item) in catalog {
+            sizes[id] = MerchantWareIcon.pixelSize(id: id, sprite: item.sprite)
+        }
+        self.warePixelSizes = sizes
     }
 
     func ensureScene(size: CGSize) {
@@ -309,25 +341,58 @@ final class MerchantShopSession: ObservableObject {
         sceneHost.updateSceneSizeIfNeeded(size)
     }
 
+    func playStartFxIfNeeded() {
+        guard !didPlayStartFx else { return }
+        didPlayStartFx = true
+        SoundEffectsController.shared.play(
+            event: "contact",
+            from: appSession.npcsConfig.fx(for: MerchantSpawner.npcID)
+        )
+    }
+
+    func isSoldOut(_ itemID: String) -> Bool {
+        guard let item = catalog[itemID] else { return false }
+        let held = MerchantItemDefinition.heldCount(itemID: itemID, in: slots)
+        return !item.canHoldAnother(held: held)
+    }
+
+    /// Wares still offered on the mat. A successful buy (or already holding the cap)
+    /// removes the sprite and price from the background.
+    var matWareIDs: [String] {
+        wareIDs.filter { !purchasedThisVisit.contains($0) && !isSoldOut($0) }
+    }
+
+    func canBeginWareGesture(_ itemID: String) -> Bool {
+        activeModal == nil
+            && !isReturningHome
+            && (draggedID == nil || draggedID == itemID)
+    }
+
     func handleWareGesture(itemID: String, event: MerchantWareGesture) {
         switch event {
         case .changed(let translation, let location):
+            guard !isReturningHome, activeModal == nil else { return }
             if hypot(translation.width, translation.height) >= tapSlop {
                 dragIsMove = true
                 draggedID = itemID
-                dragTranslation = translation
-                highlightedSlot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    dragTranslation = translation
+                    highlightedSlot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
+                }
             }
         case .ended(let translation, let location):
             let wasDrag = dragIsMove
             dragIsMove = false
-            draggedID = nil
-            dragTranslation = .zero
-            highlightedSlot = nil
             if wasDrag {
+                highlightedSlot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
                 Task { await resolveDrop(itemID: itemID, at: location) }
-            } else if hypot(translation.width, translation.height) < tapSlop {
-                activeModal = .inspect(itemID)
+            } else {
+                clearLift()
+                if hypot(translation.width, translation.height) < tapSlop {
+                    activeModal = .inspect(itemID)
+                }
             }
         }
     }
@@ -341,25 +406,33 @@ final class MerchantShopSession: ObservableObject {
             slotIndex: slot,
             slots: slots,
             price: price,
-            coins: coins
+            coins: coins,
+            limit: catalog[itemID]?.limit ?? 0
         )
         switch outcome {
         case .ignoredOutside, .sameItemInSlot:
-            return
-        case .cannotAfford:
-            SoundEffectsController.shared.playCommon(event: "error")
-            flash(itemID)
+            await returnWareHome(playError: false)
+        case .soldOut, .cannotAfford:
+            await returnWareHome(playError: true)
         case .purchaseEmptySlot:
-            guard let slot else { return }
+            guard let slot else {
+                await returnWareHome(playError: false)
+                return
+            }
             await completePurchase(itemID: itemID, slot: slot, price: price)
         case .confirmReplace:
-            guard let slot else { return }
+            guard let slot else {
+                await returnWareHome(playError: false)
+                return
+            }
             activeModal = .replace(itemID: itemID, slot: slot)
         }
     }
 
     func cancelReplace() {
         activeModal = nil
+        returnTask?.cancel()
+        returnTask = Task { await returnWareHome(playError: false) }
     }
 
     func confirmReplace(itemID: String, slot: Int) async {
@@ -370,19 +443,54 @@ final class MerchantShopSession: ObservableObject {
 
     private func completePurchase(itemID: String, slot: Int, price: Int) async {
         let previousDisplayed = displayedCoins
-        let spent = await appSession.spendLevelStars(resourceName: resourceName, count: price)
+        let spent = await appSession.purchaseMerchantWare(
+            resourceName: resourceName,
+            itemID: itemID,
+            slot: slot,
+            price: price
+        )
         guard spent else {
-            SoundEffectsController.shared.playCommon(event: "error")
-            flash(itemID)
+            await returnWareHome(playError: true)
             return
         }
-        await appSession.setItemSlot(index: slot, itemID: itemID)
+        purchasedThisVisit.insert(itemID)
         slots = PlayerGameState.normalizedItemSlots(appSession.playerState?.itemSlots ?? slots)
+        clearLift()
         SoundEffectsController.shared.play(trackID: "merchant-purchase")
         displayedCoins = previousDisplayed
         burstProgress = 0
         Strings.speak("merchant_coins_spent")
         animateSpend(from: previousDisplayed, to: previousDisplayed - price, amount: price)
+    }
+
+    private func returnWareHome(playError: Bool) async {
+        guard draggedID != nil else { return }
+        if playError {
+            SoundEffectsController.shared.playCommon(event: "error")
+            flashingID = draggedID
+        }
+        returnAnimationDuration = MerchantDragMotion.returnDuration(for: dragTranslation)
+        isReturningHome = true
+        withAnimation(.easeInOut(duration: returnAnimationDuration)) {
+            dragTranslation = .zero
+            highlightedSlot = nil
+        }
+        let nanos = UInt64(returnAnimationDuration * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: nanos)
+        guard !Task.isCancelled else { return }
+        clearLift()
+    }
+
+    private func clearLift() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            draggedID = nil
+            dragTranslation = .zero
+            highlightedSlot = nil
+            isReturningHome = false
+            flashingID = nil
+        }
     }
 
     private func animateSpend(from: Int, to: Int, amount: Int) {
@@ -404,14 +512,13 @@ final class MerchantShopSession: ObservableObject {
             burstProgress = 1
         }
     }
+}
 
-    private func flash(_ itemID: String) {
-        flashingID = itemID
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 280_000_000)
-            if flashingID == itemID {
-                flashingID = nil
-            }
-        }
+enum MerchantDragMotion {
+    /// Time for a lifted ware to ease back onto the mat. Scales with travel so
+    /// short cancels stay snappy and long drags still look smooth.
+    static func returnDuration(for translation: CGSize) -> TimeInterval {
+        let distance = hypot(translation.width, translation.height)
+        return min(0.48, max(0.22, TimeInterval(distance / 850)))
     }
 }

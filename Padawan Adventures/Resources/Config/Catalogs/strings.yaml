@@ -339,18 +339,42 @@ strings:
     text: "Tap to continue"
     sfx: sfx_ui_world_tutorial_tap_to_continue
     context: "Level 1 world tutorial dismiss hint"
-  merchant_item_square:
-    text: "this is a square, it looks great"
-    sfx: sfx_ui_merchant_item_square
-    context: "Merchant inspect modal for square ware"
-  merchant_item_circle:
-    text: "this is a circle, it looks great"
-    sfx: sfx_ui_merchant_item_circle
-    context: "Merchant inspect modal for circle ware"
-  merchant_item_triangle:
-    text: "this is a triangle, it looks great"
-    sfx: sfx_ui_merchant_item_triangle
-    context: "Merchant inspect modal for triangle ware"
+  merchant_item_bridge:
+    text: "this is a bridge, it looks great"
+    sfx: sfx_ui_merchant_item_bridge
+    context: "Merchant inspect modal for bridge ware"
+  merchant_item_crystal_green:
+    text: "this is a green crystal, it looks great"
+    sfx: sfx_ui_merchant_item_crystal_green
+    context: "Merchant inspect modal for green crystal ware"
+  merchant_item_crystal_purple:
+    text: "this is a purple crystal, it looks great"
+    sfx: sfx_ui_merchant_item_crystal_purple
+    context: "Merchant inspect modal for purple crystal ware"
+  merchant_item_crystal_yellow:
+    text: "this is a yellow crystal, it looks great"
+    sfx: sfx_ui_merchant_item_crystal_yellow
+    context: "Merchant inspect modal for yellow crystal ware"
+  merchant_item_double_saber:
+    text: "this is a double saber, it looks great"
+    sfx: sfx_ui_merchant_item_double_saber
+    context: "Merchant inspect modal for double saber ware"
+  merchant_item_jetpack:
+    text: "this is a jetpack, it looks great"
+    sfx: sfx_ui_merchant_item_jetpack
+    context: "Merchant inspect modal for jetpack ware"
+  merchant_item_satelite:
+    text: "this is a satelite, it looks great"
+    sfx: sfx_ui_merchant_item_satelite
+    context: "Merchant inspect modal for satelite ware"
+  merchant_item_scanner:
+    text: "this is a scanner, it looks great"
+    sfx: sfx_ui_merchant_item_scanner
+    context: "Merchant inspect modal for scanner ware"
+  merchant_item_vector:
+    text: "this is a vector, it looks great"
+    sfx: sfx_ui_merchant_item_vector
+    context: "Merchant inspect modal for vector ware"
   merchant_replace_item:
     text: "Replace item?"
     sfx: sfx_ui_merchant_replace_item

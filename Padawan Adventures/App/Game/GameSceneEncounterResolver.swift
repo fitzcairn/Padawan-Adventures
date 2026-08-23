@@ -193,6 +193,10 @@ extension GameScene {
             completion?()
             return
         }
+        SoundEffectsController.shared.play(
+            event: "depart",
+            from: renderer.npcsConfig.fx(for: MerchantSpawner.npcID)
+        )
         PlaceholderFactory.playDefeatAnimation(
             on: departNode,
             highlight: .treasureGold

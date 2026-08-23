@@ -186,6 +186,8 @@
     "frame_size": {
       "w": 89,
       "h": 180
-    }
+    },
+    "loopStart": 0,
+    "loopEnd": 20
   }
 }

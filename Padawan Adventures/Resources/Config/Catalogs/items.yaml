@@ -34,73 +34,6 @@ coin:
         sheet: coin
         atlas: coin-atlas
 
-# Merchant shop ware stills (not world pickups). Near-black (#010101) backdrop,
-# so `chroma: black_soft` (tolerance 2) rather than exact black. Filenames
-# match the dropped PNGs.
-merchant-ware-bridge:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
-merchant-ware-crystal-green:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-crystal-green, atlas: merchant-ware-crystal-green-atlas }
-merchant-ware-crystal-purple:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-crystal-purple, atlas: merchant-ware-crystal-purple-atlas }
-merchant-ware-crystal-yellow:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-crystal-yellow, atlas: merchant-ware-crystal-yellow-atlas }
-merchant-ware-double-saber:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-double-saber, atlas: merchant-ware-double-saber-atlas }
-merchant-ware-jetpack:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-jetpack, atlas: merchant-ware-jetpack-atlas }
-merchant-ware-satelite:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-satelite, atlas: merchant-ware-satelite-atlas }
-merchant-ware-scanner:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-scanner, atlas: merchant-ware-scanner-atlas }
-merchant-ware-vector:
-  sprite:
-    root: Sprites/Items/Merchant
-    chroma: black_soft
-    height_fraction: 0.5
-    animations:
-      idle: { sheet: merchant-ware-vector, atlas: merchant-ware-vector-atlas }
-
 # Treasure: lightsaber parts, one per level (see each level's `treasure:` key).
 # Sheets already carry alpha, so no chroma key.
 # Optional `highlight:` draws a particle halo behind the sprite (any item id can opt in).
@@ -186,25 +119,105 @@ pommel:
 
 # Merchant shop wares (not world pickups). `description` is a strings.yaml id.
 # `min_level` is a level `order:` (Tython = 1). Shown price = `price` × current order.
+# `limit:` max copies of this ware in inventory (`0` = unlimited).
+# Still sheets use near-black (#010101), so `chroma: black_soft` (tolerance 2).
 merchant:
-  square:
+  merchant-ware-bridge:
     min_level: 1
-    price: 1
-    description: merchant_item_square
+    price: 10
+    limit: 1
+    description: merchant_item_bridge
     sprite:
-      shape: square
-      sound: square
-  circle:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
+  merchant-ware-crystal-green:
     min_level: 1
-    price: 2
-    description: merchant_item_circle
+    price: 10
+    limit: 1
+    description: merchant_item_crystal_green
     sprite:
-      shape: circle
-      sound: circle
-  triangle:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-crystal-green, atlas: merchant-ware-crystal-green-atlas }
+  merchant-ware-crystal-purple:
     min_level: 1
-    price: 3
-    description: merchant_item_triangle
+    price: 10
+    limit: 1
+    description: merchant_item_crystal_purple
     sprite:
-      shape: triangle
-      sound: triangle
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-crystal-purple, atlas: merchant-ware-crystal-purple-atlas }
+  merchant-ware-crystal-yellow:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_crystal_yellow
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-crystal-yellow, atlas: merchant-ware-crystal-yellow-atlas }
+  merchant-ware-double-saber:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_double_saber
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-double-saber, atlas: merchant-ware-double-saber-atlas }
+  merchant-ware-jetpack:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_jetpack
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-jetpack, atlas: merchant-ware-jetpack-atlas }
+  merchant-ware-satelite:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_satelite
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-satelite, atlas: merchant-ware-satelite-atlas }
+  merchant-ware-scanner:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_scanner
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-scanner, atlas: merchant-ware-scanner-atlas }
+  merchant-ware-vector:
+    min_level: 1
+    price: 10
+    limit: 1
+    description: merchant_item_vector
+    sprite:
+      root: Sprites/Items/Merchant
+      chroma: black_soft
+      height_fraction: 0.5
+      animations:
+        idle: { sheet: merchant-ware-vector, atlas: merchant-ware-vector-atlas }

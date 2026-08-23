@@ -61,53 +61,75 @@ nonisolated enum MerchantWares {
         return (CGPoint(x: displayedBackground.midX, y: displayedBackground.midY), diameter / 2)
     }
 
+    /// Scale so the shorter axis equals `slotSide` (inventory square height).
+    static func fittedSize(pixelSize: CGSize, slotSide: CGFloat) -> CGSize {
+        let width = max(pixelSize.width, 0.001)
+        let height = max(pixelSize.height, 0.001)
+        let scale = slotSide / min(width, height)
+        return CGSize(width: width * scale, height: height * scale)
+    }
+
     static func layout(
         itemIDs: [String],
         diskCenter: CGPoint,
-        radius: CGFloat
+        radius: CGFloat,
+        slotSide: CGFloat,
+        pixelSizes: [String: CGSize] = [:]
     ) -> MerchantWaresLayout {
         let n = itemIDs.count
         guard n > 0, radius > 1 else {
             return MerchantWaresLayout(spriteSide: 0, gap: 0, stacks: [])
         }
 
-        var side = radius * maxSpriteFractionOfRadius
+        var side = min(max(slotSide, 1), radius * maxSpriteFractionOfRadius)
         let minSide: CGFloat = 8
-        while side > minSide, !fits(count: n, spriteSide: side, radius: radius) {
+        func sizes(for side: CGFloat) -> [CGSize] {
+            itemIDs.map { id in
+                fittedSize(pixelSize: pixelSizes[id] ?? CGSize(width: 1, height: 1), slotSide: side)
+            }
+        }
+        while side > minSide, !fits(sizes: sizes(for: side), slotSide: side, radius: radius) {
             side *= 0.92
         }
-        if !fits(count: n, spriteSide: side, radius: radius) {
+        if !fits(sizes: sizes(for: side), slotSide: side, radius: radius) {
             side = minSide
         }
 
+        let displaySizes = sizes(for: side)
         let gap = gapWidth(spriteSide: side)
-        let stack = stackSize(spriteSide: side)
-        let totalWidth = CGFloat(n) * stack.width + CGFloat(max(n - 1, 0)) * gap
+        let maxSpriteHeight = displaySizes.map(\.height).max() ?? side
+        let coin = coinSide(spriteSide: side)
+        let price = priceHeight(spriteSide: side)
+        let stackHeight = maxSpriteHeight + 4 + coin + 4 + price
+        let totalWidth = displaySizes.map(\.width).reduce(0, +) + CGFloat(max(n - 1, 0)) * gap
         let originX = diskCenter.x - totalWidth / 2
-        let originY = diskCenter.y - stack.height / 2
+        let originY = diskCenter.y - stackHeight / 2
 
         var stacks: [MerchantWareStackFrame] = []
         stacks.reserveCapacity(n)
+        var x = originX
         for (index, id) in itemIDs.enumerated() {
-            let x = originX + CGFloat(index) * (stack.width + gap)
+            let display = displaySizes[index]
+            let spriteY = originY + (maxSpriteHeight - display.height)
             stacks.append(
                 MerchantWareStackFrame(
                     itemID: id,
-                    spriteFrame: CGRect(x: x, y: originY, width: side, height: side),
+                    spriteFrame: CGRect(x: x, y: spriteY, width: display.width, height: display.height),
                     coinFrame: CGRect(
-                        x: x + (side - coinSide(spriteSide: side)) / 2,
-                        y: originY + side + 4,
-                        width: coinSide(spriteSide: side),
-                        height: coinSide(spriteSide: side)
+                        x: x + (display.width - coin) / 2,
+                        y: originY + maxSpriteHeight + 4,
+                        width: coin,
+                        height: coin
                     ),
                     priceFrame: CGRect(
                         x: x,
-                        y: originY + side + 4 + coinSide(spriteSide: side) + 4,
-                        width: side,
-                        height: priceHeight(spriteSide: side)
+                        y: originY + maxSpriteHeight + 4 + coin + 4,
+                        width: display.width,
+                        height: price
                     )
                 )
             )
+            x += display.width + gap
         }
         return MerchantWaresLayout(spriteSide: side, gap: gap, stacks: stacks)
     }
@@ -129,14 +151,20 @@ nonisolated enum MerchantWares {
         return CGSize(width: spriteSide, height: height)
     }
 
+    static func fits(sizes: [CGSize], slotSide: CGFloat, radius: CGFloat) -> Bool {
+        guard slotSide <= radius * maxSpriteFractionOfRadius + 0.01 else { return false }
+        guard !sizes.isEmpty else { return true }
+        let gap = gapWidth(spriteSide: slotSide)
+        let totalWidth = sizes.map(\.width).reduce(0, +) + CGFloat(max(sizes.count - 1, 0)) * gap
+        let maxSpriteHeight = sizes.map(\.height).max() ?? slotSide
+        let stackHeight = maxSpriteHeight + 4 + coinSide(spriteSide: slotSide) + 4
+            + priceHeight(spriteSide: slotSide)
+        return hypot(totalWidth / 2, stackHeight / 2) <= radius
+    }
+
     static func fits(count: Int, spriteSide: CGFloat, radius: CGFloat) -> Bool {
-        guard spriteSide <= radius * maxSpriteFractionOfRadius + 0.01 else { return false }
-        let size = stackSize(spriteSide: spriteSide)
-        let gap = gapWidth(spriteSide: spriteSide)
-        let totalWidth = CGFloat(count) * size.width + CGFloat(max(count - 1, 0)) * gap
-        let halfW = totalWidth / 2
-        let halfH = size.height / 2
-        return hypot(halfW, halfH) <= radius
+        let sizes = Array(repeating: CGSize(width: spriteSide, height: spriteSide), count: count)
+        return fits(sizes: sizes, slotSide: spriteSide, radius: radius)
     }
 }
 
@@ -161,6 +189,7 @@ nonisolated struct MerchantWaresLayout: Equatable, Sendable {
 nonisolated enum MerchantDropOutcome: Equatable, Sendable {
     case ignoredOutside
     case sameItemInSlot
+    case soldOut
     case cannotAfford
     case purchaseEmptySlot
     case confirmReplace
@@ -172,7 +201,8 @@ nonisolated enum MerchantPurchase {
         slotIndex: Int?,
         slots: [String],
         price: Int,
-        coins: Int
+        coins: Int,
+        limit: Int = 0
     ) -> MerchantDropOutcome {
         guard let slotIndex, slots.indices.contains(slotIndex) else {
             return .ignoredOutside
@@ -180,6 +210,10 @@ nonisolated enum MerchantPurchase {
         let occupant = slots[slotIndex]
         if occupant == itemID {
             return .sameItemInSlot
+        }
+        let held = MerchantItemDefinition.heldCount(itemID: itemID, in: slots)
+        if !MerchantItemDefinition.canHoldAnother(limit: limit, held: held) {
+            return .soldOut
         }
         if coins < price {
             return .cannotAfford

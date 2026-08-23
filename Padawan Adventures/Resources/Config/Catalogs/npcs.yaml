@@ -6,11 +6,13 @@
 # mirrors of right / northeast / southeast, stored as real sheets.
 
 # World one-shots keyed by npc id. `visible` plays the first time that sprite
-# is in the camera this visit; `contact` plays when the player shares their tile.
+# is in the camera this visit; `contact` plays when the shop minigame appears;
+# `depart` plays when the gold-sparkle fade starts after the shop.
 fx:
   merchant:
     visible: merchant-visible
     contact: merchant-contact
+    depart: merchant-depart
 
 sprites:
   merchant:

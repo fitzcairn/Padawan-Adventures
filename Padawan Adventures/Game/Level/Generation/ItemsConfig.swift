@@ -31,7 +31,7 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
     /// Pickup id → item definition (`energy`, `health`, …). The YAML `merchant:` map is
     /// not a pickup and is never stored here.
     var items: [String: ItemDefinition]
-    /// Shop wares keyed by ware id (`square`, `circle`, …).
+    /// Shop wares keyed by ware id (`merchant-ware-bridge`, …).
     var merchant: [String: MerchantItemDefinition]
 
     init(
@@ -132,8 +132,14 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
             guard ware.price > 0 else {
                 throw ItemsConfigError.invalid("merchant.\(id).price must be greater than 0")
             }
+            guard ware.limit >= 0 else {
+                throw ItemsConfigError.invalid("merchant.\(id).limit must be >= 0")
+            }
             guard !ware.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw ItemsConfigError.invalid("merchant.\(id).description must be non-empty")
+            }
+            guard !ware.sprite.root.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw ItemsConfigError.invalid("merchant.\(id).sprite.root must be non-empty")
             }
         }
     }

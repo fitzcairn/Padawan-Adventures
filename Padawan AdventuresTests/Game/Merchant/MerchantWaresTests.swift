@@ -4,18 +4,20 @@ import Testing
 @testable import Padawan_Adventures
 
 struct MerchantWaresTests {
+    private static let stubSprite = SpriteConfig(root: "Sprites/Items/Merchant")
+
     private let catalog: [String: MerchantItemDefinition] = [
         "square": MerchantItemDefinition(
             minLevel: 1, price: 1, description: "merchant_item_square",
-            sprite: MerchantSpriteSpec(shape: .square)
+            sprite: stubSprite
         ),
         "circle": MerchantItemDefinition(
             minLevel: 1, price: 2, description: "merchant_item_circle",
-            sprite: MerchantSpriteSpec(shape: .circle)
+            sprite: stubSprite
         ),
         "triangle": MerchantItemDefinition(
             minLevel: 1, price: 3, description: "merchant_item_triangle",
-            sprite: MerchantSpriteSpec(shape: .triangle)
+            sprite: stubSprite
         ),
     ]
 
@@ -34,7 +36,7 @@ struct MerchantWaresTests {
                 minLevel: 2,
                 price: index,
                 description: "d",
-                sprite: MerchantSpriteSpec(shape: .square)
+                sprite: Self.stubSprite
             )
         }
         let ids = MerchantWares.selectIDs(catalog: big, levelOrder: 2, seed: 1)
@@ -46,10 +48,16 @@ struct MerchantWaresTests {
         let layout = MerchantWares.layout(
             itemIDs: ["square", "circle", "triangle"],
             diskCenter: CGPoint(x: 400, y: 300),
-            radius: radius
+            radius: radius,
+            slotSide: 56
         )
         #expect(layout.stacks.count == 3)
         #expect(layout.spriteSide <= radius * MerchantWares.maxSpriteFractionOfRadius + 0.01)
+        #expect(abs(layout.spriteSide - 56) < 0.5)
+        for stack in layout.stacks {
+            let minDim = min(stack.spriteFrame.width, stack.spriteFrame.height)
+            #expect(abs(minDim - layout.spriteSide) < 0.5)
+        }
         #expect(layout.gap >= MerchantWares.minGapPoints - 0.01)
         #expect(layout.gap >= layout.spriteSide * MerchantWares.minGapSpriteFraction - 0.01)
 
@@ -102,6 +110,46 @@ struct MerchantWaresTests {
                 itemID: "triangle", slotIndex: 2, slots: slots, price: 1, coins: 10
             ) == .confirmReplace
         )
+        #expect(
+            MerchantPurchase.outcome(
+                itemID: "square",
+                slotIndex: 1,
+                slots: slots,
+                price: 1,
+                coins: 10,
+                limit: 1
+            ) == .soldOut
+        )
+        #expect(
+            MerchantPurchase.outcome(
+                itemID: "triangle",
+                slotIndex: 1,
+                slots: slots,
+                price: 1,
+                coins: 10,
+                limit: 0
+            ) == .purchaseEmptySlot
+        )
+        #expect(
+            MerchantPurchase.outcome(
+                itemID: "square",
+                slotIndex: 1,
+                slots: slots,
+                price: 5,
+                coins: 2,
+                limit: 1
+            ) == .soldOut
+        )
+        #expect(
+            MerchantPurchase.outcome(
+                itemID: "square",
+                slotIndex: 2,
+                slots: ["square", "", ""],
+                price: 1,
+                coins: 10,
+                limit: 2
+            ) == .purchaseEmptySlot
+        )
     }
 
     @Test func inventorySlotLayoutSpacesSquaresByTenthOfSide() {
@@ -114,5 +162,27 @@ struct MerchantWaresTests {
         let tight = InventorySlotLayout.compute(hudHeight: hud, availableHeight: 80)
         #expect(tight.side < roomy.side)
         #expect(abs(tight.gap - tight.side * 0.10) < 0.01)
+    }
+
+    @Test func dragReturnDurationScalesWithTravelThenClamps() {
+        #expect(MerchantDragMotion.returnDuration(for: .zero) == 0.22)
+        #expect(MerchantDragMotion.returnDuration(for: CGSize(width: 100, height: 0)) == 0.22)
+        #expect(
+            abs(MerchantDragMotion.returnDuration(for: CGSize(width: 340, height: 0)) - 340 / 850)
+                < 0.0001
+        )
+        #expect(MerchantDragMotion.returnDuration(for: CGSize(width: 2000, height: 0)) == 0.48)
+    }
+
+    @Test func fittedSizeMatchesShorterAxisToSlotSide() {
+        let wide = MerchantWares.fittedSize(pixelSize: CGSize(width: 373, height: 288), slotSide: 56)
+        #expect(abs(wide.height - 56) < 0.001)
+        #expect(abs(wide.width - 373 * 56 / 288) < 0.001)
+        let tall = MerchantWares.fittedSize(pixelSize: CGSize(width: 290, height: 364), slotSide: 56)
+        #expect(abs(tall.width - 56) < 0.001)
+        #expect(abs(tall.height - 364 * 56 / 290) < 0.001)
+        let square = MerchantWares.fittedSize(pixelSize: CGSize(width: 100, height: 100), slotSide: 56)
+        #expect(abs(square.width - 56) < 0.001)
+        #expect(abs(square.height - 56) < 0.001)
     }
 }

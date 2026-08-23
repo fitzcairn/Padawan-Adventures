@@ -18,10 +18,12 @@ enum ItemIconLoader {
         } else {
             return nil
         }
+        guard let config = items.spriteConfig(id: itemID) else { return nil }
+        return firstFrameImage(sprite: config, animationName: animationName)
+    }
 
-        guard let config = items.spriteConfig(id: itemID),
-              case let .sheet(sheet, atlas)? = config.animations[animationName]
-        else {
+    static func firstFrameImage(sprite config: SpriteConfig, animationName: String = "idle") -> UIImage? {
+        guard case let .sheet(sheet, atlas)? = config.animations[animationName] else {
             return nil
         }
 

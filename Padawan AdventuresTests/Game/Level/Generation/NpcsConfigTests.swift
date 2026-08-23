@@ -21,6 +21,7 @@ struct NpcsConfigTests {
           merchant:
             visible: merchant-visible
             contact: merchant-contact
+            depart: merchant-depart
         sprites:
           merchant:
             root: Sprites/Merchant
@@ -28,14 +29,16 @@ struct NpcsConfigTests {
         let config = try NpcsConfig.decode(from: yaml)
         #expect(config.fx(for: "merchant").trackID(for: "visible") == "merchant-visible")
         #expect(config.fx(for: "merchant").trackID(for: "contact") == "merchant-contact")
+        #expect(config.fx(for: "merchant").trackID(for: "depart") == "merchant-depart")
         #expect(config.fx(for: "missing") == .empty)
         try config.validate()
     }
 
-    @Test func bundledMerchantHasVisibleAndContactFx() throws {
+    @Test func bundledMerchantHasWorldFx() throws {
         let config = try NpcsConfig.loadFromBundle()
         let table = config.fx(for: "merchant")
         #expect(table.trackID(for: "visible") == "merchant-visible")
         #expect(table.trackID(for: "contact") == "merchant-contact")
+        #expect(table.trackID(for: "depart") == "merchant-depart")
     }
 }

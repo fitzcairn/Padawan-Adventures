@@ -79,6 +79,11 @@ nonisolated enum ConfigAudit {
         }
 
         problems.append(contentsOf: checkMerchantItemDescriptions(items: items, strings: stringCatalog))
+        for (id, ware) in items.merchant.sorted(by: { $0.key < $1.key }) {
+            problems.append(contentsOf: checkSpriteConfig(
+                ware.sprite, label: "items.merchant.\(id).sprite", bundle: bundle
+            ))
+        }
 
         if let npcs {
             for (id, sprite) in npcs.sprites.sorted(by: { $0.key < $1.key }) {

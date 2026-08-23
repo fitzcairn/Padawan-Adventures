@@ -39,17 +39,21 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
     var starsEarned: Int
     /// In-progress run stars shown in the HUD.
     var starsCurrent: Int
+    /// Ware id → purchases completed on this level run (cleared when the run resets).
+    var merchantPurchases: [String: Int]
 
     init(
         started: Bool = false,
         completed: Bool = false,
         starsEarned: Int = 0,
-        starsCurrent: Int = 0
+        starsCurrent: Int = 0,
+        merchantPurchases: [String: Int] = [:]
     ) {
         self.started = started
         self.completed = completed
         self.starsEarned = starsEarned
         self.starsCurrent = starsCurrent
+        self.merchantPurchases = merchantPurchases
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -57,6 +61,7 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
         case completed
         case starsEarned
         case starsCurrent
+        case merchantPurchases
     }
 
     init(from decoder: Decoder) throws {
@@ -65,6 +70,7 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
         completed = try container.decodeIfPresent(Bool.self, forKey: .completed) ?? false
         starsEarned = try container.decodeIfPresent(Int.self, forKey: .starsEarned) ?? 0
         starsCurrent = try container.decodeIfPresent(Int.self, forKey: .starsCurrent) ?? 0
+        merchantPurchases = try container.decodeIfPresent([String: Int].self, forKey: .merchantPurchases) ?? [:]
     }
 }
 
@@ -281,7 +287,40 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     mutating func resetLevelStarsCurrent(_ resourceName: String) {
         var progress = levels[resourceName] ?? LevelProgress()
         progress.starsCurrent = 0
+        progress.merchantPurchases = [:]
         levels[resourceName] = progress
+    }
+
+    func merchantPurchaseCount(_ resourceName: String, itemID: String) -> Int {
+        let id = itemID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return 0 }
+        return levels[resourceName]?.merchantPurchases[id] ?? 0
+    }
+
+    mutating func recordMerchantPurchase(_ resourceName: String, itemID: String) {
+        let id = itemID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return }
+        var progress = levels[resourceName] ?? LevelProgress()
+        progress.merchantPurchases[id, default: 0] += 1
+        levels[resourceName] = progress
+    }
+
+    /// Spends coins and fills the slot when the inventory hold limit allows another copy.
+    @discardableResult
+    mutating func purchaseMerchantWare(
+        resourceName: String,
+        itemID: String,
+        slot: Int,
+        price: Int,
+        limit: Int
+    ) -> Bool {
+        let held = MerchantItemDefinition.heldCount(itemID: itemID, in: itemSlots)
+        guard MerchantItemDefinition.canHoldAnother(limit: limit, held: held) else {
+            return false
+        }
+        guard spendLevelStars(resourceName, count: price) else { return false }
+        setItemSlot(index: slot, itemID: itemID)
+        return true
     }
 
     mutating func addLevelStar(_ resourceName: String) {

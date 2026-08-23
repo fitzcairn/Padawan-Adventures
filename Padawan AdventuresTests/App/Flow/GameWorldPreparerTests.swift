@@ -82,6 +82,7 @@ struct GameWorldPreparerTests {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Cody")
         try session.selectLevel(resourceName: "1-tython")
+        session.appConfig.demoMode = false
         await session.addLevelStar(resourceName: "1-tython")
         await session.addLevelStar(resourceName: "1-tython")
         #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 2)

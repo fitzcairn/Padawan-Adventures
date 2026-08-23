@@ -48,6 +48,62 @@ struct SpriteSystemTests {
         #expect(abs(durations[1] - 1.5) < 0.000_1)
     }
 
+    @Test func atlasLoopRangeDefaultsToFullClipAndHonorsInclusiveBounds() throws {
+        let full = try SpriteAtlas.decode(from: Data("""
+        {
+          "frames": {
+            "0": { "x": 0, "y": 0, "w": 8, "h": 8 },
+            "1": { "x": 8, "y": 0, "w": 8, "h": 8 },
+            "2": { "x": 16, "y": 0, "w": 8, "h": 8 }
+          },
+          "meta": { "duration_s": 1.5 }
+        }
+        """.utf8))
+        #expect(full.loopFrameRange(count: 3) == 0..<3)
+        #expect(full.loopingOrderedFrames.map(\.key) == ["0", "1", "2"])
+
+        let looped = try SpriteAtlas.decode(from: Data("""
+        {
+          "frames": {
+            "0": { "x": 0, "y": 0, "w": 8, "h": 8 },
+            "1": { "x": 8, "y": 0, "w": 8, "h": 8 },
+            "2": { "x": 16, "y": 0, "w": 8, "h": 8 },
+            "3": { "x": 24, "y": 0, "w": 8, "h": 8 }
+          },
+          "meta": { "duration_s": 2.0, "loopStart": 0, "loopEnd": 1 }
+        }
+        """.utf8))
+        #expect(looped.loopFrameRange(count: 4) == 0..<2)
+        #expect(looped.loopingOrderedFrames.map(\.key) == ["0", "1"])
+        #expect(looped.loopFrameRange(count: 1) == 0..<1)
+    }
+
+    @Test @MainActor func merchantIdleLoopsHonorAtlasFrameRanges() async throws {
+        let npcs = try NpcsConfig.loadFromBundle()
+        let sprite = try #require(npcs.spriteConfig(id: "merchant"))
+        let library = SpriteLibrary()
+        await library.ensureLoaded(sprite, id: "merchant")
+        let expectedCounts: [String: Int] = [
+            "idle_northeast": 12,
+            "idle_northwest": 12,
+            "idle_down": 12,
+            "idle_right": 21,
+            "idle_left": 21,
+            "idle_up": 23,
+            "idle_southeast": 18,
+            "idle_southwest": 18,
+        ]
+        for (name, count) in expectedCounts {
+            let animation = try #require(library.animation(id: "merchant", named: name))
+            #expect(animation.frames.count == count, "\(name)")
+        }
+        let frameDuration = 2.333 / 25
+        let down = try #require(library.animation(id: "merchant", named: "idle_down"))
+        for frame in down.frames {
+            #expect(abs(frame.duration - frameDuration) < 0.000_1)
+        }
+    }
+
     @Test func opaqueContentBoundsIgnoresTransparentPadding() throws {
         // 3x3: opaque center pixel only.
         let width = 3

@@ -39,7 +39,7 @@ struct InventorySlotStack: View {
                         }
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
         }
     }
 
@@ -55,7 +55,7 @@ struct InventorySlotStack: View {
             ZStack {
                 Color.black.opacity(0.92)
                 if occupied, let item = catalog[displayID] {
-                    MerchantItemShapeView(shape: item.sprite.shape)
+                    MerchantWareSpriteView(itemID: displayID, sprite: item.sprite)
                         .padding(side * 0.12)
                         .opacity(isFadingOut ? 0 : 1)
                 }

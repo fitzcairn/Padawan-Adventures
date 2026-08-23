@@ -153,6 +153,28 @@ extension AppSession {
     }
 
     @discardableResult
+    func purchaseMerchantWare(
+        resourceName: String,
+        itemID: String,
+        slot: Int,
+        price: Int
+    ) async -> Bool {
+        guard var state = playerState else { return false }
+        let limit = itemsConfig.merchantItem(itemID)?.limit ?? 0
+        let bought = state.purchaseMerchantWare(
+            resourceName: resourceName,
+            itemID: itemID,
+            slot: slot,
+            price: price,
+            limit: limit
+        )
+        guard bought else { return false }
+        playerState = state
+        await persistPlayerState()
+        return true
+    }
+
+    @discardableResult
     func finalizeLevelStars(resourceName: String) async -> LevelStarsFinalizeResult? {
         guard var state = playerState else { return nil }
         let result = state.finalizeLevelStars(resourceName)

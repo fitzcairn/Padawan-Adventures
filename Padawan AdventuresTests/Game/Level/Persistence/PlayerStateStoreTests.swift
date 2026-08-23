@@ -98,6 +98,7 @@ struct PlayerStateStoreTests {
         state.markLevelCompleted("level_1", artifact: "key.fill")
         state.levels["level_1"]?.starsEarned = 2
         state.levels["level_2"]?.starsCurrent = 4
+        state.levels["level_2"]?.merchantPurchases = ["square": 1]
         state.totalStars = 2
         state.stats.gatesOpened = 3
         state.stats.pitsCrossed = 4
@@ -112,6 +113,7 @@ struct PlayerStateStoreTests {
         #expect(restored.levels["level_1"]?.starsEarned == 2)
         #expect(restored.levels["level_2"]?.started == true)
         #expect(restored.levels["level_2"]?.starsCurrent == 4)
+        #expect(restored.merchantPurchaseCount("level_2", itemID: "square") == 1)
         #expect(restored.totalStars == 2)
         #expect(restored.stats.gatesOpened == 3)
         #expect(restored.stats.enemiesKilled == 7)
