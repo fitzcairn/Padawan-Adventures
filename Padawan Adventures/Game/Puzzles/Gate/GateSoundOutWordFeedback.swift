@@ -120,7 +120,9 @@ extension GateSoundOutWordScene {
         node.zPosition = 20
         clearCapacitorTint(on: node)
         placedNodes.append(node)
-        placedFractions.append(playAreaFraction(of: node.position))
+        // Pack from target positions so a mid-slide resize restores the fitted layout.
+        // Do not removeAllActions on this node — that would cancel the glyph fade.
+        let shiftDuration = applyPlacedPositionsFittingRemaining(animated: true)
 
         playCorrectSound()
         revealGrapheme(on: node, grapheme)
@@ -139,12 +141,13 @@ extension GateSoundOutWordScene {
             }
         )
         let chimeDuration = SoundEffectsController.shared.cueDuration(of: correctSoundTrackID)
+        let waitDuration = max(chimeDuration, shiftDuration)
         removeAction(forKey: Self.feedbackActionKey)
         run(
             SKAction.sequence([
                 SKAction.group([
                     flash,
-                    SKAction.wait(forDuration: chimeDuration),
+                    SKAction.wait(forDuration: waitDuration),
                 ]),
                 SKAction.run { [weak self] in
                     guard let self else { return }
@@ -158,6 +161,29 @@ extension GateSoundOutWordScene {
             ]),
             withKey: Self.feedbackActionKey
         )
+    }
+
+    /// Writes `placedFractions` from packed targets. Returns the slide duration, or 0
+    /// when the chain already leaves room for the remaining letters.
+    @discardableResult
+    func applyPlacedPositionsFittingRemaining(animated: Bool) -> TimeInterval {
+        let targets = targetPlacedPositionsFittingRemaining()
+        placedFractions = targets.map { playAreaFraction(of: $0) }
+        var moved = false
+        for (node, target) in zip(placedNodes, targets) {
+            let distance = hypot(node.position.x - target.x, node.position.y - target.y)
+            guard distance > 0.5 else { continue }
+            moved = true
+            if animated {
+                node.run(
+                    SKAction.move(to: target, duration: Self.returnHomeDuration)
+                        .withTimingMode(.easeInEaseOut)
+                )
+            } else {
+                node.position = target
+            }
+        }
+        return moved && animated ? Self.returnHomeDuration : 0
     }
 
     /// Eases a near-miss drop into the closest legal play-area spot, then resolves accept/reject.

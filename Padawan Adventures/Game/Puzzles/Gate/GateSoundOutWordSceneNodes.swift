@@ -195,6 +195,14 @@ extension GateSoundOutWordScene {
         return nil
     }
 
+    func placedIndex(at point: CGPoint) -> Int? {
+        for (index, node) in placedNodes.enumerated()
+            where node.calculateAccumulatedFrame().contains(point) {
+            return index
+        }
+        return nil
+    }
+
     /// True when `point` hits the word band of the prompt plate.
     func isPromptWordTap(_ point: CGPoint) -> Bool {
         prompt?.region(at: point) == .word

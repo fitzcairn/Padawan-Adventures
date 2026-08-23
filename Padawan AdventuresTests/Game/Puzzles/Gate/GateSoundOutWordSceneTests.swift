@@ -90,6 +90,167 @@ struct GateSoundOutWordSceneTests {
         #expect(abs(scene.laidOutDiameter - scene.preferredCapacitorDiameter) < 0.01)
     }
 
+    @Test func farRightDropIsValidAndPacksToLeaveRoom() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        #expect(scene.engine.targetGraphemes == ["c", "a", "t"])
+
+        let index = try #require(scene.engine.currentIndex)
+        let far = CGPoint(x: scene.maxDropX(forIndex: index), y: scene.playAreaRect.midY)
+        #expect(scene.isValidDrop(far))
+
+        try acceptCurrentAnswer(scene)
+        scene.placedFractions = [CGPoint(x: 0.95, y: 0.5)]
+        scene.rebuildLayout()
+
+        #expect(scene.placedNodes.count == 1)
+        let packed = scene.placedNodes[0].position
+        #expect(scene.lastPlacedCenterFitsRemaining(packed.x))
+        #expect(packed.x >= scene.playAreaRect.minX + scene.laidOutDiameter * 0.5 - 0.5)
+    }
+
+    @Test func packingDoesNotMoveWhenRemainingWidthIsEnough() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        try acceptCurrentAnswer(scene)
+        scene.placedFractions = [CGPoint(x: 0.2, y: 0.5)]
+        scene.rebuildLayout()
+
+        let expected = CGPoint(
+            x: scene.playAreaRect.minX + scene.playAreaRect.width * 0.2,
+            y: scene.playAreaRect.minY + scene.playAreaRect.height * 0.5
+        )
+        #expect(scene.placedNodes.count == 1)
+        #expect(abs(scene.placedNodes[0].position.x - expected.x) < 0.5)
+        #expect(abs(scene.placedNodes[0].position.y - expected.y) < 0.5)
+        #expect(scene.lastPlacedCenterFitsRemaining(scene.placedNodes[0].position.x))
+    }
+
+    @Test func lastLetterDoesNotShift() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        try acceptCurrentAnswer(scene)
+        try acceptCurrentAnswer(scene)
+        try acceptCurrentAnswer(scene)
+        #expect(scene.engine.isSolved)
+
+        scene.placedFractions = [
+            CGPoint(x: 0.2, y: 0.4),
+            CGPoint(x: 0.5, y: 0.5),
+            CGPoint(x: 0.95, y: 0.6),
+        ]
+        scene.rebuildLayout()
+
+        let last = scene.placedNodes[2].position
+        let expectedX = scene.playAreaRect.minX + scene.playAreaRect.width * 0.95
+        let expectedY = scene.playAreaRect.minY + scene.playAreaRect.height * 0.6
+        #expect(abs(last.x - expectedX) < 0.5)
+        #expect(abs(last.y - expectedY) < 0.5)
+    }
+
+    @Test func leftWallPacksXAndKeepsY() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        try acceptCurrentAnswer(scene)
+        try acceptCurrentAnswer(scene)
+        #expect(scene.engine.placedCount == 2)
+
+        let rect = scene.playAreaRect
+        let radius = scene.laidOutDiameter * 0.5
+        let first = CGPoint(x: rect.minX + radius, y: rect.minY + rect.height * 0.35)
+        let last = CGPoint(x: rect.maxX - radius, y: rect.minY + rect.height * 0.7)
+        scene.placedFractions = [
+            scene.playAreaFraction(of: first),
+            scene.playAreaFraction(of: last),
+        ]
+        scene.rebuildLayout()
+
+        let minFirstX = rect.minX + radius
+        #expect(scene.placedNodes.count == 2)
+        #expect(abs(scene.placedNodes[0].position.x - minFirstX) < 0.5)
+        #expect(abs(scene.placedNodes[1].position.x - (minFirstX + scene.minCenterDistance)) < 0.5)
+        #expect(abs(scene.placedNodes[0].position.y - first.y) < 0.5)
+        #expect(abs(scene.placedNodes[1].position.y - last.y) < 0.5)
+        #expect(scene.lastPlacedCenterFitsRemaining(scene.placedNodes[1].position.x))
+    }
+
+    @Test func assistRejectedForSmallNudgeTowardPlayArea() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        scene.layoutCurrentChoiceSet(fadeIn: false)
+        let home = try #require(scene.choiceHome.values.first)
+        let nudge = CGPoint(x: home.x, y: home.y + 12)
+        #expect(!scene.shouldAssistPlacement(fromHome: home, at: nudge))
+    }
+
+    @Test func assistAcceptedAfterEnoughTravelTowardPlayArea() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        scene.layoutCurrentChoiceSet(fadeIn: false)
+        let home = try #require(scene.choiceHome.values.first)
+        let threshold = scene.assistTravelThreshold(fromHome: home)
+        let far = CGPoint(x: home.x, y: home.y + threshold + 5)
+        #expect(scene.shouldAssistPlacement(fromHome: home, at: far))
+    }
+
+    @Test func placedHitTestAndClampStayInPlayArea() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        try acceptCurrentAnswer(scene)
+        scene.placedFractions = [CGPoint(x: 0.3, y: 0.5)]
+        scene.rebuildLayout()
+
+        let node = try #require(scene.placedNodes.first)
+        #expect(scene.placedIndex(at: node.position) == 0)
+        #expect(scene.placedIndex(at: .zero) == nil)
+
+        let outside = CGPoint(
+            x: scene.playAreaRect.maxX + 200,
+            y: scene.playAreaRect.maxY + 200
+        )
+        let clamped = scene.clampedPlacedPosition(outside, forIndex: 0)
+        let radius = scene.laidOutDiameter * 0.5
+        let vertical = scene.playAreaVerticalCenterLimits
+        #expect(clamped.x <= scene.playAreaRect.maxX - radius + 0.5)
+        #expect(clamped.x >= scene.playAreaRect.minX + radius - 0.5)
+        #expect(clamped.y <= min(vertical.maxY, scene.maxPlayableCenterY(for: radius)) + 0.5)
+        #expect(clamped.y >= vertical.minY - 0.5)
+    }
+
+    @Test func placedClampKeepsNeighbourSpacingAndCommitUpdatesFractions() throws {
+        let scene = makeCatScene()
+        scene.buildContentForTesting()
+        try acceptCurrentAnswer(scene)
+        try acceptCurrentAnswer(scene)
+
+        let rect = scene.playAreaRect
+        let radius = scene.laidOutDiameter * 0.5
+        let first = CGPoint(x: rect.minX + radius, y: rect.midY)
+        let second = CGPoint(x: first.x + scene.minCenterDistance * 2, y: rect.midY)
+        scene.placedFractions = [
+            scene.playAreaFraction(of: first),
+            scene.playAreaFraction(of: second),
+        ]
+        scene.rebuildLayout()
+
+        let rightNeighbour = scene.placedNodes[1].position.x
+        let pushed = scene.clampedPlacedPosition(
+            CGPoint(x: rightNeighbour + 80, y: scene.placedNodes[0].position.y),
+            forIndex: 0
+        )
+        #expect(pushed.x <= rightNeighbour - scene.minCenterDistance + 0.5)
+
+        scene.placedNodes[1].position = CGPoint(
+            x: scene.playAreaRect.maxX - radius,
+            y: scene.playAreaRect.midY
+        )
+        scene.applyPlacedPositionsFittingRemaining(animated: false)
+        #expect(scene.lastPlacedCenterFitsRemaining(scene.placedNodes[1].position.x))
+        let expected = scene.playAreaFraction(of: scene.placedNodes[1].position)
+        #expect(abs(scene.placedFractions[1].x - expected.x) < 0.001)
+        #expect(abs(scene.placedFractions[1].y - expected.y) < 0.001)
+    }
+
     private func makeScene(
         size: CGSize = CGSize(width: 800, height: 600),
         choiceCountMin: Int? = nil,
@@ -107,6 +268,31 @@ struct GateSoundOutWordSceneTests {
             puzzleConfig = .fallback
         }
         return GateSoundOutWordScene(size: size, puzzleConfig: puzzleConfig)
+    }
+
+    private func makeCatScene() -> GateSoundOutWordScene {
+        let alphabet = "abcdefghijklmnopqrstuvwxyz".map(String.init)
+        let graphemes = alphabet.map {
+            GateGrapheme(
+                grapheme: $0,
+                pronunciation: "sfx_letter_\($0)",
+                name: "sfx_letter_\($0)_name"
+            )
+        }
+        return GateSoundOutWordScene(
+            size: CGSize(width: 800, height: 600),
+            puzzleConfig: GateSoundOutWordConfig(
+                words: [GateWord.fallbackEntry(word: "cat")],
+                graphemes: graphemes
+            )
+        )
+    }
+
+    private func acceptCurrentAnswer(_ scene: GateSoundOutWordScene) throws {
+        let answer = try #require(
+            scene.engine.currentChoices.first { $0.grapheme == scene.engine.currentGrapheme }
+        )
+        #expect(scene.engine.drop(choiceID: answer.id, isPlacementValid: true) == .accepted)
     }
 
     private func promptFill(_ scene: GateSoundOutWordScene, at index: Int) -> UIColor? {

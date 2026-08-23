@@ -169,26 +169,27 @@ extension GateSoundOutWordScene {
         return previous.position.x + minCenterDistance
     }
 
-    /// Rightmost center X allowed for the grapheme at `index`, reserving room for the rest
-    /// of the word so a greedy drop can never strand the player.
-    func maxDropX(forIndex index: Int) -> CGFloat {
-        let radius = laidOutDiameter * 0.5
-        let remaining = max(engine.targetGraphemes.count - 1 - index, 0)
-        return playAreaRect.maxX - radius - CGFloat(remaining) * minCenterDistance
+    /// Rightmost center X allowed for a drop: the play-area edge. Later letters are
+    /// made room for by sliding already-placed capacitors left after a greedy drop.
+    func maxDropX(forIndex _: Int) -> CGFloat {
+        playAreaRect.maxX - laidOutDiameter * 0.5
     }
 
-    /// A drop counts as the right place when it sits inside the play area, clear of and to
-    /// the right of the previous capacitor, with room left for the remaining graphemes.
-    func isValidDrop(_ center: CGPoint) -> Bool {
-        guard let index = engine.currentIndex else { return false }
+    /// Vertical center limits inside the play area. Tall capacitors in a short play
+    /// area still only need their center inside.
+    var playAreaVerticalCenterLimits: (minY: CGFloat, maxY: CGFloat) {
         let rect = playAreaRect
         let radius = laidOutDiameter * 0.5
-        // Tall capacitors in a short play area still only need their center inside.
         let verticalInset = min(radius, rect.height * 0.5)
-        guard center.y >= rect.minY + verticalInset,
-              center.y <= rect.maxY - verticalInset else {
-            return false
-        }
+        return (rect.minY + verticalInset, rect.maxY - verticalInset)
+    }
+
+    /// A drop counts as the right place when it sits inside the play area, clear of
+    /// and to the right of the previous capacitor.
+    func isValidDrop(_ center: CGPoint) -> Bool {
+        guard let index = engine.currentIndex else { return false }
+        let vertical = playAreaVerticalCenterLimits
+        guard center.y >= vertical.minY, center.y <= vertical.maxY else { return false }
         return center.x >= minDropX(forIndex: index) && center.x <= maxDropX(forIndex: index)
     }
 
@@ -203,18 +204,87 @@ extension GateSoundOutWordScene {
     /// Closest center that would count as a valid drop for the current grapheme.
     func nearestValidDropPoint(to point: CGPoint) -> CGPoint? {
         guard let index = engine.currentIndex else { return nil }
-        let rect = playAreaRect
-        let radius = laidOutDiameter * 0.5
-        let verticalInset = min(radius, rect.height * 0.5)
         let minX = minDropX(forIndex: index)
         let maxX = maxDropX(forIndex: index)
-        let minY = rect.minY + verticalInset
-        let maxY = rect.maxY - verticalInset
-        guard minX <= maxX, minY <= maxY else { return nil }
+        let vertical = playAreaVerticalCenterLimits
+        guard minX <= maxX, vertical.minY <= vertical.maxY else { return nil }
         return CGPoint(
             x: min(max(point.x, minX), maxX),
-            y: min(max(point.y, minY), maxY)
+            y: min(max(point.y, vertical.minY), vertical.maxY)
         )
+    }
+
+    /// Unplaced graphemes after the engine has accepted the latest drop.
+    var remainingUnplacedCount: Int {
+        max(engine.targetGraphemes.count - engine.placedCount, 0)
+    }
+
+    /// Later letters fit at current size when the last placed center leaves
+    /// `remaining * minCenterDistance` before the play-area's right radius.
+    func lastPlacedCenterFitsRemaining(_ x: CGFloat) -> Bool {
+        let remaining = remainingUnplacedCount
+        guard remaining > 0 else { return true }
+        let radius = laidOutDiameter * 0.5
+        return x + CGFloat(remaining) * minCenterDistance <= playAreaRect.maxX - radius
+    }
+
+    /// Packed centers for already-placed capacitors so unplaced letters still fit.
+    /// Y is unchanged. Empty when there are no placed nodes.
+    func targetPlacedPositionsFittingRemaining() -> [CGPoint] {
+        let current = placedNodes.map(\.position)
+        guard let last = current.last else { return current }
+        guard remainingUnplacedCount > 0, !lastPlacedCenterFitsRemaining(last.x) else {
+            return current
+        }
+
+        let radius = laidOutDiameter * 0.5
+        let maxLastX = playAreaRect.maxX - radius
+            - CGFloat(remainingUnplacedCount) * minCenterDistance
+        let deficit = last.x - maxLastX
+        let minFirstX = playAreaRect.minX + radius
+        if let first = current.first, first.x - deficit >= minFirstX - 0.5 {
+            return current.map { CGPoint(x: $0.x - deficit, y: $0.y) }
+        }
+
+        return current.enumerated().map { index, point in
+            CGPoint(x: minFirstX + CGFloat(index) * minCenterDistance, y: point.y)
+        }
+    }
+
+    /// Travel from home required before a near-miss drop is assisted into the play area.
+    func assistTravelThreshold(fromHome home: CGPoint) -> CGFloat {
+        max(tapMoveThreshold * 4, distanceToPlayArea(home) * 0.5)
+    }
+
+    /// Near-miss assist: closer to the play area than home, and far enough from home.
+    func shouldAssistPlacement(fromHome home: CGPoint, at position: CGPoint) -> Bool {
+        let travel = hypot(position.x - home.x, position.y - home.y)
+        guard travel >= assistTravelThreshold(fromHome: home) else { return false }
+        guard nearestValidDropPoint(to: position) != nil else { return false }
+        return distanceToPlayArea(position) < distanceToPlayArea(home)
+    }
+
+    /// Play-area center clamp for a placed capacitor, keeping spelling order.
+    func clampedPlacedPosition(_ point: CGPoint, forIndex index: Int) -> CGPoint {
+        let radius = laidOutDiameter * 0.5
+        let vertical = playAreaVerticalCenterLimits
+        let minY = vertical.minY
+        let maxY = min(vertical.maxY, maxPlayableCenterY(for: radius))
+        var minX = playAreaRect.minX + radius
+        var maxX = playAreaRect.maxX - radius
+        if index > 0, placedNodes.indices.contains(index - 1) {
+            minX = max(minX, placedNodes[index - 1].position.x + minCenterDistance)
+        }
+        if placedNodes.indices.contains(index + 1) {
+            maxX = min(maxX, placedNodes[index + 1].position.x - minCenterDistance)
+        }
+        let x: CGFloat
+        if minX > maxX {
+            x = (minX + maxX) * 0.5
+        } else {
+            x = min(max(point.x, minX), maxX)
+        }
+        return CGPoint(x: x, y: min(max(point.y, minY), maxY))
     }
 
     // MARK: - Build
@@ -229,6 +299,8 @@ extension GateSoundOutWordScene {
         choiceHome = [:]
         connectorSegments = []
         electricityRefreshAccumulator = 0
+        dragPlacedIndex = nil
+        dragMoved = false
         laidOutDiameter = capacitorDiameter
 
         if let background = GateMinigameBackground.spelling(sceneSize: size) {
@@ -309,6 +381,7 @@ extension GateSoundOutWordScene {
             addChild(node)
             placedNodes.append(node)
         }
+        applyPlacedPositionsFittingRemaining(animated: false)
         layoutCurrentChoiceSet(fadeIn: false)
         updateConnectors()
         updatePromptColors()

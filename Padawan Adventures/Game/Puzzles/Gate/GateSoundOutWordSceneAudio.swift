@@ -46,6 +46,15 @@ extension GateSoundOutWordScene {
         }
     }
 
+    /// Letter sound for a capacitor already in the play area.
+    func playPlacedSound(at index: Int) {
+        guard let grapheme = engine.grapheme(at: index),
+              let trackID = engine.soundTrackID(for: grapheme) else {
+            return
+        }
+        SoundEffectsController.shared.play(trackID: trackID)
+    }
+
     func playCorrectSound() {
         SoundEffectsController.shared.play(event: "correct", from: mergedFx)
     }
@@ -61,6 +70,7 @@ extension GateSoundOutWordScene {
         isCompletingWin = true
         inputLocked = true
         dragChoiceID = nil
+        dragPlacedIndex = nil
         clearChoiceNodes()
         updateConnectors()
         updatePromptColors()

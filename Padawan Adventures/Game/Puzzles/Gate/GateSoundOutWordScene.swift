@@ -59,8 +59,10 @@ final class GateSoundOutWordScene: MinigameScene {
     var inputLocked = false
     var isCompletingWin = false
     var dragChoiceID: UUID?
+    var dragPlacedIndex: Int?
     var dragOffset: CGPoint = .zero
     var dragStart: CGPoint = .zero
+    var placedDragOrigin: CGPoint = .zero
     var dragMoved = false
 
     let tapMoveThreshold: CGFloat = 10
@@ -125,6 +127,9 @@ final class GateSoundOutWordScene: MinigameScene {
     override func update(_ currentTime: TimeInterval) {
         let dt = lastUpdateTime.map { min(max(currentTime - $0, 0), 0.05) } ?? (1.0 / 60.0)
         lastUpdateTime = currentTime
+        if placedNodes.contains(where: { $0.hasActions() }) {
+            updateConnectors()
+        }
         refreshElectricityConnectors(dt: dt)
     }
 
@@ -141,8 +146,23 @@ final class GateSoundOutWordScene: MinigameScene {
             // Cancel any in-flight home / shuffle tween so the drag owns the node.
             node.removeAllActions()
             dragChoiceID = choiceID
+            dragPlacedIndex = nil
             dragStart = point
             dragMoved = false
+            dragOffset = CGPoint(x: node.position.x - point.x, y: node.position.y - point.y)
+            node.zPosition = 50
+            return
+        }
+
+        if let index = placedIndex(at: point), placedNodes.indices.contains(index) {
+            playPlacedSound(at: index)
+            guard !inputLocked else { return }
+            let node = placedNodes[index]
+            dragPlacedIndex = index
+            dragChoiceID = nil
+            dragStart = point
+            dragMoved = false
+            placedDragOrigin = node.position
             dragOffset = CGPoint(x: node.position.x - point.x, y: node.position.y - point.y)
             node.zPosition = 50
             return
@@ -160,17 +180,27 @@ final class GateSoundOutWordScene: MinigameScene {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard !didEnd, !isCompletingWin, let touch = touches.first,
-              let dragChoiceID, let node = choiceNodes[dragChoiceID] else { return }
+        guard !didEnd, !isCompletingWin, let touch = touches.first else { return }
         let point = touch.location(in: self)
         if hypot(point.x - dragStart.x, point.y - dragStart.y) > tapMoveThreshold {
             dragMoved = true
         }
-        let radius = laidOutDiameter * 0.5
-        node.position = CGPoint(
-            x: min(max(point.x + dragOffset.x, radius), size.width - radius),
-            y: min(max(point.y + dragOffset.y, radius), maxPlayableCenterY(for: radius))
-        )
+
+        if let dragChoiceID, let node = choiceNodes[dragChoiceID] {
+            let radius = laidOutDiameter * 0.5
+            node.position = CGPoint(
+                x: min(max(point.x + dragOffset.x, radius), size.width - radius),
+                y: min(max(point.y + dragOffset.y, radius), maxPlayableCenterY(for: radius))
+            )
+            return
+        }
+
+        if let dragPlacedIndex, placedNodes.indices.contains(dragPlacedIndex) {
+            let node = placedNodes[dragPlacedIndex]
+            let proposed = CGPoint(x: point.x + dragOffset.x, y: point.y + dragOffset.y)
+            node.position = clampedPlacedPosition(proposed, forIndex: dragPlacedIndex)
+            updateConnectors()
+        }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -178,6 +208,15 @@ final class GateSoundOutWordScene: MinigameScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let dragPlacedIndex, placedNodes.indices.contains(dragPlacedIndex) {
+            let node = placedNodes[dragPlacedIndex]
+            node.position = placedDragOrigin
+            node.zPosition = 20
+            self.dragPlacedIndex = nil
+            dragMoved = false
+            updateConnectors()
+            return
+        }
         guard let dragChoiceID else { return }
         self.dragChoiceID = nil
         dragMoved = false
@@ -186,6 +225,10 @@ final class GateSoundOutWordScene: MinigameScene {
     }
 
     func endDrag() {
+        if dragPlacedIndex != nil {
+            endPlacedDrag()
+            return
+        }
         guard let choiceID = dragChoiceID, let node = choiceNodes[choiceID] else { return }
         dragChoiceID = nil
         let moved = dragMoved
@@ -203,16 +246,44 @@ final class GateSoundOutWordScene: MinigameScene {
             return
         }
 
-        // Near miss: dragged closer to the play area than home — ease into the nearest
-        // legal spot, then accept or reject from there.
+        // Near miss: dragged far enough from home and closer to the play area —
+        // ease into the nearest legal spot, then accept or reject from there.
         if let home = choiceHome[choiceID],
-           let target = nearestValidDropPoint(to: node.position),
-           distanceToPlayArea(node.position) < distanceToPlayArea(home) {
+           shouldAssistPlacement(fromHome: home, at: node.position),
+           let target = nearestValidDropPoint(to: node.position) {
             runAssistedPlacement(choiceID: choiceID, to: target)
             return
         }
 
         resolveDrop(choiceID: choiceID, isPlacementValid: false)
+    }
+
+    func endPlacedDrag() {
+        guard let index = dragPlacedIndex, placedNodes.indices.contains(index) else {
+            dragPlacedIndex = nil
+            dragMoved = false
+            return
+        }
+        let node = placedNodes[index]
+        dragPlacedIndex = nil
+        let moved = dragMoved
+        dragMoved = false
+        node.zPosition = 20
+
+        guard moved else { return }
+
+        let duration = applyPlacedPositionsFittingRemaining(animated: true)
+        updateConnectors()
+        guard duration > 0 else { return }
+        inputLocked = true
+        removeAction(forKey: Self.feedbackActionKey)
+        run(
+            SKAction.sequence([
+                SKAction.wait(forDuration: duration),
+                SKAction.run { [weak self] in self?.inputLocked = false },
+            ]),
+            withKey: Self.feedbackActionKey
+        )
     }
 
     func resolveDrop(choiceID: UUID, isPlacementValid: Bool) {

@@ -6,6 +6,7 @@ extension GateSoundOutWordScene: MinigameDemoStage {
             && !inputLocked
             && !isCompletingWin
             && dragChoiceID == nil
+            && dragPlacedIndex == nil
             && !choiceNodes.isEmpty
     }
 
@@ -102,6 +103,7 @@ extension GateSoundOutWordScene: GateSoundOutWordDemoStaging {
         isCompletingWin = false
         inputLocked = false
         dragChoiceID = nil
+        dragPlacedIndex = nil
         dragMoved = false
         isUserInteractionEnabled = true
         // `buildPuzzle()` clears the node arrays but not the resize bookkeeping.
