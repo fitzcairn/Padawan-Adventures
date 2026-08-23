@@ -70,6 +70,7 @@ final class GameViewController: LandscapeHostingController {
             world: world,
             isoConfig: isoConfig,
             enemyConfig: session.enemyConfig,
+            npcsConfig: session.npcsConfig,
             playerFx: session.playerConfig.fx,
             worldFx: session.selectedLevel.worldFx,
             spriteLibrary: session.spriteLibrary,
@@ -92,6 +93,9 @@ final class GameViewController: LandscapeHostingController {
         }
         scene.onGateEntered = { [weak self] gate, approach in
             self?.presentGate(at: gate, approach: approach)
+        }
+        scene.onMerchantContact = { [weak self] merchantID, approach in
+            self?.presentMerchant(merchantID: merchantID, approach: approach)
         }
         scene.onPickupCollected = { [weak self] kind in
             self?.handlePickupCollected(kind)
@@ -160,8 +164,27 @@ final class GameViewController: LandscapeHostingController {
             config: hudConfig,
             healthCount: world.healthCount,
             energyCount: world.energyCount,
-            starsCount: starsCount
+            starsCount: starsCount,
+            inventorySlots: session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
+            merchantCatalog: session.itemsConfig.merchant
         )
+        hud.onInventorySlotTapped = { [weak self] index, itemID in
+            guard let self else { return }
+            if let sound = self.session.itemsConfig.merchantItem(itemID)?.sprite.sound,
+               !sound.isEmpty
+            {
+                SoundEffectsController.shared.play(trackID: sound)
+            }
+            Task {
+                await self.session.setItemSlot(index: index, itemID: nil)
+                await MainActor.run {
+                    self.hud?.setInventorySlots(
+                        self.session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
+                        catalog: self.session.itemsConfig.merchant
+                    )
+                }
+            }
+        }
         hud.onFleeTapped = { [weak self] in
             guard let self else { return }
             self.runExitHandler.exitToLevelSelect(
@@ -178,6 +201,7 @@ final class GameViewController: LandscapeHostingController {
             hud.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             hud.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+        hud.embedInventory(in: self)
         self.hud = hud
     }
 
@@ -347,6 +371,55 @@ final class GameViewController: LandscapeHostingController {
                     }
                 }
             }
+        )
+    }
+
+    @MainActor
+    private func presentMerchant(merchantID: UUID, approach: GridCoord) {
+        let resourceName = session.selectedLevelResourceName ?? ""
+        let tileSeed = gameScene?.currentWorld.tileSeed ?? 0
+        encounterCoordinator.presentMinigame(
+            music: MusicCue.parse("merchant"),
+            memoryLabel: "merchant",
+            needsTutorial: { false },
+            tutorialKey: "merchant",
+            onTutorialAcknowledged: {},
+            makeDemoView: { EmptyView() },
+            makeView: { finish in
+                MerchantMinigameView(
+                    appSession: self.session,
+                    resourceName: resourceName,
+                    tileSeed: tileSeed,
+                    onFinished: finish
+                )
+            },
+            onOutcome: { [weak self] _, returnToWorld in
+                guard let self, let scene = self.gameScene else {
+                    returnToWorld.dismissWhileCovered { $0() }
+                    return
+                }
+                BackgroundMusicController.shared.apply(
+                    MusicCue.parse(self.session.selectedLevelMusic)
+                )
+                self.refreshWorldHUDAfterMerchant()
+                let departNode = scene.prepareMerchantDepart(
+                    merchantID: merchantID,
+                    approach: approach
+                )
+                returnToWorld.crossfadeToWorld { done in
+                    scene.revealMerchantDepart(departNode: departNode, completion: done)
+                }
+            }
+        )
+    }
+
+    private func refreshWorldHUDAfterMerchant() {
+        let resourceName = session.selectedLevelResourceName
+        let stars = resourceName.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
+        hud?.setStars(stars)
+        hud?.setInventorySlots(
+            session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
+            catalog: session.itemsConfig.merchant
         )
     }
 

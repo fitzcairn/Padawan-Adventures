@@ -36,6 +36,10 @@ nonisolated struct SimulationTickResult: Sendable {
     var gateCoord: GridCoord?
     /// Floor tile the player approached the gate from (for timeout retreat).
     var gateApproachCoord: GridCoord?
+    /// Merchant that shares the player's occupancy tile this tick, if any.
+    var merchantContactID: UUID?
+    /// Floor tile the player approached the merchant from (for post-shop retreat).
+    var merchantApproachCoord: GridCoord?
 }
 
 struct SimulationLoop: Sendable {
@@ -60,7 +64,15 @@ struct SimulationLoop: Sendable {
     /// acts on `enemyContactID`; a tick that reports contact the caller ignores (pit and gate
     /// entry outrank it) must not freeze, or the loop stays suspended once the world resumes.
     mutating func beginEnemyEncounter() {
+        beginEncounter()
+    }
+
+    mutating func beginEncounter() {
         encounterActive = true
+    }
+
+    mutating func endEncounter() {
+        encounterActive = false
     }
 
     mutating func removeEnemy(id: UUID, from world: inout GameWorld) {
@@ -96,11 +108,21 @@ struct SimulationLoop: Sendable {
             movements: &enemyMovements,
             deltaTime: SimulationClock.tickDuration
         )
+        let previousOccupancy = world.playerPosition
         result = runPositions(world: &world, movement: &movement, priorResult: result)
         result.enemyDisplayPoses = enemyDisplayPoses(world: world)
         result.enemyContactID = world.enemyInContactWithPlayer()?.id
         if result.enemyContactID == nil {
-            result.pickupContactID = world.pickupInContactWithPlayer()?.id
+            if let merchant = world.merchantInContactWithPlayer() {
+                result.merchantContactID = merchant.id
+                if let previousOccupancy, previousOccupancy != merchant.position {
+                    result.merchantApproachCoord = previousOccupancy
+                } else {
+                    result.merchantApproachCoord = world.spawn
+                }
+            } else {
+                result.pickupContactID = world.pickupInContactWithPlayer()?.id
+            }
         }
         result.animationFrame = Int(tickCount % 4)
 

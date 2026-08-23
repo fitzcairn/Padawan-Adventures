@@ -9,8 +9,11 @@ struct MinigameShellView<Scene: SKScene, HUD: View, Overlay: View>: View {
     let updateSceneSize: (CGSize) -> Void
     var onAppear: (() -> Void)?
     var includesHUDLayer: Bool = true
+    /// When true, the HUD layer receives hits (inventory drop targets in the merchant shop).
+    var hudAllowsHitTesting: Bool = false
     /// When set, shows the level-HUD flee control (bottom-trailing) to leave without completing.
     var onLeave: (() -> Void)? = nil
+    var leaveEnabled: Bool = true
     @ViewBuilder var hud: HUD
     @ViewBuilder var overlay: Overlay
 
@@ -28,13 +31,14 @@ struct MinigameShellView<Scene: SKScene, HUD: View, Overlay: View>: View {
                     hud
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
-                        .allowsHitTesting(false)
+                        .allowsHitTesting(hudAllowsHitTesting)
                 }
 
                 if let onLeave {
-                    MinigameLeaveButtonHost(onLeave: onLeave)
+                    MinigameLeaveButtonHost(onLeave: onLeave, isEnabled: leaveEnabled)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
+                        .allowsHitTesting(leaveEnabled)
                 }
 
                 overlay

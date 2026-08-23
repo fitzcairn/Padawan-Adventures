@@ -1,0 +1,67 @@
+import Foundation
+import Yams
+
+/// NPC sprite sheets from `Catalogs/npcs.yaml`.
+nonisolated struct NpcsConfig: Codable, Equatable, Sendable {
+    var sprites: [String: SpriteConfig]
+
+    enum CodingKeys: String, CodingKey {
+        case sprites
+    }
+
+    nonisolated static let fallback = NpcsConfig(sprites: [:])
+
+    init(sprites: [String: SpriteConfig] = [:]) {
+        self.sprites = sprites
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        sprites = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .sprites) ?? [:]
+    }
+
+    func spriteConfig(id: String) -> SpriteConfig? {
+        sprites[id]
+    }
+
+    func validate() throws {
+        for (id, sprite) in sprites {
+            guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NpcsConfigError.invalid("npc sprite id must be non-empty")
+            }
+            guard !sprite.root.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw NpcsConfigError.invalid("\(id).root must be non-empty")
+            }
+        }
+    }
+
+    static func loadFromBundle(
+        named name: String = "npcs",
+        withExtension ext: String = "yaml"
+    ) throws -> NpcsConfig {
+        let data = try ConfigStore.data(at: .catalog(name))
+        return try decode(from: data)
+    }
+
+    static func decode(from data: Data) throws -> NpcsConfig {
+        do {
+            let config = try YAMLDecoder().decode(NpcsConfig.self, from: data)
+            try config.validate()
+            return config
+        } catch let error as NpcsConfigError {
+            throw error
+        } catch {
+            throw NpcsConfigError.decodeFailed
+        }
+    }
+
+    static func decode(from yaml: String) throws -> NpcsConfig {
+        try decode(from: Data(yaml.utf8))
+    }
+}
+
+nonisolated enum NpcsConfigError: Error, Equatable {
+    case missingResource
+    case decodeFailed
+    case invalid(String)
+}

@@ -60,6 +60,7 @@ struct ModalCRTText: View {
     var weight: Font.Weight = .bold
     var color: Color = StarWarsConsolePalette.crtBlue
     var glow: Color = StarWarsConsolePalette.crtGlow
+    var alignment: TextAlignment = .center
     var accessibilityID: String? = nil
     var speakID: String? = nil
 
@@ -67,7 +68,7 @@ struct ModalCRTText: View {
         Text(text)
             .font(AppFont.swiftUI(size: size, weight: weight))
             .foregroundStyle(color)
-            .multilineTextAlignment(.center)
+            .multilineTextAlignment(alignment)
             .shadow(color: glow, radius: max(2, size * 0.12))
             .accessibilityIdentifier(accessibilityID ?? text)
             .modifier(ModalCRTSpeakOnTap(speakID: speakID))

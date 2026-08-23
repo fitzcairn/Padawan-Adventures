@@ -34,6 +34,9 @@ enum GameWorldPreparer {
         if let resourceName = session.selectedLevelResourceName {
             if mode == .newGame {
                 await session.resetLevelStarsCurrent(resourceName: resourceName)
+                if session.appConfig.demoMode {
+                    await session.addLevelStars(resourceName: resourceName, count: 1000)
+                }
             }
             await session.markLevelStarted(resourceName: resourceName)
         }
@@ -51,13 +54,16 @@ enum GameWorldPreparer {
             report(LoadProgress.map(local, from: 0.18, to: 0.26))
         }
         let enemiesReady = await session.ensureEnemySpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.26, to: 0.40))
+            report(LoadProgress.map(local, from: 0.26, to: 0.38))
         }
         guard enemiesReady else {
             GameLogger.fault(.world, "aborting launch — enemy sprites incomplete")
             session.releaseLevelScopedAssets()
             session.startObservingMemoryPressure()
             return nil
+        }
+        await session.ensureNpcSpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.38, to: 0.40))
         }
 
         // Warm per-level tile sets before GPU upload so the world does not decode mid-frame.

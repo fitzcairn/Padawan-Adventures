@@ -220,4 +220,24 @@ extension ConfigAudit {
         guard let sprite else { return [] }
         return checkSpriteConfig(sprite, label: "\(label).sprite", bundle: bundle)
     }
+
+    static func checkMerchantItemDescriptions(
+        items: ItemsConfig,
+        strings: StringCatalog
+    ) -> [String] {
+        var problems: [String] = []
+        for (id, ware) in items.merchant.sorted(by: { $0.key < $1.key }) {
+            let descriptionID = ware.description.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !descriptionID.isEmpty else {
+                problems.append("items.merchant.\(id).description: empty")
+                continue
+            }
+            if strings.entry(descriptionID) == nil {
+                problems.append(
+                    "items.merchant.\(id).description: '\(descriptionID)' is missing from strings.yaml"
+                )
+            }
+        }
+        return problems
+    }
 }

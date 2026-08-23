@@ -120,7 +120,12 @@ struct EnemyAISystem: Sendable {
             return
         }
 
-        guard let path = pathfinder.findPath(from: enemy.position, to: goal, in: world),
+        guard let path = pathfinder.findPath(
+            from: enemy.position,
+            to: goal,
+            in: world,
+            blocked: world.merchantOccupiedCells()
+        ),
               path.count >= 2 else {
             // Keep current motion; never snap by resetting on a failed repath.
             return

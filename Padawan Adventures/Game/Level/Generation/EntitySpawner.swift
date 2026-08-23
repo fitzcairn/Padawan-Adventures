@@ -493,6 +493,16 @@ nonisolated extension ProceduralGenerator {
                 rng: &floorRng
             )
         }
+
+        MerchantSpawner.spawn(
+            rooms: state.rooms,
+            tiles: state.tiles,
+            occupied: &state.occupied,
+            entities: &state.entities,
+            joinEdges: state.joinEdges,
+            biasTowardTreasure: !config.demoMode,
+            seed: seed
+        )
     }
 }
 

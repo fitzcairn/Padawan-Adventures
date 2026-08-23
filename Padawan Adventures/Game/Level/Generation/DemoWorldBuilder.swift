@@ -138,6 +138,14 @@ nonisolated enum DemoWorldBuilder {
                 pickupKind: .treasure
             )
         )
+        /// Demo keeps the merchant in the start-room corner; campaign maps bias toward treasure.
+        entities.append(
+            GameEntity(
+                letter: "M",
+                position: GridCoord(x: 1, y: 13, story: 0),
+                npcID: MerchantSpawner.npcID
+            )
+        )
 
         if let floorTileSet {
             var rng = SeededGenerator(seed: seed ^ FloorTiler.seedSalt)

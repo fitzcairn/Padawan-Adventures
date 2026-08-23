@@ -28,6 +28,9 @@ struct ConfigAuditTests {
         let items = try ItemsConfig.loadFromBundle()
         try items.validate()
 
+        let npcs = try NpcsConfig.loadFromBundle()
+        try npcs.validate()
+
         let words = try WordCatalog.loadFromBundle()
         try words.validate()
 
@@ -76,7 +79,8 @@ struct ConfigAuditTests {
             letters: letters,
             audio: audio,
             screens: screens,
-            player: player
+            player: player,
+            npcs: npcs
         )
     }
 

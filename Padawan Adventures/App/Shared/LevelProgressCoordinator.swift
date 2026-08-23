@@ -137,6 +137,22 @@ extension AppSession {
     }
 
     @discardableResult
+    func spendLevelStars(resourceName: String, count: Int) async -> Bool {
+        guard var state = playerState else { return false }
+        let spent = state.spendLevelStars(resourceName, count: count)
+        guard spent else { return false }
+        playerState = state
+        await persistPlayerState()
+        return true
+    }
+
+    func setItemSlot(index: Int, itemID: String?) async {
+        guard playerState != nil else { return }
+        playerState?.setItemSlot(index: index, itemID: itemID)
+        await persistPlayerState()
+    }
+
+    @discardableResult
     func finalizeLevelStars(resourceName: String) async -> LevelStarsFinalizeResult? {
         guard var state = playerState else { return nil }
         let result = state.finalizeLevelStars(resourceName)

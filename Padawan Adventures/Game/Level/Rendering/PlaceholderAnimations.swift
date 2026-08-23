@@ -97,8 +97,11 @@ extension PlaceholderFactory {
     /// Particles do not inherit parent alpha, so the sprite/shape children fade
     /// separately and the emitter birth rate is stopped before removal.
     @MainActor
-    static func playDefeatAnimation(on node: SKNode, completion: @escaping () -> Void) {
-        let highlight = HighlightConfig.enemyDefeat
+    static func playDefeatAnimation(
+        on node: SKNode,
+        highlight: HighlightConfig = .enemyDefeat,
+        completion: @escaping () -> Void
+    ) {
         let visuals = node.children.filter { !($0 is SKEmitterNode) }
         let animated = visuals.compactMap { $0 as? AnimatedSpriteNode }.first
         let referenceHeight = animated?.targetHeight

@@ -4,6 +4,9 @@ import UIKit
 /// Full-bleed leave chrome matching `GameHUDView`'s flee button (bottom-trailing + `ScreenLayout`).
 final class MinigameLeaveHUDView: UIView {
     var onLeave: (() -> Void)?
+    var isLeaveEnabled: Bool = true {
+        didSet { leaveButton.isEnabled = isLeaveEnabled }
+    }
 
     private let leaveButton: UIButton
     private lazy var edgeInsets = ScreenEdgeInsetController(host: self)
@@ -20,6 +23,7 @@ final class MinigameLeaveHUDView: UIView {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard isLeaveEnabled else { return nil }
         let hit = super.hitTest(point, with: event)
         if hit === leaveButton || hit?.isDescendant(of: leaveButton) == true {
             return hit
@@ -63,14 +67,17 @@ final class MinigameLeaveHUDView: UIView {
 
 struct MinigameLeaveButtonHost: UIViewRepresentable {
     let onLeave: () -> Void
+    var isEnabled: Bool = true
 
     func makeUIView(context: Context) -> MinigameLeaveHUDView {
         let view = MinigameLeaveHUDView()
         view.onLeave = onLeave
+        view.isLeaveEnabled = isEnabled
         return view
     }
 
     func updateUIView(_ uiView: MinigameLeaveHUDView, context: Context) {
         uiView.onLeave = onLeave
+        uiView.isLeaveEnabled = isEnabled
     }
 }

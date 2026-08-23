@@ -147,6 +147,12 @@ extension AppSession {
             return loaded
         }
 
+        let npcsConfig = ConfigStore.loadOrFallback("npcs", fallback: NpcsConfig.fallback) {
+            let loaded = try NpcsConfig.loadFromBundle()
+            try loaded.validate()
+            return loaded
+        }
+
         let screensConfig = ConfigStore.loadOrFallback("screens", fallback: ScreensConfig.fallback) {
             try ScreensConfig.loadFromBundle()
         }
@@ -338,6 +344,7 @@ extension AppSession {
                 audio: soundSettings,
                 screens: screensConfig,
                 player: playerConfig,
+                npcs: npcsConfig,
                 vocabularyCatalog: vocabularyCatalog,
                 strings: stringCatalog
             )
@@ -354,6 +361,7 @@ extension AppSession {
             playerConfig: playerConfig,
             enemyConfig: enemyConfig,
             itemsConfig: itemsConfig,
+            npcsConfig: npcsConfig,
             playerStore: playerStore,
             saveService: saveService,
             hasCompatibleSave: false,

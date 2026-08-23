@@ -165,6 +165,78 @@ struct SimulationLoopTests {
         #expect(result.hasEncounterContact)
     }
 
+    @Test func merchantContactReportsApproachAndIsEncounter() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        let start = GridCoord(x: 0, y: 1, story: 0)
+        let merchantCell = GridCoord(x: 1, y: 1, story: 0)
+        world.setPlayerPosition(start)
+        world = GameWorld(
+            width: world.width,
+            height: world.height,
+            storyCount: world.storyCount,
+            tiles: world.tiles,
+            entities: world.entities + [
+                GameEntity(letter: "M", position: merchantCell, npcID: "merchant"),
+            ],
+            spawn: world.spawn
+        )
+
+        var movement = MovementSystem(tilesPerSecond: 1.0)
+        var pendingInput = PendingInput()
+        var loop = SimulationLoop()
+        movement.begin(path: [start, merchantCell])
+
+        var result = SimulationTickResult()
+        var tickCount: UInt64 = 1
+        while result.merchantContactID == nil, tickCount < 100 {
+            result = loop.tick(
+                world: &world,
+                movement: &movement,
+                pendingInput: &pendingInput,
+                tickCount: tickCount
+            )
+            tickCount += 1
+        }
+
+        #expect(result.merchantContactID != nil)
+        #expect(result.merchantApproachCoord == start)
+        #expect(result.hasEncounterContact)
+        #expect(result.enemyContactID == nil)
+    }
+
+    @Test func endEncounterUnfreezesAfterMerchant() {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        var movement = MovementSystem()
+        var pendingInput = PendingInput()
+        var loop = SimulationLoop()
+        loop.beginEncounter()
+        _ = loop.tick(
+            world: &world,
+            movement: &movement,
+            pendingInput: &pendingInput,
+            tickCount: 1
+        )
+        pendingInput.enqueue(GridCoord(x: 1, y: 0, story: 0))
+        _ = loop.tick(
+            world: &world,
+            movement: &movement,
+            pendingInput: &pendingInput,
+            tickCount: 2
+        )
+        #expect(movement.isMoving == false)
+
+        loop.endEncounter()
+        pendingInput.enqueue(GridCoord(x: 1, y: 0, story: 0))
+        _ = loop.tick(
+            world: &world,
+            movement: &movement,
+            pendingInput: &pendingInput,
+            tickCount: 3
+        )
+        #expect(pendingInput.destination == nil)
+        #expect(movement.isMoving)
+    }
+
     /// Walking onto a pit an enemy is standing on reports both a pit entry and a contact.
     /// The caller only acts on the pit, so the loop must not freeze on the unused contact.
     private func pitEntryWithEnemyOnPit() -> (

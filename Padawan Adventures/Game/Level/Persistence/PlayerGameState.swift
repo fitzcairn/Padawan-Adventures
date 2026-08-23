@@ -175,6 +175,10 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var seenMinigameTutorials: Set<String>
     /// Whether the level-1 world tap/drag tutorial has been shown. Cleared by `resetForNewGame`.
     var seenWorldTutorial: Bool
+    /// Three merchant loadout slots. Empty string means vacant (plist cannot store `nil` in arrays).
+    var itemSlots: [String]
+
+    static let itemSlotCount = 3
 
     init(
         version: Int = PlayerGameState.currentVersion,
@@ -188,7 +192,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         settings: PlayerSettings = .default,
         dadModeUnlocked: Bool = false,
         seenMinigameTutorials: Set<String> = [],
-        seenWorldTutorial: Bool = false
+        seenWorldTutorial: Bool = false,
+        itemSlots: [String] = PlayerGameState.emptyItemSlots
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -202,6 +207,21 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.dadModeUnlocked = dadModeUnlocked
         self.seenMinigameTutorials = seenMinigameTutorials
         self.seenWorldTutorial = seenWorldTutorial
+        self.itemSlots = Self.normalizedItemSlots(itemSlots)
+    }
+
+    static var emptyItemSlots: [String] {
+        Array(repeating: "", count: itemSlotCount)
+    }
+
+    static func normalizedItemSlots(_ slots: [String]) -> [String] {
+        var result = slots
+        if result.count < itemSlotCount {
+            result.append(contentsOf: Array(repeating: "", count: itemSlotCount - result.count))
+        } else if result.count > itemSlotCount {
+            result = Array(result.prefix(itemSlotCount))
+        }
+        return result
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -217,6 +237,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case dadModeUnlocked
         case seenMinigameTutorials
         case seenWorldTutorial
+        case itemSlots
     }
 
     init(from decoder: Decoder) throws {
@@ -235,6 +256,9 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
             Set<String>.self, forKey: .seenMinigameTutorials
         ) ?? []
         seenWorldTutorial = try container.decodeIfPresent(Bool.self, forKey: .seenWorldTutorial) ?? false
+        itemSlots = Self.normalizedItemSlots(
+            try container.decodeIfPresent([String].self, forKey: .itemSlots) ?? []
+        )
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -269,6 +293,30 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         var progress = levels[resourceName] ?? LevelProgress()
         progress.starsCurrent += count
         levels[resourceName] = progress
+    }
+
+    /// Spends `count` from `starsCurrent`. Fails (no change) when the run cannot cover it.
+    @discardableResult
+    mutating func spendLevelStars(_ resourceName: String, count: Int) -> Bool {
+        guard count > 0 else { return false }
+        var progress = levels[resourceName] ?? LevelProgress()
+        guard progress.starsCurrent >= count else { return false }
+        progress.starsCurrent -= count
+        levels[resourceName] = progress
+        return true
+    }
+
+    func itemSlotID(at index: Int) -> String? {
+        guard itemSlots.indices.contains(index) else { return nil }
+        let id = itemSlots[index]
+        return id.isEmpty ? nil : id
+    }
+
+    /// Writes `itemID` into `index`, destroying any occupant (no refund).
+    mutating func setItemSlot(index: Int, itemID: String?) {
+        itemSlots = Self.normalizedItemSlots(itemSlots)
+        guard itemSlots.indices.contains(index) else { return }
+        itemSlots[index] = itemID ?? ""
     }
 
     @discardableResult
@@ -318,6 +366,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         dadModeUnlocked = false
         seenMinigameTutorials = []
         seenWorldTutorial = false
+        itemSlots = Self.emptyItemSlots
         resetVitals(health: health, energy: energy)
     }
 

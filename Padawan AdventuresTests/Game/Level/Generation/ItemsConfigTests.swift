@@ -136,4 +136,60 @@ struct ItemsConfigTests {
             try config.validate()
         }
     }
+
+    @Test func decodesMerchantWaresWithoutTreatingThemAsPickups() throws {
+        let yaml = """
+        energy:
+          sprite:
+            root: Sprites/Items/Energy
+        merchant:
+          square:
+            min_level: 1
+            price: 1
+            description: merchant_item_square
+            sprite:
+              shape: square
+              sound: square
+          circle:
+            min_level: 2
+            price: 4
+            description: merchant_item_circle
+            sprite:
+              shape: circle
+        """
+        let config = try ItemsConfig.decode(from: yaml)
+        #expect(config.items["merchant"] == nil)
+        #expect(config.spriteConfig(id: "merchant") == nil)
+        let square = try #require(config.merchant["square"])
+        #expect(square.minLevel == 1)
+        #expect(square.price == 1)
+        #expect(square.description == "merchant_item_square")
+        #expect(square.sprite.shape == .square)
+        #expect(square.sprite.sound == "square")
+        #expect(square.displayedPrice(levelOrder: 3) == 3)
+        #expect(config.merchant["circle"]?.displayedPrice(levelOrder: 2) == 8)
+        try config.validate()
+    }
+
+    @Test func validateRejectsBadMerchantPrice() {
+        var config = ItemsConfig()
+        config.merchant["square"] = MerchantItemDefinition(
+            minLevel: 1,
+            price: 0,
+            description: "merchant_item_square",
+            sprite: MerchantSpriteSpec(shape: .square)
+        )
+        #expect(throws: ItemsConfigError.invalid("merchant.square.price must be greater than 0")) {
+            try config.validate()
+        }
+    }
+
+    @Test func bundledItemsIncludeMerchantWares() throws {
+        let config = try ItemsConfig.loadFromBundle()
+        try config.validate()
+        #expect(config.items["merchant"] == nil)
+        #expect(config.merchant.count == 3)
+        #expect(config.merchant["square"]?.minLevel == 1)
+        #expect(config.merchant["triangle"]?.price == 3)
+    }
 }

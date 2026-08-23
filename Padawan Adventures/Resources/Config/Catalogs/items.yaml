@@ -116,3 +116,28 @@ pommel:
         sheet: 8-pommel-spritesheet
         atlas: 8-pommel-atlas
   highlight: treasure_gold
+
+# Merchant shop wares (not world pickups). `description` is a strings.yaml id.
+# `min_level` is a level `order:` (Tython = 1). Shown price = `price` × current order.
+merchant:
+  square:
+    min_level: 1
+    price: 1
+    description: merchant_item_square
+    sprite:
+      shape: square
+      sound: square
+  circle:
+    min_level: 1
+    price: 2
+    description: merchant_item_circle
+    sprite:
+      shape: circle
+      sound: circle
+  triangle:
+    min_level: 1
+    price: 3
+    description: merchant_item_triangle
+    sprite:
+      shape: triangle
+      sound: triangle

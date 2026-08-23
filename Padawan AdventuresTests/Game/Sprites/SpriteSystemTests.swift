@@ -374,6 +374,26 @@ struct SpriteSystemTests {
         #expect(CompassDirection.southeast.animationName(locomotion: .walk) == "walk_southeast")
     }
 
+    @Test func compassFacingFromTowardUsesIsoScreenVector() {
+        let origin = GridCoord(x: 4, y: 4, story: 0)
+        #expect(CompassDirection.facing(from: origin, toward: origin) == .down)
+        #expect(
+            CompassDirection.facing(from: origin, toward: GridCoord(x: 3, y: 3, story: 0)) == .up
+        )
+        #expect(
+            CompassDirection.facing(from: origin, toward: GridCoord(x: 5, y: 3, story: 0)) == .right
+        )
+        #expect(
+            CompassDirection.facing(from: origin, toward: GridCoord(x: 5, y: 5, story: 0)) == .down
+        )
+        #expect(
+            CompassDirection.facing(from: origin, toward: GridCoord(x: 3, y: 5, story: 0)) == .left
+        )
+        #expect(
+            CompassDirection.facing(from: origin, toward: GridCoord(x: 4, y: 3, story: 0)) == .northeast
+        )
+    }
+
     @Test @MainActor func loadsLevelPlanetUISpriteFromBundle() async throws {
         let level = try LevelConfig.loadFromBundle(
             named: "1-tython",

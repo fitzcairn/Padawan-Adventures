@@ -28,24 +28,47 @@ nonisolated struct ItemDefinition: Codable, Equatable, Sendable {
 
 /// Sprite (and future) definitions for pickup item types.
 nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
-    /// Pickup id → item definition (`energy`, `health`, …).
+    /// Pickup id → item definition (`energy`, `health`, …). The YAML `merchant:` map is
+    /// not a pickup and is never stored here.
     var items: [String: ItemDefinition]
+    /// Shop wares keyed by ware id (`square`, `circle`, …).
+    var merchant: [String: MerchantItemDefinition]
 
-    init(items: [String: ItemDefinition] = [:]) {
+    init(
+        items: [String: ItemDefinition] = [:],
+        merchant: [String: MerchantItemDefinition] = [:]
+    ) {
         self.items = items
+        self.merchant = merchant
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        items = try container.decode([String: ItemDefinition].self)
+        let container = try decoder.container(keyedBy: ConfigKey.self)
+        var items: [String: ItemDefinition] = [:]
+        var merchant: [String: MerchantItemDefinition] = [:]
+        for key in container.allKeys {
+            if key.stringValue == "merchant" {
+                merchant = try container.decode([String: MerchantItemDefinition].self, forKey: key)
+            } else {
+                items[key.stringValue] = try container.decode(ItemDefinition.self, forKey: key)
+            }
+        }
+        self.items = items
+        self.merchant = merchant
     }
 
     func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(items)
+        var container = encoder.container(keyedBy: ConfigKey.self)
+        for (id, item) in items {
+            guard let key = ConfigKey(stringValue: id) else { continue }
+            try container.encode(item, forKey: key)
+        }
+        if !merchant.isEmpty, let key = ConfigKey(stringValue: "merchant") {
+            try container.encode(merchant, forKey: key)
+        }
     }
 
-    nonisolated static let fallback = ItemsConfig(items: [:])
+    nonisolated static let fallback = ItemsConfig(items: [:], merchant: [:])
 
     /// Sprite config for a pickup kind when defined in `items.yaml`.
     func spriteConfig(for kind: PickupKind) -> SpriteConfig? {
@@ -60,6 +83,10 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
     /// Highlight config for an arbitrary item id, when the item opts in.
     func highlight(id: String) -> HighlightConfig? {
         items[id]?.highlight
+    }
+
+    func merchantItem(_ id: String) -> MerchantItemDefinition? {
+        merchant[id]
     }
 
     func validate() throws {
@@ -90,6 +117,25 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
                 }
             }
         }
+
+        guard items["merchant"] == nil else {
+            throw ItemsConfigError.invalid("merchant must not be decoded as a pickup item")
+        }
+
+        for (id, ware) in merchant {
+            guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw ItemsConfigError.invalid("merchant ware id must be non-empty")
+            }
+            guard ware.minLevel >= 1 else {
+                throw ItemsConfigError.invalid("merchant.\(id).min_level must be >= 1")
+            }
+            guard ware.price > 0 else {
+                throw ItemsConfigError.invalid("merchant.\(id).price must be greater than 0")
+            }
+            guard !ware.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw ItemsConfigError.invalid("merchant.\(id).description must be non-empty")
+            }
+        }
     }
 
     static func loadFromBundle(
@@ -112,6 +158,21 @@ nonisolated struct ItemsConfig: Codable, Equatable, Sendable {
 
     static func decode(from yaml: String) throws -> ItemsConfig {
         try decode(from: Data(yaml.utf8))
+    }
+
+    private struct ConfigKey: CodingKey {
+        var stringValue: String
+        var intValue: Int?
+
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+            self.intValue = nil
+        }
+
+        init?(intValue: Int) {
+            self.stringValue = String(intValue)
+            self.intValue = intValue
+        }
     }
 }
 

@@ -30,7 +30,7 @@ extension IsometricRenderer {
                     spriteLibrary: spriteLibrary,
                     spriteConfig: entity.isPlayer ? playerSpriteConfig : nil,
                     itemsConfig: itemsConfig,
-                    enemySprite: enemySprite(for: entity),
+                    enemySprite: characterSprite(for: entity),
                     treasureItemID: treasureItemID
                 )
                 entityNodes[entity.id] = node
@@ -155,6 +155,16 @@ extension IsometricRenderer {
     func enemySprite(for entity: GameEntity) -> (id: String, config: SpriteConfig)? {
         guard entity.isEnemy, let typeID = entity.enemyTypeID else { return nil }
         return enemyConfig.spriteConfig(for: typeID)
+    }
+
+    func npcSprite(for entity: GameEntity) -> (id: String, config: SpriteConfig)? {
+        guard entity.isMerchant, let id = entity.npcID else { return nil }
+        guard let config = npcsConfig.spriteConfig(id: id) else { return nil }
+        return (id, config)
+    }
+
+    func characterSprite(for entity: GameEntity) -> (id: String, config: SpriteConfig)? {
+        enemySprite(for: entity) ?? npcSprite(for: entity)
     }
 
     func enemyAnimatedSprite(id: UUID) -> AnimatedSpriteNode? {

@@ -31,7 +31,7 @@ extension PlaceholderFactory {
             return playerSpriteNode(config: config, library: library, spriteConfig: spriteConfig)
         }
 
-        if entity.isEnemy,
+        if entity.isEnemy || entity.isMerchant,
            let library = spriteLibrary,
            let enemySprite,
            library.animation(

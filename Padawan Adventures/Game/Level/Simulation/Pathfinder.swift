@@ -3,7 +3,12 @@ import Foundation
 struct Pathfinder: Sendable {
     /// Finds a path to `goal`, or to the closest reachable cell if `goal` is unreachable.
     /// Returns `nil` only when `goal` is not a valid movement goal.
-    func findPath(from start: GridCoord, to goal: GridCoord, in world: GameWorld) -> [GridCoord]? {
+    func findPath(
+        from start: GridCoord,
+        to goal: GridCoord,
+        in world: GameWorld,
+        blocked: Set<GridCoord> = []
+    ) -> [GridCoord]? {
         guard world.isValidMovementGoal(at: goal) else { return nil }
         guard start != goal else { return [start] }
 
@@ -22,7 +27,7 @@ struct Pathfinder: Sendable {
 
             closed.insert(current)
 
-            for neighbor in neighbors(of: current, in: world) {
+            for neighbor in neighbors(of: current, in: world, blocked: blocked) {
                 if closed.contains(neighbor) { continue }
                 let tentative = (gScore[current] ?? Int.max) + 1
                 if tentative < (gScore[neighbor] ?? Int.max) {
@@ -39,12 +44,17 @@ struct Pathfinder: Sendable {
         return reconstructPath(from: start, to: closest, cameFrom: cameFrom)
     }
 
-    func neighbors(of coord: GridCoord, in world: GameWorld) -> [GridCoord] {
+    func neighbors(
+        of coord: GridCoord,
+        in world: GameWorld,
+        blocked: Set<GridCoord> = []
+    ) -> [GridCoord] {
         var result: [GridCoord] = []
 
         for (dx, dy) in GridCoord.directions8 {
             let next = coord.neighbor(dx: dx, dy: dy)
             guard world.isInBounds(next), world.isWalkable(at: next) else { continue }
+            if blocked.contains(next) { continue }
 
             // No corner-cutting: both adjacent cardinals must be enterable.
             if dx != 0, dy != 0 {

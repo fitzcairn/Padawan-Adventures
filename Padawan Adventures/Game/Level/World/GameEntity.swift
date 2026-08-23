@@ -15,6 +15,8 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
     var enemyTypeID: String?
     /// Pickup type when this entity is a collectible; nil otherwise.
     var pickupKind: PickupKind?
+    /// NPC catalog id (`npcs.yaml` sprites key); nil for player / enemy / pickup.
+    var npcID: String?
     /// Pinned at generation (and in demo mode); nil means roll from weights (legacy saves).
     var combatMinigame: CombatMinigameKind?
 
@@ -25,6 +27,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         isPlayer: Bool = false,
         enemyTypeID: String? = nil,
         pickupKind: PickupKind? = nil,
+        npcID: String? = nil,
         combatMinigame: CombatMinigameKind? = nil
     ) {
         self.id = id
@@ -33,11 +36,13 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         self.isPlayer = isPlayer
         self.enemyTypeID = enemyTypeID
         self.pickupKind = pickupKind
+        self.npcID = npcID
         self.combatMinigame = combatMinigame
     }
 
     var isEnemy: Bool { enemyTypeID != nil && !isPlayer }
     var isPickup: Bool { pickupKind != nil && !isPlayer }
+    var isMerchant: Bool { npcID == "merchant" && !isPlayer }
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -46,6 +51,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         case isPlayer
         case enemyTypeID
         case pickupKind
+        case npcID
         case combatMinigame
     }
 
@@ -61,6 +67,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         isPlayer = try container.decode(Bool.self, forKey: .isPlayer)
         enemyTypeID = try container.decodeIfPresent(String.self, forKey: .enemyTypeID)
         pickupKind = try container.decodeIfPresent(PickupKind.self, forKey: .pickupKind)
+        npcID = try container.decodeIfPresent(String.self, forKey: .npcID)
         combatMinigame = try container.decodeIfPresent(CombatMinigameKind.self, forKey: .combatMinigame)
     }
 
@@ -72,6 +79,7 @@ nonisolated struct GameEntity: Equatable, Sendable, Identifiable, WorldPersistab
         try container.encode(isPlayer, forKey: .isPlayer)
         try container.encodeIfPresent(enemyTypeID, forKey: .enemyTypeID)
         try container.encodeIfPresent(pickupKind, forKey: .pickupKind)
+        try container.encodeIfPresent(npcID, forKey: .npcID)
         try container.encodeIfPresent(combatMinigame, forKey: .combatMinigame)
     }
 }

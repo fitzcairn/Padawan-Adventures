@@ -40,6 +40,10 @@ struct DemoWorldBuilderTests {
         let startCells = DemoWorldBuilder.layout().rooms[0].cells
 
         for entity in world.entities where !entity.isPlayer {
+            if entity.isMerchant {
+                #expect(entity.position == GridCoord(x: 1, y: 13, story: 0))
+                continue
+            }
             #expect(!startCells.contains(entity.position))
         }
         for cell in startCells {
@@ -50,6 +54,14 @@ struct DemoWorldBuilderTests {
         let hasPlayer = world.entities.contains(where: \.isPlayer)
         #expect(hasPlayer)
         #expect(world.playerPosition == world.spawn)
+    }
+
+    @Test func placesMerchantInStartRoomCorner() throws {
+        let (world, _, _) = try makeWorld()
+        let merchants = world.entities.filter(\.isMerchant)
+        #expect(merchants.count == 1)
+        #expect(merchants.first?.position == GridCoord(x: 1, y: 13, story: 0))
+        #expect(merchants.first?.isEnemy == false)
     }
 
     @Test func placesOneGateStripPerGateKind() throws {

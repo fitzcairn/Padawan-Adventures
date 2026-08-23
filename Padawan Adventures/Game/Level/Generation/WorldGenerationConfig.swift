@@ -17,6 +17,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
     var combatMinigames: [WeightedCombatKind]
     /// Pit minigame kinds + pick weights, baked onto each pit area at generation.
     var pitMinigames: [WeightedPitKind]
+    /// Demo maps use `DemoWorldBuilder` and skip treasure-biased merchant placement.
+    var demoMode: Bool
 
     nonisolated struct MapSize: Equatable, Sendable {
         var width: Int
@@ -41,7 +43,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         cohesion: Double = LevelConfig.fallbackFloor.cohesion,
         gateMinigames: [WeightedGateKind] = GateConfig.fallback.weightedMinigameKinds,
         combatMinigames: [WeightedCombatKind] = CombatConfig.fallback.weightedMinigameKinds,
-        pitMinigames: [WeightedPitKind] = PitConfig.fallback.weightedMinigameKinds
+        pitMinigames: [WeightedPitKind] = PitConfig.fallback.weightedMinigameKinds,
+        demoMode: Bool = false
     ) {
         self.seed = seed
         self.world = world
@@ -60,6 +63,7 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
         self.pitMinigames = pitMinigames.isEmpty
             ? [WeightedPitKind(kind: .soundOutWord, weight: 1)]
             : pitMinigames
+        self.demoMode = demoMode
     }
 
     static func compose(app: AppConfig, level: LevelConfig) -> WorldGenerationConfig {
@@ -79,7 +83,8 @@ nonisolated struct WorldGenerationConfig: Equatable, Sendable {
             cohesion: level.floor.cohesion,
             gateMinigames: level.gate.weightedMinigameKinds,
             combatMinigames: level.combat.weightedMinigameKinds,
-            pitMinigames: level.pit.weightedMinigameKinds
+            pitMinigames: level.pit.weightedMinigameKinds,
+            demoMode: app.demoMode
         )
     }
 

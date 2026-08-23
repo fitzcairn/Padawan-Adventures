@@ -137,6 +137,22 @@ struct GameSaveTests {
         """.data(using: .utf8)!
         let legacyEntity = try decoder.decode(GameEntity.self, from: legacyEntityJSON)
         #expect(legacyEntity.combatMinigame == nil)
+        #expect(legacyEntity.npcID == nil)
+    }
+
+    @Test func roundTripPreservesMerchantNpcID() throws {
+        let merchant = GameEntity(
+            letter: "M",
+            position: GridCoord(x: 1, y: 13, story: 0),
+            npcID: "merchant"
+        )
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        let data = try encoder.encode(merchant)
+        let decoded = try PropertyListDecoder().decode(GameEntity.self, from: data)
+        #expect(decoded.npcID == "merchant")
+        #expect(decoded.isMerchant)
+        #expect(decoded.isEnemy == false)
     }
 
     @Test func legacyDoorWallDecodesAsFloor() throws {

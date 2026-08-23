@@ -99,5 +99,43 @@ struct PlayerGameStateStarsTests {
         #expect(state.health == 5)
         #expect(state.energy == 4)
         #expect(state.stats.enemiesKilled == 3)
+        #expect(state.itemSlots == PlayerGameState.emptyItemSlots)
+    }
+
+    @Test func spendLevelStarsFailsWhenShortAndDoesNotClamp() {
+        var state = PlayerGameState(health: 3, energy: 2)
+        state.addLevelStars("level_1", count: 4)
+        let tooExpensive = state.spendLevelStars("level_1", count: 5)
+        #expect(tooExpensive == false)
+        #expect(state.levels["level_1"]?.starsCurrent == 4)
+        let zeroSpend = state.spendLevelStars("level_1", count: 0)
+        #expect(zeroSpend == false)
+        let spent = state.spendLevelStars("level_1", count: 4)
+        #expect(spent)
+        #expect(state.levels["level_1"]?.starsCurrent == 0)
+        #expect(state.totalStars == 0)
+    }
+
+    @Test func itemSlotsPadTruncateReplaceAndClearOnNewGame() throws {
+        var state = PlayerGameState(health: 3, energy: 2, itemSlots: ["square"])
+        #expect(state.itemSlots.count == 3)
+        #expect(state.itemSlotID(at: 0) == "square")
+        #expect(state.itemSlotID(at: 1) == nil)
+
+        state.setItemSlot(index: 1, itemID: "circle")
+        state.setItemSlot(index: 0, itemID: "triangle")
+        #expect(state.itemSlotID(at: 0) == "triangle")
+        #expect(state.itemSlotID(at: 1) == "circle")
+
+        let data = try PropertyListEncoder().encode(state)
+        let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.itemSlots == ["triangle", "circle", ""])
+
+        state.setItemSlot(index: 0, itemID: nil)
+        #expect(state.itemSlotID(at: 0) == nil)
+        #expect(state.itemSlotID(at: 1) == "circle")
+
+        state.resetForNewGame(health: 5, energy: 4)
+        #expect(state.itemSlots == PlayerGameState.emptyItemSlots)
     }
 }

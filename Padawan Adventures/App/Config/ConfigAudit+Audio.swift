@@ -131,6 +131,13 @@ extension ConfigAudit {
             }
         }
 
+        references.append(
+            AudioReference(kind: "merchant.music", basename: "merchant", tree: .music)
+        )
+        references.append(
+            AudioReference(kind: "merchant.fx.purchase", basename: "merchant-purchase", tree: .fx)
+        )
+
         return references
     }
 
@@ -142,9 +149,6 @@ extension ConfigAudit {
         "gate-grapheme_match-switch-push",
         // Pit falling SFX bundled for future use; no level currently references it via `pit.fx`.
         "pit-falling",
-        // Merchant shop music and purchase SFX bundled for the upcoming merchant minigame.
-        "merchant",
-        "merchant-purchase",
     ]
 
     /// Flags bundled audio that no config can reach.

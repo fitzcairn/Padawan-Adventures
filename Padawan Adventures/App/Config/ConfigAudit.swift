@@ -29,6 +29,7 @@ nonisolated enum ConfigAudit {
         audio: SoundSettings,
         screens: ScreensConfig?,
         player: PlayerConfig? = nil,
+        npcs: NpcsConfig? = nil,
         vocabularyCatalog: LevelVocabularyCatalog? = nil,
         strings: StringCatalog? = nil,
         bundle: Bundle = .main
@@ -75,6 +76,16 @@ nonisolated enum ConfigAudit {
             problems.append(contentsOf: checkArtifact(level.artifact, label: label))
             problems.append(contentsOf: checkTreasureID(level: level, items: items, label: label, bundle: bundle))
             problems.append(contentsOf: checkLevelSprite(level.sprite, label: label, bundle: bundle))
+        }
+
+        problems.append(contentsOf: checkMerchantItemDescriptions(items: items, strings: stringCatalog))
+
+        if let npcs {
+            for (id, sprite) in npcs.sprites.sorted(by: { $0.key < $1.key }) {
+                problems.append(contentsOf: checkSpriteConfig(
+                    sprite, label: "npcs.sprites.\(id)", bundle: bundle
+                ))
+            }
         }
 
         // Every music/fx basename config can reach, gathered once so the orphan check in

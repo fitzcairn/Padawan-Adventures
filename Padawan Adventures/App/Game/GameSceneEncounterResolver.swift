@@ -170,7 +170,38 @@ extension GameScene {
         }
     }
 
-    // MARK: - Vitals / continue
+    // MARK: - Merchant
+
+    /// Retreats the player and detaches the merchant sprite under cover.
+    @discardableResult
+    func prepareMerchantDepart(merchantID: UUID, approach: GridCoord) -> SKNode? {
+        world.setPlayerPosition(approach)
+        pendingInput = PendingInput()
+        simulationLoop.endEncounter()
+        let departNode = renderer.detachEntityNode(id: merchantID)
+        _ = world.removeEntity(id: merchantID)
+        renderer.syncEntities(world.entities)
+        resumeWorldPlayerIdle()
+        captureContinueAndSave()
+        return departNode
+    }
+
+    /// Gold-sparkle fade after the world is visible again.
+    func revealMerchantDepart(departNode: SKNode?, completion: (() -> Void)? = nil) {
+        guard let departNode else {
+            isPausedForEncounter = false
+            completion?()
+            return
+        }
+        PlaceholderFactory.playDefeatAnimation(
+            on: departNode,
+            highlight: .treasureGold
+        ) {
+            departNode.removeFromParent()
+            self.isPausedForEncounter = false
+            completion?()
+        }
+    }
 
     /// Deducts one energy (no-op at 0). Returns the new energy count.
     /// Does not persist — Continue stays on the last safe world until the encounter resolves.

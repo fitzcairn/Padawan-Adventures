@@ -47,6 +47,7 @@ extension SimulationTickResult {
         didEnterPit
             || enemyContactID != nil
             || gateCoord != nil
+            || merchantContactID != nil
     }
 
     /// True when a settled move should update the on-disk Continue save.

@@ -339,3 +339,24 @@ strings:
     text: "Tap to continue"
     sfx: sfx_ui_world_tutorial_tap_to_continue
     context: "Level 1 world tutorial dismiss hint"
+  merchant_item_square:
+    text: "this is a square, it looks great"
+    sfx: sfx_ui_merchant_item_square
+    context: "Merchant inspect modal for square ware"
+  merchant_item_circle:
+    text: "this is a circle, it looks great"
+    sfx: sfx_ui_merchant_item_circle
+    context: "Merchant inspect modal for circle ware"
+  merchant_item_triangle:
+    text: "this is a triangle, it looks great"
+    sfx: sfx_ui_merchant_item_triangle
+    context: "Merchant inspect modal for triangle ware"
+  merchant_replace_item:
+    text: "Replace item?"
+    sfx: sfx_ui_merchant_replace_item
+    context: "Merchant replace-occupied-slot confirm"
+  merchant_coins_spent:
+    text: "You spent {coins} coins!"
+    spoken: "You spent some coins!"
+    sfx: sfx_ui_merchant_coins_spent
+    context: "Merchant purchase coin-burst VO"

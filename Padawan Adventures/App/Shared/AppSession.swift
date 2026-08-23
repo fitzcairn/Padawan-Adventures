@@ -31,6 +31,7 @@ final class AppSession {
     let playerConfig: PlayerConfig
     let enemyConfig: EnemyConfig
     let itemsConfig: ItemsConfig
+    let npcsConfig: NpcsConfig
     let playerStore: PlayerStateStore
     var saveService: GameSaveService
     var hasCompatibleSave: Bool
@@ -67,6 +68,7 @@ final class AppSession {
         playerConfig: PlayerConfig? = nil,
         enemyConfig: EnemyConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
+        npcsConfig: NpcsConfig? = nil,
         playerStore: PlayerStateStore,
         saveService: GameSaveService,
         hasCompatibleSave: Bool = false,
@@ -95,6 +97,7 @@ final class AppSession {
         self.playerConfig = playerConfig ?? .fallback
         self.enemyConfig = enemyConfig ?? .fallback
         self.itemsConfig = itemsConfig ?? .fallback
+        self.npcsConfig = npcsConfig ?? .fallback
         self.playerStore = playerStore
         self.saveService = saveService
         self.hasCompatibleSave = hasCompatibleSave

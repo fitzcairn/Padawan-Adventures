@@ -3,6 +3,7 @@ import SpriteKit
 final class IsometricRenderer {
     let config: IsometricConfig
     let enemyConfig: EnemyConfig
+    let npcsConfig: NpcsConfig
     let spriteLibrary: SpriteLibrary?
     let playerSpriteConfig: SpriteConfig?
     let itemsConfig: ItemsConfig?
@@ -53,6 +54,7 @@ final class IsometricRenderer {
     init(
         config: IsometricConfig = IsometricConfig(),
         enemyConfig: EnemyConfig = .fallback,
+        npcsConfig: NpcsConfig = .fallback,
         spriteLibrary: SpriteLibrary? = nil,
         playerSpriteConfig: SpriteConfig? = nil,
         itemsConfig: ItemsConfig? = nil,
@@ -62,6 +64,7 @@ final class IsometricRenderer {
     ) {
         self.config = config
         self.enemyConfig = enemyConfig
+        self.npcsConfig = npcsConfig
         self.spriteLibrary = spriteLibrary
         self.playerSpriteConfig = playerSpriteConfig
         self.itemsConfig = itemsConfig

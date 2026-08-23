@@ -81,6 +81,7 @@ extension GameScene {
         renderer.applyAnimation(to: world.entities, frame: result.animationFrame)
         updatePlayerSpriteAnimation()
         updateEnemySpriteAnimations(poses: result.enemyDisplayPoses)
+        updateMerchantSpriteAnimations()
     }
 
     /// Glides a parked camera back onto the player after a destination tap.
@@ -156,6 +157,17 @@ extension GameScene {
                     libraryID: resolved.id
                 )
             }
+        }
+    }
+
+    func updateMerchantSpriteAnimations() {
+        guard let library = spriteLibrary, let playerPosition = world.playerPosition else { return }
+        for entity in world.entities where entity.isMerchant {
+            guard let npcID = entity.npcID,
+                  let sprite = renderer.enemyAnimatedSprite(id: entity.id) else { continue }
+            let facing = CompassDirection.facing(from: entity.position, toward: playerPosition)
+            let name = facing.animationName(locomotion: .idle)
+            sprite.play(name: name, library: library, libraryID: npcID)
         }
     }
 }

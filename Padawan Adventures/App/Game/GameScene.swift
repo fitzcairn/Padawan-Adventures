@@ -38,6 +38,8 @@ final class GameScene: SKScene {
     var onEnemyContact: ((UUID) -> Void)?
     /// Called the first time an enemy acquires line of sight on the player.
     var onEnemyNoticed: ((UUID) -> Void)?
+    /// Called when the player contacts the merchant (same occupancy tile).
+    var onMerchantContact: ((_ merchantID: UUID, _ approach: GridCoord) -> Void)?
     /// Called when the player enters a pit tile (`approach` retreat tile).
     var onPitEntered: ((_ approach: GridCoord) -> Void)?
     /// Called when the player walks onto a gate (`gate` tile, `approach` retreat tile).
@@ -67,6 +69,7 @@ final class GameScene: SKScene {
         world: GameWorld,
         isoConfig: IsometricConfig,
         enemyConfig: EnemyConfig = .fallback,
+        npcsConfig: NpcsConfig = .fallback,
         playerFx: SoundEffectTable = .empty,
         worldFx: SoundEffectTable = .empty,
         spriteLibrary: SpriteLibrary? = nil,
@@ -89,6 +92,7 @@ final class GameScene: SKScene {
         self.renderer = IsometricRenderer(
             config: isoConfig,
             enemyConfig: enemyConfig,
+            npcsConfig: npcsConfig,
             spriteLibrary: spriteLibrary,
             playerSpriteConfig: playerSpriteConfig,
             itemsConfig: itemsConfig,
@@ -232,6 +236,14 @@ final class GameScene: SKScene {
                 isPausedForEncounter = true
                 simulationLoop.beginEnemyEncounter()
                 onEnemyContact?(enemyID)
+                break
+            }
+
+            if let merchantID = result.merchantContactID {
+                isPausedForEncounter = true
+                simulationLoop.beginEncounter()
+                let approach = result.merchantApproachCoord ?? world.spawn
+                onMerchantContact?(merchantID, approach)
                 break
             }
 

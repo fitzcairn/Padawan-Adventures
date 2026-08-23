@@ -50,6 +50,32 @@ nonisolated enum CompassDirection: String, CaseIterable, Sendable {
     func animationName(locomotion: SpriteLocomotion) -> String {
         "\(locomotion.rawValue)_\(rawValue)"
     }
+
+    /// Eight-way facing from `from` toward `toward` using iso screen axes
+    /// `screenX ∝ (x - y)`, `screenY ∝ -(x + y)`.
+    static func facing(from: GridCoord, toward: GridCoord) -> CompassDirection {
+        let dx = toward.x - from.x
+        let dy = toward.y - from.y
+        let screenX = Double(dx - dy)
+        let screenY = Double(-(dx + dy))
+        guard screenX != 0 || screenY != 0 else { return .down }
+
+        // `atan2(screenX, screenY)` is 0 at screen-up and increases toward screen-right.
+        let angle = atan2(screenX, screenY)
+        let twoPi = Double.pi * 2
+        let normalized = (angle + twoPi).truncatingRemainder(dividingBy: twoPi)
+        let sector = Int((normalized + .pi / 8) / (.pi / 4)) % 8
+        switch sector {
+        case 0: return .up
+        case 1: return .northeast
+        case 2: return .right
+        case 3: return .southeast
+        case 4: return .down
+        case 5: return .southwest
+        case 6: return .left
+        default: return .northwest
+        }
+    }
 }
 
 nonisolated enum SpriteLocomotion: String, Sendable {

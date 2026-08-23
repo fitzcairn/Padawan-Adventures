@@ -949,6 +949,39 @@ struct ProceduralGeneratorTests {
         #expect(world.entities.filter(\.isEnemy).count == 1)
     }
 
+    @Test func spawnsOneMerchantWithoutChangingEnemyCounts() throws {
+        var config = roomsDoorsConfig(seed: 7, roomCount: 10)
+        config.enemies = .init(type: "spider", spawnChancePerRoom: 0)
+        let world = try ProceduralGenerator().generate(from: config, enemyConfig: .fallback)
+        #expect(world.entities.filter(\.isEnemy).count == 1)
+        let merchants = world.entities.filter(\.isMerchant)
+        #expect(merchants.count == 1)
+        #expect(merchants.first?.isEnemy == false)
+        #expect(Set(world.entities.map(\.position)).count == world.entities.count)
+    }
+
+    @Test func merchantBiasesTowardTreasureRoom() throws {
+        var close = 0
+        var counted = 0
+        for offset in 0..<16 {
+            var config = roomsDoorsConfig(seed: UInt64(11 + offset * 13), roomCount: 10)
+            config.enemies = .init(type: "spider", spawnChancePerRoom: 0)
+            let result = try ProceduralGenerator().generateDetailed(from: config, enemyConfig: .fallback)
+            guard let treasure = result.world.entities.first(where: { $0.pickupKind == .treasure }),
+                  let merchant = result.world.entities.first(where: \.isMerchant),
+                  let treasureRoom = result.rooms.first(where: { $0.cells.contains(treasure.position) }),
+                  let merchantRoom = result.rooms.first(where: { $0.cells.contains(merchant.position) })
+            else { continue }
+            counted += 1
+            let hops = MerchantSpawner.roomHops(from: treasureRoom.id, joinEdges: result.joinPairs)
+            if (hops[merchantRoom.id] ?? 99) <= 1 {
+                close += 1
+            }
+        }
+        #expect(counted == 16)
+        #expect(close >= 11)
+    }
+
     @Test func pickupSpawnsSkipSpawnRoomAndAvoidOverlap() throws {
         try EnergyMechanic.withEnabled {
             var config = roomsDoorsConfig(seed: 55, roomCount: 12)

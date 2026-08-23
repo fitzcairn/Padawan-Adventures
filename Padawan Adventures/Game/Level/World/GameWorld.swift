@@ -113,6 +113,21 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         }
     }
 
+    /// First merchant occupying the same tile as the player, if any.
+    func merchantInContactWithPlayer() -> GameEntity? {
+        guard let playerPosition else { return nil }
+        return entities.first { entity in
+            entity.isMerchant && entity.position == playerPosition
+        }
+    }
+
+    /// Tiles occupied by merchants (blocked for enemy pathfinding).
+    func merchantOccupiedCells() -> Set<GridCoord> {
+        Set(entities.compactMap { entity in
+            entity.isMerchant ? entity.position : nil
+        })
+    }
+
     mutating func respawnPlayer() {
         setPlayerPosition(spawn)
     }

@@ -112,6 +112,11 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "control_percent": "{percent} percent",
         "world_tutorial_intro": "Tap where you want to go. Drag to look around.",
         "world_tutorial_tap_to_continue": "Tap to continue",
+        "merchant_item_square": "this is a square, it looks great",
+        "merchant_item_circle": "this is a circle, it looks great",
+        "merchant_item_triangle": "this is a triangle, it looks great",
+        "merchant_replace_item": "Replace item?",
+        "merchant_coins_spent": "You spent {coins} coins!",
     ])
 
     nonisolated init(entries: [String: UIString]) {

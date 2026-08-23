@@ -92,6 +92,41 @@ struct GameWorldPreparerTests {
         #expect(session.playerState?.levels["1-tython"]?.started == true)
     }
 
+    @Test func demoNewGameSeedsThousandCoins() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Demo")
+        try session.selectLevel(resourceName: "1-tython")
+        session.appConfig.demoMode = true
+        _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 1000)
+    }
+
+    @Test func nonDemoNewGameLeavesCoinsAtZero() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Cody")
+        try session.selectLevel(resourceName: "1-tython")
+        session.appConfig.demoMode = false
+        await session.addLevelStars(resourceName: "1-tython", count: 2)
+        _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
+        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 0)
+    }
+
+    @Test func continueSaveDoesNotReseedDemoCoins() async throws {
+        let session = try makeSession()
+        try await session.createAndBindPlayer(name: "Demo")
+        try session.selectLevel(resourceName: "1-tython")
+        session.appConfig.demoMode = true
+        await session.addLevelStars(resourceName: "1-tython", count: 5)
+        let saved = TestWorldFactory.emptyFloor(
+            width: session.generationConfig.world.width,
+            height: session.generationConfig.world.height,
+            stories: session.generationConfig.world.stories
+        )
+        try await session.saveService.save(saved)
+        _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .continueSave)
+        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 5)
+    }
+
     @Test func ensureEnemySpritesLoadedRejectsIncompleteSprites() async throws {
         let session = try makeSession(enemyConfig: Self.brokenSpiderEnemyConfig())
         let ready = await session.ensureEnemySpritesLoaded()

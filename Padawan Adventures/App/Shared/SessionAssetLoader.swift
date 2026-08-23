@@ -80,6 +80,7 @@ extension AppSession {
             "treasure",
             "logo",
             MenuSpritesConfig.iconsID,
+            "merchant",
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))
@@ -221,6 +222,24 @@ extension AppSession {
         }
         onProgress?(1)
         return allReady
+    }
+
+    /// Ensures NPC sprite animations (currently the merchant) are loaded.
+    func ensureNpcSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        let entries = npcsConfig.sprites.sorted { $0.key < $1.key }
+        guard !entries.isEmpty else {
+            onProgress?(1)
+            return
+        }
+        let total = entries.count
+        for (index, entry) in entries.enumerated() {
+            let start = Double(index) / Double(total)
+            let end = Double(index + 1) / Double(total)
+            await spriteLibrary.ensureLoaded(entry.value, id: entry.key) { local in
+                onProgress?(LoadProgress.map(local, from: start, to: end))
+            }
+        }
+        onProgress?(1)
     }
 
     /// Loads the baked floor tile set for the currently selected level.

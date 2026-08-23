@@ -5,6 +5,7 @@ import UIKit
 struct HUDHostRepresentable<HUD: UIView>: UIViewRepresentable {
     let makeHUD: () -> HUD
     let update: (HUD) -> Void
+    var allowsHitTesting: Bool = false
 
     final class Coordinator {
         var hud: HUD?
@@ -17,7 +18,7 @@ struct HUDHostRepresentable<HUD: UIView>: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let container = UIView()
         container.backgroundColor = .clear
-        container.isUserInteractionEnabled = false
+        container.isUserInteractionEnabled = allowsHitTesting
 
         let hud = makeHUD()
         hud.translatesAutoresizingMaskIntoConstraints = false
@@ -33,6 +34,7 @@ struct HUDHostRepresentable<HUD: UIView>: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        uiView.isUserInteractionEnabled = allowsHitTesting
         if let hud = context.coordinator.hud {
             update(hud)
         }
