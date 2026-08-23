@@ -1,0 +1,23 @@
+# NPC sprite sheets, keyed by id. Baker reads `sprites:`; runtime can load a
+# key the same way it loads `enemies.yaml` `sprites:`.
+# Merchant source is black-background ToonOut (same pipeline as the player), so
+# `chroma: black`. Canvas is 512px (player idle is 256px), so `bake_scale: 0.5`
+# keeps pixel density in line. Left / northwest / southwest are horizontal
+# mirrors of right / northeast / southeast, stored as real sheets.
+
+sprites:
+  merchant:
+    root: Sprites/Merchant
+    chroma: black
+    height_fraction: 1.08
+    bake_scale: 0.5
+    anchor_correction_percent: 7
+    animations:
+      idle_up: { sheet: merchant-idle_up-spritesheet, atlas: merchant-idle_up-atlas }
+      idle_northeast: { sheet: merchant-idle_northeast-spritesheet, atlas: merchant-idle_northeast-atlas }
+      idle_northwest: { sheet: merchant-idle_northwest-spritesheet, atlas: merchant-idle_northwest-atlas }
+      idle_right: { sheet: merchant-idle_right-spritesheet, atlas: merchant-idle_right-atlas }
+      idle_left: { sheet: merchant-idle_left-spritesheet, atlas: merchant-idle_left-atlas }
+      idle_southeast: { sheet: merchant-idle_southeast-spritesheet, atlas: merchant-idle_southeast-atlas }
+      idle_southwest: { sheet: merchant-idle_southwest-spritesheet, atlas: merchant-idle_southwest-atlas }
+      idle_down: { sheet: merchant-idle_down-spritesheet, atlas: merchant-idle_down-atlas }

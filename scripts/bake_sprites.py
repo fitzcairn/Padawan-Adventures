@@ -29,7 +29,8 @@ Dependencies:
   pip3 install -r scripts/requirements.txt
 
 Usage:
-  python3 scripts/bake_sprites.py              # player + items + floors + letters + pits + gates + planets + loading + cutscene + gate
+  python3 scripts/bake_sprites.py              # player + npcs + items + floors + letters + pits + gates + planets + loading + cutscene + gate
+  python3 scripts/bake_sprites.py --npcs       # NPC character sheets (merchant)
   python3 scripts/bake_sprites.py --enemies    # also bake all enemy sheets
   python3 scripts/bake_sprites.py --projectiles # bake combat projectile sheets
   python3 scripts/bake_sprites.py --letters    # bake per-level letter glyph sets
@@ -1025,6 +1026,25 @@ def collect_items(plan: BakePlan) -> None:
         )
 
 
+def collect_npcs(plan: BakePlan) -> None:
+    path = CONFIG / "Catalogs" / "npcs.yaml"
+    add_config_input(plan, path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    sprites = data.get("sprites") or {}
+    if not isinstance(sprites, dict):
+        plan.errors.append("npcs: sprites mapping missing")
+        return
+    for npc_id, sprite in sprites.items():
+        if not isinstance(sprite, dict):
+            continue
+        collect_animation_jobs(
+            plan,
+            category=f"npc.{npc_id}",
+            sprite=sprite,
+            flip_vertical=True,
+        )
+
+
 def collect_enemies(plan: BakePlan, only: set[str] | None = None) -> None:
     path = CONFIG / "Catalogs" / "enemies.yaml"
     add_config_input(plan, path)
@@ -1247,6 +1267,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     bake_gate = args.all or args.default_set or args.gate
     bake_tutorials = args.all or args.default_set or args.tutorials
     bake_menu = args.all or args.default_set or args.menu
+    bake_npcs = args.all or args.default_set or args.npcs
     bake_enemies = args.all or args.enemies or bool(args.enemy)
     bake_projectiles = args.all or args.projectiles
 
@@ -1258,6 +1279,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.enemy,
             args.projectiles,
             args.player,
+            args.npcs,
             args.items,
             args.floors,
             args.letters,
@@ -1272,7 +1294,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.verify,
         ]
     ):
-        bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
+        bake_player = bake_npcs = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
         ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
             bake_tutorials
@@ -1285,6 +1307,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
             args.enemy,
             args.projectiles,
             args.player,
+            args.npcs,
             args.items,
             args.floors,
             args.letters,
@@ -1300,7 +1323,7 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
     ):
         # Verify against whatever the manifest lists; still collect default inputs
         # so a missing manifest can explain expected scope.
-        bake_player = bake_items = bake_floors = bake_letters = bake_pits = (
+        bake_player = bake_npcs = bake_items = bake_floors = bake_letters = bake_pits = (
             bake_gates
         ) = bake_planets = bake_loading = bake_cutscene = bake_gate = (
             bake_tutorials
@@ -1308,6 +1331,8 @@ def build_plan(args: argparse.Namespace) -> BakePlan:
 
     if bake_player:
         collect_player(plan)
+    if bake_npcs:
+        collect_npcs(plan)
     if bake_items:
         collect_items(plan)
     if bake_floors:
@@ -1627,8 +1652,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--all",
         action="store_true",
-        help="Bake player, items, floors, letters, pits, gates, planets, loading, cutscene, gate, tutorials, menu, enemies, projectiles",
+        help="Bake player, npcs, items, floors, letters, pits, gates, planets, loading, cutscene, gate, tutorials, menu, enemies, projectiles",
     )
+    p.add_argument("--npcs", action="store_true", help="Bake NPC character sheets (merchant)")
     p.add_argument("--enemies", action="store_true", help="Include all enemy sheets")
     p.add_argument("--projectiles", action="store_true", help="Bake combat projectile sheets")
     p.add_argument(
@@ -1671,6 +1697,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.enemy,
             args.projectiles,
             args.player,
+            args.npcs,
             args.items,
             args.floors,
             args.letters,
