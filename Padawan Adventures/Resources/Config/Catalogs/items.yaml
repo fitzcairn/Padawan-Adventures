@@ -34,6 +34,73 @@ coin:
         sheet: coin
         atlas: coin-atlas
 
+# Merchant shop ware stills (not world pickups). Near-black (#010101) backdrop,
+# so `chroma: black_soft` (tolerance 2) rather than exact black. Filenames
+# match the dropped PNGs.
+merchant-ware-bridge:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
+merchant-ware-crystal-green:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-crystal-green, atlas: merchant-ware-crystal-green-atlas }
+merchant-ware-crystal-purple:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-crystal-purple, atlas: merchant-ware-crystal-purple-atlas }
+merchant-ware-crystal-yellow:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-crystal-yellow, atlas: merchant-ware-crystal-yellow-atlas }
+merchant-ware-double-saber:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-double-saber, atlas: merchant-ware-double-saber-atlas }
+merchant-ware-jetpack:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-jetpack, atlas: merchant-ware-jetpack-atlas }
+merchant-ware-satelite:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-satelite, atlas: merchant-ware-satelite-atlas }
+merchant-ware-scanner:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-scanner, atlas: merchant-ware-scanner-atlas }
+merchant-ware-vector:
+  sprite:
+    root: Sprites/Items/Merchant
+    chroma: black_soft
+    height_fraction: 0.5
+    animations:
+      idle: { sheet: merchant-ware-vector, atlas: merchant-ware-vector-atlas }
+
 # Treasure: lightsaber parts, one per level (see each level's `treasure:` key).
 # Sheets already carry alpha, so no chroma key.
 # Optional `highlight:` draws a particle halo behind the sprite (any item id can opt in).
