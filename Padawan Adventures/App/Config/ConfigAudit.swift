@@ -98,7 +98,8 @@ nonisolated enum ConfigAudit {
             audio: audio,
             screens: screens,
             player: player,
-            strings: stringCatalog
+            strings: stringCatalog,
+            npcs: npcs
         ) {
             switch reference.tree {
             case .music:

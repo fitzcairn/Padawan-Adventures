@@ -5,6 +5,13 @@
 # keeps pixel density in line. Left / northwest / southwest are horizontal
 # mirrors of right / northeast / southeast, stored as real sheets.
 
+# World one-shots keyed by npc id. `visible` plays the first time that sprite
+# is in the camera this visit; `contact` plays when the player shares their tile.
+fx:
+  merchant:
+    visible: merchant-visible
+    contact: merchant-contact
+
 sprites:
   merchant:
     root: Sprites/Merchant

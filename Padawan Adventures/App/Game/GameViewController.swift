@@ -94,7 +94,11 @@ final class GameViewController: LandscapeHostingController {
         scene.onGateEntered = { [weak self] gate, approach in
             self?.presentGate(at: gate, approach: approach)
         }
+        scene.onMerchantVisible = { [weak self] merchantID in
+            self?.playMerchantFx(merchantID: merchantID, event: "visible")
+        }
         scene.onMerchantContact = { [weak self] merchantID, approach in
+            self?.playMerchantFx(merchantID: merchantID, event: "contact")
             self?.presentMerchant(merchantID: merchantID, approach: approach)
         }
         scene.onPickupCollected = { [weak self] kind in
@@ -227,6 +231,11 @@ final class GameViewController: LandscapeHostingController {
         guard let typeID = gameScene?.currentWorld.entity(id: enemyID)?.enemyTypeID,
               let typeFx = session.enemyConfig.type(named: typeID)?.fx else { return }
         SoundEffectsController.shared.play(event: "notice", from: typeFx)
+    }
+
+    private func playMerchantFx(merchantID: UUID, event: String) {
+        let npcID = gameScene?.currentWorld.entity(id: merchantID)?.npcID ?? MerchantSpawner.npcID
+        SoundEffectsController.shared.play(event: event, from: session.npcsConfig.fx(for: npcID))
     }
 
     @MainActor

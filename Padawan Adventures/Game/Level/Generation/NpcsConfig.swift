@@ -1,27 +1,38 @@
 import Foundation
 import Yams
 
-/// NPC sprite sheets from `Catalogs/npcs.yaml`.
+/// NPC sprite sheets and world FX from `Catalogs/npcs.yaml`.
 nonisolated struct NpcsConfig: Codable, Equatable, Sendable {
     var sprites: [String: SpriteConfig]
+    var fx: [String: SoundEffectTable]
 
     enum CodingKeys: String, CodingKey {
         case sprites
+        case fx
     }
 
-    nonisolated static let fallback = NpcsConfig(sprites: [:])
+    nonisolated static let fallback = NpcsConfig()
 
-    init(sprites: [String: SpriteConfig] = [:]) {
+    init(
+        sprites: [String: SpriteConfig] = [:],
+        fx: [String: SoundEffectTable] = [:]
+    ) {
         self.sprites = sprites
+        self.fx = fx
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         sprites = try container.decodeIfPresent([String: SpriteConfig].self, forKey: .sprites) ?? [:]
+        fx = try container.decodeIfPresent([String: SoundEffectTable].self, forKey: .fx) ?? [:]
     }
 
     func spriteConfig(id: String) -> SpriteConfig? {
         sprites[id]
+    }
+
+    func fx(for id: String) -> SoundEffectTable {
+        fx[id] ?? .empty
     }
 
     func validate() throws {

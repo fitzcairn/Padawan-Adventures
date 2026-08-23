@@ -36,7 +36,8 @@ extension ConfigAudit {
         audio: SoundSettings,
         screens: ScreensConfig?,
         player: PlayerConfig?,
-        strings: StringCatalog
+        strings: StringCatalog,
+        npcs: NpcsConfig? = nil
     ) -> [AudioReference] {
         var references: [AudioReference] = []
 
@@ -137,6 +138,12 @@ extension ConfigAudit {
         references.append(
             AudioReference(kind: "merchant.fx.purchase", basename: "merchant-purchase", tree: .fx)
         )
+
+        if let npcs {
+            for (id, table) in npcs.fx.sorted(by: { $0.key < $1.key }) {
+                references.append(contentsOf: fxReferences(table, kind: "npcs.fx.\(id)"))
+            }
+        }
 
         return references
     }

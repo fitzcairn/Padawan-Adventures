@@ -28,12 +28,37 @@ nonisolated extension IsometricMath {
     static func viewPosition(
         worldPoint: CGPoint,
         focus: CGPoint,
-        viewCenter: CGPoint
+        viewCenter: CGPoint,
+        scale: CGFloat = 1
     ) -> CGPoint {
         CGPoint(
-            x: viewCenter.x + worldPoint.x - focus.x,
-            y: viewCenter.y + worldPoint.y - focus.y
+            x: viewCenter.x + (worldPoint.x - focus.x) * scale,
+            y: viewCenter.y + (worldPoint.y - focus.y) * scale
         )
+    }
+
+    /// True when `worldPoint` lands inside the axis-aligned camera rectangle.
+    static func isOnScreen(
+        worldPoint: CGPoint,
+        focus: CGPoint,
+        viewCenter: CGPoint,
+        viewSize: CGSize,
+        scale: CGFloat = 1
+    ) -> Bool {
+        guard viewSize.width > 0, viewSize.height > 0 else { return false }
+        let point = viewPosition(
+            worldPoint: worldPoint,
+            focus: focus,
+            viewCenter: viewCenter,
+            scale: scale
+        )
+        let bounds = CGRect(
+            x: viewCenter.x - viewSize.width / 2,
+            y: viewCenter.y - viewSize.height / 2,
+            width: viewSize.width,
+            height: viewSize.height
+        )
+        return bounds.contains(point)
     }
 
     /// View position for a grid cell with the given viewport focus.

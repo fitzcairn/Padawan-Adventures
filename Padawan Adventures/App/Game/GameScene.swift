@@ -38,8 +38,11 @@ final class GameScene: SKScene {
     var onEnemyContact: ((UUID) -> Void)?
     /// Called the first time an enemy acquires line of sight on the player.
     var onEnemyNoticed: ((UUID) -> Void)?
+    /// Called the first time a merchant's standing point is in the camera this visit.
+    var onMerchantVisible: ((UUID) -> Void)?
     /// Called when the player contacts the merchant (same occupancy tile).
     var onMerchantContact: ((_ merchantID: UUID, _ approach: GridCoord) -> Void)?
+    var merchantVisibility = MerchantVisibilityTracker()
     /// Called when the player enters a pit tile (`approach` retreat tile).
     var onPitEntered: ((_ approach: GridCoord) -> Void)?
     /// Called when the player walks onto a gate (`gate` tile, `approach` retreat tile).
@@ -138,6 +141,7 @@ final class GameScene: SKScene {
             scale: renderer.worldScale
         )
         renderer.updateViewportFocus(viewportFocus)
+        announceVisibleMerchants()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -256,6 +260,7 @@ final class GameScene: SKScene {
         if !isPausedForEncounter, !isResolvingPickup {
             applyViewportCamera(deltaTime: delta)
         }
+        announceVisibleMerchants()
     }
 
     var isPlayerMoving: Bool { movement.isMoving }
@@ -263,6 +268,29 @@ final class GameScene: SKScene {
     func setViewportFocus(_ point: CGPoint) {
         viewportFocus = point
         renderer.updateViewportFocus(point)
+        announceVisibleMerchants()
+    }
+
+    func announceVisibleMerchants() {
+        guard !isPausedForEncounter, !isResolvingPickup else { return }
+        let merchants = world.entities.compactMap { entity -> MerchantVisibilityTracker.Candidate? in
+            guard entity.isMerchant else { return nil }
+            return MerchantVisibilityTracker.Candidate(
+                id: entity.id,
+                worldPoint: IsometricMath.entityScreenPosition(entity.position, config: isoConfig),
+                isShown: renderer.entityNodes[entity.id]?.parent != nil
+            )
+        }
+        let newlyVisible = merchantVisibility.consumeNewlyVisible(
+            merchants: merchants,
+            focus: viewportFocus,
+            viewCenter: renderer.sceneViewCenter,
+            viewSize: renderer.viewSize,
+            scale: renderer.worldScale
+        )
+        for merchantID in newlyVisible {
+            onMerchantVisible?(merchantID)
+        }
     }
 
     /// After a pan, a destination tap glides the viewport back onto the player.
