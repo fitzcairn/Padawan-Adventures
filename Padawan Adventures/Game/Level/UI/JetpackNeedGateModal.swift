@@ -14,14 +14,13 @@ struct JetpackNeedGateModal: View {
                 ModalCRTText(
                     text: Strings.text(Self.stringID),
                     size: 30,
-                    accessibilityID: "inventory.jetpack.needGate.message",
-                    speakID: Self.stringID
+                    accessibilityID: "inventory.jetpack.needGate.message"
                 )
             }
             .frame(maxWidth: 520)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onDismiss)
         }
         .onAppear { Strings.speak(Self.stringID) }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onDismiss)
     }
 }
