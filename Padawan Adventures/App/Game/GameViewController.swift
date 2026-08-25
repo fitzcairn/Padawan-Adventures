@@ -206,6 +206,9 @@ final class GameViewController: LandscapeHostingController {
         if itemID == JetpackGateUse.itemID {
             return useJetpackFromInventory(index: index)
         }
+        if itemID == SatelliteScanUse.itemID {
+            return useSatelliteFromInventory(index: index)
+        }
 
         if let sound = session.itemsConfig.merchantItem(itemID)?.sound, !sound.isEmpty {
             SoundEffectsController.shared.play(trackID: sound)
@@ -224,6 +227,19 @@ final class GameViewController: LandscapeHostingController {
         Task { await session.recordStat { $0.gatesOpened += 1 } }
         scene.useJetpack(over: result.gateCoord, landing: result.landing)
         return true
+    }
+
+    private func useSatelliteFromInventory(index: Int) -> Bool {
+        guard let scene = gameScene,
+              let origin = SatelliteScanUse.artifactCoord(in: scene.currentWorld)
+        else { return false }
+        Task { await session.setItemSlot(index: index, itemID: nil) }
+        scene.performSatelliteScan(at: origin) { [weak self] in
+            guard let self else { return }
+            self.hud?.playUseEffects(index: index, itemID: SatelliteScanUse.itemID)
+            self.persistClearedInventorySlot(index: index)
+        }
+        return false
     }
 
     private func persistClearedInventorySlot(index: Int) {

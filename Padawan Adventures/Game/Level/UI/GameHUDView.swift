@@ -28,11 +28,14 @@ final class GameHUDView: UIView {
     private var inventoryHeightConstraint: NSLayoutConstraint?
     private var fadingSlotItems: [Int: String] = [:]
     private var fadeTasks: [Int: Task<Void, Never>] = [:]
+    private var sparklingSlots: Set<Int> = []
+    private var sparkleTasks: [Int: Task<Void, Never>] = [:]
     private var lastInventoryHudHeight: CGFloat = 0
 
     static let hudIconFadeDuration: TimeInterval = 0.2
     static let starStepNanoseconds: UInt64 = 280_000_000
     static let sparkleLingerNanoseconds: UInt64 = 700_000_000
+    static let inventorySparkleNanoseconds: UInt64 = 700_000_000
     init(
         config: HudConfig,
         healthCount: Int = 0,
@@ -140,7 +143,13 @@ final class GameHUDView: UIView {
         guard fadingSlotItems[index] == nil else { return }
         let consume = onInventorySlotTapped?(index, itemID) ?? false
         guard consume else { return }
+        playUseEffects(index: index, itemID: itemID)
+    }
+
+    /// Fade and sparkle a slot after a delayed consume (e.g. satellite scan).
+    func playUseEffects(index: Int, itemID: String) {
         fadingSlotItems[index] = itemID
+        sparklingSlots.insert(index)
         withAnimation(.easeOut(duration: InventorySlotStack.useFadeDuration)) {
             rebuildInventoryRoot()
         }
@@ -151,6 +160,14 @@ final class GameHUDView: UIView {
             guard !Task.isCancelled else { return }
             fadingSlotItems[index] = nil
             fadeTasks[index] = nil
+            rebuildInventoryRoot()
+        }
+        sparkleTasks[index]?.cancel()
+        sparkleTasks[index] = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.inventorySparkleNanoseconds)
+            guard !Task.isCancelled else { return }
+            sparklingSlots.remove(index)
+            sparkleTasks[index] = nil
             rebuildInventoryRoot()
         }
     }
@@ -260,6 +277,7 @@ final class GameHUDView: UIView {
             hudHeight: max(bounds.height, 1),
             interaction: .world,
             fadingItems: fadingSlotItems,
+            sparklingIndices: sparklingSlots,
             onTapOccupied: { [weak self] index, itemID in
                 self?.useInventorySlot(index: index, itemID: itemID)
             }

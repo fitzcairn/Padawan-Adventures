@@ -5,7 +5,8 @@ import Foundation
 /// Rooms are packed one wall tile apart and only ever join through a gate, so "beyond a
 /// locked gate" is the same as "floor the player cannot reach without crossing a gate".
 /// Opening a gate turns its cells into ordinary floor, which makes the room past it
-/// reachable — no separate explored/revealed state has to be stored or persisted.
+/// reachable. A satellite scan can also permanently light floors via
+/// `GameWorld.scannedFloorCells` without opening the gate that hid them.
 nonisolated enum RoomVisibility {
     struct Result: Equatable, Sendable {
         /// Floor cells of the rooms the player can currently reach.
@@ -35,7 +36,35 @@ nonisolated enum RoomVisibility {
                 renderableCells.insert(neighbor)
             }
         }
+        includeScannedFloors(
+            world.scannedFloorCells,
+            in: world,
+            story: story,
+            floorCells: &floorCells,
+            renderableCells: &renderableCells
+        )
         return Result(floorCells: floorCells, renderableCells: renderableCells)
+    }
+
+    /// Floors a satellite scan uncovered stay drawn, plus the walls/gates that border them.
+    private static func includeScannedFloors(
+        _ scanned: Set<GridCoord>,
+        in world: GameWorld,
+        story: Int,
+        floorCells: inout Set<GridCoord>,
+        renderableCells: inout Set<GridCoord>
+    ) {
+        for cell in scanned where cell.story == story {
+            guard isFloor(world.tile(at: cell)) else { continue }
+            floorCells.insert(cell)
+            renderableCells.insert(cell)
+            for (dx, dy) in GridCoord.directions8 {
+                let neighbor = cell.neighbor(dx: dx, dy: dy)
+                guard world.isInBounds(neighbor) else { continue }
+                guard !isFloor(world.tile(at: neighbor)) else { continue }
+                renderableCells.insert(neighbor)
+            }
+        }
     }
 
     /// Floor cells 4-connected to `seed`. Closed gates and walls block, so the flood stops

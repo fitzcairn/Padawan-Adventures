@@ -211,4 +211,17 @@ struct GameSaveTests {
         let restored = try await service.load()
         #expect(restored?.playerPosition == destination)
     }
+
+    @Test func roundTripPreservesScannedFloors() async throws {
+        var world = TestWorldFactory.emptyFloor(width: 4, height: 4)
+        world.revealScannedFloors([
+            GridCoord(x: 1, y: 2, story: 0),
+            GridCoord(x: 3, y: 0, story: 0),
+        ])
+
+        let (service, _) = try makeSaveService()
+        try await service.save(world)
+        let restored = try await service.load()
+        #expect(restored?.scannedFloorCells == world.scannedFloorCells)
+    }
 }

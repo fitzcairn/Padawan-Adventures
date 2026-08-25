@@ -75,4 +75,17 @@ struct RoomVisibilityTests {
         #expect(RoomVisibility.compute(in: world, story: 1, from: world.playerPosition) == .empty)
         #expect(RoomVisibility.compute(in: world, story: 0, from: nil) == .empty)
     }
+
+    @Test func scannedFloorsStayVisibleBehindAClosedGate() {
+        var world = twoRoomWorld()
+        let far = GridCoord(x: 4, y: 1, story: 0)
+        world.revealScannedFloors([far, GridCoord(x: 4, y: 0, story: 0)])
+        let result = RoomVisibility.compute(in: world, story: 0, from: world.playerPosition)
+
+        #expect(result.floorCells.contains(far))
+        #expect(result.floorCells.contains(GridCoord(x: 4, y: 0, story: 0)))
+        #expect(result.renderableCells.contains(GridCoord(x: 3, y: 0, story: 0)))
+        #expect(!result.floorCells.contains(GridCoord(x: 3, y: 1, story: 0)))
+        #expect(!result.floorCells.contains(GridCoord(x: 4, y: 2, story: 0)))
+    }
 }

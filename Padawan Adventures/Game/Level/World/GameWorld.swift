@@ -14,6 +14,8 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
     var decorProb: Double
     var cohesion: Double
     var tileSeed: UInt64
+    /// Floors uncovered by a satellite scan; they stay drawn even behind closed gates.
+    var scannedFloorCells: Set<GridCoord>
     /// Runtime-only atlas used for re-tiling after mutations (not persisted).
     var floorSet: FloorTileSet?
 
@@ -29,7 +31,8 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         floorSet: FloorTileSet? = nil,
         decorProb: Double = 0.06,
         cohesion: Double = 0.75,
-        tileSeed: UInt64 = 0
+        tileSeed: UInt64 = 0,
+        scannedFloorCells: Set<GridCoord> = []
     ) {
         self.width = width
         self.height = height
@@ -44,6 +47,11 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         self.decorProb = decorProb
         self.cohesion = cohesion
         self.tileSeed = tileSeed
+        self.scannedFloorCells = scannedFloorCells
+    }
+
+    mutating func revealScannedFloors(_ cells: Set<GridCoord>) {
+        scannedFloorCells.formUnion(cells)
     }
 
     func isInBounds(_ coord: GridCoord) -> Bool {
@@ -454,6 +462,7 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         case decorProb
         case cohesion
         case tileSeed
+        case scannedFloorCells
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -470,6 +479,8 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         decorProb = try container.decodeIfPresent(Double.self, forKey: .decorProb) ?? 0.06
         cohesion = try container.decodeIfPresent(Double.self, forKey: .cohesion) ?? 0.75
         tileSeed = try container.decodeIfPresent(UInt64.self, forKey: .tileSeed) ?? 0
+        let scanned = try container.decodeIfPresent([GridCoord].self, forKey: .scannedFloorCells) ?? []
+        scannedFloorCells = Set(scanned)
         floorSet = nil
     }
 
@@ -487,6 +498,9 @@ nonisolated struct GameWorld: Sendable, WorldPersistable {
         try container.encode(decorProb, forKey: .decorProb)
         try container.encode(cohesion, forKey: .cohesion)
         try container.encode(tileSeed, forKey: .tileSeed)
+        if !scannedFloorCells.isEmpty {
+            try container.encode(Array(scannedFloorCells), forKey: .scannedFloorCells)
+        }
     }
 
     private func tileDescription(_ tile: Tile) -> String {

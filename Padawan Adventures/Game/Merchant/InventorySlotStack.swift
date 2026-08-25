@@ -17,6 +17,7 @@ struct InventorySlotStack: View {
     var interaction: InventorySlotInteraction = .world
     var highlightedIndex: Int? = nil
     var fadingItems: [Int: String] = [:]
+    var sparklingIndices: Set<Int> = []
     var onTapOccupied: ((Int, String) -> Void)? = nil
 
     var body: some View {
@@ -63,9 +64,13 @@ struct InventorySlotStack: View {
         }
         .animation(.easeOut(duration: Self.useFadeDuration), value: isFadingOut)
         .overlay {
-            if highlighted {
-                RoundedRectangle(cornerRadius: side * 0.16, style: .continuous)
-                    .stroke(StarWarsConsolePalette.crtBlue, lineWidth: 3)
+            ZStack {
+                SparkleBurstView(isActive: sparklingIndices.contains(index), diameter: side)
+                    .allowsHitTesting(false)
+                if highlighted {
+                    RoundedRectangle(cornerRadius: side * 0.16, style: .continuous)
+                        .stroke(StarWarsConsolePalette.crtBlue, lineWidth: 3)
+                }
             }
         }
         .contentShape(Rectangle())
