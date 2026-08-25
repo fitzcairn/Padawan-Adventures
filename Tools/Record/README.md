@@ -1,6 +1,6 @@
 # Audio Recorder
 
-Local web tool for recording voice-over clips for every word, letter, grapheme, and UI string in Padawan Adventures. Clips are cleaned in the browser and written as `.m4a` into `Padawan Adventures/Resources/Audio/FX/`.
+Local web tool for recording voice-over clips for every word, letter, grapheme, and UI string that defines `spoken:` in `strings.yaml`. Clips are cleaned in the browser and written as `.m4a` into `Padawan Adventures/Resources/Audio/FX/`.
 
 ## Requirements
 
@@ -37,13 +37,18 @@ python3 Tools/Record/serve.py --check    # inventory summary only
 4. After release the clip is noise-cleaned, previewed, and cached locally.
 5. Click **Save**, press **⌘S / Ctrl+S**, or enable **Autosave on record**.
 
+Click any column header to sort. Click again to reverse; a third click restores catalog order (with group headers). Sort is remembered in `localStorage`.
+
+**Unrecorded only** is the fast path for clips that still have a placeholder beep (or no file) instead of a take from this tool. UI rows are only strings that define `spoken:` in `strings.yaml` — buttons and other never-spoken copy are omitted.
+
 ### Columns
 
 | Column | Meaning |
 | --- | --- |
-| Text | Word / letter / grapheme / UI string |
-| Context | Where it appears in the game (≤10 words) |
-| Current clip | Play the file already in `Resources/Audio` |
+| Text | On-screen copy (YAML `text`, or the word / letter / grapheme). When `spoken:` is set, this cell is muted — record the Spoken column instead |
+| Spoken | Brace-free YAML `spoken:` value to record; `—` when the string has none |
+| Context | Where it appears in the UI (screen, control, on-screen / modal / VoiceOver-only) |
+| Current clip | Play the file already in `Resources/Audio`. Placeholder beeps show as **Beep** plus a `placeholder` tag |
 | Last updated | Working-copy mtime of that file |
 | Record | Hold to record |
 | Play recording | Play the unsaved take from this session |
@@ -51,6 +56,8 @@ python3 Tools/Record/serve.py --check    # inventory summary only
 | Status | `recording…` / `cleaning…` / `saving…` / `saved` / errors |
 
 `Last updated` tracks the file on disk. A `git checkout` resets mtimes, so this column reflects the working copy rather than recording history.
+
+**Unrecorded only** includes missing files *and* UI placeholder beeps (the ~0.25s tones from `placeholders.py`). A clip saved through this tool is treated as recorded. Rows with `spoken:` that still need a take are highlighted.
 
 ### Keyboard
 
@@ -81,7 +88,7 @@ UI clips are referenced by `sfx:` in `Resources/Config/Catalogs/strings.yaml`. T
 
 - Words: `Resources/Config/Catalogs/words.yaml`
 - Letters / graphemes: `Resources/Config/Catalogs/graphemes.yaml`
-- UI strings: `Resources/Config/Catalogs/strings.yaml`
+- UI strings: `Resources/Config/Catalogs/strings.yaml` entries that define `spoken:`
 
 ## Placeholder beeps
 

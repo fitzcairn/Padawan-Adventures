@@ -6,6 +6,7 @@ Python 3.9+, stdlib only. No PyYAML.
 from __future__ import annotations
 
 import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,6 +28,15 @@ LETTER_NAME_CONTEXT = 'Letter\'s name, like "bee" for b'
 LETTER_PRON_CONTEXT = 'Letter\'s phonic sound, like "buh" for b'
 GRAPHEME_NAME_CONTEXT = 'Grapheme letters spoken separately, like "s-h"'
 GRAPHEME_PRON_CONTEXT = 'Grapheme\'s blended sound, like "sh"'
+
+# Placeholder beep length used by placeholders.py. AAC duration may round slightly.
+PLACEHOLDER_DURATION_S = 0.25
+PLACEHOLDER_DURATION_SLACK_S = 0.02
+# 0.25s at 64 kbps AAC is ~5 KB; skip afinfo on anything larger.
+PLACEHOLDER_MAX_BYTES = 8192
+
+_DURATION_RE = re.compile(r"estimated duration:\s*([0-9.]+)\s*sec", re.I)
+_duration_cache: dict[tuple[str, int, str], float | None] = {}
 
 
 def target_dir_for_basename(basename: str) -> Path:
@@ -97,6 +107,36 @@ def _file_meta(path: Path) -> tuple[bool, str | None, int | None]:
     return True, mtime, stat.st_size
 
 
+def _clip_duration_s(path: Path, size: int, mtime: str) -> float | None:
+    key = (str(path), size, mtime)
+    if key in _duration_cache:
+        return _duration_cache[key]
+    duration: float | None = None
+    try:
+        out = subprocess.check_output(
+            ["afinfo", str(path)],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        match = _DURATION_RE.search(out)
+        if match:
+            duration = float(match.group(1))
+    except (OSError, subprocess.CalledProcessError, ValueError):
+        duration = None
+    _duration_cache[key] = duration
+    return duration
+
+
+def looks_like_placeholder(path: Path, size: int | None, mtime: str | None) -> bool:
+    """True when the clip is a Tools/Record placeholder beep, not a real take."""
+    if size is None or mtime is None or size > PLACEHOLDER_MAX_BYTES:
+        return False
+    duration = _clip_duration_s(path, size, mtime)
+    if duration is None:
+        return False
+    return abs(duration - PLACEHOLDER_DURATION_S) <= PLACEHOLDER_DURATION_SLACK_S
+
+
 def _row(
     *,
     row_id: str,
@@ -104,6 +144,8 @@ def _row(
     text: str,
     context: str,
     basename: str,
+    spoken: str = "",
+    detect_placeholder: bool = False,
 ) -> dict:
     target = target_path_for_basename(basename)
     exists, mtime, size = _file_meta(target)
@@ -111,15 +153,20 @@ def _row(
         rel = str(target.relative_to(REPO_ROOT))
     except ValueError:
         rel = str(target)
+    placeholder = False
+    if detect_placeholder and exists:
+        placeholder = looks_like_placeholder(target, size, mtime)
     return {
         "id": row_id,
         "group": group,
         "text": text,
+        "spoken": spoken,
         "context": context,
         "basename": basename,
         "relPath": rel,
         "path": str(target),
         "exists": exists,
+        "placeholder": placeholder,
         "mtime": mtime,
         "size": size,
     }
@@ -183,16 +230,20 @@ def all_rows() -> list[dict]:
         )
 
     for entry in parse_strings_catalog(CATALOGS / "strings.yaml"):
+        spoken = (entry.get("spoken") or "").strip()
+        if not spoken:
+            continue
         ui_id = entry["id"]
         basename = entry.get("sfx") or f"sfx_ui_{ui_id}"
-        display = entry.get("spoken") or entry.get("text") or ui_id
         rows.append(
             _row(
                 row_id=f"ui.{ui_id}",
                 group="UI",
-                text=display,
+                text=entry.get("text") or ui_id,
+                spoken=spoken,
                 context=entry.get("context") or "",
                 basename=basename,
+                detect_placeholder=True,
             )
         )
 
@@ -207,8 +258,18 @@ def check() -> int:
     """Print inventory summary; return 0 if directories exist."""
     rows = all_rows()
     existing = sum(1 for row in rows if row["exists"])
+    placeholders = sum(1 for row in rows if row["placeholder"])
+    spoken = sum(1 for row in rows if row["spoken"])
+    spoken_unrecorded = sum(
+        1
+        for row in rows
+        if row["spoken"] and (not row["exists"] or row["placeholder"])
+    )
     print(f"rows: {len(rows)}")
     print(f"existing clips: {existing}")
+    print(f"placeholder beeps: {placeholders}")
+    print(f"spoken YAML: {spoken}")
+    print(f"spoken YAML, unrecorded: {spoken_unrecorded}")
     by_group: dict[str, int] = {}
     for row in rows:
         by_group[row["group"]] = by_group.get(row["group"], 0) + 1

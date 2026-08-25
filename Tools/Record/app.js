@@ -4,9 +4,22 @@
 import { cleanup, encodeWav } from "./dsp.js";
 
 const AUTOSAVE_KEY = "padawan-record-autosave";
+const SORT_KEY = "padawan-record-sort";
 const IDB_NAME = "padawan-record";
 const IDB_VERSION = 1;
 const IDB_STORE = "takes";
+const COLUMN_COUNT = 9;
+const SORT_KEYS = new Set([
+  "text",
+  "spoken",
+  "context",
+  "clip",
+  "mtime",
+  "record",
+  "take",
+  "save",
+  "status",
+]);
 
 const NOISE_MS = 500;
 /**
@@ -28,6 +41,7 @@ const state = {
   autosave: false,
   takes: new Map(), // id -> { wav: Blob, at: number, sampleRate: number, dirty: boolean }
   statuses: new Map(), // id -> { text, kind }
+  sort: { key: null, dir: "asc" },
 };
 
 let audioCtx = null;
@@ -406,6 +420,7 @@ async function saveTake(rowId) {
     const row = state.rowById.get(rowId);
     if (row) {
       row.exists = true;
+      row.placeholder = false;
       row.mtime = payload.mtime;
       row.size = payload.size;
     }
@@ -452,41 +467,152 @@ function formatMtime(mtime) {
   });
 }
 
+function clipIsRecorded(row) {
+  return Boolean(row.exists && !row.placeholder);
+}
+
+function clipRank(row) {
+  if (!row.exists) return 0;
+  if (row.placeholder) return 1;
+  return 2;
+}
+
+function compareText(a, b) {
+  return String(a || "").localeCompare(String(b || ""), undefined, {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
+function compareRows(a, b, key, dir) {
+  let cmp = 0;
+  switch (key) {
+    case "text":
+      cmp = compareText(a.text, b.text);
+      break;
+    case "spoken": {
+      const aHas = Boolean(a.spoken);
+      const bHas = Boolean(b.spoken);
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      cmp = compareText(a.spoken, b.spoken);
+      break;
+    }
+    case "context":
+      cmp = compareText(a.context, b.context);
+      break;
+    case "clip":
+      cmp = clipRank(a) - clipRank(b);
+      break;
+    case "mtime":
+      cmp = compareText(a.mtime, b.mtime);
+      break;
+    case "record":
+      cmp = Number(a.id === state.recordingId) - Number(b.id === state.recordingId);
+      break;
+    case "take":
+      cmp = Number(state.takes.has(a.id)) - Number(state.takes.has(b.id));
+      break;
+    case "save":
+      cmp = Number(canSaveTake(a.id)) - Number(canSaveTake(b.id));
+      break;
+    case "status":
+      cmp = compareText(state.statuses.get(a.id)?.text, state.statuses.get(b.id)?.text);
+      break;
+    default:
+      cmp = compareText(a.id, b.id);
+  }
+  if (cmp === 0) cmp = compareText(a.id, b.id);
+  return dir === "desc" ? -cmp : cmp;
+}
+
+function loadSort() {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      SORT_KEYS.has(parsed.key) &&
+      (parsed.dir === "asc" || parsed.dir === "desc")
+    ) {
+      state.sort = { key: parsed.key, dir: parsed.dir };
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function persistSort() {
+  if (!state.sort.key) {
+    localStorage.removeItem(SORT_KEY);
+    return;
+  }
+  localStorage.setItem(SORT_KEY, JSON.stringify(state.sort));
+}
+
+function renderSortHeaders() {
+  for (const th of document.querySelectorAll("thead th[aria-sort]")) {
+    const key = th.querySelector(".sort")?.dataset.sort;
+    if (!key || key !== state.sort.key) {
+      th.setAttribute("aria-sort", "none");
+    } else {
+      th.setAttribute("aria-sort", state.sort.dir === "desc" ? "descending" : "ascending");
+    }
+  }
+}
+
+function cycleSort(key) {
+  if (state.sort.key !== key) {
+    state.sort = { key, dir: "asc" };
+  } else if (state.sort.dir === "asc") {
+    state.sort = { key, dir: "desc" };
+  } else {
+    state.sort = { key: null, dir: "asc" };
+  }
+  persistSort();
+  applyFilters();
+}
+
 function applyFilters() {
   const q = els.filter.value.trim().toLowerCase();
   const unrecordedOnly = els.unrecorded.checked;
-  const visible = [];
+  const matched = [];
   for (const row of state.rows) {
-    if (unrecordedOnly && row.exists) continue;
+    if (unrecordedOnly && clipIsRecorded(row)) continue;
     if (q) {
-      const hay = `${row.text} ${row.context} ${row.basename} ${row.group}`.toLowerCase();
+      const hay = `${row.text} ${row.spoken} ${row.context} ${row.basename} ${row.group}`.toLowerCase();
       if (!hay.includes(q)) continue;
     }
-    visible.push(row.id);
+    matched.push(row);
   }
-  state.visible = visible;
-  if (state.selectedId && !visible.includes(state.selectedId)) {
-    state.selectedId = visible[0] || null;
+  if (state.sort.key) {
+    matched.sort((a, b) => compareRows(a, b, state.sort.key, state.sort.dir));
   }
-  if (!state.selectedId && visible.length) {
-    state.selectedId = visible[0];
+  state.visible = matched.map((row) => row.id);
+  if (state.selectedId && !state.visible.includes(state.selectedId)) {
+    state.selectedId = state.visible[0] || null;
   }
+  if (!state.selectedId && state.visible.length) {
+    state.selectedId = state.visible[0];
+  }
+  renderSortHeaders();
   renderTable();
 }
 
 function renderTable() {
   const frag = document.createDocumentFragment();
+  const grouped = !state.sort.key;
   let lastGroup = null;
-  const visibleSet = new Set(state.visible);
 
-  for (const row of state.rows) {
-    if (!visibleSet.has(row.id)) continue;
-    if (row.group !== lastGroup) {
+  for (const id of state.visible) {
+    const row = state.rowById.get(id);
+    if (!row) continue;
+    if (grouped && row.group !== lastGroup) {
       lastGroup = row.group;
       const hr = document.createElement("tr");
       hr.className = "group-header";
       const td = document.createElement("td");
-      td.colSpan = 8;
+      td.colSpan = COLUMN_COUNT;
       td.textContent = row.group;
       hr.appendChild(td);
       frag.appendChild(hr);
@@ -495,6 +621,8 @@ function renderTable() {
     const tr = document.createElement("tr");
     tr.className = "row";
     tr.dataset.id = row.id;
+    if (row.spoken) tr.classList.add("has-spoken");
+    if (row.spoken && !clipIsRecorded(row)) tr.classList.add("needs-spoken-take");
     if (row.id === state.selectedId) tr.classList.add("selected");
     if (row.id === state.recordingId) tr.classList.add("recording");
 
@@ -507,6 +635,7 @@ function renderTable() {
 
     tr.innerHTML = `
       <td class="text-cell"></td>
+      <td class="spoken-cell"></td>
       <td class="context-cell"></td>
       <td class="current-cell"></td>
       <td class="mtime"></td>
@@ -516,13 +645,14 @@ function renderTable() {
       <td class="status-cell" data-kind="${status.kind}"></td>
     `;
     tr.querySelector(".text-cell").textContent = row.text;
+    tr.querySelector(".spoken-cell").textContent = row.spoken || "—";
     tr.querySelector(".context-cell").textContent = row.context;
     tr.querySelector(".mtime").textContent = formatMtime(row.mtime);
     tr.querySelector(".status-cell").textContent = status.text;
 
     const playCurrent = document.createElement("button");
     playCurrent.type = "button";
-    playCurrent.textContent = "Play";
+    playCurrent.textContent = row.placeholder ? "Beep" : "Play";
     playCurrent.disabled = !row.exists;
     playCurrent.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -532,7 +662,14 @@ function renderTable() {
         setStatus(row.id, `error: ${err.message || err}`, "error")
       );
     });
-    tr.querySelector(".current-cell").appendChild(playCurrent);
+    const currentCell = tr.querySelector(".current-cell");
+    currentCell.appendChild(playCurrent);
+    if (row.placeholder) {
+      const kind = document.createElement("span");
+      kind.className = "clip-kind";
+      kind.textContent = "placeholder";
+      currentCell.appendChild(kind);
+    }
 
     const recordBtn = document.createElement("button");
     recordBtn.type = "button";
@@ -614,7 +751,21 @@ function updateRowMeta(rowId) {
   const mtime = tr.querySelector(".mtime");
   if (mtime) mtime.textContent = formatMtime(row.mtime);
   const playCurrent = tr.querySelector(".current-cell button");
-  if (playCurrent) playCurrent.disabled = !row.exists;
+  if (playCurrent) {
+    playCurrent.disabled = !row.exists;
+    playCurrent.textContent = row.placeholder ? "Beep" : "Play";
+  }
+  const kind = tr.querySelector(".clip-kind");
+  if (row.placeholder && !kind) {
+    const label = document.createElement("span");
+    label.className = "clip-kind";
+    label.textContent = "placeholder";
+    tr.querySelector(".current-cell")?.appendChild(label);
+  } else if (!row.placeholder && kind) {
+    kind.remove();
+  }
+  tr.classList.toggle("has-spoken", Boolean(row.spoken));
+  tr.classList.toggle("needs-spoken-take", Boolean(row.spoken) && !clipIsRecorded(row));
 }
 
 function moveSelection(delta) {
@@ -645,6 +796,10 @@ function wireEvents() {
 
   els.filter.addEventListener("input", applyFilters);
   els.unrecorded.addEventListener("change", applyFilters);
+
+  document.querySelectorAll("thead button.sort").forEach((btn) => {
+    btn.addEventListener("click", () => cycleSort(btn.dataset.sort));
+  });
 
   window.addEventListener("pointerup", () => {
     const active = document.querySelector("button.record.active");
@@ -731,6 +886,7 @@ function wireEvents() {
 // ---------------------------------------------------------------------------
 
 async function boot() {
+  loadSort();
   wireEvents();
   try {
     const takes = await idbLoadAllTakes();
@@ -746,7 +902,11 @@ async function boot() {
   const res = await fetch("/api/rows");
   if (!res.ok) throw new Error(`failed to load rows: HTTP ${res.status}`);
   const payload = await res.json();
-  state.rows = payload.rows || [];
+  state.rows = (payload.rows || []).map((row) => ({
+    ...row,
+    spoken: row.spoken || "",
+    placeholder: Boolean(row.placeholder),
+  }));
   state.rowById = new Map(state.rows.map((r) => [r.id, r]));
   applyFilters();
 }

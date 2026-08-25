@@ -16,13 +16,19 @@ import zlib
 from datetime import datetime
 from pathlib import Path
 
-from inventory import FX, TOOL_DIR, parse_strings_catalog, target_path_for_basename
+from inventory import (
+    FX,
+    PLACEHOLDER_DURATION_S,
+    TOOL_DIR,
+    parse_strings_catalog,
+    target_path_for_basename,
+)
 
 CATALOGS = TOOL_DIR.parents[1] / "Padawan Adventures" / "Resources" / "Config" / "Catalogs"
 BACKUPS_DIR = TOOL_DIR / "backups"
 SCALE = [523, 587, 659, 784, 880]
 SAMPLE_RATE = 44100
-DURATION_S = 0.25
+DURATION_S = PLACEHOLDER_DURATION_S
 FADE_S = 0.015
 PEAK = 0.5
 

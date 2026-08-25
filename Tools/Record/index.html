@@ -17,7 +17,7 @@
         Filter
         <input type="search" id="filter" placeholder="word, letter, UI…" autocomplete="off" />
       </label>
-      <label class="check">
+      <label class="check" title="Missing clips and placeholder beeps">
         <input type="checkbox" id="unrecorded" />
         Unrecorded only
       </label>
@@ -30,14 +30,15 @@
       <table id="table">
         <thead>
           <tr>
-            <th>Text</th>
-            <th>Context</th>
-            <th>Current clip</th>
-            <th>Last updated</th>
-            <th>Record</th>
-            <th>Play recording</th>
-            <th>Save</th>
-            <th>Status</th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="text" title="Click to sort">Text</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="spoken" title="Click to sort">Spoken</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="context" title="Click to sort">Context</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="clip" title="Click to sort">Current clip</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="mtime" title="Click to sort">Last updated</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="record" title="Click to sort">Record</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="take" title="Click to sort">Play recording</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="save" title="Click to sort">Save</button></th>
+            <th aria-sort="none"><button type="button" class="sort" data-sort="status" title="Click to sort">Status</button></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>

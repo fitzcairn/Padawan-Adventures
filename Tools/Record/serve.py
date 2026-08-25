@@ -53,10 +53,12 @@ def _public_row(row: dict) -> dict:
         "id": row["id"],
         "group": row["group"],
         "text": row["text"],
+        "spoken": row.get("spoken") or "",
         "context": row["context"],
         "basename": row["basename"],
         "relPath": row["relPath"],
         "exists": row["exists"],
+        "placeholder": bool(row.get("placeholder")),
         "mtime": row["mtime"],
         "size": row["size"],
     }
@@ -67,12 +69,14 @@ def _refresh_row_meta(row: dict) -> dict:
     if path.is_file():
         stat = path.stat()
         row["exists"] = True
+        row["placeholder"] = False
         row["mtime"] = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
         row["size"] = stat.st_size
     else:
         row["exists"] = False
+        row["placeholder"] = False
         row["mtime"] = None
         row["size"] = None
     return row
@@ -277,6 +281,7 @@ class RecordHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 "mtime": refreshed["mtime"],
                 "size": refreshed["size"],
+                "placeholder": False,
             }
         )
 
