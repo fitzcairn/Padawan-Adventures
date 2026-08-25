@@ -227,4 +227,35 @@ nonisolated enum MerchantPurchase {
     static func slotIndex(containing point: CGPoint, frames: [Int: CGRect]) -> Int? {
         frames.first { $0.value.contains(point) }?.key
     }
+
+    /// Fraction of a slot's area covered by `offer` (sprite + coin + price).
+    static func slotCoverage(of offer: CGRect, onto slot: CGRect) -> CGFloat {
+        let inter = offer.intersection(slot)
+        guard !inter.isNull, inter.width > 0, inter.height > 0 else { return 0 }
+        let slotArea = slot.width * slot.height
+        guard slotArea > 0 else { return 0 }
+        return (inter.width * inter.height) / slotArea
+    }
+
+    /// Slot whose area is covered enough by the dragged offer to count as a drop.
+    /// `0.40` means a clear overlap, not a glancing coin/price nick.
+    static let assistCoverage: CGFloat = 0.40
+
+    static func assistedSlotIndex(
+        offer: CGRect,
+        frames: [Int: CGRect],
+        minimumCoverage: CGFloat = assistCoverage
+    ) -> Int? {
+        var bestIndex: Int?
+        var bestCoverage: CGFloat = 0
+        for (index, slot) in frames {
+            let coverage = slotCoverage(of: offer, onto: slot)
+            guard coverage >= minimumCoverage else { continue }
+            if coverage > bestCoverage || (coverage == bestCoverage && index < (bestIndex ?? index)) {
+                bestIndex = index
+                bestCoverage = coverage
+            }
+        }
+        return bestIndex
+    }
 }

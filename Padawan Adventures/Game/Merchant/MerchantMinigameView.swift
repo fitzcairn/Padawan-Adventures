@@ -142,7 +142,7 @@ struct MerchantMinigameView: View {
                             && session.draggedID != stack.itemID,
                         enabled: session.canBeginWareGesture(stack.itemID)
                     ) { event in
-                        session.handleWareGesture(itemID: stack.itemID, event: event)
+                        session.handleWareGesture(itemID: stack.itemID, frame: stack, event: event)
                     }
                     .frame(width: stack.bounds.width, height: stack.bounds.height)
                     .position(x: stack.bounds.midX, y: stack.bounds.midY)
@@ -157,29 +157,30 @@ struct MerchantMinigameView: View {
     private func dragSprite(layout: MerchantWaresLayout) -> some View {
         if let itemID = session.draggedID,
            let item = session.catalog[itemID],
-           let stack = layout.stacks.first(where: { $0.itemID == itemID })
+           let stack = session.dragHome ?? layout.stacks.first(where: { $0.itemID == itemID })
         {
-            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
-                .frame(width: stack.spriteFrame.width, height: stack.spriteFrame.height)
-                .overlay {
-                    if session.flashingID == itemID {
-                        Color.red.opacity(0.45)
-                    }
-                }
-                .position(
-                    x: stack.spriteFrame.midX + session.dragTranslation.width,
-                    y: stack.spriteFrame.midY + session.dragTranslation.height
-                )
-                .animation(
-                    session.isReturningHome
-                        ? .easeInOut(duration: session.returnAnimationDuration)
-                        : nil,
-                    value: session.dragTranslation
-                )
-                .transition(.identity)
-                .zIndex(50)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            MerchantWareOfferChrome(
+                itemID: itemID,
+                item: item,
+                price: item.displayedPrice(levelOrder: session.levelOrder),
+                frame: stack,
+                flashesRed: session.flashingID == itemID
+            )
+            .frame(width: stack.bounds.width, height: stack.bounds.height)
+            .position(
+                x: stack.bounds.midX + session.dragTranslation.width,
+                y: stack.bounds.midY + session.dragTranslation.height
+            )
+            .animation(
+                session.isReturningHome
+                    ? .easeInOut(duration: session.returnAnimationDuration)
+                    : nil,
+                value: session.dragTranslation
+            )
+            .transition(.identity)
+            .zIndex(50)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
     }
 }
@@ -187,6 +188,48 @@ struct MerchantMinigameView: View {
 enum MerchantWareGesture {
     case changed(translation: CGSize, location: CGPoint)
     case ended(translation: CGSize, location: CGPoint)
+}
+
+/// Sprite + coin + price in stack-local coordinates, used on the mat and while dragging.
+private struct MerchantWareOfferChrome: View {
+    let itemID: String
+    let item: MerchantItemDefinition
+    let price: Int
+    let frame: MerchantWareStackFrame
+    var flashesRed: Bool = false
+
+    var body: some View {
+        let local = frame.bounds
+        ZStack(alignment: .topLeading) {
+            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
+                .frame(width: frame.spriteFrame.width, height: frame.spriteFrame.height)
+                .overlay {
+                    if flashesRed {
+                        Color.red.opacity(0.45)
+                    }
+                }
+                .position(x: localX(frame.spriteFrame.midX), y: localY(frame.spriteFrame.midY))
+
+            ScoreCoinIcon.Image(side: frame.coinFrame.width)
+                .position(x: localX(frame.coinFrame.midX), y: localY(frame.coinFrame.midY))
+
+            Text("\(price)")
+                .font(AppFont.swiftUI(size: max(12, frame.priceFrame.height * 0.85), weight: .bold))
+                .foregroundStyle(StarWarsConsolePalette.crtBlue)
+                .shadow(color: StarWarsConsolePalette.crtGlow, radius: 2)
+                .position(x: localX(frame.priceFrame.midX), y: localY(frame.priceFrame.midY))
+        }
+        .frame(width: local.width, height: local.height)
+        .allowsHitTesting(false)
+    }
+
+    private func localX(_ x: CGFloat) -> CGFloat {
+        x - frame.bounds.minX
+    }
+
+    private func localY(_ y: CGFloat) -> CGFloat {
+        y - frame.bounds.minY
+    }
 }
 
 private struct MerchantWareStackView: View {
@@ -202,46 +245,29 @@ private struct MerchantWareStackView: View {
     var body: some View {
         let local = frame.bounds
         ZStack(alignment: .topLeading) {
-            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
-                .frame(width: frame.spriteFrame.width, height: frame.spriteFrame.height)
-                .opacity(isPickedUp ? 0 : 1)
-                .position(x: localX(frame.spriteFrame.midX), y: localY(frame.spriteFrame.midY))
-                .overlay {
-                    if flashesRed {
-                        Color.red.opacity(0.45)
-                    }
-                }
-                .allowsHitTesting(false)
-
-            ScoreCoinIcon.Image(side: frame.coinFrame.width)
-                .position(x: localX(frame.coinFrame.midX), y: localY(frame.coinFrame.midY))
-                .allowsHitTesting(false)
-
-            Text("\(price)")
-                .font(AppFont.swiftUI(size: max(12, frame.priceFrame.height * 0.85), weight: .bold))
-                .foregroundStyle(StarWarsConsolePalette.crtBlue)
-                .shadow(color: StarWarsConsolePalette.crtGlow, radius: 2)
-                .position(x: localX(frame.priceFrame.midX), y: localY(frame.priceFrame.midY))
-                .allowsHitTesting(false)
+            MerchantWareOfferChrome(
+                itemID: itemID,
+                item: item,
+                price: price,
+                frame: frame,
+                flashesRed: flashesRed
+            )
+            .opacity(isPickedUp ? 0 : 1)
+            .allowsHitTesting(false)
 
             Color.clear
                 .frame(width: frame.spriteFrame.width, height: frame.spriteFrame.height)
                 .contentShape(Rectangle())
-                .position(x: localX(frame.spriteFrame.midX), y: localY(frame.spriteFrame.midY))
+                .position(
+                    x: frame.spriteFrame.midX - local.minX,
+                    y: frame.spriteFrame.midY - local.minY
+                )
                 .gesture(drag)
                 .zIndex(20)
         }
         .frame(width: local.width, height: local.height)
         .allowsHitTesting(enabled)
         .accessibilityIdentifier("merchant.ware.\(itemID)")
-    }
-
-    private func localX(_ x: CGFloat) -> CGFloat {
-        x - frame.bounds.minX
-    }
-
-    private func localY(_ y: CGFloat) -> CGFloat {
-        y - frame.bounds.minY
     }
 
     private var drag: some Gesture {
@@ -283,6 +309,7 @@ final class MerchantShopSession: ObservableObject {
     @Published var slotFrames: [Int: CGRect] = [:]
     @Published var burstProgress: CGFloat = 1
     @Published var warePixelSizes: [String: CGSize] = [:]
+    @Published var dragHome: MerchantWareStackFrame?
     @Published private var purchasedThisVisit: Set<String> = []
 
     var backgroundImageSize: CGSize {
@@ -368,26 +395,33 @@ final class MerchantShopSession: ObservableObject {
             && (draggedID == nil || draggedID == itemID)
     }
 
-    func handleWareGesture(itemID: String, event: MerchantWareGesture) {
+    func handleWareGesture(itemID: String, frame: MerchantWareStackFrame, event: MerchantWareGesture) {
         switch event {
-        case .changed(let translation, let location):
+        case .changed(let translation, _):
             guard !isReturningHome, activeModal == nil else { return }
             if hypot(translation.width, translation.height) >= tapSlop {
                 dragIsMove = true
                 draggedID = itemID
+                dragHome = frame
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
                     dragTranslation = translation
-                    highlightedSlot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
+                    highlightedSlot = MerchantPurchase.assistedSlotIndex(
+                        offer: frame.bounds.offsetBy(dx: translation.width, dy: translation.height),
+                        frames: slotFrames
+                    )
                 }
             }
-        case .ended(let translation, let location):
+        case .ended(let translation, _):
             let wasDrag = dragIsMove
             dragIsMove = false
             if wasDrag {
-                highlightedSlot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
-                Task { await resolveDrop(itemID: itemID, at: location) }
+                highlightedSlot = MerchantPurchase.assistedSlotIndex(
+                    offer: frame.bounds.offsetBy(dx: translation.width, dy: translation.height),
+                    frames: slotFrames
+                )
+                Task { await resolveDrop(itemID: itemID) }
             } else {
                 clearLift()
                 if hypot(translation.width, translation.height) < tapSlop {
@@ -397,10 +431,15 @@ final class MerchantShopSession: ObservableObject {
         }
     }
 
-    private func resolveDrop(itemID: String, at location: CGPoint) async {
+    private func resolveDrop(itemID: String) async {
         let price = catalog[itemID]?.displayedPrice(levelOrder: levelOrder) ?? 0
         let coins = appSession.playerState?.levels[resourceName]?.starsCurrent ?? 0
-        let slot = MerchantPurchase.slotIndex(containing: location, frames: slotFrames)
+        let home = dragHome
+        let offer = (home?.bounds ?? .null).offsetBy(
+            dx: dragTranslation.width,
+            dy: dragTranslation.height
+        )
+        let slot = MerchantPurchase.assistedSlotIndex(offer: offer, frames: slotFrames)
         let outcome = MerchantPurchase.outcome(
             itemID: itemID,
             slotIndex: slot,
@@ -419,14 +458,45 @@ final class MerchantShopSession: ObservableObject {
                 await returnWareHome(playError: false)
                 return
             }
+            await settleOntoSlot(slot)
             await completePurchase(itemID: itemID, slot: slot, price: price)
         case .confirmReplace:
             guard let slot else {
                 await returnWareHome(playError: false)
                 return
             }
+            await settleOntoSlot(slot)
             activeModal = .replace(itemID: itemID, slot: slot)
         }
+    }
+
+    private func settleOntoSlot(_ slot: Int) async {
+        guard let home = dragHome, let slotFrame = slotFrames[slot] else { return }
+        let target = CGSize(
+            width: slotFrame.midX - home.spriteFrame.midX,
+            height: slotFrame.midY - home.spriteFrame.midY
+        )
+        let remaining = CGSize(
+            width: target.width - dragTranslation.width,
+            height: target.height - dragTranslation.height
+        )
+        guard hypot(remaining.width, remaining.height) > 1 else {
+            dragTranslation = target
+            highlightedSlot = slot
+            return
+        }
+        returnAnimationDuration = MerchantDragMotion.returnDuration(for: remaining)
+        isReturningHome = true
+        withAnimation(.easeInOut(duration: returnAnimationDuration)) {
+            dragTranslation = target
+            highlightedSlot = slot
+        }
+        let nanos = UInt64(returnAnimationDuration * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: nanos)
+        guard !Task.isCancelled else { return }
+        isReturningHome = false
+        dragTranslation = target
+        highlightedSlot = slot
     }
 
     func cancelReplace() {
@@ -486,6 +556,7 @@ final class MerchantShopSession: ObservableObject {
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             draggedID = nil
+            dragHome = nil
             dragTranslation = .zero
             highlightedSlot = nil
             isReturningHome = false

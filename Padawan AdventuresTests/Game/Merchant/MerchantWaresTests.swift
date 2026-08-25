@@ -185,4 +185,52 @@ struct MerchantWaresTests {
         #expect(abs(square.width - 56) < 0.001)
         #expect(abs(square.height - 56) < 0.001)
     }
+
+    @Test func assistedSlotRequiresSignificantOverlap() {
+        let slots: [Int: CGRect] = [
+            0: CGRect(x: 0, y: 0, width: 100, height: 100),
+            1: CGRect(x: 0, y: 110, width: 100, height: 100),
+        ]
+        #expect(
+            MerchantPurchase.assistedSlotIndex(
+                offer: CGRect(x: 400, y: 400, width: 80, height: 160),
+                frames: slots
+            ) == nil
+        )
+        // 10% of slot 0.
+        #expect(
+            MerchantPurchase.assistedSlotIndex(
+                offer: CGRect(x: 0, y: 0, width: 10, height: 100),
+                frames: slots
+            ) == nil
+        )
+        // 50% of slot 0.
+        #expect(
+            MerchantPurchase.assistedSlotIndex(
+                offer: CGRect(x: 0, y: 0, width: 50, height: 100),
+                frames: slots
+            ) == 0
+        )
+        // Covers 40% of slot 1 and 80% of slot 0 — pick the greater coverage.
+        #expect(
+            MerchantPurchase.assistedSlotIndex(
+                offer: CGRect(x: 0, y: 0, width: 80, height: 150),
+                frames: slots
+            ) == 0
+        )
+        #expect(
+            abs(
+                MerchantPurchase.slotCoverage(
+                    of: CGRect(x: 0, y: 0, width: 40, height: 100),
+                    onto: CGRect(x: 0, y: 0, width: 100, height: 100)
+                ) - 0.4
+            ) < 0.0001
+        )
+        #expect(
+            MerchantPurchase.assistedSlotIndex(
+                offer: CGRect(x: 0, y: 0, width: 40, height: 100),
+                frames: slots
+            ) == 0
+        )
+    }
 }
