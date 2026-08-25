@@ -52,6 +52,14 @@ extension IsometricRenderer {
         )
     }
 
+    /// Detaches floor nodes so a later sync can spawn replacements to cross-fade against.
+    func takeFloorNodes(at coords: [GridCoord]) -> [SKNode] {
+        coords.compactMap { coord in
+            floorIdentities[coord] = nil
+            return floorNodes.removeValue(forKey: coord)
+        }
+    }
+
     func clearFloorNodes() {
         for node in floorNodes.values {
             node.removeFromParent()

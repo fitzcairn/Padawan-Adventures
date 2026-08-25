@@ -70,7 +70,6 @@ struct MerchantReplaceModal: View {
                         .accessibilityIdentifier("merchant.replace.cancel")
 
                         Button(action: {
-                            playMenuSound("button_click")
                             onConfirm()
                         }) {
                             AppCircularIconPlate(systemName: "checkmark", size: 64)

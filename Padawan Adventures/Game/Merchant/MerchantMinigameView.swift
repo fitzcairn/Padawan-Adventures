@@ -529,7 +529,6 @@ final class MerchantShopSession: ObservableObject {
         SoundEffectsController.shared.play(trackID: "merchant-purchase")
         displayedCoins = previousDisplayed
         burstProgress = 0
-        Strings.speak("merchant_coins_spent")
         animateSpend(from: previousDisplayed, to: previousDisplayed - price, amount: price)
     }
 

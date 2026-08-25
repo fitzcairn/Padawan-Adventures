@@ -123,6 +123,7 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "merchant_replace_item": "Replace item?",
         "merchant_coins_spent": "You spent {coins} coins!",
         "inventory_jetpack_need_gate": "Get closer to a gate to use the jetpack!",
+        "inventory_bridge_need_pit": "Get closer to the pit you want to bridge",
     ])
 
     nonisolated init(entries: [String: UIString]) {

@@ -16,7 +16,7 @@ final class GameViewController: LandscapeHostingController {
     private let runExitHandler = GameRunExitHandler()
     private var didApplyLevelMusic = false
     private var worldTutorial: WorldTutorialController?
-    private var jetpackNeedGateHost: UIViewController?
+    private var inventoryHintHost: UIViewController?
     private lazy var cachedHudConfig: HudConfig = Self.loadHudConfig()
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
@@ -201,11 +201,14 @@ final class GameViewController: LandscapeHostingController {
               !scene.isPausedForEncounter,
               !scene.isResolvingPickup,
               !overlayPresenter.isBusy,
-              jetpackNeedGateHost == nil
+              inventoryHintHost == nil
         else { return false }
 
         if itemID == JetpackGateUse.itemID {
             return useJetpackFromInventory(index: index)
+        }
+        if itemID == BridgePitUse.itemID {
+            return useBridgeFromInventory(index: index)
         }
         if itemID == SatelliteScanUse.itemID {
             return useSatelliteFromInventory(index: index)
@@ -232,7 +235,24 @@ final class GameViewController: LandscapeHostingController {
         }
         persistClearedInventorySlot(index: index)
         Task { await session.recordStat { $0.gatesOpened += 1 } }
+        playPlayerFx("jetpack")
         scene.useJetpack(over: result.gateCoord, landing: result.landing)
+        return true
+    }
+
+    private func useBridgeFromInventory(index: Int) -> Bool {
+        guard let scene = gameScene else { return false }
+        guard let result = BridgePitUse.resolve(in: scene.currentWorld) else {
+            presentInventoryHint(
+                BridgeNeedPitModal { [weak self] in
+                    self?.dismissInventoryHint()
+                }
+            )
+            return false
+        }
+        persistClearedInventorySlot(index: index)
+        Task { await session.recordStat { $0.pitsCrossed += 1 } }
+        scene.useBridge(result)
         return true
     }
 
@@ -284,11 +304,17 @@ final class GameViewController: LandscapeHostingController {
     }
 
     private func presentJetpackNeedGateModal() {
-        guard jetpackNeedGateHost == nil else { return }
+        presentInventoryHint(
+            JetpackNeedGateModal { [weak self] in
+                self?.dismissInventoryHint()
+            }
+        )
+    }
+
+    private func presentInventoryHint<Content: View>(_ modal: Content) {
+        guard inventoryHintHost == nil else { return }
         gameScene?.isPausedForEncounter = true
-        let host = UIHostingController(rootView: JetpackNeedGateModal { [weak self] in
-            self?.dismissJetpackNeedGateModal()
-        })
+        let host = UIHostingController(rootView: modal)
         host.view.backgroundColor = .clear
         host.view.translatesAutoresizingMaskIntoConstraints = false
         addChild(host)
@@ -300,12 +326,12 @@ final class GameViewController: LandscapeHostingController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         host.didMove(toParent: self)
-        jetpackNeedGateHost = host
+        inventoryHintHost = host
     }
 
-    private func dismissJetpackNeedGateModal() {
-        guard let host = jetpackNeedGateHost else { return }
-        jetpackNeedGateHost = nil
+    private func dismissInventoryHint() {
+        guard let host = inventoryHintHost else { return }
+        inventoryHintHost = nil
         host.willMove(toParent: nil)
         host.view.removeFromSuperview()
         host.removeFromParent()

@@ -377,3 +377,8 @@ strings:
     sfx: sfx_ui_inventory_jetpack_need_gate
     context: "CRT modal over the live world when the player taps the jetpack in the HUD but is not uniquely close enough to a gate to jump. Spoken when the modal appears. Tap anywhere dismisses."
     spoken: "Get closer to a gate to use the jetpack!"
+  inventory_bridge_need_pit:
+    text: "Get closer to the pit you want to bridge"
+    sfx: sfx_ui_inventory_bridge_need_pit
+    context: "CRT modal over the live world when the player taps the bridge in the HUD but is not uniquely close enough to one pit blob to fill. Spoken when the modal appears. Tap anywhere dismisses."
+    spoken: "Get closer to the pit you want to bridge"

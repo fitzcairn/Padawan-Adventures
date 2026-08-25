@@ -123,7 +123,7 @@ pommel:
 # Still sheets use near-black (#010101), so `chroma: black_soft` (tolerance 2).
 merchant:
   merchant-ware-bridge:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_bridge
@@ -134,7 +134,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
   merchant-ware-crystal-green:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_crystal_green
@@ -145,7 +145,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-green, atlas: merchant-ware-crystal-green-atlas }
   merchant-ware-crystal-purple:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_crystal_purple
@@ -156,7 +156,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-purple, atlas: merchant-ware-crystal-purple-atlas }
   merchant-ware-crystal-yellow:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_crystal_yellow
@@ -167,7 +167,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-yellow, atlas: merchant-ware-crystal-yellow-atlas }
   merchant-ware-double-saber:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_double_saber

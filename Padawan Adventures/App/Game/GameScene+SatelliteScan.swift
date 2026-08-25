@@ -17,17 +17,27 @@ extension GameScene {
 
     /// Zooms to the artifact, reveals a 5-tile radius outward, then returns to the player.
     func performSatelliteScan(at origin: GridCoord, completion: @escaping () -> Void) {
-        performAreaScan(at: origin, soundEvent: "scan", loopsSound: true, completion: completion)
+        performAreaScan(
+            at: origin,
+            trackID: playerFx.trackID(for: "scan") ?? "satellite-scan",
+            loopsSound: true,
+            completion: completion
+        )
     }
 
     /// Reveals a 5-tile radius outward from the player, then zooms back to play scale.
     func performScannerScan(at origin: GridCoord, completion: @escaping () -> Void) {
-        performAreaScan(at: origin, soundEvent: "scanner", loopsSound: false, completion: completion)
+        performAreaScan(
+            at: origin,
+            trackID: playerFx.trackID(for: "scanner") ?? "scanner",
+            loopsSound: true,
+            completion: completion
+        )
     }
 
     private func performAreaScan(
         at origin: GridCoord,
-        soundEvent: String,
+        trackID: String,
         loopsSound: Bool,
         completion: @escaping () -> Void
     ) {
@@ -40,13 +50,11 @@ extension GameScene {
             guard let self else { return }
             let loopID: String?
             if loopsSound {
-                loopID = SoundEffectsController.shared.startLoop(
-                    event: soundEvent,
-                    from: self.playerFx
-                )
+                SoundEffectsController.shared.startLoop(trackID: trackID)
+                loopID = trackID
             } else {
                 loopID = nil
-                SoundEffectsController.shared.play(event: soundEvent, from: self.playerFx)
+                SoundEffectsController.shared.play(trackID: trackID)
             }
             await self.animateCamera(
                 to: IsometricMath.entityScreenPosition(origin, config: self.isoConfig),

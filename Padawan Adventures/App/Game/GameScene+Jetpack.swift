@@ -27,7 +27,7 @@ extension GameScene {
         if let sprite = renderer.playerAnimatedSprite(), let library = spriteLibrary {
             sprite.play(name: facingLeft ? "jump_left" : "jump_right", library: library)
         }
-        SoundEffectsController.shared.play(event: "jump", from: playerFx)
+        duckWorldMusicForJetpackJump()
 
         let arcHeight = max(
             isoConfig.wallHeight * 1.75,
@@ -67,6 +67,21 @@ extension GameScene {
         playerNode.run(action) { [weak self] in
             playerNode.position = end
             self?.finishJetpackJump(gate: gate, landing: landing, completion: completion)
+        }
+    }
+
+    /// Drops world music under the hop so the jetpack cue stays audible.
+    private func duckWorldMusicForJetpackJump() {
+        let trackID = playerFx.trackID(for: "jetpack")
+            ?? playerFx.trackID(for: "jump")
+            ?? "pit-jump"
+        Task { @MainActor in
+            BackgroundMusicController.shared.duckForPhoneticCue(
+                duration: max(
+                    SoundEffectsController.shared.cueDuration(of: trackID),
+                    Self.jetpackJumpDuration
+                )
+            )
         }
     }
 
