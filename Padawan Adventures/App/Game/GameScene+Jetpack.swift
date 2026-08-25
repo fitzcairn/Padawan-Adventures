@@ -1,7 +1,7 @@
 import SpriteKit
 
 extension GameScene {
-    static let jetpackJumpDuration: TimeInterval = 0.55
+    static let jetpackJumpDuration: TimeInterval = 0.7
 
     /// Arc-jumps over a closed gate, then opens it in place (no world/HUD fade).
     func useJetpack(
@@ -30,8 +30,8 @@ extension GameScene {
         SoundEffectsController.shared.play(event: "jump", from: playerFx)
 
         let arcHeight = max(
-            isoConfig.tileHeight * 1.1,
-            hypot(end.x - start.x, end.y - start.y) * 0.35
+            isoConfig.wallHeight * 1.75,
+            hypot(end.x - start.x, end.y - start.y) * 0.55
         )
         let control = CGPoint(
             x: (start.x + end.x) * 0.5,
