@@ -1,14 +1,38 @@
 import SpriteKit
 import UIKit
 
-/// Geometric stand-ins for the vector strafe: iso ship, blaster bolt, and impact burst.
+/// Vector strafe VFX: baked southwest ship, blaster bolt, and impact burst.
 @MainActor
 enum VectorStrafeVFX {
     static let shipLength: CGFloat = 260
     static let boltLength: CGFloat = 86
 
-    /// Wide diamond kite pointing local +X (rotate to the flight heading).
-    static func makeShip() -> SKNode {
+    /// Looping flyover ship. Art already faces southwest, matching the NE→SW path.
+    static func makeShip(library: SpriteLibrary? = nil) -> SKNode {
+        if let library,
+           let animation = library.animation(
+               id: VectorSpritesConfig.libraryID,
+               named: VectorSpritesConfig.flyAnimation
+           ),
+           !animation.frames.isEmpty
+        {
+            return makeSpriteShip(animation: animation)
+        }
+        return makePlaceholderShip()
+    }
+
+    private static func makeSpriteShip(animation: SpriteAnimation) -> SKNode {
+        let node = AnimatedSpriteNode(size: .zero)
+        node.name = "vectorShip"
+        node.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        node.correctsUIImageVInversion = true
+        node.fitWidth(shipLength)
+        node.play(animation: animation, name: VectorSpritesConfig.flyAnimation)
+        return node
+    }
+
+    /// Last-resort kite if the baked clip is not loaded (tests / missing assets).
+    private static func makePlaceholderShip() -> SKNode {
         let root = SKNode()
         root.name = "vectorShip"
 

@@ -60,6 +60,11 @@ sprite:
     # scale to keep Kam one size across every clip.
     jump_right: { sheet: jump_right-spritesheet, atlas: jump_right-atlas, bake_scale: 0.5 }
     jump_left: { flip_of: jump_right }
+    # 5×5 / 512px canvas, same as jump. NW/SW are cell-flipped copies of NE/SE.
+    jetpack_northeast: { sheet: jetpack_northeast-spritesheet, atlas: jetpack_northeast-atlas, bake_scale: 0.5 }
+    jetpack_northwest: { sheet: jetpack_northwest-spritesheet, atlas: jetpack_northwest-atlas, bake_scale: 0.5 }
+    jetpack_southeast: { sheet: jetpack_southeast-spritesheet, atlas: jetpack_southeast-atlas, bake_scale: 0.5 }
+    jetpack_southwest: { sheet: jetpack_southwest-spritesheet, atlas: jetpack_southwest-atlas, bake_scale: 0.5 }
     celebrate_down: { sheet: celebrate_down-spritesheet, atlas: celebrate_down-atlas, bake_scale: 0.5 }
     lifting_with_the_force_right: { sheet: lifting_with_the_force_right-spritesheet, atlas: lifting_with_the_force_right-atlas, bake_scale: 0.5 }
     lifting_with_the_force_left: { flip_of: lifting_with_the_force_right }

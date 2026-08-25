@@ -48,7 +48,10 @@ enum GameWorldPreparer {
 
         // Warm sprite cache once per session before the world is presented.
         await session.ensurePlayerSpritesLoaded { local in
-            report(LoadProgress.map(local, from: 0.02, to: 0.18))
+            report(LoadProgress.map(local, from: 0.02, to: 0.16))
+        }
+        await session.ensureVectorSpritesLoaded { local in
+            report(LoadProgress.map(local, from: 0.16, to: 0.18))
         }
         await session.ensureItemSpritesLoaded(includeAllTreasures: false) { local in
             report(LoadProgress.map(local, from: 0.18, to: 0.26))

@@ -1,7 +1,7 @@
 import SpriteKit
 
 extension GameScene {
-    static let jetpackJumpDuration: TimeInterval = 0.7
+    static let jetpackJumpDuration: TimeInterval = JetpackJumpAnimation.duration
 
     /// Arc-jumps over a closed gate, then opens it in place (no world/HUD fade).
     func useJetpack(
@@ -22,11 +22,12 @@ extension GameScene {
 
         let start = playerNode.position
         let end = IsometricMath.entityScreenPosition(landing, config: isoConfig)
-        let facingLeft = end.x < start.x
-        playerFacing = facingLeft ? .left : .right
-        if let sprite = renderer.playerAnimatedSprite(), let library = spriteLibrary {
-            sprite.play(name: facingLeft ? "jump_left" : "jump_right", library: library)
+        if let origin = world.playerPosition {
+            playerFacing = CompassDirection.facing(from: origin, toward: landing)
+        } else {
+            playerFacing = end.x < start.x ? .left : .right
         }
+        playJetpackSprite(facing: playerFacing)
         duckWorldMusicForJetpackJump()
 
         let arcHeight = max(
@@ -70,6 +71,55 @@ extension GameScene {
         }
     }
 
+    private func playJetpackSprite(facing: CompassDirection) {
+        guard let sprite = renderer.playerAnimatedSprite(),
+              let library = spriteLibrary,
+              let clip = library.animation(named: JetpackJumpAnimation.clipName(for: facing))
+        else { return }
+
+        let frameDuration = JetpackJumpAnimation.frameDuration
+        let takeoff = clip.slice(JetpackJumpAnimation.takeoffFrames, frameDuration: frameDuration)
+        let hover = clip.slice(JetpackJumpAnimation.hoverFrames, frameDuration: frameDuration)
+        let land = clip.slice(JetpackJumpAnimation.landFrames, frameDuration: frameDuration)
+        let hoverTime = max(
+            JetpackJumpAnimation.hoverLoopDuration,
+            Self.jetpackJumpDuration
+                - JetpackJumpAnimation.takeoffDuration
+                - JetpackJumpAnimation.landDuration
+        )
+
+        sprite.crossfadeOnce(
+            to: takeoff,
+            name: "jetpack-takeoff",
+            duration: JetpackJumpAnimation.crossfadeDuration
+        )
+        sprite.run(
+            .sequence([
+                .wait(forDuration: JetpackJumpAnimation.takeoffDuration),
+                .run { [weak sprite] in
+                    sprite?.play(animation: hover, name: "jetpack-hover")
+                },
+                .wait(forDuration: hoverTime),
+                .run { [weak sprite] in
+                    sprite?.playOnce(animation: land, name: "jetpack-land")
+                },
+            ]),
+            withKey: "jetpackPhases"
+        )
+    }
+
+    /// Dissolves the landing pose into the facing idle clip.
+    private func crossfadeJetpackToIdle() {
+        guard let library = spriteLibrary,
+              let sprite = renderer.playerAnimatedSprite() else { return }
+        let idleName = playerFacing.animationName(locomotion: .idle)
+        sprite.crossfade(
+            name: idleName,
+            library: library,
+            duration: JetpackJumpAnimation.crossfadeDuration
+        )
+    }
+
     /// Drops world music under the hop so the jetpack cue stays audible.
     private func duckWorldMusicForJetpackJump() {
         let trackID = playerFx.trackID(for: "jetpack")
@@ -90,13 +140,15 @@ extension GameScene {
         landing: GridCoord,
         completion: (() -> Void)?
     ) {
+        renderer.playerAnimatedSprite()?.removeAction(forKey: "jetpackPhases")
         let gateNode = renderer.detachGateNode(at: gate, in: world)
         let openedCoords = world.openGate(at: gate)
         renderer.armRevealFade()
         world.setPlayerPosition(landing)
         renderer.render(world: world, focus: viewportFocus)
         renderer.setFloorNodesAlpha(0, at: openedCoords)
-        resumeWorldPlayerIdle()
+        movement.reset()
+        crossfadeJetpackToIdle()
         captureContinueAndSave()
         revealGateEncounter(
             gateNode: gateNode,

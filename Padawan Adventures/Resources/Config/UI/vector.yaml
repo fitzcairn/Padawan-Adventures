@@ -1,0 +1,11 @@
+# Vector flyover ship (baked via scripts/bake_sprites.py --vector).
+# 5×5 sheet already faces southwest; the strafe path is NE→SW, so do not rotate.
+ship:
+  sprite:
+    root: Sprites/Vector
+    chroma: black
+    bake_scale: 0.5
+    animations:
+      fly:
+        sheet: vector_southwest-spritesheet
+        atlas: vector_southwest-atlas

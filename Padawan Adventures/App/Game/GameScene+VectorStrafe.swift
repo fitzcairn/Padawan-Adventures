@@ -33,13 +33,11 @@ extension GameScene {
 
     private func runVectorStrafe(targets: [GameEntity]) async -> Int {
         let path = vectorFlightPath()
-        let heading = atan2(path.end.y - path.start.y, path.end.x - path.start.x)
 
         await fadeVectorLoop(from: 0.02, to: 1, duration: Self.vectorFadeInDuration)
 
-        let ship = VectorStrafeVFX.makeShip()
+        let ship = VectorStrafeVFX.makeShip(library: spriteLibrary)
         ship.position = path.start
-        ship.zRotation = heading
         ship.zPosition = 20_000_000
         addChild(ship)
 

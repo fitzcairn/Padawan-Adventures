@@ -16,6 +16,17 @@ extension AppSession {
         }
     }
 
+    /// Ensures the vector flyover ship is loaded for inventory use.
+    func ensureVectorSpritesLoaded(onProgress: ((Double) -> Void)? = nil) async {
+        guard let config = try? VectorSpritesConfig.loadFromBundle() else {
+            onProgress?(1)
+            return
+        }
+        for entry in config.entries {
+            await spriteLibrary.ensureLoaded(entry.config, id: entry.id, onProgress: onProgress)
+        }
+    }
+
     /// Ensures item pickup sprite animations are loaded for this session.
     ///
     /// By default warms shared pickups plus every level treasure part (bootstrapped at load).
@@ -81,6 +92,7 @@ extension AppSession {
             "logo",
             MenuSpritesConfig.iconsID,
             "merchant",
+            VectorSpritesConfig.libraryID,
         ]
         let levels = LevelCatalog.loadFromBundle()
         ids.formUnion(levels.map(\.resourceName))

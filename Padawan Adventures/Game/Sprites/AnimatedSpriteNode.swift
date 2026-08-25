@@ -4,6 +4,8 @@ import SpriteKit
 final class AnimatedSpriteNode: SKSpriteNode {
     static let animationActionKey = "animatedSprite"
     static let nodeName = "animatedSprite"
+    static let fadeOutNodeName = "animatedSprite.fadeOut"
+    static let crossfadeActionKey = "animatedSprite.crossfade"
 
     private(set) var currentAnimationName: String?
     private var baseScale: CGFloat = 1
@@ -93,6 +95,42 @@ final class AnimatedSpriteNode: SKSpriteNode {
         run(Self.makeLoopingAction(for: animation), withKey: Self.animationActionKey)
     }
 
+    /// Dissolves the current clip into `animation` over `duration`, then plays it looping.
+    func crossfade(to animation: SpriteAnimation, name: String, duration: TimeInterval) {
+        presentCrossfadeOutgoing(duration: duration)
+        play(animation: animation, name: name)
+    }
+
+    /// Dissolves the current clip into a one-shot `animation` over `duration`.
+    func crossfadeOnce(to animation: SpriteAnimation, name: String, duration: TimeInterval) {
+        presentCrossfadeOutgoing(duration: duration)
+        playOnce(animation: animation, name: name)
+    }
+
+    /// Dissolves the current clip into `name` from `library` over `duration`.
+    @MainActor
+    func crossfade(
+        name: String,
+        library: SpriteLibrary,
+        libraryID: String = "player",
+        duration: TimeInterval
+    ) {
+        guard library.animation(id: libraryID, named: name) != nil else { return }
+        presentCrossfadeOutgoing(duration: duration)
+        currentAnimationName = nil
+        play(name: name, library: library, libraryID: libraryID)
+    }
+
+    /// Plays a concrete clip once and leaves the last frame. No-ops if already playing `name`.
+    func playOnce(animation: SpriteAnimation, name: String) {
+        if currentAnimationName == name, action(forKey: Self.animationActionKey) != nil {
+            return
+        }
+        preparePlayback(animation: animation, name: name)
+        guard animation.frames.count > 1 else { return }
+        run(Self.makeOnceAction(for: animation), withKey: Self.animationActionKey)
+    }
+
     /// Plays `name` once from frame 0, then restores frame 0. Always restarts if already playing.
     @MainActor
     func playOnce(name: String, library: SpriteLibrary, libraryID: String = "player") {
@@ -179,6 +217,41 @@ final class AnimatedSpriteNode: SKSpriteNode {
             ]
         }
         return .sequence(steps)
+    }
+
+    /// Clones the current pose onto a sibling that fades out while this node fades in.
+    private func presentCrossfadeOutgoing(duration: TimeInterval) {
+        removeAction(forKey: Self.crossfadeActionKey)
+        let fade = max(0, duration)
+        guard fade > 0, let parent else {
+            alpha = 1
+            return
+        }
+        parent.childNode(withName: Self.fadeOutNodeName)?.removeFromParent()
+        let outgoing = makeFadeOutClone()
+        outgoing.zPosition = zPosition - 0.001
+        parent.addChild(outgoing)
+        outgoing.run(.sequence([
+            .fadeOut(withDuration: fade),
+            .removeFromParent(),
+        ]))
+        alpha = 0
+        run(.fadeIn(withDuration: fade), withKey: Self.crossfadeActionKey)
+    }
+
+    private func makeFadeOutClone() -> SKSpriteNode {
+        let clone = SKSpriteNode(texture: texture, color: color, size: size)
+        clone.name = Self.fadeOutNodeName
+        clone.anchorPoint = anchorPoint
+        clone.position = position
+        clone.xScale = xScale
+        clone.yScale = yScale
+        clone.alpha = alpha
+        clone.colorBlendFactor = colorBlendFactor
+        if let action = action(forKey: Self.animationActionKey) {
+            clone.run(action.copy() as! SKAction, withKey: Self.animationActionKey)
+        }
+        return clone
     }
 
     /// Uniform display scale (absolute); horizontal flip is reapplied from the active clip.

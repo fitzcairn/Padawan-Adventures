@@ -395,6 +395,33 @@ struct SpriteSystemTests {
         #expect(abs(node.size.width - 72) < 0.001) // 60 * 1.2
     }
 
+    @Test @MainActor func animatedSpriteCrossfadeSpawnsOutgoingClone() {
+        let parent = SKNode()
+        let node = AnimatedSpriteNode(size: CGSize(width: 32, height: 32))
+        parent.addChild(node)
+        let idle = SpriteAnimation(frames: [SpriteFrame(texture: Self.makeSolidTexture(width: 16, height: 16), duration: 0.1)])
+        let jetpack = SpriteAnimation(frames: [SpriteFrame(texture: Self.makeSolidTexture(width: 16, height: 16), duration: 0.1)])
+        node.play(animation: idle, name: "idle_down")
+        node.crossfadeOnce(to: jetpack, name: "jetpack-takeoff", duration: 0.2)
+        #expect(node.currentAnimationName == "jetpack-takeoff")
+        #expect(abs(node.alpha) < 0.001)
+        #expect(node.action(forKey: AnimatedSpriteNode.crossfadeActionKey) != nil)
+        let outgoing = parent.childNode(withName: AnimatedSpriteNode.fadeOutNodeName)
+        #expect(outgoing != nil)
+        #expect(abs((outgoing?.alpha ?? 0) - 1) < 0.001)
+    }
+
+    @Test @MainActor func animatedSpriteCrossfadeWithoutParentStillSwitchesClip() {
+        let node = AnimatedSpriteNode(size: CGSize(width: 32, height: 32))
+        let idle = SpriteAnimation(frames: [SpriteFrame(texture: Self.makeSolidTexture(width: 16, height: 16), duration: 0.1)])
+        let jetpack = SpriteAnimation(frames: [SpriteFrame(texture: Self.makeSolidTexture(width: 16, height: 16), duration: 0.1)])
+        node.play(animation: idle, name: "idle_down")
+        node.crossfade(to: jetpack, name: "jetpack-hover", duration: 0.2)
+        #expect(node.currentAnimationName == "jetpack-hover")
+        #expect(abs(node.alpha - 1) < 0.001)
+        #expect(node.action(forKey: AnimatedSpriteNode.crossfadeActionKey) == nil)
+    }
+
     private static func makeSolidTexture(width: Int, height: Int) -> SKTexture {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(

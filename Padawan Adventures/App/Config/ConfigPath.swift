@@ -31,6 +31,7 @@ nonisolated struct ConfigPath: Equatable, Sendable {
     static let loading = ConfigPath(basename: "loading", subdirectory: "\(configRoot)/UI")
     static let cutscene = ConfigPath(basename: "cutscene", subdirectory: "\(configRoot)/UI")
     static let menu = ConfigPath(basename: "menu", subdirectory: "\(configRoot)/UI")
+    static let vector = ConfigPath(basename: "vector", subdirectory: "\(configRoot)/UI")
 
     /// A top-level config file, for callers that resolve by name.
     static func config(_ name: String) -> ConfigPath {

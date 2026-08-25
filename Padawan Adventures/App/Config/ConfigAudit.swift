@@ -131,6 +131,17 @@ nonisolated enum ConfigAudit {
             }
         }
 
+        do {
+            let vector = try VectorSpritesConfig.loadFromBundle(bundle: bundle)
+            for entry in vector.entries {
+                problems.append(contentsOf: checkSpriteConfig(
+                    entry.config, label: "vector.\(entry.id).sprite", bundle: bundle
+                ))
+            }
+        } catch {
+            problems.append("vector: failed to load Config/UI/vector.yaml (\(error))")
+        }
+
         for word in words.words {
             guard let image = word.image?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !image.isEmpty else {

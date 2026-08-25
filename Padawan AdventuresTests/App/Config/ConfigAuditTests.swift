@@ -31,6 +31,10 @@ struct ConfigAuditTests {
         let npcs = try NpcsConfig.loadFromBundle()
         try npcs.validate()
 
+        let vector = try VectorSpritesConfig.loadFromBundle()
+        #expect(vector.ship.sprite.root == "Sprites/Vector")
+        #expect(vector.ship.sprite.animations[VectorSpritesConfig.flyAnimation] != nil)
+
         let words = try WordCatalog.loadFromBundle()
         try words.validate()
 
