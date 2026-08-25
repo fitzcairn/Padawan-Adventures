@@ -72,6 +72,8 @@ def generate(*, force: bool = False) -> int:
     created = 0
     skipped = 0
     for entry in entries:
+        if not (entry.get("spoken") or "").strip():
+            continue
         string_id = entry["id"]
         basename = entry.get("sfx") or f"sfx_ui_{string_id}"
         target = target_path_for_basename(basename)

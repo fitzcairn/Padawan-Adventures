@@ -102,8 +102,10 @@ extension ConfigAudit {
         }
 
         for (id, entry) in strings.entries.sorted(by: { $0.key < $1.key }) {
+            let basename = entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !basename.isEmpty else { continue }
             references.append(
-                AudioReference(kind: "strings.\(id).sfx", basename: entry.sfx, tree: .fx)
+                AudioReference(kind: "strings.\(id).sfx", basename: basename, tree: .fx)
             )
         }
 

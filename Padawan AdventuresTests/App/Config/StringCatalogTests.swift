@@ -9,17 +9,32 @@ struct StringCatalogTests {
         #expect(!catalog.entries.isEmpty)
     }
 
-    @Test func everyEntryHasTextAndSfxUiPrefix() throws {
+    @Test func everyEntryHasTextAndValidSfx() throws {
         let catalog = try StringCatalog.loadFromBundle()
         for (id, entry) in catalog.entries {
             #expect(!entry.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(id)")
-            #expect(entry.sfx.hasPrefix("sfx_ui_"), "\(id): \(entry.sfx)")
+            if !entry.sfx.isEmpty {
+                #expect(entry.sfx.hasPrefix("sfx_ui_"), "\(id): \(entry.sfx)")
+            }
+        }
+    }
+
+    @Test func everyEntryHasContextAndBraceFreeSpoken() throws {
+        let catalog = try StringCatalog.loadFromBundle()
+        for (id, entry) in catalog.entries {
+            #expect(!entry.context.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(id) missing context")
+            if entry.sfx.isEmpty {
+                #expect(entry.spoken.isEmpty, "\(id) unspoken should not set spoken")
+            } else {
+                #expect(!entry.spoken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "\(id) missing spoken")
+                #expect(!entry.spoken.contains("{"), "\(id) spoken has braces")
+            }
         }
     }
 
     @Test func sfxValuesAreUnique() throws {
         let catalog = try StringCatalog.loadFromBundle()
-        let sfxValues = catalog.entries.values.map(\.sfx)
+        let sfxValues = catalog.entries.values.map(\.sfx).filter { !$0.isEmpty }
         #expect(Set(sfxValues).count == sfxValues.count)
     }
 
@@ -64,6 +79,7 @@ struct StringCatalogTests {
             strings:
               broken:
                 text: "Hello"
+                spoken: "Hello"
             """)
         }
         #expect(throws: StringCatalogError.self) {

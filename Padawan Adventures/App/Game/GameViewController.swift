@@ -16,6 +16,7 @@ final class GameViewController: LandscapeHostingController {
     private let runExitHandler = GameRunExitHandler()
     private var didApplyLevelMusic = false
     private var worldTutorial: WorldTutorialController?
+    private var jetpackNeedGateHost: UIViewController?
     private lazy var cachedHudConfig: HudConfig = Self.loadHudConfig()
     private lazy var overlayPresenter = FullscreenOverlayPresenter(
         host: self,
@@ -172,21 +173,7 @@ final class GameViewController: LandscapeHostingController {
             merchantCatalog: session.itemsConfig.merchant
         )
         hud.onInventorySlotTapped = { [weak self] index, itemID in
-            guard let self else { return }
-            if let sound = self.session.itemsConfig.merchantItem(itemID)?.sound,
-               !sound.isEmpty
-            {
-                SoundEffectsController.shared.play(trackID: sound)
-            }
-            Task {
-                await self.session.setItemSlot(index: index, itemID: nil)
-                await MainActor.run {
-                    self.hud?.setInventorySlots(
-                        self.session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
-                        catalog: self.session.itemsConfig.merchant
-                    )
-                }
-            }
+            self?.handleInventorySlotTapped(index: index, itemID: itemID) ?? false
         }
         hud.onFleeTapped = { [weak self] in
             guard let self else { return }
@@ -206,6 +193,80 @@ final class GameViewController: LandscapeHostingController {
         ])
         hud.embedInventory(in: self)
         self.hud = hud
+    }
+
+    private func handleInventorySlotTapped(index: Int, itemID: String) -> Bool {
+        guard let scene = gameScene,
+              !scene.isPausedForEncounter,
+              !scene.isResolvingPickup,
+              !overlayPresenter.isBusy,
+              jetpackNeedGateHost == nil
+        else { return false }
+
+        if itemID == JetpackGateUse.itemID {
+            return useJetpackFromInventory(index: index)
+        }
+
+        if let sound = session.itemsConfig.merchantItem(itemID)?.sound, !sound.isEmpty {
+            SoundEffectsController.shared.play(trackID: sound)
+        }
+        persistClearedInventorySlot(index: index)
+        return true
+    }
+
+    private func useJetpackFromInventory(index: Int) -> Bool {
+        guard let scene = gameScene else { return false }
+        guard let result = JetpackGateUse.resolve(in: scene.currentWorld) else {
+            presentJetpackNeedGateModal()
+            return false
+        }
+        persistClearedInventorySlot(index: index)
+        Task { await session.recordStat { $0.gatesOpened += 1 } }
+        scene.useJetpack(over: result.gateCoord, landing: result.landing)
+        return true
+    }
+
+    private func persistClearedInventorySlot(index: Int) {
+        Task {
+            await session.setItemSlot(index: index, itemID: nil)
+            await MainActor.run {
+                hud?.setInventorySlots(
+                    session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
+                    catalog: session.itemsConfig.merchant
+                )
+            }
+        }
+    }
+
+    private func presentJetpackNeedGateModal() {
+        guard jetpackNeedGateHost == nil else { return }
+        gameScene?.isPausedForEncounter = true
+        let host = UIHostingController(rootView: JetpackNeedGateModal { [weak self] in
+            self?.dismissJetpackNeedGateModal()
+        })
+        host.view.backgroundColor = .clear
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(host)
+        view.addSubview(host.view)
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        host.didMove(toParent: self)
+        jetpackNeedGateHost = host
+    }
+
+    private func dismissJetpackNeedGateModal() {
+        guard let host = jetpackNeedGateHost else { return }
+        jetpackNeedGateHost = nil
+        host.willMove(toParent: nil)
+        host.view.removeFromSuperview()
+        host.removeFromParent()
+        if !overlayPresenter.isBusy {
+            gameScene?.isPausedForEncounter = false
+        }
     }
 
     private func handlePickupCollected(_ kind: PickupKind) {

@@ -280,7 +280,7 @@ struct SoundEffectsControllerTests {
 
     @Test func everyCatalogStringUsesTheVoiceOverChannel() throws {
         let catalog = try StringCatalog.loadFromBundle()
-        for (id, entry) in catalog.entries {
+        for (id, entry) in catalog.entries where !entry.sfx.isEmpty {
             #expect(SoundEffectsController.isVoiceOverTrack(entry.sfx), "\(id): \(entry.sfx)")
         }
     }

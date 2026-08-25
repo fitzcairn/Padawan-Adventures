@@ -32,7 +32,7 @@ nonisolated enum Strings {
     /// Plays the entry's voice-over clip. Missing ids and missing assets are ignored.
     @MainActor
     static func speak(_ id: String) {
-        guard let entry = catalog.entry(id) else { return }
+        guard let entry = catalog.entry(id), !entry.sfx.isEmpty else { return }
         SoundEffectsController.shared.play(trackID: entry.sfx)
     }
 

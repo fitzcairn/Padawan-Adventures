@@ -80,7 +80,7 @@ struct GateSoundOutWordSceneTests {
     }
 
     @Test func wideSceneKeepsPreferredCapacitorDiameterWhenSixFit() {
-        let scene = makeScene(
+        let scene = makeCatScene(
             size: CGSize(width: 1600, height: 900),
             choiceCountMin: 6,
             choiceCountMax: 6
@@ -270,7 +270,11 @@ struct GateSoundOutWordSceneTests {
         return GateSoundOutWordScene(size: size, puzzleConfig: puzzleConfig)
     }
 
-    private func makeCatScene() -> GateSoundOutWordScene {
+    private func makeCatScene(
+        size: CGSize = CGSize(width: 800, height: 600),
+        choiceCountMin: Int = 2,
+        choiceCountMax: Int = 4
+    ) -> GateSoundOutWordScene {
         let alphabet = "abcdefghijklmnopqrstuvwxyz".map(String.init)
         let graphemes = alphabet.map {
             GateGrapheme(
@@ -280,8 +284,10 @@ struct GateSoundOutWordSceneTests {
             )
         }
         return GateSoundOutWordScene(
-            size: CGSize(width: 800, height: 600),
+            size: size,
             puzzleConfig: GateSoundOutWordConfig(
+                choiceCountMin: choiceCountMin,
+                choiceCountMax: choiceCountMax,
                 words: [GateWord.fallbackEntry(word: "cat")],
                 graphemes: graphemes
             )

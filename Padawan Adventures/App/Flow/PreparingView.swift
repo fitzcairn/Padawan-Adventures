@@ -11,22 +11,18 @@ struct PreparingView: View {
     var body: some View {
         AppScreen {
             if loadFailed {
-                LoadingScreenScaffold(
-                    statusText: Strings.text("preparing_error_title"),
-                    statusAccessibilityID: "preparing.status",
-                    extra: {
-                        AppTitleText(
-                            text: Strings.text("preparing_error_body"),
-                            size: 18,
-                            weight: .regular
-                        )
-                        .accessibilityIdentifier("preparing.error")
-                        AppLargeButton(title: Strings.text("button_back"), accessibilityID: "preparing.back") {
-                            router.popOrShowMenu()
-                        }
-                        .frame(maxWidth: 280)
+                VStack(spacing: 28) {
+                    AppTitleText(
+                        text: Strings.text("preparing_error"),
+                        size: 28,
+                        weight: .semibold
+                    )
+                    .accessibilityIdentifier("preparing.status")
+                    AppLargeButton(title: Strings.text("button_back"), accessibilityID: "preparing.back") {
+                        router.popOrShowMenu()
                     }
-                )
+                    .frame(maxWidth: 280)
+                }
             } else {
                 LoadingScreenScaffold(
                     statusText: Strings.text("preparing_takeoff"),

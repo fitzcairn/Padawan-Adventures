@@ -1,386 +1,379 @@
 # UI copy for every screen, keyed by string id.
 # Per string:
 #   text:    copy shown on screen (required). {braces} mark runtime substitutions.
-#   sfx:     voice-over basename under Resources/Audio/FX/UI/ (required, sfx_ui_<id>)
-#   context: where it appears, <= 10 words (required; shown by Tools/Record)
-#   spoken:  brace-free form to record when text has substitutions (optional)
+#   sfx:     voice-over basename under Resources/Audio/FX/UI/ (required with
+#            spoken; omit when the string is never spoken).
+#   context: where it appears in the UI (required; shown by Tools/Record).
+#            Name the screen, the control, and whether it is on-screen, in a
+#            modal, VoiceOver-only, or voice-over-only.
+#   spoken:  brace-free line to record. Required when the string is in a modal
+#            or is not shown as on-screen copy (VoiceOver / voice-over only).
+#            Omit for buttons and for copy on the main menu, Player Select,
+#            Dad Mode password, and Settings controls — they are never spoken.
+#            Optional otherwise; defaults to text. Prefer sentence case.
 # Rebuild to pick up changes.
 strings:
   button_back:
     text: "Back"
-    sfx: sfx_ui_button_back
-    context: "Shared back button on several screens"
+    context: "Labeled Back button on Settings and the preparing-screen load-error. Also the VoiceOver name of the chevron icon on Level Select (icon has no visible caption)."
   button_cancel:
     text: "Cancel"
-    sfx: sfx_ui_button_cancel
-    context: "Shared cancel button in alerts"
+    context: "Cancel in Player Select system alerts, the Dad Mode password screen, and the main-menu New Game confirm modal. Also VoiceOver for the merchant replace-slot X button (icon only)."
   button_ok:
     text: "OK"
-    sfx: sfx_ui_button_ok
-    context: "Shared confirm button in alerts"
+    context: "OK in the Player Select new-player and name-taken system alerts. Also VoiceOver for the merchant replace-slot checkmark (icon only)."
   button_delete:
     text: "Delete"
-    sfx: sfx_ui_button_delete
-    context: "Destructive delete confirmation button"
+    context: "Destructive Delete in the Player Select delete-player system alert. Also VoiceOver for each row's trash icon (icon has no visible caption)."
   button_new:
     text: "New"
-    sfx: sfx_ui_button_new
-    context: "Create-player button on player select"
+    context: "Labeled New button at the bottom of Player Select; opens the new-player name alert."
   loading_loading:
     text: "Loading..."
-    sfx: sfx_ui_loading_loading
-    context: "Loading screen status while bootstrapping"
+    context: "Status line on the boot Loading screen while configs and assets load, above the progress bar."
   loading_tap_to_start:
     text: "Tap to start"
     sfx: sfx_ui_loading_tap_to_start
-    context: "Loading screen status when ready"
+    context: "Status line on the boot Loading screen once loading finishes; also spoken a few seconds after the screen is ready."
+    spoken: "Tap to start"
   preparing_takeoff:
     text: "PREPARING FOR TAKEOFF..."
-    sfx: sfx_ui_preparing_takeoff
-    context: "Preparing screen status during world load"
-  preparing_error_title:
-    text: "COULD NOT LOAD ENEMIES"
-    sfx: sfx_ui_preparing_error_title
-    context: "Preparing screen error title"
-  preparing_error_body:
+    context: "Status line on the Preparing screen while the selected planet's world is generated, above the progress bar."
+  preparing_error:
     text: "Oops!  Problem there was.  Select a new level, you must."
-    sfx: sfx_ui_preparing_error_body
-    context: "Preparing screen error body"
+    context: "Status line on the Preparing screen when launch fails, above the Back button."
   menu_welcome:
     text: "Welcome"
-    sfx: sfx_ui_menu_welcome
-    context: "Main menu greeting without a player"
+    context: "Greeting under the logo on the main menu when no player is selected yet."
   menu_welcome_named:
     text: "Welcome, {name}"
-    spoken: "Welcome"
-    sfx: sfx_ui_menu_welcome_named
-    context: "Main menu greeting with a player name"
+    context: "Greeting under the logo on the main menu beside the current player's avatar."
   menu_continue:
     text: "CONTINUE"
-    sfx: sfx_ui_menu_continue
-    context: "Main menu button resuming saved progress"
+    context: "Main-menu Continue button, shown only when there is a mid-run save or campaign progress to resume."
   menu_new_game:
     text: "NEW GAME"
-    sfx: sfx_ui_menu_new_game
-    context: "Main menu button starting a new game"
+    context: "Main-menu New Game button. Starts immediately if there is no progress; otherwise opens the restart confirm modal."
   menu_new_game_confirm:
     text: "This will restart your game!  Are you sure?"
-    sfx: sfx_ui_menu_new_game_confirm
-    context: "Main menu new-game restart warning"
+    context: "Title of the main-menu New Game confirmation modal; Let's go / Cancel sit below."
   menu_settings:
     text: "SETTINGS"
-    sfx: sfx_ui_menu_settings
-    context: "Main menu button opening settings"
+    context: "Main-menu Settings button; opens the Settings screen."
   menu_quit:
     text: "EXIT"
-    sfx: sfx_ui_menu_quit
-    context: "Main menu button quitting the app"
+    context: "Main-menu Exit button; quits the app."
   cutscene_tap_to_skip:
     text: "Tap to skip"
-    sfx: sfx_ui_cutscene_tap_to_skip
-    context: "Cutscene skip hint overlay"
+    context: "Hint along the bottom of the post-New-Game cutscene movie. Tapping anywhere skips to Level Select."
   player_select_title:
     text: "Select Player"
-    sfx: sfx_ui_player_select_title
-    context: "Player select screen title"
+    context: "Title at the top of Player Select."
   player_select_empty:
     text: "No players yet. Tap New to create one."
-    sfx: sfx_ui_player_select_empty
-    context: "Empty player list message"
+    context: "Placeholder in the Player Select list when no saved players exist, above the New button."
   player_new_title:
     text: "New Player"
-    sfx: sfx_ui_player_new_title
-    context: "New-player alert title"
+    context: "Title of the Player Select new-player system alert (name field, Cancel, OK)."
   player_new_message:
     text: "Enter a unique player name."
-    sfx: sfx_ui_player_new_message
-    context: "New-player alert message"
+    context: "Message body of the Player Select new-player system alert, under the title and above the name field."
   player_name_placeholder:
     text: "Player name"
-    sfx: sfx_ui_player_name_placeholder
-    context: "New-player text field placeholder"
+    context: "Placeholder inside the name text field of the Player Select new-player system alert. Not a standalone label."
   player_delete_title:
     text: "Delete Player"
-    sfx: sfx_ui_player_delete_title
-    context: "Delete confirmation alert title"
+    context: "Title of the Player Select delete-player system alert (Cancel / Delete)."
   player_delete_message:
     text: "Delete \"{name}\" and all saved progress? This cannot be undone."
-    spoken: "Delete this player and all saved progress? This cannot be undone."
-    sfx: sfx_ui_player_delete_message
-    context: "Delete confirmation alert message"
+    context: "Message body of the Player Select delete-player system alert. The on-screen line names the player."
   player_name_taken_title:
     text: "Name Already Taken"
-    sfx: sfx_ui_player_name_taken_title
-    context: "Duplicate-name alert title"
+    context: "Title of the Player Select duplicate-name system alert after Create fails because the name exists."
   player_name_taken_message:
     text: "Player names must be unique. Choose a different name."
-    sfx: sfx_ui_player_name_taken_message
-    context: "Duplicate-name alert message"
+    context: "Message body of the Player Select duplicate-name system alert. OK returns to the new-player alert."
   player_default_name:
     text: "Padawan"
-    sfx: sfx_ui_player_default_name
-    context: "Fallback player name for selfie title"
+    context: "Not shown on its own. Fallback name substituted into the selfie title when the current player has no stored name."
   selfie_title:
     text: "Smile, {name}!"
-    spoken: "Smile!"
     sfx: sfx_ui_selfie_title
-    context: "Selfie screen title"
+    context: "Title at the top of the new-player selfie / camera screen. Tapping it plays this clip (one recording for every name)."
+    spoken: "Smile, Padawan!"
   selfie_capture:
     text: "Click!"
-    sfx: sfx_ui_selfie_capture
-    context: "Selfie capture button"
+    context: "Labeled capture button at the bottom of the selfie screen; takes the avatar photo."
   selfie_camera_unavailable:
     text: "Camera unavailable"
-    sfx: sfx_ui_selfie_camera_unavailable
-    context: "Selfie camera error message"
+    context: "Error line on the selfie screen under the preview when the front camera cannot start."
   settings_title:
     text: "Settings"
     sfx: sfx_ui_settings_title
-    context: "Settings screen title"
+    context: "Title at the top of the Settings screen. Tapping it plays this clip."
+    spoken: "Settings"
   settings_sound_effects:
     text: "Sound Effects"
-    sfx: sfx_ui_settings_sound_effects
-    context: "Settings volume row label"
+    context: "Row label to the left of the Sound Effects volume slider on Settings."
   settings_music:
     text: "Music"
-    sfx: sfx_ui_settings_music
-    context: "Settings music checkbox label"
+    context: "Checkbox label to the left of the Music volume slider on Settings."
   level_select_dad_mode:
     text: "Dad mode"
-    sfx: sfx_ui_level_select_dad_mode
-    context: "Level select dad-mode lock button"
+    context: "VoiceOver-only name of the lock icon at the bottom-right of Level Select. Not shown as on-screen text; opens the Dad Mode password screen."
   level_select_inventory:
     text: "Inventory"
-    sfx: sfx_ui_level_select_inventory
-    context: "Level select inventory rack label"
+    context: "VoiceOver-only name of the artifact rack along the bottom of Level Select. Not shown as on-screen text."
   level_locked:
     text: "Complete the current level first!"
     sfx: sfx_ui_level_locked
-    context: "Locked-planet message overlay"
+    context: "Title of the Level Select locked-planet message modal, shown when tapping a planet that is still locked. Spoken when the modal appears."
+    spoken: "Complete the current level first!"
   dad_mode_unlocked:
     text: "Dad mode unlocked!"
     sfx: sfx_ui_dad_mode_unlocked
-    context: "Dad mode success overlay"
+    context: "Title of the Level Select success modal after entering the correct Dad Mode password. Spoken when the modal appears."
+    spoken: "Dad mode unlocked!"
   level_tython:
     text: "Tython"
     sfx: sfx_ui_level_tython
-    context: "Level name spoken on level select"
+    context: "Title of the Tython level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Tython"
   level_tatooine:
     text: "Tatooine"
     sfx: sfx_ui_level_tatooine
-    context: "Level name spoken on level select"
+    context: "Title of the Tatooine level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Tatooine"
   level_ilum:
     text: "Ilum"
     sfx: sfx_ui_level_ilum
-    context: "Level name spoken on level select"
+    context: "Title of the Ilum level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Ilum"
   level_kashyyyk:
     text: "Kashyyyk"
     sfx: sfx_ui_level_kashyyyk
-    context: "Level name spoken on level select"
+    context: "Title of the Kashyyyk level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Kashyyyk"
   level_dagobah:
     text: "Dagobah"
     sfx: sfx_ui_level_dagobah
-    context: "Level name spoken on level select"
+    context: "Title of the Dagobah level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Dagobah"
   level_coruscant:
     text: "Coruscant"
     sfx: sfx_ui_level_coruscant
-    context: "Level name spoken on level select"
+    context: "Title of the Coruscant level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Coruscant"
   level_mustafar:
     text: "Mustafar"
     sfx: sfx_ui_level_mustafar
-    context: "Level name spoken on level select"
+    context: "Title of the Mustafar level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Mustafar"
   level_geonosis:
     text: "Geonosis"
     sfx: sfx_ui_level_geonosis
-    context: "Level name spoken on level select"
+    context: "Title of the Geonosis level-detail modal, and the line spoken when first tapping that planet. Also VoiceOver for the planet and its inventory artifact; the strip itself has no printed name."
+    spoken: "Geonosis"
   level_default:
     text: "Level"
-    sfx: sfx_ui_level_default
-    context: "Fallback level name from defaults"
+    context: "Fallback planet name from level defaults if a level omits its own name. Would appear as the level-detail modal title."
   planet_high_score:
     text: "High Score: {stars}"
-    spoken: "High Score"
-    sfx: sfx_ui_planet_high_score
-    context: "Completed planet high-score chip"
+    context: "Chip above a completed planet on the Level Select strip, followed by a coin icon. Also folded into that planet's VoiceOver label."
   level_detail_replay_prompt:
     text: "Highest score:"
-    spoken: "Highest score"
     sfx: sfx_ui_level_detail_replay_prompt
-    context: "Level detail replay challenge"
+    context: "Prompt in the Level Select replay modal, to the left of the best-coin count. Spoken when that modal opens."
+    spoken: "Highest score"
   level_detail_continue_prompt:
     text: "Continue your adventure on {planet}?"
-    spoken: "Continue your adventure?"
     sfx: sfx_ui_level_detail_continue_prompt
-    context: "Level detail continue prompt"
+    context: "Prompt in the Level Select continue-adventure modal under the planet name. Spoken when that modal opens (one recording for every planet)."
+    spoken: "Continue your adventure on this planet?"
   level_detail_start_over:
     text: "Start over!"
-    sfx: sfx_ui_level_detail_start_over
-    context: "Level detail start-over button"
+    context: "Secondary button in the Level Select continue-adventure modal; starts the planet from scratch instead of resuming the save."
   level_detail_take_off:
     text: "Let's go!"
-    sfx: sfx_ui_level_detail_take_off
-    context: "Level detail first-start confirm button"
+    context: "Primary confirm in the Level Select first-start and continue-adventure modals. Reused as the confirm button on the main-menu New Game restart modal."
   level_detail_not_ready:
     text: "Not yet."
-    sfx: sfx_ui_level_detail_not_ready
-    context: "Level detail first-start dismiss button"
+    context: "Dismiss button in the Level Select first-start modal; closes the modal without launching the planet."
   level_detail_try_again:
     text: "Let's go!"
-    sfx: sfx_ui_level_detail_try_again
-    context: "Level detail replay start button"
+    context: "Primary confirm in the Level Select replay modal; launches a fresh run of an already-completed planet."
   level_detail_no_thanks:
     text: "Not yet."
-    sfx: sfx_ui_level_detail_no_thanks
-    context: "Level detail replay dismiss button"
+    context: "Dismiss button in the Level Select replay modal; closes the modal without launching."
   dad_mode_enter_password:
     text: "Enter password"
-    sfx: sfx_ui_dad_mode_enter_password
-    context: "Dad mode password screen title"
+    context: "Title at the top of the Dad Mode password screen, above the four digit slots and keypad."
   dad_mode_incorrect:
     text: "Incorrect"
-    sfx: sfx_ui_dad_mode_incorrect
-    context: "Wrong-password feedback"
+    context: "Red feedback under the digit slots on the Dad Mode password screen after a wrong four-digit code."
   you_win:
     text: "You win!"
     sfx: sfx_ui_you_win
-    context: "Level-complete overlay title"
+    context: "Title of the planet-complete You Win modal, above the coin count. Spoken when the modal appears."
+    spoken: "You win!"
   you_win_high_score:
     text: "New high score!"
-    spoken: "New high score!"
     sfx: sfx_ui_you_win_high_score
-    context: "Level-complete high-score line"
+    context: "Extra line at the bottom of the You Win modal when this run beats the planet's previous best. Tappable to replay the clip."
+    spoken: "New high score!"
   campaign_win_congratulations:
     text: "Congratulations!"
     sfx: sfx_ui_campaign_win_congratulations
-    context: "Campaign-complete overlay title"
+    context: "Title of the campaign-complete overlay on Level Select after the last planet. Spoken when that overlay appears."
+    spoken: "Congratulations!"
   campaign_win_tap_to_play_more:
     text: "tap to play more"
-    sfx: sfx_ui_campaign_win_tap_to_play_more
-    context: "Campaign-complete dismiss hint"
+    context: "Hint along the bottom of the campaign-complete overlay on Level Select. Tapping the overlay dismisses it."
   minigame_coins_won:
     text: "You won {coins} coins!"
-    spoken: "You won some coins!"
     sfx: sfx_ui_minigame_coins_won
-    context: "Minigame win overlay"
+    context: "Title of the minigame / combat win modal above the coin row. Spoken when the modal appears (one recording for every coin count)."
+    spoken: "You won some coins!"
   minigame_tutorial_sound_out_word_pit:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_sound_out_word_pit
-    context: "First-encounter tutorial for sound-out-word-pit"
+    context: "Voice-over only on the first sound-out-word pit tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_ending_sound_pit:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_ending_sound_pit
-    context: "First-encounter tutorial for ending-sound-pit"
+    context: "Voice-over only on the first ending-sound pit tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_starting_sound_pit:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_starting_sound_pit
-    context: "First-encounter tutorial for starting-sound-pit"
+    context: "Voice-over only on the first starting-sound pit tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_sound_out_word_gate:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_sound_out_word_gate
-    context: "First-encounter tutorial for sound-out-word-gate"
+    context: "Voice-over only on the first sound-out-word gate tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_grapheme_sound_gate:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_grapheme_sound_gate
-    context: "First-encounter tutorial for grapheme-sound-gate"
+    context: "Voice-over only on the first grapheme-sound gate tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_starting_sound_gate:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_starting_sound_gate
-    context: "First-encounter tutorial for starting-sound-gate"
+    context: "Voice-over only on the first starting-sound gate tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_ending_sound_gate:
     text: "Tutorial goes here"
     sfx: sfx_ui_minigame_tutorial_ending_sound_gate
-    context: "First-encounter tutorial for ending-sound-gate"
+    context: "Voice-over only on the first ending-sound gate tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "Tutorial goes here"
   minigame_tutorial_grapheme_sound_combat:
     text: "The monster throws letters at you. Slash the letter you hear to send it back. A wrong letter flashes and fades — keep going until you find the right one."
     sfx: sfx_ui_minigame_tutorial_grapheme_sound_combat
-    context: "First-encounter tutorial for grapheme-sound-combat"
+    context: "Voice-over only on the first grapheme-sound combat tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "The monster throws letters at you. Slash the letter you hear to send it back. A wrong letter flashes and fades — keep going until you find the right one."
   minigame_tutorial_starting_sound_combat:
     text: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
     sfx: sfx_ui_minigame_tutorial_starting_sound_combat
-    context: "First-encounter tutorial for starting-sound-combat"
+    context: "Voice-over only on the first starting-sound combat tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "The monster throws a word with its first sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
   minigame_tutorial_ending_sound_combat:
     text: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
     sfx: sfx_ui_minigame_tutorial_ending_sound_combat
-    context: "First-encounter tutorial for ending-sound-combat"
+    context: "Voice-over only on the first ending-sound combat tutorial. The demo plays behind a tap-catcher; this line is not shown on screen."
+    spoken: "The monster throws a word with its last sound missing. Tap the word to hear it, then tap the circle with the missing sound to send it back. A wrong circle mixes the rings up — keep looking until you find the right one."
   minigame_tutorial_continue:
     text: "Tap to continue"
     sfx: sfx_ui_minigame_tutorial_continue
-    context: "First-encounter minigame tutorial continue hint"
+    context: "Hint along the bottom of every first-encounter minigame tutorial. Also spoken once each time the demo animation finishes."
+    spoken: "Tap to continue"
   defeated:
     text: "Defeated"
     sfx: sfx_ui_defeated
-    context: "Death or defeat overlay"
+    context: "Title of the world / combat defeat modal. Spoken when the modal appears."
+    spoken: "Defeated"
   hud_flee:
     text: "Flee the planet!"
-    sfx: sfx_ui_hud_flee
-    context: "World HUD flee button label"
+    context: "VoiceOver-only name of the run-icon flee button on the world HUD. Not shown as on-screen text."
   hud_leave:
     text: "Leave"
-    sfx: sfx_ui_hud_leave
-    context: "Minigame leave button label"
+    context: "VoiceOver-only name of the run-icon leave button during minigames and combat. Not shown as on-screen text."
   control_checked:
     text: "checked"
-    sfx: sfx_ui_control_checked
-    context: "Checkbox accessibility value when on"
+    context: "VoiceOver-only value of the Settings Music checkbox when it is on. Not shown as on-screen text."
   control_unchecked:
     text: "unchecked"
-    sfx: sfx_ui_control_unchecked
-    context: "Checkbox accessibility value when off"
+    context: "VoiceOver-only value of the Settings Music checkbox when it is off. Not shown as on-screen text."
   control_percent:
     text: "{percent} percent"
-    spoken: "percent"
-    sfx: sfx_ui_control_percent
-    context: "Slider and progress accessibility value"
+    context: "VoiceOver-only value of the Settings volume sliders and the loading / preparing progress bars. Not shown as on-screen text."
   world_tutorial_intro:
     text: "Tap where you want to go. Drag to look around."
     sfx: sfx_ui_world_tutorial_intro
-    context: "Level 1 world tutorial voice-over"
+    context: "Voice-over only at the start of Tython's first-visit world tutorial. The hand cursor and Tap to continue hint are visible; this line is not shown on screen."
+    spoken: "Tap where you want to go. Drag to look around."
   world_tutorial_tap_to_continue:
     text: "Tap to continue"
-    sfx: sfx_ui_world_tutorial_tap_to_continue
-    context: "Level 1 world tutorial dismiss hint"
+    context: "Hint along the bottom of the world during Tython's first-visit tap-and-drag tutorial."
   merchant_item_bridge:
     text: "this is a bridge, it looks great"
     sfx: sfx_ui_merchant_item_bridge
-    context: "Merchant inspect modal for bridge ware"
+    context: "Description in the merchant inspect modal for the bridge ware. Spoken when that modal appears."
+    spoken: "This is a bridge, it looks great"
   merchant_item_crystal_green:
     text: "this is a green crystal, it looks great"
     sfx: sfx_ui_merchant_item_crystal_green
-    context: "Merchant inspect modal for green crystal ware"
+    context: "Description in the merchant inspect modal for the green crystal ware. Spoken when that modal appears."
+    spoken: "This is a green crystal, it looks great"
   merchant_item_crystal_purple:
     text: "this is a purple crystal, it looks great"
     sfx: sfx_ui_merchant_item_crystal_purple
-    context: "Merchant inspect modal for purple crystal ware"
+    context: "Description in the merchant inspect modal for the purple crystal ware. Spoken when that modal appears."
+    spoken: "This is a purple crystal, it looks great"
   merchant_item_crystal_yellow:
     text: "this is a yellow crystal, it looks great"
     sfx: sfx_ui_merchant_item_crystal_yellow
-    context: "Merchant inspect modal for yellow crystal ware"
+    context: "Description in the merchant inspect modal for the yellow crystal ware. Spoken when that modal appears."
+    spoken: "This is a yellow crystal, it looks great"
   merchant_item_double_saber:
     text: "this is a double saber, it looks great"
     sfx: sfx_ui_merchant_item_double_saber
-    context: "Merchant inspect modal for double saber ware"
+    context: "Description in the merchant inspect modal for the double-saber ware. Spoken when that modal appears."
+    spoken: "This is a double saber, it looks great"
   merchant_item_jetpack:
     text: "this is a jetpack, it looks great"
     sfx: sfx_ui_merchant_item_jetpack
-    context: "Merchant inspect modal for jetpack ware"
+    context: "Description in the merchant inspect modal for the jetpack ware. Spoken when that modal appears."
+    spoken: "This is a jetpack, it looks great"
   merchant_item_satelite:
     text: "this is a satelite, it looks great"
     sfx: sfx_ui_merchant_item_satelite
-    context: "Merchant inspect modal for satelite ware"
+    context: "Description in the merchant inspect modal for the satelite ware. Spoken when that modal appears."
+    spoken: "This is a satelite, it looks great"
   merchant_item_scanner:
     text: "this is a scanner, it looks great"
     sfx: sfx_ui_merchant_item_scanner
-    context: "Merchant inspect modal for scanner ware"
+    context: "Description in the merchant inspect modal for the scanner ware. Spoken when that modal appears."
+    spoken: "This is a scanner, it looks great"
   merchant_item_vector:
     text: "this is a vector, it looks great"
     sfx: sfx_ui_merchant_item_vector
-    context: "Merchant inspect modal for vector ware"
+    context: "Description in the merchant inspect modal for the vector ware. Spoken when that modal appears."
+    spoken: "This is a vector, it looks great"
   merchant_replace_item:
     text: "Replace item?"
     sfx: sfx_ui_merchant_replace_item
-    context: "Merchant replace-occupied-slot confirm"
+    context: "Title of the merchant modal when dropping a ware onto an occupied inventory slot (X to cancel, check to replace). Spoken when the modal appears."
+    spoken: "Replace item?"
   merchant_coins_spent:
     text: "You spent {coins} coins!"
-    spoken: "You spent some coins!"
     sfx: sfx_ui_merchant_coins_spent
-    context: "Merchant purchase coin-burst VO"
+    context: "Voice-over only during the merchant purchase coin-burst. The burst is visual; this line is not shown on screen."
+    spoken: "You spent some coins!"
+  inventory_jetpack_need_gate:
+    text: "Get closer to a gate to use the jetpack!"
+    sfx: sfx_ui_inventory_jetpack_need_gate
+    context: "CRT modal over the live world when the player taps the jetpack in the HUD but is not uniquely close enough to a gate to jump. Spoken when the modal appears. Tap anywhere dismisses."
+    spoken: "Get closer to a gate to use the jetpack!"

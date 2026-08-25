@@ -6,7 +6,7 @@ nonisolated struct UIStringSpec: Decodable, Equatable, Sendable {
     var text: String?
     var sfx: String?
     var context: String?
-    /// Brace-free form for voice-over; defaults to `text`.
+    /// Brace-free form for voice-over. Empty when the string is never spoken.
     var spoken: String?
 }
 
@@ -39,8 +39,7 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "loading_loading": "Loading...",
         "loading_tap_to_start": "Tap to start",
         "preparing_takeoff": "PREPARING FOR TAKEOFF...",
-        "preparing_error_title": "COULD NOT LOAD ENEMIES",
-        "preparing_error_body": "Oops!  Problem there was.  Select a new level, you must.",
+        "preparing_error": "Oops!  Problem there was.  Select a new level, you must.",
         "menu_welcome": "Welcome",
         "menu_welcome_named": "Welcome, {name}",
         "menu_continue": "CONTINUE",
@@ -123,6 +122,7 @@ nonisolated struct StringCatalog: Equatable, Sendable {
         "merchant_item_vector": "this is a vector, it looks great",
         "merchant_replace_item": "Replace item?",
         "merchant_coins_spent": "You spent {coins} coins!",
+        "inventory_jetpack_need_gate": "Get closer to a gate to use the jetpack!",
     ])
 
     nonisolated init(entries: [String: UIString]) {
@@ -155,11 +155,10 @@ nonisolated struct StringCatalog: Equatable, Sendable {
                 throw StringCatalogError.invalid("\(id).text must be non-empty")
             }
             let sfx = entry.sfx.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !sfx.isEmpty else {
-                throw StringCatalogError.invalid("\(id).sfx must be non-empty")
-            }
-            guard sfx.hasPrefix("sfx_ui_") else {
-                throw StringCatalogError.invalid("\(id).sfx must start with sfx_ui_")
+            if !sfx.isEmpty {
+                guard sfx.hasPrefix("sfx_ui_") else {
+                    throw StringCatalogError.invalid("\(id).sfx must start with sfx_ui_")
+                }
             }
             if entry.spoken.contains("{") {
                 throw StringCatalogError.invalid("\(id).spoken must not contain brace placeholders")
@@ -185,8 +184,13 @@ nonisolated struct StringCatalog: Equatable, Sendable {
             var resolved: [String: UIString] = [:]
             resolved.reserveCapacity(decoded.strings.count)
             for (key, spec) in decoded.strings {
+                if let spec,
+                   trimmedNonEmpty(spec.spoken) != nil,
+                   trimmedNonEmpty(spec.sfx) == nil {
+                    throw StringCatalogError.invalid("\(key).spoken requires sfx")
+                }
                 guard let entry = resolveEntry(id: key, spec: spec) else {
-                    throw StringCatalogError.invalid("\(key) is missing required text/sfx")
+                    throw StringCatalogError.invalid("\(key) is missing required text")
                 }
                 resolved[key] = entry
             }
@@ -206,12 +210,15 @@ nonisolated struct StringCatalog: Equatable, Sendable {
 
     nonisolated static func resolveEntry(id: String, spec: UIStringSpec?) -> UIString? {
         guard let spec,
-              let text = trimmedNonEmpty(spec.text),
-              let sfx = trimmedNonEmpty(spec.sfx) else {
+              let text = trimmedNonEmpty(spec.text) else {
             return nil
         }
+        let sfx = trimmedNonEmpty(spec.sfx) ?? ""
         let context = trimmedNonEmpty(spec.context) ?? ""
-        let spoken = trimmedNonEmpty(spec.spoken) ?? text
+        let spoken = trimmedNonEmpty(spec.spoken) ?? (sfx.isEmpty ? "" : text)
+        if trimmedNonEmpty(spec.spoken) != nil, sfx.isEmpty {
+            return nil
+        }
         return UIString(id: id, text: text, sfx: sfx, context: context, spoken: spoken)
     }
 

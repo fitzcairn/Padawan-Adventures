@@ -82,7 +82,7 @@ Shortcuts are ignored while the filter field is focused.
 
 Existing files are backed up to `Tools/Record/backups/<basename>.<timestamp>.m4a` before overwrite. That folder is gitignored.
 
-UI clips are referenced by `sfx:` in `Resources/Config/Catalogs/strings.yaml`. The app plays them via `Strings.speak(id)`.
+UI clips are referenced by `sfx:` in `Resources/Config/Catalogs/strings.yaml` (only strings with a `spoken` line). The app plays them via `Strings.speak(id)`.
 
 ## Inventory sources
 

@@ -157,8 +157,7 @@ struct MenuView: View {
                     Strings.text("menu_welcome_named", ["name": $0])
                 } ?? Strings.text("menu_welcome"),
                 size: 24,
-                weight: .semibold,
-                speakID: "menu_welcome_named"
+                weight: .semibold
             )
             .fixedSize()
         }

@@ -234,7 +234,7 @@ final class SoundEffectsController {
             || trackID.hasPrefix("sfx_ui_")
     }
 
-    /// UI voice-over clips under `Audio/FX/UI/` — every `sfx` in `strings.yaml`. These
+    /// UI voice-over clips under `Audio/FX/UI/` — `sfx` values in `strings.yaml`. These
     /// share one exclusive channel and are allowed while gameplay SFX are suppressed
     /// during the tutorial demo lead-in.
     static func isVoiceOverTrack(_ trackID: String) -> Bool {

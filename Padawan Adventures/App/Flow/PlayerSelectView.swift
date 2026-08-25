@@ -127,8 +127,7 @@ struct PlayerSelectView: View {
                     AppTitleText(
                         text: Strings.text("player_select_title"),
                         size: 28,
-                        weight: .semibold,
-                        speakID: "player_select_title"
+                        weight: .semibold
                     )
                         .accessibilityIdentifier("playerSelect.title")
 

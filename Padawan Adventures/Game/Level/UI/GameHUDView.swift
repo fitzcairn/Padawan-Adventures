@@ -19,7 +19,8 @@ final class GameHUDView: UIView {
     var starAwardTask: Task<Void, Never>?
     var sparkleLayer: CAEmitterLayer?
     var sparkleStopWorkItem: DispatchWorkItem?
-    var onInventorySlotTapped: ((Int, String) -> Void)?
+    /// Return `true` to fade and consume the slot; `false` keeps the item.
+    var onInventorySlotTapped: ((Int, String) -> Bool)?
     private var merchantCatalog: [String: MerchantItemDefinition] = [:]
     private var inventorySlots: [String] = PlayerGameState.emptyItemSlots
     private var inventoryHosting: UIHostingController<InventorySlotStack>?
@@ -137,11 +138,12 @@ final class GameHUDView: UIView {
 
     private func useInventorySlot(index: Int, itemID: String) {
         guard fadingSlotItems[index] == nil else { return }
+        let consume = onInventorySlotTapped?(index, itemID) ?? false
+        guard consume else { return }
         fadingSlotItems[index] = itemID
         withAnimation(.easeOut(duration: InventorySlotStack.useFadeDuration)) {
             rebuildInventoryRoot()
         }
-        onInventorySlotTapped?(index, itemID)
         fadeTasks[index]?.cancel()
         fadeTasks[index] = Task { @MainActor in
             let nanos = UInt64(InventorySlotStack.useFadeDuration * 1_000_000_000)
