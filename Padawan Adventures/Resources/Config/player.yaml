@@ -21,6 +21,9 @@ fx:
   jump: pit-jump
   scan: satellite-scan
   scanner: scanner
+  vector: vector-strafe
+  vector_shoot: vector-shoot
+  vector_hit: vector-hit
 
 # Animated sprite sheets under Resources/Sprites/Player/<name>/.
 # Cardinals: up / down / left / right. Diagonals keep compass names.

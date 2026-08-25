@@ -213,6 +213,9 @@ final class GameViewController: LandscapeHostingController {
         if itemID == ScannerUse.itemID {
             return useScannerFromInventory(index: index)
         }
+        if itemID == VectorStrafeUse.itemID {
+            return useVectorFromInventory(index: index)
+        }
 
         if let sound = session.itemsConfig.merchantItem(itemID)?.sound, !sound.isEmpty {
             SoundEffectsController.shared.play(trackID: sound)
@@ -256,6 +259,16 @@ final class GameViewController: LandscapeHostingController {
             self.persistClearedInventorySlot(index: index)
         }
         return false
+    }
+
+    private func useVectorFromInventory(index: Int) -> Bool {
+        guard let scene = gameScene else { return false }
+        persistClearedInventorySlot(index: index)
+        scene.performVectorStrafe { [weak self] killed in
+            guard let self, killed > 0 else { return }
+            Task { await self.session.recordStat { $0.enemiesKilled += killed } }
+        }
+        return true
     }
 
     private func persistClearedInventorySlot(index: Int) {
