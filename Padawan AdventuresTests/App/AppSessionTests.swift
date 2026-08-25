@@ -11,14 +11,17 @@ struct AppSessionTests {
         return AudioPreferences(defaults: defaults)
     }
 
-    private func makeSession(audioPreferences: AudioPreferences? = nil) throws -> AppSession {
+    private func makeSession(
+        audioPreferences: AudioPreferences? = nil,
+        appConfig: AppConfig = AppSession.fallbackAppConfig()
+    ) throws -> AppSession {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let store = try PlayerStateStore(directoryURL: directory)
         let saveService = try GameSaveService(directoryURL: directory)
         return AppSession(
-            appConfig: AppSession.fallbackAppConfig(),
+            appConfig: appConfig,
             selectedLevel: .fallback,
             playerStore: store,
             saveService: saveService,
@@ -210,9 +213,11 @@ struct AppSessionTests {
 
         for key in keys {
             #expect(session.hasSeenMinigameTutorial(key) == false)
+            #expect(session.shouldShowMinigameTutorial(key))
             session.markMinigameTutorialSeen(key)
             // Must be visible synchronously — no await — so a rebuild cannot re-show.
             #expect(session.hasSeenMinigameTutorial(key))
+            #expect(session.shouldShowMinigameTutorial(key) == false)
         }
 
         // Persist + reload keeps every kind dismissed across Continue.
@@ -226,6 +231,13 @@ struct AppSessionTests {
         for key in keys {
             #expect(session.hasSeenMinigameTutorial(key) == false)
         }
+    }
+
+    @Test func minigameTutorialsStayHiddenWhenConfigDisablesThem() async throws {
+        let session = try makeSession(appConfig: AppConfig(version: 1, seed: 1, tutorials: false))
+        try await session.createAndBindPlayer(name: "Padawan")
+        #expect(session.shouldShowMinigameTutorial("ending-sound-pit") == false)
+        #expect(session.hasSeenMinigameTutorial("ending-sound-pit") == false)
     }
 
     @Test func unlockDadModePersistsAndClearsOnProgressionJump() async throws {

@@ -147,7 +147,8 @@ final class GameViewController: LandscapeHostingController {
     }
 
     private func startWorldTutorialIfNeeded() {
-        guard session.selectedLevel.worldTutorial,
+        guard session.appConfig.tutorials,
+              session.selectedLevel.worldTutorial,
               !session.hasSeenWorldTutorial,
               let scene = gameScene,
               scene.currentWorld.playerPosition == scene.currentWorld.spawn else { return }
@@ -421,7 +422,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(session.selectedCombatConfig.music),
             memoryLabel: "combat",
             needsTutorial: { [weak self] in
-                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+                self?.session.shouldShowMinigameTutorial(tutorialKey) ?? false
             },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in
@@ -633,7 +634,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(session.selectedPitConfig.music),
             memoryLabel: "pit",
             needsTutorial: { [weak self] in
-                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+                self?.session.shouldShowMinigameTutorial(tutorialKey) ?? false
             },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in
@@ -777,7 +778,7 @@ final class GameViewController: LandscapeHostingController {
             music: MusicCue.parse(musicName),
             memoryLabel: "gate",
             needsTutorial: { [weak self] in
-                !(self?.session.hasSeenMinigameTutorial(tutorialKey) ?? true)
+                self?.session.shouldShowMinigameTutorial(tutorialKey) ?? false
             },
             tutorialKey: tutorialKey,
             onTutorialAcknowledged: { [weak self] in

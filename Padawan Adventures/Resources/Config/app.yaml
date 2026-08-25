@@ -10,6 +10,9 @@ seed: time
 # that shows one of every gate, pit, and combat minigame plus every enemy type.
 demo_mode: false
 
+# First-visit world (Tython) and minigame tutorial overlays.
+tutorials: false
+
 # 4-digit Dad mode unlock on the level select screen.
 dad_mode_password: "1234"
 

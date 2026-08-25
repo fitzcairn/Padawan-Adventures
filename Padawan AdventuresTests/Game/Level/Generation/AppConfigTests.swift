@@ -17,6 +17,7 @@ struct AppConfigTests {
         #expect(config.display.tileWidth == 40)
         #expect(config.display.tileHeight == 40)
         #expect(config.dadModePassword == AppConfig.defaultDadModePassword)
+        #expect(config.tutorials == true)
         try config.validate()
     }
 
@@ -75,6 +76,33 @@ struct AppConfigTests {
     @Test func bundledAppConfigHasDemoModeOff() throws {
         let config = try WorldLoader.loadConfigFromBundle()
         #expect(config.demoMode == false)
+    }
+
+    @Test func decodesTutorials() throws {
+        let enabled = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        tutorials: true
+        """)
+        #expect(enabled.tutorials == true)
+
+        let disabled = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        tutorials: false
+        """)
+        #expect(disabled.tutorials == false)
+
+        let omitted = try WorldLoader.decodeConfig(from: """
+        version: 1
+        seed: 1
+        """)
+        #expect(omitted.tutorials == true)
+    }
+
+    @Test func bundledAppConfigHasTutorialsOff() throws {
+        let config = try WorldLoader.loadConfigFromBundle()
+        #expect(config.tutorials == false)
     }
 
     @Test func decodesTimeSeedToken() throws {

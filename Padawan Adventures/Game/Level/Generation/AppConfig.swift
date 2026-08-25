@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// App-level knobs from `Resources/Config/app.yaml` (seed, display, Dad mode).
+/// App-level knobs from `Resources/Config/app.yaml` (seed, display, Dad mode, tutorials).
 /// Map size, generation, enemies, floors, and puzzle FX live on `LevelConfig`.
 nonisolated struct AppConfig: Codable, Equatable, Sendable {
     var version: Int
@@ -12,6 +12,8 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
     var dadModePassword: String
     /// When true, every level uses a fixed three-room demo layout instead of procedural generation.
     var demoMode: Bool
+    /// When false, skip the Tython world tutorial and first-encounter minigame tutorials.
+    var tutorials: Bool
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -19,6 +21,7 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
         case display
         case dadModePassword = "dad_mode_password"
         case demoMode = "demo_mode"
+        case tutorials
     }
 
     /// Default Dad mode password when omitted from YAML.
@@ -29,13 +32,15 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
         seed: UInt64? = nil,
         display: DisplayParams = .default,
         dadModePassword: String = AppConfig.defaultDadModePassword,
-        demoMode: Bool = false
+        demoMode: Bool = false,
+        tutorials: Bool = true
     ) {
         self.version = version
         self.seed = seed
         self.display = display
         self.dadModePassword = dadModePassword
         self.demoMode = demoMode
+        self.tutorials = tutorials
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +50,7 @@ nonisolated struct AppConfig: Codable, Equatable, Sendable {
         display = try container.decodeIfPresent(DisplayParams.self, forKey: .display) ?? .default
         dadModePassword = try Self.decodeDadModePassword(from: container)
         demoMode = try container.decodeIfPresent(Bool.self, forKey: .demoMode) ?? false
+        tutorials = try container.decodeIfPresent(Bool.self, forKey: .tutorials) ?? true
     }
 
     private static func decodeDadModePassword(

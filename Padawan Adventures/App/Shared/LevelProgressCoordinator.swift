@@ -77,6 +77,11 @@ extension AppSession {
         playerState?.hasSeenMinigameTutorial(key) ?? false
     }
 
+    /// First-encounter minigame demo. Off when `app.yaml` has `tutorials: false`.
+    func shouldShowMinigameTutorial(_ key: String) -> Bool {
+        appConfig.tutorials && !hasSeenMinigameTutorial(key)
+    }
+
     /// Records the tutorial as seen in memory immediately, then persists.
     /// Synchronous memory update so a SwiftUI rebuild cannot re-show the demo
     /// before an async Task lands.
