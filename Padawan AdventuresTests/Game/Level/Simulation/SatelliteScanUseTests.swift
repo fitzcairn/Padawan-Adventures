@@ -48,6 +48,14 @@ struct SatelliteScanUseTests {
         #expect(floors.contains(GridCoord(x: 2, y: 3, story: 0)))
     }
 
+    @Test func scannerOriginsOnThePlayer() {
+        #expect(ScannerUse.itemID == "merchant-ware-scanner")
+        #expect(ScannerUse.radius == SatelliteScanUse.radius)
+        var world = TestWorldFactory.emptyFloor(width: 8, height: 8)
+        world.setPlayerPosition(GridCoord(x: 4, y: 3, story: 0))
+        #expect(ScannerUse.origin(in: world) == GridCoord(x: 4, y: 3, story: 0))
+    }
+
     @Test func scanRadiusIsFiveTiles() {
         #expect(SatelliteScanUse.itemID == "merchant-ware-satelite")
         #expect(SatelliteScanUse.radius == 5)

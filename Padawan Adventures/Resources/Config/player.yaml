@@ -20,6 +20,7 @@ fx:
   deflect: combat-lightsaber-deflect
   jump: pit-jump
   scan: satellite-scan
+  scanner: scanner
 
 # Animated sprite sheets under Resources/Sprites/Player/<name>/.
 # Cardinals: up / down / left / right. Diagonals keep compass names.

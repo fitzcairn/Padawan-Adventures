@@ -209,6 +209,9 @@ final class GameViewController: LandscapeHostingController {
         if itemID == SatelliteScanUse.itemID {
             return useSatelliteFromInventory(index: index)
         }
+        if itemID == ScannerUse.itemID {
+            return useScannerFromInventory(index: index)
+        }
 
         if let sound = session.itemsConfig.merchantItem(itemID)?.sound, !sound.isEmpty {
             SoundEffectsController.shared.play(trackID: sound)
@@ -237,6 +240,18 @@ final class GameViewController: LandscapeHostingController {
         scene.performSatelliteScan(at: origin) { [weak self] in
             guard let self else { return }
             self.hud?.playUseEffects(index: index, itemID: SatelliteScanUse.itemID)
+            self.persistClearedInventorySlot(index: index)
+        }
+        return false
+    }
+
+    private func useScannerFromInventory(index: Int) -> Bool {
+        guard let scene = gameScene else { return false }
+        let origin = ScannerUse.origin(in: scene.currentWorld)
+        Task { await session.setItemSlot(index: index, itemID: nil) }
+        scene.performScannerScan(at: origin) { [weak self] in
+            guard let self else { return }
+            self.hud?.playUseEffects(index: index, itemID: ScannerUse.itemID)
             self.persistClearedInventorySlot(index: index)
         }
         return false

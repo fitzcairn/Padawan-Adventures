@@ -17,6 +17,20 @@ extension GameScene {
 
     /// Zooms to the artifact, reveals a 5-tile radius outward, then returns to the player.
     func performSatelliteScan(at origin: GridCoord, completion: @escaping () -> Void) {
+        performAreaScan(at: origin, soundEvent: "scan", loopsSound: true, completion: completion)
+    }
+
+    /// Reveals a 5-tile radius outward from the player, then zooms back to play scale.
+    func performScannerScan(at origin: GridCoord, completion: @escaping () -> Void) {
+        performAreaScan(at: origin, soundEvent: "scanner", loopsSound: false, completion: completion)
+    }
+
+    private func performAreaScan(
+        at origin: GridCoord,
+        soundEvent: String,
+        loopsSound: Bool,
+        completion: @escaping () -> Void
+    ) {
         isPausedForEncounter = true
         pendingInput = PendingInput()
         movement.reset()
@@ -24,7 +38,16 @@ extension GameScene {
 
         Task { @MainActor [weak self] in
             guard let self else { return }
-            let loopID = SoundEffectsController.shared.startLoop(event: "scan", from: self.playerFx)
+            let loopID: String?
+            if loopsSound {
+                loopID = SoundEffectsController.shared.startLoop(
+                    event: soundEvent,
+                    from: self.playerFx
+                )
+            } else {
+                loopID = nil
+                SoundEffectsController.shared.play(event: soundEvent, from: self.playerFx)
+            }
             await self.animateCamera(
                 to: IsometricMath.entityScreenPosition(origin, config: self.isoConfig),
                 scale: self.satelliteScanScale(around: origin),
@@ -48,7 +71,7 @@ extension GameScene {
     }
 
     private func satelliteScanScale(around origin: GridCoord) -> CGFloat {
-        let span = SatelliteScanUse.radius * 2 + 1
+        let span = AreaScanUse.radius * 2 + 1
         let bounds = IsometricMath.mapScreenBounds(
             width: span,
             height: span,
@@ -84,7 +107,7 @@ extension GameScene {
     }
 
     private func revealSatelliteRings(from origin: GridCoord) async {
-        for distance in 0...SatelliteScanUse.radius {
+        for distance in 0...AreaScanUse.radius {
             if Task.isCancelled { return }
             let ring = SatelliteScanUse.ring(origin: origin, distance: distance, in: world)
             let floors = SatelliteScanUse.floorsToReveal(

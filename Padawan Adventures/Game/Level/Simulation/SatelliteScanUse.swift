@@ -1,9 +1,14 @@
 import Foundation
 
+/// Shared Chebyshev rings for satellite and handheld scanner reveals.
+nonisolated enum AreaScanUse {
+    static let radius = 5
+}
+
 /// Resolves a world-HUD satellite tap to the level treasure and the tiles it scans.
 nonisolated enum SatelliteScanUse {
     static let itemID = "merchant-ware-satelite"
-    static let radius = 5
+    static let radius = AreaScanUse.radius
 
     static func artifactCoord(in world: GameWorld) -> GridCoord? {
         world.entities.first { $0.pickupKind == .treasure }?.position
