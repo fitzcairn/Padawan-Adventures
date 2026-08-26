@@ -4,10 +4,17 @@ import Foundation
 /// Selects and lays out merchant wares on the shop mat.
 nonisolated enum MerchantWares {
     static let maxCount = 4
-    static let diskDiameterFraction: CGFloat = 0.70
-    static let maxSpriteFractionOfRadius: CGFloat = 0.80
+    /// Empty center of `merchant-bg` (fractions of the aspect-fitted image).
+    static let playWidthFraction: CGFloat = 0.60
+    static let playHeightFraction: CGFloat = 0.56
     static let minGapPoints: CGFloat = 12
     static let minGapSpriteFraction: CGFloat = 0.25
+    static let gridColumns = 2
+    static let gridRows = 2
+    /// Shrinks the centered 2×2 footprint relative to raw cell size + gap.
+    static let gridScale: CGFloat = 0.90
+    /// ± fraction of each stack's width / height after the 2×2 slot is chosen.
+    static let positionJitterFraction: CGFloat = 0.05
 
     /// Unique ware ids for this level. Guaranteed `min_level == order` first (sorted, cap 4),
     /// then fill from `min_level <= order` using `seed`.
@@ -56,9 +63,15 @@ nonisolated enum MerchantWares {
         )
     }
 
-    static func disk(in displayedBackground: CGRect) -> (center: CGPoint, radius: CGFloat) {
-        let diameter = displayedBackground.height * diskDiameterFraction
-        return (CGPoint(x: displayedBackground.midX, y: displayedBackground.midY), diameter / 2)
+    static func playArea(in displayedBackground: CGRect) -> CGRect {
+        let width = displayedBackground.width * playWidthFraction
+        let height = displayedBackground.height * playHeightFraction
+        return CGRect(
+            x: displayedBackground.midX - width / 2,
+            y: displayedBackground.midY - height / 2,
+            width: width,
+            height: height
+        )
     }
 
     /// Scale so the shorter axis equals `slotSide` (inventory square height).
@@ -69,69 +82,100 @@ nonisolated enum MerchantWares {
         return CGSize(width: width * scale, height: height * scale)
     }
 
+    /// Places `itemIDs` on a center-aligned 2×2 grid in `playArea`, then nudges
+    /// each stack by ±`positionJitterFraction` of its size. Scale and slots come
+    /// from `fitItemIDs` so remaining wares stay put after a purchase.
     static func layout(
         itemIDs: [String],
-        diskCenter: CGPoint,
-        radius: CGFloat,
+        playArea: CGRect,
         slotSide: CGFloat,
-        pixelSizes: [String: CGSize] = [:]
+        pixelSizes: [String: CGSize] = [:],
+        fitItemIDs: [String]? = nil,
+        seed: UInt64
     ) -> MerchantWaresLayout {
-        let n = itemIDs.count
-        guard n > 0, radius > 1 else {
+        let visible = Set(itemIDs)
+        guard !itemIDs.isEmpty, playArea.width > 1, playArea.height > 1 else {
             return MerchantWaresLayout(spriteSide: 0, gap: 0, stacks: [])
         }
 
-        var side = min(max(slotSide, 1), radius * maxSpriteFractionOfRadius)
+        let scaleIDs = fitItemIDs ?? itemIDs
+        var side = max(slotSide, 1)
         let minSide: CGFloat = 8
-        func sizes(for side: CGFloat) -> [CGSize] {
-            itemIDs.map { id in
-                fittedSize(pixelSize: pixelSizes[id] ?? CGSize(width: 1, height: 1), slotSide: side)
-            }
+        func displaySize(for id: String, side: CGFloat) -> CGSize {
+            fittedSize(pixelSize: pixelSizes[id] ?? CGSize(width: 1, height: 1), slotSide: side)
         }
-        while side > minSide, !fits(sizes: sizes(for: side), slotSide: side, radius: radius) {
+        func stackSize(for id: String, side: CGFloat) -> CGSize {
+            let display = displaySize(for: id, side: side)
+            return CGSize(
+                width: display.width,
+                height: display.height + 4 + coinSide(spriteSide: side) + 4 + priceHeight(spriteSide: side)
+            )
+        }
+        while side > minSide {
+            let sizes = scaleIDs.map { stackSize(for: $0, side: side) }
+            let gap = gapWidth(spriteSide: side)
+            let maxWidth = sizes.map(\.width).max() ?? 0
+            let maxHeight = sizes.map(\.height).max() ?? 0
+            if maxWidth <= playArea.width,
+               maxHeight <= playArea.height,
+               CGFloat(gridColumns) * maxWidth + gap <= playArea.width,
+               CGFloat(gridRows) * maxHeight + gap <= playArea.height
+            {
+                break
+            }
             side *= 0.92
         }
-        if !fits(sizes: sizes(for: side), slotSide: side, radius: radius) {
-            side = minSide
-        }
 
-        let displaySizes = sizes(for: side)
         let gap = gapWidth(spriteSide: side)
-        let maxSpriteHeight = displaySizes.map(\.height).max() ?? side
-        let coin = coinSide(spriteSide: side)
-        let price = priceHeight(spriteSide: side)
-        let stackHeight = maxSpriteHeight + 4 + coin + 4 + price
-        let totalWidth = displaySizes.map(\.width).reduce(0, +) + CGFloat(max(n - 1, 0)) * gap
-        let originX = diskCenter.x - totalWidth / 2
-        let originY = diskCenter.y - stackHeight / 2
+        let sizes = scaleIDs.map { stackSize(for: $0, side: side) }
+        let cellSize = CGSize(
+            width: sizes.map(\.width).max() ?? side,
+            height: sizes.map(\.height).max() ?? side
+        )
+        let grid = gridRect(cellSize: cellSize, in: playArea, gap: gap)
+        let cellGap = gap * gridScale
+        var rng = SeededGenerator(seed: seed)
 
         var stacks: [MerchantWareStackFrame] = []
-        stacks.reserveCapacity(n)
-        var x = originX
-        for (index, id) in itemIDs.enumerated() {
-            let display = displaySizes[index]
-            let spriteY = originY + (maxSpriteHeight - display.height)
-            stacks.append(
-                MerchantWareStackFrame(
-                    itemID: id,
-                    spriteFrame: CGRect(x: x, y: spriteY, width: display.width, height: display.height),
-                    coinFrame: CGRect(
-                        x: x + (display.width - coin) / 2,
-                        y: originY + maxSpriteHeight + 4,
-                        width: coin,
-                        height: coin
-                    ),
-                    priceFrame: CGRect(
-                        x: x,
-                        y: originY + maxSpriteHeight + 4 + coin + 4,
-                        width: display.width,
-                        height: price
-                    )
-                )
-            )
-            x += display.width + gap
+        stacks.reserveCapacity(scaleIDs.count)
+        for (index, id) in scaleIDs.enumerated() {
+            let display = displaySize(for: id, side: side)
+            let stack = stackSize(for: id, side: side)
+            let cell = gridCell(index: index, in: grid, gap: cellGap)
+            let base = centeredOrigin(stack: stack, in: cell)
+            let origin = jitteredOrigin(base: base, stack: stack, in: playArea, rng: &rng)
+            let frame = stackFrame(itemID: id, origin: origin, display: display, spriteSide: side)
+            if visible.contains(id) {
+                stacks.append(frame)
+            }
         }
         return MerchantWaresLayout(spriteSide: side, gap: gap, stacks: stacks)
+    }
+
+    static func stackFrame(
+        itemID: String,
+        origin: CGPoint,
+        display: CGSize,
+        spriteSide: CGFloat
+    ) -> MerchantWareStackFrame {
+        let coin = coinSide(spriteSide: spriteSide)
+        let price = priceHeight(spriteSide: spriteSide)
+        return MerchantWareStackFrame(
+            itemID: itemID,
+            spriteFrame: CGRect(x: origin.x, y: origin.y, width: display.width, height: display.height),
+            coinFrame: CGRect(
+                x: origin.x + (display.width - coin) / 2,
+                y: origin.y + display.height + 4,
+                width: coin,
+                height: coin
+            ),
+            priceFrame: CGRect(
+                x: origin.x,
+                y: origin.y + display.height + 4 + coin + 4,
+                width: display.width,
+                height: price
+            )
+        )
     }
 
     static func gapWidth(spriteSide: CGFloat) -> CGFloat {
@@ -151,20 +195,65 @@ nonisolated enum MerchantWares {
         return CGSize(width: spriteSide, height: height)
     }
 
-    static func fits(sizes: [CGSize], slotSide: CGFloat, radius: CGFloat) -> Bool {
-        guard slotSide <= radius * maxSpriteFractionOfRadius + 0.01 else { return false }
-        guard !sizes.isEmpty else { return true }
-        let gap = gapWidth(spriteSide: slotSide)
-        let totalWidth = sizes.map(\.width).reduce(0, +) + CGFloat(max(sizes.count - 1, 0)) * gap
-        let maxSpriteHeight = sizes.map(\.height).max() ?? slotSide
-        let stackHeight = maxSpriteHeight + 4 + coinSide(spriteSide: slotSide) + 4
-            + priceHeight(spriteSide: slotSide)
-        return hypot(totalWidth / 2, stackHeight / 2) <= radius
+    /// Centered 2×2 box that holds `cellSize` slots plus one gap between them.
+    static func gridRect(cellSize: CGSize, in playArea: CGRect, gap: CGFloat) -> CGRect {
+        guard playArea.width > 1, playArea.height > 1 else { return playArea }
+        let width = min(
+            playArea.width,
+            (CGFloat(gridColumns) * cellSize.width + CGFloat(gridColumns - 1) * gap) * gridScale
+        )
+        let height = min(
+            playArea.height,
+            (CGFloat(gridRows) * cellSize.height + CGFloat(gridRows - 1) * gap) * gridScale
+        )
+        return CGRect(
+            x: playArea.midX - width / 2,
+            y: playArea.midY - height / 2,
+            width: max(width, 1),
+            height: max(height, 1)
+        )
     }
 
-    static func fits(count: Int, spriteSide: CGFloat, radius: CGFloat) -> Bool {
-        let sizes = Array(repeating: CGSize(width: spriteSide, height: spriteSide), count: count)
-        return fits(sizes: sizes, slotSide: spriteSide, radius: radius)
+    static func gridCell(index: Int, in grid: CGRect, gap: CGFloat) -> CGRect {
+        let column = index % gridColumns
+        let row = index / gridColumns
+        let cellWidth = max((grid.width - CGFloat(gridColumns - 1) * gap) / CGFloat(gridColumns), 1)
+        let cellHeight = max((grid.height - CGFloat(gridRows - 1) * gap) / CGFloat(gridRows), 1)
+        return CGRect(
+            x: grid.minX + CGFloat(column) * (cellWidth + gap),
+            y: grid.minY + CGFloat(row) * (cellHeight + gap),
+            width: cellWidth,
+            height: cellHeight
+        )
+    }
+
+    static func centeredOrigin(stack: CGSize, in cell: CGRect) -> CGPoint {
+        CGPoint(x: cell.midX - stack.width / 2, y: cell.midY - stack.height / 2)
+    }
+
+    static func jitteredOrigin(
+        base: CGPoint,
+        stack: CGSize,
+        in playArea: CGRect,
+        rng: inout SeededGenerator
+    ) -> CGPoint {
+        let dx = CGFloat.random(
+            in: -positionJitterFraction...positionJitterFraction,
+            using: &rng
+        ) * stack.width
+        let dy = CGFloat.random(
+            in: -positionJitterFraction...positionJitterFraction,
+            using: &rng
+        ) * stack.height
+        return CGPoint(
+            x: clamp(base.x + dx, min: playArea.minX, max: playArea.maxX - stack.width),
+            y: clamp(base.y + dy, min: playArea.minY, max: playArea.maxY - stack.height)
+        )
+    }
+
+    private static func clamp(_ value: CGFloat, min: CGFloat, max: CGFloat) -> CGFloat {
+        if max < min { return min }
+        return Swift.min(Swift.max(value, min), max)
     }
 }
 

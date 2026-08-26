@@ -6,10 +6,12 @@ struct MerchantWareSpriteView: View {
     let itemID: String
     let sprite: SpriteConfig
     var showsShadow: Bool = false
+    var showsGleam: Bool = true
 
     var body: some View {
-        Group {
-            if let image = MerchantWareIcon.image(id: itemID, sprite: sprite) {
+        let image = MerchantWareIcon.image(id: itemID, sprite: sprite)
+        ZStack {
+            if let image {
                 Image(uiImage: image)
                     .resizable()
                     .interpolation(.high)
@@ -21,6 +23,17 @@ struct MerchantWareSpriteView: View {
                         x: 0,
                         y: showsShadow ? 6 : 0
                     )
+                if showsGleam {
+                    GeometryReader { geo in
+                        SpiralGleamView(
+                            isEnabled: true,
+                            diameter: min(geo.size.width, geo.size.height),
+                            image: image,
+                            appliesRackRotation: false
+                        )
+                    }
+                    .allowsHitTesting(false)
+                }
             }
         }
         .accessibilityHidden(true)

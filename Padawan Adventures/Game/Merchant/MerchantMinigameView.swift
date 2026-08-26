@@ -54,17 +54,18 @@ struct MerchantMinigameView: View {
             )
             let hudHeight = geo.size.height
             let displayed = MerchantWares.aspectFit(imageSize: session.backgroundImageSize, in: geo.size)
-            let disk = MerchantWares.disk(in: displayed)
+            let playArea = MerchantWares.playArea(in: displayed)
             let slotSide = InventorySlotLayout.compute(
                 hudHeight: hudHeight,
                 availableHeight: hudHeight
             ).side
             let layout = MerchantWares.layout(
                 itemIDs: session.matWareIDs,
-                diskCenter: disk.center,
-                radius: disk.radius,
+                playArea: playArea,
                 slotSide: slotSide,
-                pixelSizes: session.warePixelSizes
+                pixelSizes: session.warePixelSizes,
+                fitItemIDs: session.wareIDs,
+                seed: session.tileSeed
             )
             ZStack {
                 waresLayer(layout: layout, size: geo.size)
@@ -197,11 +198,17 @@ private struct MerchantWareOfferChrome: View {
     let price: Int
     let frame: MerchantWareStackFrame
     var flashesRed: Bool = false
+    var showsGleam: Bool = true
 
     var body: some View {
         let local = frame.bounds
         ZStack(alignment: .topLeading) {
-            MerchantWareSpriteView(itemID: itemID, sprite: item.sprite, showsShadow: true)
+            MerchantWareSpriteView(
+                itemID: itemID,
+                sprite: item.sprite,
+                showsShadow: true,
+                showsGleam: showsGleam
+            )
                 .frame(width: frame.spriteFrame.width, height: frame.spriteFrame.height)
                 .overlay {
                     if flashesRed {
@@ -250,7 +257,8 @@ private struct MerchantWareStackView: View {
                 item: item,
                 price: price,
                 frame: frame,
-                flashesRed: flashesRed
+                flashesRed: flashesRed,
+                showsGleam: !isPickedUp
             )
             .opacity(isPickedUp ? 0 : 1)
             .allowsHitTesting(false)
@@ -295,6 +303,7 @@ final class MerchantShopSession: ObservableObject {
     let catalog: [String: MerchantItemDefinition]
     let wareIDs: [String]
     let levelOrder: Int
+    let tileSeed: UInt64
 
     @Published var scene: MerchantScene?
     @Published var slots: [String]
@@ -345,6 +354,7 @@ final class MerchantShopSession: ObservableObject {
         self.resourceName = resourceName
         self.catalog = appSession.itemsConfig.merchant
         self.levelOrder = max(appSession.selectedLevel.order, 1)
+        self.tileSeed = tileSeed
         self.wareIDs = MerchantWares.selectIDs(
             catalog: appSession.itemsConfig.merchant,
             levelOrder: appSession.selectedLevel.order,

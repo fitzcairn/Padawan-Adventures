@@ -9,6 +9,8 @@ struct SpiralGleamView: UIViewRepresentable {
     var diameter: CGFloat
     /// Treasure art as shown in the rack (before the 90° layout rotation).
     var image: UIImage?
+    /// Inventory rack lays treasure on its side; merchant wares stay upright.
+    var appliesRackRotation: Bool = true
 
     func makeUIView(context: Context) -> SpiralGleamHostView {
         let view = SpiralGleamHostView()
@@ -20,6 +22,7 @@ struct SpiralGleamView: UIViewRepresentable {
     func updateUIView(_ uiView: SpiralGleamHostView, context: Context) {
         uiView.preferredDiameter = diameter
         uiView.spriteImage = image
+        uiView.appliesRackRotation = appliesRackRotation
         uiView.setEnabled(isEnabled)
     }
 
@@ -30,6 +33,13 @@ struct SpiralGleamView: UIViewRepresentable {
 
 final class SpiralGleamHostView: UIView {
     var preferredDiameter: CGFloat = 52
+    var appliesRackRotation = true {
+        didSet {
+            if appliesRackRotation != oldValue {
+                cachedHotspot = nil
+            }
+        }
+    }
     var spriteImage: UIImage? {
         didSet {
             if spriteImage !== oldValue {
@@ -186,7 +196,11 @@ final class SpiralGleamHostView: UIView {
             return cachedHotspot
         }
         guard let image = spriteImage?.cgImage else { return nil }
-        let point = Self.upperRightOpaqueHotspot(in: image, bounds: bounds)
+        let point = Self.upperRightOpaqueHotspot(
+            in: image,
+            bounds: bounds,
+            appliesRackRotation: appliesRackRotation
+        )
         cachedHotspot = point
         return point
     }
@@ -195,7 +209,8 @@ final class SpiralGleamHostView: UIView {
     static func upperRightOpaqueHotspot(
         in image: CGImage,
         bounds: CGRect,
-        alphaThreshold: UInt8 = 16
+        alphaThreshold: UInt8 = 16,
+        appliesRackRotation: Bool = true
     ) -> CGPoint? {
         let width = image.width
         let height = image.height
@@ -231,7 +246,8 @@ final class SpiralGleamHostView: UIView {
                     CGPoint(x: x, y: y),
                     imageWidth: width,
                     imageHeight: height,
-                    into: bounds
+                    into: bounds,
+                    appliesRackRotation: appliesRackRotation
                 )
                 let dx = point.x - corner.x
                 let dy = point.y - corner.y
@@ -251,7 +267,8 @@ final class SpiralGleamHostView: UIView {
         _ pixel: CGPoint,
         imageWidth: Int,
         imageHeight: Int,
-        into rect: CGRect
+        into rect: CGRect,
+        appliesRackRotation: Bool = true
     ) -> CGPoint {
         let imageSize = CGSize(width: imageWidth, height: imageHeight)
         guard imageSize.width > 0, imageSize.height > 0, rect.width > 0, rect.height > 0 else {
@@ -270,6 +287,7 @@ final class SpiralGleamHostView: UIView {
             x: origin.x + (pixel.x + 0.5) * scale,
             y: origin.y + (pixel.y + 0.5) * scale
         )
+        guard appliesRackRotation else { return fit }
         // 90° CW with y-down: (dx, dy) → (-dy, dx)
         let dx = fit.x - rect.midX
         let dy = fit.y - rect.midY

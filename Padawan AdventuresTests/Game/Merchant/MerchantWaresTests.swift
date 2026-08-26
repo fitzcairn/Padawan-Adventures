@@ -43,44 +43,55 @@ struct MerchantWaresTests {
         #expect(ids == ["item-1", "item-2", "item-3", "item-4"])
     }
 
-    @Test func layoutKeepsSpritesInsideDiskWithGap() {
-        let radius: CGFloat = 200
+    @Test func layoutPlacesStacksOnACenteredGridWithSmallJitter() {
+        let play = CGRect(x: 200, y: 100, width: 400, height: 360)
+        let ids = ["square", "circle", "triangle"]
         let layout = MerchantWares.layout(
-            itemIDs: ["square", "circle", "triangle"],
-            diskCenter: CGPoint(x: 400, y: 300),
-            radius: radius,
-            slotSide: 56
+            itemIDs: ids,
+            playArea: play,
+            slotSide: 56,
+            seed: 99
         )
         #expect(layout.stacks.count == 3)
-        #expect(layout.spriteSide <= radius * MerchantWares.maxSpriteFractionOfRadius + 0.01)
         #expect(abs(layout.spriteSide - 56) < 0.5)
-        for stack in layout.stacks {
+        #expect(layout.gap >= MerchantWares.minGapPoints - 0.01)
+
+        let padded = play.insetBy(dx: -0.5, dy: -0.5)
+        let cellSize = CGSize(
+            width: layout.stacks.map(\.bounds.width).max() ?? 56,
+            height: layout.stacks.map(\.bounds.height).max() ?? 56
+        )
+        let grid = MerchantWares.gridRect(cellSize: cellSize, in: play, gap: layout.gap)
+        #expect(abs(grid.midX - play.midX) < 0.01)
+        #expect(abs(grid.midY - play.midY) < 0.01)
+
+        for (index, stack) in layout.stacks.enumerated() {
             let minDim = min(stack.spriteFrame.width, stack.spriteFrame.height)
             #expect(abs(minDim - layout.spriteSide) < 0.5)
+            #expect(padded.contains(stack.bounds))
+            let cell = MerchantWares.gridCell(
+                index: index,
+                in: grid,
+                gap: layout.gap * MerchantWares.gridScale
+            )
+            let base = MerchantWares.centeredOrigin(stack: stack.bounds.size, in: cell)
+            #expect(abs(stack.bounds.minX - base.x) <= stack.bounds.width * MerchantWares.positionJitterFraction + 0.5)
+            #expect(abs(stack.bounds.minY - base.y) <= stack.bounds.height * MerchantWares.positionJitterFraction + 0.5)
         }
-        #expect(layout.gap >= MerchantWares.minGapPoints - 0.01)
-        #expect(layout.gap >= layout.spriteSide * MerchantWares.minGapSpriteFraction - 0.01)
+        let columns = Set(layout.stacks.map { $0.bounds.midX > play.midX })
+        let rows = Set(layout.stacks.map { $0.bounds.midY > play.midY })
+        #expect(columns.count == 2)
+        #expect(rows.count == 2)
+    }
 
-        let center = CGPoint(x: 400, y: 300)
-        for stack in layout.stacks {
-            let bounds = stack.bounds
-            for corner in [
-                CGPoint(x: bounds.minX, y: bounds.minY),
-                CGPoint(x: bounds.maxX, y: bounds.minY),
-                CGPoint(x: bounds.minX, y: bounds.maxY),
-                CGPoint(x: bounds.maxX, y: bounds.maxY),
-            ] {
-                let dx = corner.x - center.x
-                let dy = corner.y - center.y
-                #expect(hypot(dx, dy) <= radius + 0.5)
-            }
-        }
-        if layout.stacks.count >= 2 {
-            let a = layout.stacks[0].bounds
-            let b = layout.stacks[1].bounds
-            let gap = b.minX - a.maxX
-            #expect(gap >= layout.gap - 0.5)
-        }
+    @Test func layoutIsStableForASeedAndChangesWithAnother() {
+        let play = CGRect(x: 0, y: 0, width: 500, height: 400)
+        let ids = ["square", "circle", "triangle"]
+        let first = MerchantWares.layout(itemIDs: ids, playArea: play, slotSide: 56, seed: 11)
+        let again = MerchantWares.layout(itemIDs: ids, playArea: play, slotSide: 56, seed: 11)
+        let other = MerchantWares.layout(itemIDs: ids, playArea: play, slotSide: 56, seed: 12)
+        #expect(first == again)
+        #expect(first.stacks.map(\.bounds) != other.stacks.map(\.bounds))
     }
 
     @Test func dropOutcomes() {
@@ -172,6 +183,65 @@ struct MerchantWaresTests {
                 < 0.0001
         )
         #expect(MerchantDragMotion.returnDuration(for: CGSize(width: 2000, height: 0)) == 0.48)
+    }
+
+    @Test func layoutKeepsRemainingWaresInPlace() {
+        let ids = ["wide-a", "wide-b", "wide-c", "wide-d"]
+        let pixels = Dictionary(
+            uniqueKeysWithValues: ids.map { ($0, CGSize(width: 200, height: 120)) }
+        )
+        let play = CGRect(x: 80, y: 40, width: 640, height: 480)
+        let slotSide: CGFloat = 56
+        let full = MerchantWares.layout(
+            itemIDs: ids,
+            playArea: play,
+            slotSide: slotSide,
+            pixelSizes: pixels,
+            seed: 3
+        )
+        let remainingIDs = Array(ids.dropLast())
+        let remaining = MerchantWares.layout(
+            itemIDs: remainingIDs,
+            playArea: play,
+            slotSide: slotSide,
+            pixelSizes: pixels,
+            fitItemIDs: ids,
+            seed: 3
+        )
+        #expect(abs(remaining.spriteSide - full.spriteSide) < 0.01)
+        #expect(remaining.stacks.count == remainingIDs.count)
+        for stack in remaining.stacks {
+            #expect(full.stacks.first(where: { $0.itemID == stack.itemID }) == stack)
+        }
+    }
+
+    @Test func gridRectIsACenteredTwoByTwo() {
+        let play = CGRect(x: 0, y: 0, width: 800, height: 600)
+        let grid = MerchantWares.gridRect(
+            cellSize: CGSize(width: 90, height: 120),
+            in: play,
+            gap: 14
+        )
+        #expect(abs(grid.midX - play.midX) < 0.01)
+        #expect(abs(grid.midY - play.midY) < 0.01)
+        #expect(abs(grid.width - (90 * 2 + 14) * MerchantWares.gridScale) < 0.01)
+        #expect(abs(grid.height - (120 * 2 + 14) * MerchantWares.gridScale) < 0.01)
+        #expect(play.contains(grid))
+        let cellGap = 14 * MerchantWares.gridScale
+        let topLeft = MerchantWares.gridCell(index: 0, in: grid, gap: cellGap)
+        let topRight = MerchantWares.gridCell(index: 1, in: grid, gap: cellGap)
+        let bottomLeft = MerchantWares.gridCell(index: 2, in: grid, gap: cellGap)
+        #expect(topLeft.maxX <= topRight.minX + 0.01)
+        #expect(topLeft.maxY <= bottomLeft.minY + 0.01)
+    }
+
+    @Test func playAreaIsCenteredOnTheDisplayedBackground() {
+        let displayed = CGRect(x: 10, y: 20, width: 1000, height: 500)
+        let play = MerchantWares.playArea(in: displayed)
+        #expect(abs(play.midX - displayed.midX) < 0.01)
+        #expect(abs(play.midY - displayed.midY) < 0.01)
+        #expect(abs(play.width - displayed.width * MerchantWares.playWidthFraction) < 0.01)
+        #expect(abs(play.height - displayed.height * MerchantWares.playHeightFraction) < 0.01)
     }
 
     @Test func fittedSizeMatchesShorterAxisToSlotSide() {
