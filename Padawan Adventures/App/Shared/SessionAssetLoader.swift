@@ -8,12 +8,24 @@ extension AppSession {
         if let sprite = playerConfig.sprite {
             await spriteLibrary.ensureLoaded(sprite, id: "player", onProgress: onProgress)
         }
-        if let combat = playerConfig.combatSprite {
-            await spriteLibrary.ensureLoaded(combat, id: "player_combat")
-        }
+        await ensureCombatSpriteLoaded()
         if playerConfig.sprite == nil {
             onProgress?(1)
         }
+    }
+
+    /// Loads the equipped combat swing as `player_combat` / `swing`.
+    func ensureCombatSpriteLoaded() async {
+        let swing = CombatCrystalUse.resolvedSwing(playerState?.combatSwingAnimation)
+        if !spriteLibrary.isLoaded(id: "player_combat") || loadedCombatSwing != swing {
+            spriteLibrary.invalidate(id: "player_combat")
+            loadedCombatSwing = swing
+        }
+        guard let combat = CombatCrystalUse.combatSprite(
+            from: playerConfig.combatSprite,
+            swing: swing
+        ) else { return }
+        await spriteLibrary.ensureLoaded(combat, id: "player_combat")
     }
 
     /// Ensures the vector flyover ship is loaded for inventory use.

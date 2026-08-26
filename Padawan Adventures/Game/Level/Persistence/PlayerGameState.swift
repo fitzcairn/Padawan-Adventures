@@ -183,6 +183,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var seenWorldTutorial: Bool
     /// Three merchant loadout slots. Empty string means vacant (plist cannot store `nil` in arrays).
     var itemSlots: [String]
+    /// Combat swing clip name after a crystal is used (`swing_purple`, `swing_yellow`).
+    var combatSwingAnimation: String?
 
     static let itemSlotCount = 3
 
@@ -199,7 +201,8 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         dadModeUnlocked: Bool = false,
         seenMinigameTutorials: Set<String> = [],
         seenWorldTutorial: Bool = false,
-        itemSlots: [String] = PlayerGameState.emptyItemSlots
+        itemSlots: [String] = PlayerGameState.emptyItemSlots,
+        combatSwingAnimation: String? = nil
     ) {
         self.version = version
         self.lastLevelStarted = lastLevelStarted
@@ -214,6 +217,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         self.seenMinigameTutorials = seenMinigameTutorials
         self.seenWorldTutorial = seenWorldTutorial
         self.itemSlots = Self.normalizedItemSlots(itemSlots)
+        self.combatSwingAnimation = combatSwingAnimation
     }
 
     static var emptyItemSlots: [String] {
@@ -244,6 +248,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         case seenMinigameTutorials
         case seenWorldTutorial
         case itemSlots
+        case combatSwingAnimation
     }
 
     init(from decoder: Decoder) throws {
@@ -265,6 +270,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         itemSlots = Self.normalizedItemSlots(
             try container.decodeIfPresent([String].self, forKey: .itemSlots) ?? []
         )
+        combatSwingAnimation = try container.decodeIfPresent(String.self, forKey: .combatSwingAnimation)
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -406,6 +412,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         seenMinigameTutorials = []
         seenWorldTutorial = false
         itemSlots = Self.emptyItemSlots
+        combatSwingAnimation = nil
         resetVitals(health: health, energy: energy)
     }
 

@@ -48,6 +48,7 @@ struct PlayerConfigTests {
         let config = try PlayerConfig.decode(from: yaml)
         #expect(config.combatSprite?.root == "Sprites/Combat")
         #expect(config.combatSprite?.animations["swing"] != nil)
+        #expect(config.combatSprite?.animations["swing_purple"] == nil)
     }
 
     @Test func validateRejectsNegativeStartingHealth() {

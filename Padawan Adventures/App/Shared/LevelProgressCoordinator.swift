@@ -151,6 +151,17 @@ extension AppSession {
         return true
     }
 
+    func equipCombatCrystal(itemID: String, clearingSlot index: Int) async {
+        guard var state = playerState,
+              let swing = CombatCrystalUse.swingAnimation(for: itemID)
+        else { return }
+        state.combatSwingAnimation = swing
+        state.setItemSlot(index: index, itemID: nil)
+        playerState = state
+        await persistPlayerState()
+        await ensureCombatSpriteLoaded()
+    }
+
     func setItemSlot(index: Int, itemID: String?) async {
         guard playerState != nil else { return }
         playerState?.setItemSlot(index: index, itemID: itemID)

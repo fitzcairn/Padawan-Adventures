@@ -255,7 +255,10 @@ extension AppSession {
                 onProgress?(LoadProgress.map(local, from: iconsEnd, to: 0.54))
             }
         }
-        if let combat = playerConfig.combatSprite {
+        if let combat = CombatCrystalUse.combatSprite(
+            from: playerConfig.combatSprite,
+            swing: CombatCrystalUse.defaultSwing
+        ) {
             await spriteLibrary.ensureLoaded(combat, id: "player_combat") { local in
                 onProgress?(LoadProgress.map(local, from: 0.54, to: playerEnd))
             }

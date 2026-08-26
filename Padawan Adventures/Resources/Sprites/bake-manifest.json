@@ -76,6 +76,10 @@
     "Art/Levels/8-geonosis/8-pommel-spritesheet.png": "8695c9d770675cae5b4aff753e08016104017cd7e39c1829b27ddfb9482d6d0e",
     "Art/Shared/Combat/player-combat-atlas.json": "e47721a98925495617a04d61ad44c7a2c2fd21e61cd0b446ee044bbc769bbcac",
     "Art/Shared/Combat/player-combat-spritesheet.png": "32620b2aaca84663e046b3cde17c2f7f6c31c86b5ffdc985ebaa4e7af06669db",
+    "Art/Shared/Combat/swing_purple_blade_up-atlas.json": "8fd8ea1f07e2952480e3471cfe2f76a617eca20a1cb13de3c257e39892304d0b",
+    "Art/Shared/Combat/swing_purple_blade_up-spritesheet.png": "4bb2dbd2f3d85382473240997b5a10803eadd855b398f6dde5fcf422cf61ad89",
+    "Art/Shared/Combat/swing_yellow_blade_up-atlas.json": "8fd8ea1f07e2952480e3471cfe2f76a617eca20a1cb13de3c257e39892304d0b",
+    "Art/Shared/Combat/swing_yellow_blade_up-spritesheet.png": "562cbedbefa348b29b9fba3997adb9cd86baea749f7b3c24ac3053f47c406619",
     "Art/Shared/Enemies/Centipede/centipede-idle_down-atlas.json": "77e17ceb6686c5863211072c1cc7fe8b1648f39dcb68c8743bc3eabffd0999c4",
     "Art/Shared/Enemies/Centipede/centipede-idle_down-spritesheet.png": "34f109ae156affa9a21bde879c7de77f41876e9752835341c6936cb9ad365e8a",
     "Art/Shared/Enemies/Centipede/centipede-idle_northeast-atlas.json": "77e17ceb6686c5863211072c1cc7fe8b1648f39dcb68c8743bc3eabffd0999c4",
@@ -402,7 +406,7 @@
     "Padawan Adventures/Resources/Config/UI/menu.yaml": "c3d65f2ea1e63bbd1346a9686471232f8f6e2a3d6b5652d514bcccfb522834bf",
     "Padawan Adventures/Resources/Config/UI/tutorials.yaml": "7248ba953960662cf384159d8bc94ec3ff4fd0982dde419ba224ecdced37a5f4",
     "Padawan Adventures/Resources/Config/UI/vector.yaml": "8062627c9672b8840ea38b19a2c54ad438fa32a7db669333c9ec045b59eda3fb",
-    "Padawan Adventures/Resources/Config/player.yaml": "435460947360501fe70c52d56649ead7fb4d74197de30bd7495aef5f0ae6d7b0",
+    "Padawan Adventures/Resources/Config/player.yaml": "9d33169e8d4037e001767ba1507aaeaf2c60bb5b4fb14232266b97c20770cdb3",
     "Padawan Adventures/Resources/Levels/1-tython/level.yaml": "c513322ac6395402f9dff901885fe5779976009581d29b3dc7ceb456dd707736",
     "Padawan Adventures/Resources/Levels/2-tatooine/level.yaml": "2bf889d8cf426e766aa1bedbd7bf374fd202e7aae34b05a549d3b85c02f78c3f",
     "Padawan Adventures/Resources/Levels/3-ilum/level.yaml": "a3ef5e0cd2c4816f600af105dfa516d3491dde2236c1fafaa33eabe02d62a0b7",
@@ -845,6 +849,10 @@
     "Padawan Adventures/Resources/Levels/8-geonosis/8-pommel-spritesheet.png": "64fe03ce067b8a571b6163e695cdd2d05e27e8d09274b15ca5d881e0da35d645",
     "Padawan Adventures/Resources/Sprites/Combat/player-combat-atlas.json": "6293a42d16af78d466648d1eeab1e34f0782e9bdf9d5c31f02244c78fe06bbf9",
     "Padawan Adventures/Resources/Sprites/Combat/player-combat-spritesheet.png": "fd3486af4a05a3be0f53c263918a32185cab7c4ffd06b6daef91a452088eb2e1",
+    "Padawan Adventures/Resources/Sprites/Combat/swing_purple_blade_up-atlas.json": "a780dd805cf42dc93c169275b4f7f0a87ae7e3af99d32a2ce72ae5ddd279a20d",
+    "Padawan Adventures/Resources/Sprites/Combat/swing_purple_blade_up-spritesheet.png": "d96572862320771691cd0dd46b4ae763ab24aa94d194e7efe0cb012d6c0e8ce8",
+    "Padawan Adventures/Resources/Sprites/Combat/swing_yellow_blade_up-atlas.json": "c2ea1cf773f15a92aa3ccd132e612d45bf41bc07cfe8b4ed905788881b27f54d",
+    "Padawan Adventures/Resources/Sprites/Combat/swing_yellow_blade_up-spritesheet.png": "9483ac1a15de9f0b983b85e1656cf212da25e35ccc787d368f5a4c5217493d4e",
     "Padawan Adventures/Resources/Sprites/Enemies/Centipede/centipede-idle_down-atlas.json": "5797d615006fba1315b99a3b2fb618f74c4dbd27ebe546f86c0e957ef52ce754",
     "Padawan Adventures/Resources/Sprites/Enemies/Centipede/centipede-idle_down-spritesheet.png": "b9919d6455cb3ceb3bf9583f69eb6842490d504165cf2538ae2fb34dd5cf08e7",
     "Padawan Adventures/Resources/Sprites/Enemies/Centipede/centipede-idle_northeast-atlas.json": "bab6af4ac88b0c269bdbfec16505b798ba3e3d1895970bdc2d9c38bde4315898",
@@ -3232,6 +3240,17 @@
       "flip_vertical": true
     },
     {
+      "label": "vector.ship.fly",
+      "category": "vector.ship",
+      "source_sheet": "Art/Shared/Vector/vector_southwest-spritesheet.png",
+      "source_atlas": "Art/Shared/Vector/vector_southwest-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Vector/vector_southwest-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Vector/vector_southwest-atlas.json",
+      "trim": true,
+      "bake_scale": 0.5,
+      "flip_vertical": true
+    },
+    {
       "label": "player.idle_up",
       "category": "player",
       "source_sheet": "Art/Shared/Player/idle_up-spritesheet.png",
@@ -3430,14 +3449,25 @@
       "flip_vertical": true
     },
     {
-      "label": "vector.ship.fly",
-      "category": "vector.ship",
-      "source_sheet": "Art/Shared/Vector/vector_southwest-spritesheet.png",
-      "source_atlas": "Art/Shared/Vector/vector_southwest-atlas.json",
-      "baked_sheet": "Padawan Adventures/Resources/Sprites/Vector/vector_southwest-spritesheet.png",
-      "baked_atlas": "Padawan Adventures/Resources/Sprites/Vector/vector_southwest-atlas.json",
+      "label": "player.combat.swing_purple",
+      "category": "player.combat",
+      "source_sheet": "Art/Shared/Combat/swing_purple_blade_up-spritesheet.png",
+      "source_atlas": "Art/Shared/Combat/swing_purple_blade_up-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Combat/swing_purple_blade_up-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Combat/swing_purple_blade_up-atlas.json",
       "trim": true,
-      "bake_scale": 0.5,
+      "bake_scale": 1.0,
+      "flip_vertical": true
+    },
+    {
+      "label": "player.combat.swing_yellow",
+      "category": "player.combat",
+      "source_sheet": "Art/Shared/Combat/swing_yellow_blade_up-spritesheet.png",
+      "source_atlas": "Art/Shared/Combat/swing_yellow_blade_up-atlas.json",
+      "baked_sheet": "Padawan Adventures/Resources/Sprites/Combat/swing_yellow_blade_up-spritesheet.png",
+      "baked_atlas": "Padawan Adventures/Resources/Sprites/Combat/swing_yellow_blade_up-atlas.json",
+      "trim": true,
+      "bake_scale": 1.0,
       "flip_vertical": true
     }
   ]

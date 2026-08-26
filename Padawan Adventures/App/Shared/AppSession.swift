@@ -54,6 +54,8 @@ final class AppSession {
     let cutsceneVideo: CutsceneVideo
     /// Resource name of a level first-completed this session; level select consumes it for unlock FX.
     var pendingLevelSelectCelebration: String? = nil
+    /// Swing clip last loaded into `player_combat` (`swing`, `swing_purple`, …).
+    var loadedCombatSwing: String?
 
     init(
         appConfig: AppConfig,

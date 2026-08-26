@@ -219,6 +219,9 @@ final class GameViewController: LandscapeHostingController {
         if itemID == VectorStrafeUse.itemID {
             return useVectorFromInventory(index: index)
         }
+        if CombatCrystalUse.swingAnimation(for: itemID) != nil {
+            return useCombatCrystalFromInventory(index: index, itemID: itemID)
+        }
 
         if let sound = session.itemsConfig.merchantItem(itemID)?.sound, !sound.isEmpty {
             SoundEffectsController.shared.play(trackID: sound)
@@ -287,6 +290,20 @@ final class GameViewController: LandscapeHostingController {
         scene.performVectorStrafe { [weak self] killed in
             guard let self, killed > 0 else { return }
             Task { await self.session.recordStat { $0.enemiesKilled += killed } }
+        }
+        return true
+    }
+
+    private func useCombatCrystalFromInventory(index: Int, itemID: String) -> Bool {
+        playPlayerFx("combat_start")
+        Task {
+            await session.equipCombatCrystal(itemID: itemID, clearingSlot: index)
+            await MainActor.run {
+                hud?.setInventorySlots(
+                    session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
+                    catalog: session.itemsConfig.merchant
+                )
+            }
         }
         return true
     }
