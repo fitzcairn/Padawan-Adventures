@@ -14,7 +14,7 @@ world_tutorial: false
 # Later levels replace this block wholesale with their own `vocab:`.
 vocab:
   graphemes: [s, a, t, p, i, n]
-  words: [at, it, in, an, sat, sit, pat, tap, pan, nap, pin, sip]
+  words: [at, it, in, an, sat, sit, pat, tap, pan, nap, pin, sip, tip, sap]
 
 # Map layout, spawn rates, and exploration music.
 world:

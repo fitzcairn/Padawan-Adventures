@@ -56,7 +56,9 @@ strings:
     context: "Main-menu New Game button. Starts immediately if there is no progress; otherwise opens the restart confirm modal."
   menu_new_game_confirm:
     text: "This will restart your game!  Are you sure?"
-    context: "Title of the main-menu New Game confirmation modal; Let's go / Cancel sit below."
+    sfx: sfx_ui_menu_new_game_confirm
+    context: "Title of the main-menu New Game confirmation modal; Let's go / Cancel sit below. Spoken when the modal appears."
+    spoken: "This will restart your game!  Are you sure?"
   menu_settings:
     text: "SETTINGS"
     context: "Main-menu Settings button; opens the Settings screen."

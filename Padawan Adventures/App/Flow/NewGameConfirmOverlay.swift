@@ -26,7 +26,8 @@ struct NewGameConfirmOverlay: View {
                         text: Strings.text("menu_new_game_confirm"),
                         size: 32,
                         weight: .bold,
-                        accessibilityID: "menu.newGameConfirm.message"
+                        accessibilityID: "menu.newGameConfirm.message",
+                        speakID: "menu_new_game_confirm"
                     )
 
                     AppLargeButton(
@@ -49,6 +50,9 @@ struct NewGameConfirmOverlay: View {
                 }
             }
             .frame(maxWidth: AppChrome.maxContentWidth * 0.85)
+        }
+        .onAppear {
+            Strings.speak("menu_new_game_confirm")
         }
     }
 }

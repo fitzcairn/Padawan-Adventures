@@ -11,7 +11,7 @@ artifact: tree.fill
 treasure: activation-switch
 vocab:
   graphemes: [j, v, w, x, y, z, qu]
-  words: [jam, vet, web, fox, zip, padawan, quit, quiz]
+  words: [jam, vet, web, fox, zip, padawan, quit, quiz, bus, rug, van, wig, yes]
 world:
   width_tiles: 60
   height_tiles: 60

@@ -134,7 +134,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-bridge, atlas: merchant-ware-bridge-atlas }
   merchant-ware-crystal-green:
-    min_level: 2
+    min_level: 1
     price: 10
     limit: 1
     description: merchant_item_crystal_green
@@ -145,7 +145,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-green, atlas: merchant-ware-crystal-green-atlas }
   merchant-ware-crystal-purple:
-    min_level: 2
+    min_level: 1
     price: 10
     limit: 1
     description: merchant_item_crystal_purple
@@ -156,7 +156,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-purple, atlas: merchant-ware-crystal-purple-atlas }
   merchant-ware-crystal-yellow:
-    min_level: 2
+    min_level: 1
     price: 10
     limit: 1
     description: merchant_item_crystal_yellow
@@ -167,7 +167,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-crystal-yellow, atlas: merchant-ware-crystal-yellow-atlas }
   merchant-ware-double-saber:
-    min_level: 2
+    min_level: 1
     price: 10
     limit: 1
     description: merchant_item_double_saber
@@ -178,7 +178,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-double-saber, atlas: merchant-ware-double-saber-atlas }
   merchant-ware-jetpack:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_jetpack
@@ -189,7 +189,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-jetpack, atlas: merchant-ware-jetpack-atlas }
   merchant-ware-satelite:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_satelite
@@ -200,7 +200,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-satelite, atlas: merchant-ware-satelite-atlas }
   merchant-ware-scanner:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_scanner
@@ -211,7 +211,7 @@ merchant:
       animations:
         idle: { sheet: merchant-ware-scanner, atlas: merchant-ware-scanner-atlas }
   merchant-ware-vector:
-    min_level: 1
+    min_level: 2
     price: 10
     limit: 1
     description: merchant_item_vector
