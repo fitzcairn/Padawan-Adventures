@@ -86,7 +86,7 @@ struct WordCatalogTests {
 
     @Test func bundleWordsProvidesGateVocabulary() throws {
         let catalog = try WordCatalog.loadFromBundle()
-        #expect(catalog.words.count == 75)
+        #expect(catalog.words.count == 90)
         #expect(catalog.words.contains {
             $0.word == "cat"
                 && $0.image == "cat"

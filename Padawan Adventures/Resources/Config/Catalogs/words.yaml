@@ -22,6 +22,11 @@ words:
     sfx: sfx_word_at
     letters: [a, t]
     graphemes: [a, t]
+  bat:
+    image: bat
+    sfx: sfx_word_bat
+    letters: [b, a, t]
+    graphemes: [b, a, t]
   bed:
     image: bed
     sfx: sfx_word_bed
@@ -47,6 +52,11 @@ words:
     sfx: sfx_word_bug
     letters: [b, u, g]
     graphemes: [b, u, g]
+  bus:
+    image: bus
+    sfx: sfx_word_bus
+    letters: [b, u, s]
+    graphemes: [b, u, s]
   buzz:
     image: buzz
     sfx: sfx_word_buzz
@@ -62,6 +72,11 @@ words:
     sfx: sfx_word_can
     letters: [c, a, n]
     graphemes: [c, a, n]
+  cap:
+    image: cap
+    sfx: sfx_word_cap
+    letters: [c, a, p]
+    graphemes: [c, a, p]
   cat:
     image: cat
     sfx: sfx_word_cat
@@ -77,6 +92,11 @@ words:
     sfx: sfx_word_crab
     letters: [c, r, a, b]
     graphemes: [cr, a, b]
+  cup:
+    image: cup
+    sfx: sfx_word_cup
+    letters: [c, u, p]
+    graphemes: [c, u, p]
   dad:
     image: dad
     sfx: sfx_word_dad
@@ -147,6 +167,11 @@ words:
     sfx: sfx_word_jam
     letters: [j, a, m]
     graphemes: [j, a, m]
+  jog:
+    image: jog
+    sfx: sfx_word_jog
+    letters: [j, o, g]
+    graphemes: [j, o, g]
   jump:
     image: jump
     sfx: sfx_word_jump
@@ -217,6 +242,11 @@ words:
     sfx: sfx_word_pat
     letters: [p, a, t]
     graphemes: [p, a, t]
+  pet:
+    image: pet
+    sfx: sfx_word_pet
+    letters: [p, e, t]
+    graphemes: [p, e, t]
   pig:
     image: pig
     sfx: sfx_word_pig
@@ -227,6 +257,11 @@ words:
     sfx: sfx_word_pin
     letters: [p, i, n]
     graphemes: [p, i, n]
+  pit:
+    image: pit
+    sfx: sfx_word_pit
+    letters: [p, i, t]
+    graphemes: [p, i, t]
   play:
     image: play
     sfx: sfx_word_play
@@ -242,6 +277,11 @@ words:
     sfx: sfx_word_pond
     letters: [p, o, n, d]
     graphemes: [p, o, nd]
+  pop:
+    image: pop
+    sfx: sfx_word_pop
+    letters: [p, o, p]
+    graphemes: [p, o, p]
   pot:
     image: pot
     sfx: sfx_word_pot
@@ -272,6 +312,11 @@ words:
     sfx: sfx_word_read
     letters: [r, e, a, d]
     graphemes: [r, ea, d]
+  rug:
+    image: rug
+    sfx: sfx_word_rug
+    letters: [r, u, g]
+    graphemes: [r, u, g]
   run:
     image: run
     sfx: sfx_word_run
@@ -282,6 +327,11 @@ words:
     sfx: sfx_word_sand
     letters: [s, a, n, d]
     graphemes: [s, a, nd]
+  sap:
+    image: sap
+    sfx: sfx_word_sap
+    letters: [s, a, p]
+    graphemes: [s, a, p]
   sat:
     image: sat
     sfx: sfx_word_sat
@@ -347,6 +397,16 @@ words:
     sfx: sfx_word_tent
     letters: [t, e, n, t]
     graphemes: [t, e, nt]
+  tip:
+    image: tip
+    sfx: sfx_word_tip
+    letters: [t, i, p]
+    graphemes: [t, i, p]
+  top:
+    image: top
+    sfx: sfx_word_top
+    letters: [t, o, p]
+    graphemes: [t, o, p]
   train:
     image: train
     sfx: sfx_word_train
@@ -362,6 +422,11 @@ words:
     sfx: sfx_word_tris
     letters: [t, r, i, s]
     graphemes: [tr, i, s]
+  van:
+    image: van
+    sfx: sfx_word_van
+    letters: [v, a, n]
+    graphemes: [v, a, n]
   vest:
     image: vest
     sfx: sfx_word_vest
@@ -377,6 +442,16 @@ words:
     sfx: sfx_word_web
     letters: [w, e, b]
     graphemes: [w, e, b]
+  wig:
+    image: wig
+    sfx: sfx_word_wig
+    letters: [w, i, g]
+    graphemes: [w, i, g]
+  yes:
+    image: yes
+    sfx: sfx_word_yes
+    letters: [y, e, s]
+    graphemes: [y, e, s]
   zip:
     image: zip
     sfx: sfx_word_zip

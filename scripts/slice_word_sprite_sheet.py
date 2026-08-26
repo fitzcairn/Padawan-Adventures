@@ -249,7 +249,8 @@ def main():
     assert sheet.size == SHEET_SIZE, f"unexpected sheet size {sheet.size}"
     flat = [w for row in WORDS for w in row]
     assert len(flat) == 75 and len(set(flat)) == 75, "word grid must hold 75 unique words"
-    assert set(flat) == set(catalog_image_names()), "word grid does not match words.yaml"
+    catalog = set(catalog_image_names())
+    assert set(flat) <= catalog, "word grid has names missing from words.yaml"
 
     rgb = np.array(sheet, dtype=np.int16)
     dist = np.abs(rgb - BG).sum(axis=2)
