@@ -70,7 +70,7 @@ sprite:
     lifting_with_the_force_left: { flip_of: lifting_with_the_force_right }
 
 # Combat arena swing sheets under Resources/Sprites/Combat/.
-# `swing` is the default blade. Crystal inventory items remap this to purple/yellow.
+# `swing` is the default blade. Inventory items remap this to crystal/double sheets.
 combat_sprite:
   root: Sprites/Combat
   chroma: black
@@ -78,3 +78,5 @@ combat_sprite:
     swing: { sheet: player-combat-spritesheet, atlas: player-combat-atlas }
     swing_purple: { sheet: swing_purple_blade_up-spritesheet, atlas: swing_purple_blade_up-atlas }
     swing_yellow: { sheet: swing_yellow_blade_up-spritesheet, atlas: swing_yellow_blade_up-atlas }
+    swing_green: { sheet: swing_green_blade_up-spritesheet, atlas: swing_green_blade_up-atlas }
+    swing_double: { sheet: double_blade_swing_up-spritesheet, atlas: double_blade_swing_up-atlas }

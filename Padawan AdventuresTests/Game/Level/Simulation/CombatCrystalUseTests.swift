@@ -12,7 +12,14 @@ struct CombatCrystalUseTests {
             CombatCrystalUse.swingAnimation(for: CombatCrystalUse.yellowItemID)
                 == CombatCrystalUse.yellowSwing
         )
-        #expect(CombatCrystalUse.swingAnimation(for: "merchant-ware-crystal-green") == nil)
+        #expect(
+            CombatCrystalUse.swingAnimation(for: CombatCrystalUse.doubleSaberItemID)
+                == CombatCrystalUse.doubleSwing
+        )
+        #expect(
+            CombatCrystalUse.swingAnimation(for: CombatCrystalUse.greenItemID)
+                == CombatCrystalUse.greenSwing
+        )
         #expect(CombatCrystalUse.swingAnimation(for: JetpackGateUse.itemID) == nil)
     }
 
@@ -22,6 +29,14 @@ struct CombatCrystalUseTests {
         #expect(
             CombatCrystalUse.resolvedSwing(CombatCrystalUse.purpleSwing)
                 == CombatCrystalUse.purpleSwing
+        )
+        #expect(
+            CombatCrystalUse.resolvedSwing(CombatCrystalUse.doubleSwing)
+                == CombatCrystalUse.doubleSwing
+        )
+        #expect(
+            CombatCrystalUse.resolvedSwing(CombatCrystalUse.greenSwing)
+                == CombatCrystalUse.greenSwing
         )
     }
 
@@ -50,6 +65,8 @@ struct CombatCrystalUseTests {
         #expect(config.combatSprite?.animations[CombatCrystalUse.defaultSwing] != nil)
         #expect(config.combatSprite?.animations[CombatCrystalUse.purpleSwing] != nil)
         #expect(config.combatSprite?.animations[CombatCrystalUse.yellowSwing] != nil)
+        #expect(config.combatSprite?.animations[CombatCrystalUse.doubleSwing] != nil)
+        #expect(config.combatSprite?.animations[CombatCrystalUse.greenSwing] != nil)
     }
 }
 

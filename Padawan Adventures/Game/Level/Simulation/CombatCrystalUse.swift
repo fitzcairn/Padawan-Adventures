@@ -1,19 +1,27 @@
 import Foundation
 
-/// Maps merchant crystal wares to combat swing clips on `player.combat_sprite`.
+/// Maps merchant crystal and double-saber wares to combat swing clips on `player.combat_sprite`.
 nonisolated enum CombatCrystalUse {
     static let defaultSwing = "swing"
     static let purpleItemID = "merchant-ware-crystal-purple"
     static let yellowItemID = "merchant-ware-crystal-yellow"
+    static let greenItemID = "merchant-ware-crystal-green"
+    static let doubleSaberItemID = "merchant-ware-double-saber"
     static let purpleSwing = "swing_purple"
     static let yellowSwing = "swing_yellow"
+    static let greenSwing = "swing_green"
+    static let doubleSwing = "swing_double"
 
-    static let knownSwings: Set<String> = [defaultSwing, purpleSwing, yellowSwing]
+    static let knownSwings: Set<String> = [
+        defaultSwing, purpleSwing, yellowSwing, greenSwing, doubleSwing,
+    ]
 
     static func swingAnimation(for itemID: String) -> String? {
         switch itemID {
         case purpleItemID: return purpleSwing
         case yellowItemID: return yellowSwing
+        case greenItemID: return greenSwing
+        case doubleSaberItemID: return doubleSwing
         default: return nil
         }
     }
@@ -23,7 +31,7 @@ nonisolated enum CombatCrystalUse {
         return stored
     }
 
-    /// Combat library config with `swing` pointing at the equipped crystal sheet.
+    /// Combat library config with `swing` pointing at the equipped blade sheet.
     static func combatSprite(from config: SpriteConfig?, swing: String) -> SpriteConfig? {
         guard var config else { return nil }
         let key = resolvedSwing(swing)

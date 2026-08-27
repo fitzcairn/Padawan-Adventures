@@ -183,7 +183,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var seenWorldTutorial: Bool
     /// Three merchant loadout slots. Empty string means vacant (plist cannot store `nil` in arrays).
     var itemSlots: [String]
-    /// Combat swing clip name after a crystal is used (`swing_purple`, `swing_yellow`).
+    /// Combat swing clip name after a crystal or double saber is used (`swing_purple`, `swing_yellow`, `swing_green`, `swing_double`).
     var combatSwingAnimation: String?
 
     static let itemSlotCount = 3
