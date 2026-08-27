@@ -8,7 +8,7 @@ seed: time
 
 # Testing shortcut: replace every level layout with a fixed three-room demo map
 # that shows one of every gate, pit, and combat minigame plus every enemy type.
-demo_mode: true
+demo_mode: false
 
 # First-visit world (Tython) and minigame tutorial overlays.
 tutorials: false
