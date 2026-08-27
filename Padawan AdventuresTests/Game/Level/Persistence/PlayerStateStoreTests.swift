@@ -15,6 +15,25 @@ struct PlayerStateStoreTests {
         PlayerGameState(health: health, energy: energy)
     }
 
+    /// Writes a v1 `state.plist` after creating the roster entry (store writes always stamp current).
+    private func plantLegacyState(
+        _ state: PlayerGameState,
+        for name: String,
+        in store: PlayerStateStore
+    ) async throws {
+        var stale = state
+        stale.version = PlayerGameState.legacyVersion
+        try await store.createPlayer(
+            name: name,
+            initialState: PlayerGameState(health: state.health, energy: state.energy)
+        )
+        let url = await store.playerDirectoryURL(for: name)
+            .appendingPathComponent(PlayerStateStore.stateFileName)
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        try encoder.encode(stale).write(to: url)
+    }
+
     @Test func createListsAndLoadsPlayer() async throws {
         let (store, _) = try makeStore()
         try await store.createPlayer(name: "  Ahsoka  ", initialState: initialState())
@@ -126,7 +145,7 @@ struct PlayerStateStoreTests {
     @Test func playerGameStateDecodesMissingFieldsWithDefaults() throws {
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
-        let minimal = ["version": 1, "health": 2, "energy": 1] as [String: Any]
+        let minimal = ["version": PlayerGameState.currentVersion, "health": 2, "energy": 1] as [String: Any]
         let data = try PropertyListSerialization.data(fromPropertyList: minimal, format: .binary, options: 0)
         let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
 
@@ -138,6 +157,65 @@ struct PlayerStateStoreTests {
         #expect(decoded.stats.extras.isEmpty)
         #expect(decoded.inventory == PlayerInventory())
         #expect(decoded.settings == .default)
+        #expect(decoded.version == PlayerGameState.currentVersion)
+    }
+
+    @Test func playerGameStateTreatsMissingVersionAsLegacy() throws {
+        let minimal = ["health": 2, "energy": 1] as [String: Any]
+        let data = try PropertyListSerialization.data(fromPropertyList: minimal, format: .binary, options: 0)
+        let decoded = try PropertyListDecoder().decode(PlayerGameState.self, from: data)
+        #expect(decoded.version == PlayerGameState.legacyVersion)
+    }
+
+    @Test func writesStampCurrentFormatVersion() async throws {
+        let (store, _) = try makeStore()
+        try await store.createPlayer(
+            name: "Rex",
+            initialState: PlayerGameState(version: PlayerGameState.legacyVersion, health: 3, energy: 2)
+        )
+        let loaded = try await store.loadState(for: "Rex")
+        #expect(loaded.version == PlayerGameState.currentVersion)
+    }
+
+    @Test func loadStateRejectsLegacyFormatVersion() async throws {
+        let (store, _) = try makeStore()
+        var stale = PlayerGameState(health: 5, energy: 4, totalStars: 12)
+        stale.markLevelStarted("1-tython")
+        try await plantLegacyState(stale, for: "Rex", in: store)
+
+        await #expect(throws: PlayerStateError.unsupportedVersion(PlayerGameState.legacyVersion)) {
+            try await store.loadState(for: "Rex")
+        }
+    }
+
+    @Test func resetIncompatibleStateWritesFreshCurrentVersionAndKeepsSettings() async throws {
+        let (store, _) = try makeStore()
+        let settings = PlayerSettings(
+            soundEffectsEnabled: false,
+            soundEffectsVolume: 0.25,
+            musicEnabled: false,
+            musicVolume: 0.5
+        )
+        var stale = PlayerGameState(
+            health: 5,
+            energy: 4,
+            totalStars: 12,
+            settings: settings
+        )
+        stale.markLevelStarted("1-tython")
+        try await plantLegacyState(stale, for: "Rex", in: store)
+
+        let reset = try await store.resetIncompatibleState(for: "Rex", health: 3, energy: 2)
+        #expect(reset.version == PlayerGameState.currentVersion)
+        #expect(reset.health == 3)
+        #expect(reset.energy == 2)
+        #expect(reset.totalStars == 0)
+        #expect(reset.lastLevelStarted == nil)
+        #expect(reset.levels.isEmpty)
+        #expect(reset.settings == settings)
+
+        let loaded = try await store.loadState(for: "Rex")
+        #expect(loaded == reset)
     }
 
     @Test func playerGameStatePersistsSettings() async throws {

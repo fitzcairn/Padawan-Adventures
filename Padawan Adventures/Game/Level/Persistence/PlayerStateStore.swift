@@ -104,6 +104,27 @@ actor PlayerStateStore {
         try writeState(state, for: trimmed)
     }
 
+    /// Replaces an older/newer save with a blank current-format game, keeping settings when readable.
+    func resetIncompatibleState(for name: String, health: Int, energy: Int) throws -> PlayerGameState {
+        let trimmed = Self.normalizedName(name)
+        let roster = try loadRoster()
+        guard roster.contains(trimmed) else {
+            throw PlayerStateError.playerNotFound
+        }
+
+        let settings: PlayerSettings
+        if let data = try? Data(contentsOf: stateURL(for: trimmed)),
+           let stale = try? PropertyListDecoder().decode(PlayerGameState.self, from: data) {
+            settings = stale.settings
+        } else {
+            settings = .default
+        }
+
+        let fresh = PlayerGameState(health: health, energy: energy, settings: settings)
+        try writeState(fresh, for: trimmed)
+        return fresh
+    }
+
     func playerDirectoryURL(for name: String) -> URL {
         let encoded = Self.encodedDirectoryName(for: Self.normalizedName(name))
         return playersDirectory.appendingPathComponent(encoded, isDirectory: true)
@@ -230,9 +251,11 @@ actor PlayerStateStore {
         let directory = playerDirectoryURL(for: name)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
+        var stamped = state
+        stamped.version = PlayerGameState.currentVersion
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
-        let data = try encoder.encode(state)
+        let data = try encoder.encode(stamped)
 
         let url = stateURL(for: name)
         let temporaryURL = url.appendingPathExtension("tmp")

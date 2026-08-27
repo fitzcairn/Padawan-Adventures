@@ -130,6 +130,12 @@ extension IsometricRenderer {
         let floorZ = IsometricMath.effectiveFloorZ(for: coord, config: config)
         let startZ = floorZ + TapTargetSwirl.floorOverlayZ
         let playerZ = IsometricMath.effectiveEntityZ(for: coord, config: config)
+        let reticuleZ = TapTargetSwirl.reticuleLocalZ(
+            startZ: startZ,
+            at: coord,
+            gates: entityGateOccluders,
+            config: config
+        )
 
         TapTargetSwirl.play(
             in: worldRoot,
@@ -138,7 +144,8 @@ extension IsometricRenderer {
             playerZ: playerZ,
             tileWidth: config.tileWidth,
             tileHeight: config.tileHeight,
-            playerSpriteHeight: playerSpriteDisplayHeight
+            playerSpriteHeight: playerSpriteDisplayHeight,
+            reticuleZ: reticuleZ
         )
     }
 

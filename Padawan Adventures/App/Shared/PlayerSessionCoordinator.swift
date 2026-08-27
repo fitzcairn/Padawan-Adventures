@@ -5,8 +5,23 @@ extension AppSession {
         // Player names are user data and deliberately kept out of the log.
         try await GameLogger.step(.session, "bindPlayer") {
             let trimmed = PlayerStateStore.normalizedName(name)
-            let state = try await playerStore.loadState(for: trimmed)
             let playerSaveService = try await playerStore.makeSaveService(for: trimmed)
+            let state: PlayerGameState
+            do {
+                state = try await playerStore.loadState(for: trimmed)
+            } catch PlayerStateError.unsupportedVersion {
+                GameLogger.mark(.session, "incompatible save format; starting a new game")
+                state = try await playerStore.resetIncompatibleState(
+                    for: trimmed,
+                    health: playerConfig.startingHealth,
+                    energy: playerConfig.startingEnergy
+                )
+                do {
+                    try await playerSaveService.delete()
+                } catch {
+                    GameLogger.error(.session, "could not delete mid-run save: \(error)")
+                }
+            }
 
             currentPlayerName = trimmed
             playerState = state

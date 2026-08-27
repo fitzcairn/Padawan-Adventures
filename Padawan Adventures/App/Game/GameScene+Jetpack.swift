@@ -22,8 +22,9 @@ extension GameScene {
 
         let start = playerNode.position
         let end = IsometricMath.entityScreenPosition(landing, config: isoConfig)
-        if let origin = world.playerPosition {
-            playerFacing = CompassDirection.facing(from: origin, toward: landing)
+        let origin = world.playerPosition ?? landing
+        if let startCoord = world.playerPosition {
+            playerFacing = CompassDirection.facing(from: startCoord, toward: landing)
         } else {
             playerFacing = end.x < start.x ? .left : .right
         }
@@ -48,19 +49,21 @@ extension GameScene {
                 control: control,
                 end: end
             )
-            playerNode.position = point
-            let grid = IsometricMath.fractionalGridFromEntityScreen(
-                point,
-                story: landing.story,
-                config: self.isoConfig
+            // Sort from the ground tiles, not the raised arc — lifting the sprite
+            // maps to a camera-far grid pose and hides the jumper behind the gate.
+            // After takeoff the hop has crested; draw in front of the gate.
+            let inFront = JetpackJumpAnimation.drawsInFrontOfGate(
+                elapsed: TimeInterval(elapsedTime),
+                duration: duration
             )
+            let sort = inFront ? landing : origin
             self.renderer.updateEntityDisplayPosition(
                 player,
                 screenPosition: point,
-                sortX: grid.x,
-                sortY: grid.y,
-                sortStory: landing.story,
-                ignoreGateOcclusion: true
+                sortX: Double(sort.x),
+                sortY: Double(sort.y),
+                sortStory: sort.story,
+                gateOcclusion: inFront ? .inFront : .account
             )
             self.viewportFocus = point
             self.renderer.updateViewportFocus(point)

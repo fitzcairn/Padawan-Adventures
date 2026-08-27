@@ -5,7 +5,8 @@ import Foundation
 protocol WorldPersistable: Codable, Sendable {}
 
 struct GameSaveFile: WorldPersistable {
-    nonisolated static let currentVersion = 1
+    /// Persisted mid-run format. Bump when older app builds must not resume this world.
+    nonisolated static let currentVersion = 2
 
     var version: Int
     var world: GameWorld

@@ -167,6 +167,22 @@ struct GameSaveTests {
         }
     }
 
+    @Test func loadRejectsLegacyFormatVersion() async throws {
+        var world = TestWorldFactory.emptyFloor(width: 3, height: 3)
+        world.setPlayerPosition(GridCoord(x: 1, y: 1, story: 0))
+
+        let (service, directory) = try makeSaveService()
+        let stale = GameSaveFile(version: 1, world: world)
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        let data = try encoder.encode(stale)
+        try data.write(to: directory.appendingPathComponent(GameSaveService.saveFileName))
+
+        await #expect(throws: GameSaveError.unsupportedVersion(1)) {
+            try await service.load()
+        }
+    }
+
     @Test func loadReturnsNilWhenMissing() async throws {
         let (service, _) = try makeSaveService()
         let loaded = try await service.load()

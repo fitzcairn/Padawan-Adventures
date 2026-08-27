@@ -39,6 +39,28 @@ struct JetpackJumpAnimationTests {
         #expect(JetpackJumpAnimation.phase(elapsed: duration, duration: duration) == .land)
     }
 
+    @Test func drawsInFrontOfGateAfterTakeoff() {
+        let duration = JetpackJumpAnimation.duration
+        #expect(
+            JetpackJumpAnimation.drawsInFrontOfGate(elapsed: 0, duration: duration) == false
+        )
+        #expect(
+            JetpackJumpAnimation.drawsInFrontOfGate(
+                elapsed: JetpackJumpAnimation.takeoffDuration - 0.01,
+                duration: duration
+            ) == false
+        )
+        #expect(
+            JetpackJumpAnimation.drawsInFrontOfGate(
+                elapsed: JetpackJumpAnimation.takeoffDuration,
+                duration: duration
+            )
+        )
+        #expect(
+            JetpackJumpAnimation.drawsInFrontOfGate(elapsed: duration, duration: duration)
+        )
+    }
+
     @Test func crossfadeIsFourFramesAtClipRate() {
         #expect(JetpackJumpAnimation.crossfadeFrames == 4)
         #expect(

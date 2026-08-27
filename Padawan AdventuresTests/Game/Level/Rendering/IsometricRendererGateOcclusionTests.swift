@@ -97,6 +97,43 @@ struct IsometricRendererGateOcclusionTests {
         #expect(Self.maxDrawableAccumulatedZ(playerNode) > Self.maxDrawableAccumulatedZ(gateNode))
     }
 
+    /// Jetpack crest: even a camera-far sort pose must paint the jumper over the gate.
+    @Test func renderedPlayerForcedInFrontOfGateDrawsAbove() throws {
+        var world = gatedWorld()
+        let behind = GridCoord(x: 4, y: 5, story: 0)
+        world.setPlayerPosition(behind)
+
+        let renderer = IsometricRenderer(gateSpriteSetLibrary: Self.seededGateLibrary())
+        let scene = SKScene(size: CGSize(width: 320, height: 480))
+        renderer.attach(to: scene)
+        renderer.render(world: world, focus: .zero)
+
+        let player = try #require(world.entities.first { $0.isPlayer })
+        let playerNode = try #require(renderer.entityNodes[player.id])
+        let gateNode = try #require(renderer.wallNodes[Self.back] ?? renderer.wallNodes[Self.front])
+
+        renderer.updateEntityDisplayPosition(
+            player,
+            screenPosition: playerNode.position,
+            sortX: Double(behind.x),
+            sortY: Double(behind.y),
+            sortStory: behind.story,
+            gateOcclusion: .account
+        )
+        #expect(playerNode.zPosition < gateNode.zPosition)
+
+        renderer.updateEntityDisplayPosition(
+            player,
+            screenPosition: playerNode.position,
+            sortX: Double(behind.x),
+            sortY: Double(behind.y),
+            sortStory: behind.story,
+            gateOcclusion: .inFront
+        )
+        #expect(playerNode.zPosition > gateNode.zPosition)
+        #expect(Self.maxDrawableAccumulatedZ(playerNode) > Self.maxDrawableAccumulatedZ(gateNode))
+    }
+
     private static let alongXCanonical = GridCoord(x: 5, y: 4, story: 0)
     private static let alongXFront = GridCoord(x: 6, y: 4, story: 0)
 

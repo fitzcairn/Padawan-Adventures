@@ -128,6 +128,70 @@ struct TapTargetSwirlTests {
         let expectedZ = floorZ + TapTargetSwirl.floorOverlayZ
         #expect(abs(swirl.zPosition - expectedZ) < 0.01)
         #expect(swirl.zPosition > floorZ)
+
+        let reticule = try #require(swirl.childNode(withName: TapTargetSwirl.reticuleName))
+        let expectedReticuleZ = TapTargetSwirl.reticuleWorldZ(
+            at: coord,
+            gates: renderer.entityGateOccluders,
+            config: renderer.config
+        )
+        // SpriteKit stores z as float32; ULP at the occlusion band is 1.
+        #expect(abs(accumulatedZ(reticule) - expectedReticuleZ) < 1)
+        #expect(accumulatedZ(reticule) > IsometricMath.occlusionBandBase)
+    }
+
+    /// Walk-to-gate paints the reticule on the paved doorway, which used to live in
+    /// the floor band and disappear under the gate sprite (including the back cell
+    /// of a 2-tile strip, whose art sorts on the front cell).
+    @Test func rendererDrawsWalkTargetReticuleAboveGate() throws {
+        var world = TestWorldFactory.emptyFloor(width: 9, height: 9)
+        for y in 0..<9 {
+            world.setTile(Tile(kind: .wall), at: GridCoord(x: 5, y: y, story: 0))
+        }
+        let back = GridCoord(x: 5, y: 4, story: 0)
+        let front = GridCoord(x: 5, y: 5, story: 0)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: back)
+        world.setTile(Tile(kind: .gate(minigame: .soundOutWord)), at: front)
+        world.setPlayerPosition(GridCoord(x: 4, y: 5, story: 0))
+
+        let renderer = IsometricRenderer()
+        let scene = SKScene(size: CGSize(width: 320, height: 480))
+        renderer.attach(to: scene)
+        renderer.render(world: world, focus: .zero)
+
+        let gateNode = try #require(renderer.wallNodes[back] ?? renderer.wallNodes[front])
+        let gateZ = accumulatedZ(gateNode)
+
+        for target in [back, front] {
+            renderer.worldRoot.childNode(withName: TapTargetSwirl.nodeName)?.removeFromParent()
+            renderer.playTapTarget(at: target)
+
+            let swirl = try #require(renderer.worldRoot.childNode(withName: TapTargetSwirl.nodeName))
+            let reticule = try #require(swirl.childNode(withName: TapTargetSwirl.reticuleName))
+            #expect(
+                accumulatedZ(reticule) > gateZ,
+                "reticule on \(target) must draw above the gate sprite"
+            )
+        }
+    }
+
+    @Test func reticuleWorldZBeatsOnStripGateSort() {
+        let config = IsometricConfig()
+        let back = GridCoord(x: 5, y: 4, story: 0)
+        let front = GridCoord(x: 5, y: 5, story: 0)
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: back,
+            partner: front,
+            sortCoord: front
+        )
+        let gateWorldZ = IsometricMath.occlusionBandBase
+            + IsometricMath.wallSortValue(for: front, config: config)
+
+        for cell in [back, front] {
+            let z = TapTargetSwirl.reticuleWorldZ(at: cell, gates: [gate], config: config)
+            #expect(z > gateWorldZ, "reticule on \(cell) must beat the strip's sort cell")
+        }
     }
 
     @Test func playerDisplayHeightUsesSpriteConfigThenPlaceholder() {
@@ -138,6 +202,16 @@ struct TapTargetSwirlTests {
 
         let placeholder = PlaceholderFactory.playerDisplayHeight(isoConfig: iso, spriteConfig: nil)
         #expect(abs(placeholder - 88) < 0.001) // 40 * 2.2
+    }
+
+    private func accumulatedZ(_ node: SKNode) -> CGFloat {
+        var z = node.zPosition
+        var parent = node.parent
+        while let current = parent {
+            z += current.zPosition
+            parent = current.parent
+        }
+        return z
     }
 
     private func colorsMatch(_ lhs: UIColor, _ rhs: UIColor) -> Bool {

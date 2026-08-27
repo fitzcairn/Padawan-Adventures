@@ -159,7 +159,10 @@ nonisolated struct PlayerSettings: Codable, Equatable, Sendable {
 
 /// Persistent per-player meta state stored alongside the mid-run world save.
 nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
-    static let currentVersion = 1
+    /// Persisted format. Bump when older app builds must not resume this state.
+    static let currentVersion = 2
+    /// Format used when a save omits `version` (pre-versioned / v1 files).
+    static let legacyVersion = 1
 
     var version: Int
     /// `LevelDescriptor.resourceName` of the last level the player started.
@@ -253,7 +256,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? Self.currentVersion
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? Self.legacyVersion
         lastLevelStarted = try container.decodeIfPresent(String.self, forKey: .lastLevelStarted)
         levels = try container.decodeIfPresent([String: LevelProgress].self, forKey: .levels) ?? [:]
         health = try container.decodeIfPresent(Int.self, forKey: .health) ?? 0

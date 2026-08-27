@@ -124,26 +124,18 @@ extension IsometricRenderer {
         sortX: Double,
         sortY: Double,
         sortStory: Int,
-        ignoreGateOcclusion: Bool = false
+        gateOcclusion: PlaceholderFactory.EntityGateOcclusion = .account
     ) {
         guard let node = entityNodes[entity.id] else { return }
         node.position = screenPosition
-        if ignoreGateOcclusion {
-            node.zPosition = IsometricMath.entitySortValue(
-                x: sortX,
-                y: sortY,
-                story: sortStory,
-                config: config
-            )
-        } else {
-            node.zPosition = PlaceholderFactory.entitySortValueAccountingForGates(
-                x: sortX,
-                y: sortY,
-                story: sortStory,
-                gates: entityGateOccluders,
-                config: config
-            )
-        }
+        node.zPosition = PlaceholderFactory.entitySortValue(
+            x: sortX,
+            y: sortY,
+            story: sortStory,
+            gates: entityGateOccluders,
+            config: config,
+            occlusion: gateOcclusion
+        )
     }
 
     func applyAnimation(to entities: [GameEntity], frame: Int) {

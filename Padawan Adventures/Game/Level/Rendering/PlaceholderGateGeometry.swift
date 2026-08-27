@@ -159,4 +159,52 @@ extension PlaceholderFactory {
         }
         return z
     }
+
+    /// Painter mode for a sprite that shares the occlusion layer with gate art.
+    enum EntityGateOcclusion: Equatable, Sendable {
+        /// Camera-near poses draw above gates; nearby camera-far poses draw below.
+        case account
+        /// Natural entity depth only.
+        case ignore
+        /// Always beat nearby gates (jetpack crest and descent).
+        case inFront
+    }
+
+    static func entitySortValue(
+        x: Double,
+        y: Double,
+        story: Int,
+        gates: [GateOccluder],
+        config: IsometricConfig,
+        occlusion: EntityGateOcclusion
+    ) -> CGFloat {
+        switch occlusion {
+        case .account:
+            return entitySortValueAccountingForGates(
+                x: x, y: y, story: story, gates: gates, config: config
+            )
+        case .ignore:
+            return IsometricMath.entitySortValue(x: x, y: y, story: story, config: config)
+        case .inFront:
+            return entitySortValueInFrontOfGates(
+                x: x, y: y, story: story, gates: gates, config: config
+            )
+        }
+    }
+
+    /// Natural entity depth, lifted above every gate so a cresting hop stays visible.
+    static func entitySortValueInFrontOfGates(
+        x: Double,
+        y: Double,
+        story: Int,
+        gates: [GateOccluder],
+        config: IsometricConfig
+    ) -> CGFloat {
+        var z = IsometricMath.entitySortValue(x: x, y: y, story: story, config: config)
+        for gate in gates {
+            let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+            z = max(z, gateZ + gateOcclusionZBias)
+        }
+        return z
+    }
 }

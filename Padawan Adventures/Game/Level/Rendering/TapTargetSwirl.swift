@@ -55,6 +55,34 @@ enum TapTargetSwirl {
         startZ + progress * (playerZ - startZ)
     }
 
+    /// Local z of the ground reticule relative to the swirl wrapper, so it sorts
+    /// with entities and gates instead of floor art.
+    static func reticuleLocalZ(
+        startZ: CGFloat,
+        at coord: GridCoord,
+        gates: [PlaceholderFactory.GateOccluder],
+        config: IsometricConfig
+    ) -> CGFloat {
+        reticuleWorldZ(at: coord, gates: gates, config: config) - startZ
+    }
+
+    /// World z for the ground reticule: entity/gate band, bumped above an
+    /// on-strip or camera-front gate so a doorway walk target stays visible.
+    static func reticuleWorldZ(
+        at coord: GridCoord,
+        gates: [PlaceholderFactory.GateOccluder],
+        config: IsometricConfig
+    ) -> CGFloat {
+        IsometricMath.occlusionBandBase
+            + PlaceholderFactory.entitySortValueAccountingForGates(
+                x: Double(coord.x),
+                y: Double(coord.y),
+                story: coord.story,
+                gates: gates,
+                config: config
+            )
+    }
+
     static func play(
         in parent: SKNode,
         at position: CGPoint,
@@ -62,7 +90,8 @@ enum TapTargetSwirl {
         playerZ: CGFloat,
         tileWidth: CGFloat,
         tileHeight: CGFloat,
-        playerSpriteHeight: CGFloat
+        playerSpriteHeight: CGFloat,
+        reticuleZ: CGFloat = 0
     ) {
         let wrapper = SKNode()
         wrapper.name = nodeName
@@ -71,6 +100,7 @@ enum TapTargetSwirl {
         parent.addChild(wrapper)
 
         let reticule = makeReticule(tileWidth: tileWidth, tileHeight: tileHeight)
+        reticule.zPosition = reticuleZ
         wrapper.addChild(reticule)
         playReticuleAnimation(on: reticule, spinner: reticuleSpinner(in: reticule))
 

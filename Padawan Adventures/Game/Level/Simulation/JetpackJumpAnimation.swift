@@ -57,4 +57,9 @@ nonisolated enum JetpackJumpAnimation {
         if elapsed < landStart { return .hover }
         return .land
     }
+
+    /// After takeoff the hop has crested — draw the jumper in front of the gate.
+    static func drawsInFrontOfGate(elapsed: TimeInterval, duration: TimeInterval) -> Bool {
+        phase(elapsed: elapsed, duration: duration) != .takeoff
+    }
 }

@@ -437,6 +437,27 @@ struct PlaceholderFactoryTests {
         #expect(z < gateZ, "entity at back-corner depth west of the door stays behind")
     }
 
+    /// A cresting jetpack hop must beat the gate even from a camera-far landing pose.
+    @Test func entitySortInFrontOfGatesBeatsBehindPose() {
+        let config = IsometricConfig()
+        let gate = PlaceholderFactory.GateOccluder(
+            axis: .alongY,
+            cell: GridCoord(x: 5, y: 4, story: 0),
+            partner: GridCoord(x: 5, y: 5, story: 0),
+            sortCoord: GridCoord(x: 5, y: 5, story: 0)
+        )
+        let gateZ = IsometricMath.wallSortValue(for: gate.sortCoord, config: config)
+        let behind = PlaceholderFactory.entitySortValue(
+            x: 4, y: 5, story: 0, gates: [gate], config: config, occlusion: .account
+        )
+        let crest = PlaceholderFactory.entitySortValue(
+            x: 4, y: 5, story: 0, gates: [gate], config: config, occlusion: .inFront
+        )
+        #expect(behind < gateZ)
+        #expect(crest > gateZ)
+        #expect(crest - gateZ >= PlaceholderFactory.gateOcclusionZBias)
+    }
+
     /// Walking south past an alongY door on the west side is camera-front (higher Y) and
     /// must not be buried by the old room-side far-half-plane cap.
     @Test func entitySouthWestOfAlongYGateDrawsAbove() {

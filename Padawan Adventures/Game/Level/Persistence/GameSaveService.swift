@@ -76,9 +76,11 @@ actor GameSaveService {
     }
 
     private static func encode(_ file: GameSaveFile) throws -> Data {
+        var stamped = file
+        stamped.version = GameSaveFile.currentVersion
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
-        return try encoder.encode(file)
+        return try encoder.encode(stamped)
     }
 
     private static func decode(_ data: Data) throws -> GameSaveFile {

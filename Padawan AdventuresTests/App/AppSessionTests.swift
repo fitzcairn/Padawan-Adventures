@@ -89,6 +89,53 @@ struct AppSessionTests {
         #expect(session.hasCompatibleSave == false)
     }
 
+    @Test func bindPlayerResetsIncompatibleSaveAndHidesContinue() async throws {
+        let session = try makeSession()
+        let settings = PlayerSettings(
+            soundEffectsEnabled: false,
+            soundEffectsVolume: 0.4,
+            musicEnabled: false,
+            musicVolume: 0.2
+        )
+        var stale = PlayerGameState(
+            version: PlayerGameState.legacyVersion,
+            health: 5,
+            energy: 4,
+            totalStars: 12,
+            settings: settings
+        )
+        stale.markLevelStarted("1-tython")
+        try await session.playerStore.createPlayer(
+            name: "Rex",
+            initialState: PlayerGameState(health: 5, energy: 4)
+        )
+        let stateURL = await session.playerStore.playerDirectoryURL(for: "Rex")
+            .appendingPathComponent(PlayerStateStore.stateFileName)
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        try encoder.encode(stale).write(to: stateURL)
+
+        let playerSave = try await session.playerStore.makeSaveService(for: "Rex")
+        try await playerSave.save(TestWorldFactory.emptyFloor(width: 3, height: 3))
+
+        try await session.bindPlayer(name: "Rex")
+
+        #expect(session.currentPlayerName == "Rex")
+        #expect(session.playerState?.version == PlayerGameState.currentVersion)
+        #expect(session.playerState?.health == session.playerConfig.startingHealth)
+        #expect(session.playerState?.energy == session.playerConfig.startingEnergy)
+        #expect(session.playerState?.totalStars == 0)
+        #expect(session.playerState?.lastLevelStarted == nil)
+        #expect(session.playerState?.settings == settings)
+        #expect(session.hasCompatibleSave == false)
+        #expect(session.shouldShowContinue == false)
+        #expect(try await session.saveService.load() == nil)
+
+        let persisted = try await session.playerStore.loadState(for: "Rex")
+        #expect(persisted.version == PlayerGameState.currentVersion)
+        #expect(persisted.totalStars == 0)
+    }
+
     @Test func bindPlayerLoadsExistingState() async throws {
         let session = try makeSession()
         try await session.playerStore.createPlayer(
