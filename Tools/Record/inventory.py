@@ -55,9 +55,9 @@ def parse_catalog(path: Path) -> dict[str, dict[str, str]]:
     entries: dict[str, dict[str, str]] = {}
     current: str | None = None
     for line in path.read_text(encoding="utf-8").splitlines():
-        key = re.match(r"^  ([a-z]+):\s*$", line)
+        key = re.match(r"^  (?:\"([a-z]+)\"|'([a-z]+)'|([a-z]+)):\s*$", line)
         if key:
-            current = key.group(1)
+            current = key.group(1) or key.group(2) or key.group(3)
             entries[current] = {}
             continue
         field = re.match(r"^    (sfx|name|image):\s*(\S+)\s*$", line)

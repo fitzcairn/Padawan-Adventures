@@ -703,10 +703,10 @@ function cycleSort(key) {
     state.sort = { key: null, dir: "asc" };
   }
   persistSort();
-  applyFilters();
+  applySort();
 }
 
-function applyFilters() {
+function matchingRows() {
   const q = els.filter.value.trim().toLowerCase();
   const unrecordedOnly = els.unrecorded.checked;
   const matched = [];
@@ -718,16 +718,41 @@ function applyFilters() {
     }
     matched.push(row);
   }
-  if (state.sort.key) {
-    matched.sort((a, b) => compareRows(a, b, state.sort.key, state.sort.dir));
-  }
-  state.visible = matched.map((row) => row.id);
+  return matched;
+}
+
+function syncSelection() {
   if (state.selectedId && !state.visible.includes(state.selectedId)) {
     state.selectedId = state.visible[0] || null;
   }
   if (!state.selectedId && state.visible.length) {
     state.selectedId = state.visible[0];
   }
+}
+
+function applySort() {
+  const matched = matchingRows();
+  if (state.sort.key) {
+    matched.sort((a, b) => compareRows(a, b, state.sort.key, state.sort.dir));
+  }
+  state.visible = matched.map((row) => row.id);
+  syncSelection();
+  renderSortHeaders();
+  renderTable();
+}
+
+function applyFilters() {
+  const matched = matchingRows();
+  if (!state.visible.length) {
+    state.visible = matched.map((row) => row.id);
+  } else {
+    const matchedIds = new Set(matched.map((row) => row.id));
+    const kept = state.visible.filter((id) => matchedIds.has(id));
+    const keptSet = new Set(kept);
+    const added = matched.map((row) => row.id).filter((id) => !keptSet.has(id));
+    state.visible = kept.concat(added);
+  }
+  syncSelection();
   renderSortHeaders();
   renderTable();
 }
@@ -1042,7 +1067,11 @@ async function boot() {
     placeholder: Boolean(row.placeholder),
   }));
   state.rowById = new Map(state.rows.map((r) => [r.id, r]));
-  applyFilters();
+  if (state.sort.key) {
+    applySort();
+  } else {
+    applyFilters();
+  }
 }
 
 boot().catch((err) => {

@@ -37,7 +37,7 @@ python3 Tools/Record/serve.py --check    # inventory summary only
 4. After release the clip is noise-cleaned, previewed, and cached locally.
 5. Click **Save**, press **⌘S / Ctrl+S**, or enable **Autosave on record**.
 
-Click any column header to sort. Click again to reverse; a third click restores catalog order (with group headers). Drag a header’s right edge to resize neighboring columns; double-click the edge to reset. Sort and column widths are remembered in `localStorage`.
+Click any column header to sort. Click again to reverse; a third click restores catalog order (with group headers). Filtering, recording, and saving do not re-sort — the visible order stays put until you click a header. Drag a header’s right edge to resize neighboring columns; double-click the edge to reset. Sort and column widths are remembered in `localStorage`.
 
 **Unrecorded only** is the fast path for clips that still have a placeholder beep (or no file) instead of a take from this tool. UI rows are only strings that define `spoken:` in `strings.yaml` — buttons and other never-spoken copy are omitted.
 
