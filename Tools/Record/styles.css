@@ -129,28 +129,53 @@ thead th {
   overflow-wrap: break-word;
 }
 
-thead th:nth-child(4) {
+col.col-clip {
   width: 5.75rem;
 }
 
-thead th:nth-child(5) {
+col.col-mtime {
   width: 7rem;
 }
 
-thead th:nth-child(6) {
+col.col-record {
   width: 5.5rem;
 }
 
-thead th:nth-child(7) {
+col.col-take {
   width: 5.75rem;
 }
 
-thead th:nth-child(8) {
+col.col-save {
   width: 4rem;
 }
 
-thead th:nth-child(9) {
+col.col-status {
   width: 6rem;
+}
+
+thead th .col-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 6;
+  width: 8px;
+  height: 100%;
+  transform: translateX(50%);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+thead th .col-resize:hover,
+thead th .col-resize.active {
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+body.col-resizing,
+body.col-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 thead th button.sort {
@@ -360,16 +385,20 @@ button.record.active {
 
 @media (max-width: 52rem) {
   thead th {
-    position: static;
+    position: relative;
     font-size: 0.78rem;
     padding: 0.5rem 0.35rem;
   }
 
-  thead th:nth-child(n + 4) {
+  col.col-clip,
+  col.col-record,
+  col.col-take,
+  col.col-save,
+  col.col-status {
     width: 4.25rem;
   }
 
-  thead th:nth-child(5) {
+  col.col-mtime {
     width: 5.5rem;
   }
 

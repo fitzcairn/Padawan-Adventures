@@ -59,6 +59,7 @@ nonisolated enum LevelCatalog {
                 logger.error(
                     "Failed to load level '\(resourceName, privacy: .public)': \(String(describing: error), privacy: .public)"
                 )
+                assertionFailure("Failed to load level '\(resourceName)': \(error)")
                 return nil
             }
         }

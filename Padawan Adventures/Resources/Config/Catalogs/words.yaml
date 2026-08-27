@@ -447,8 +447,8 @@ words:
     sfx: sfx_word_wig
     letters: [w, i, g]
     graphemes: [w, i, g]
-  yes:
-    image: yes
+  "yes":
+    image: "yes"
     sfx: sfx_word_yes
     letters: [y, e, s]
     graphemes: [y, e, s]

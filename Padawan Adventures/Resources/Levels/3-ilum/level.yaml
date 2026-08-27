@@ -10,7 +10,7 @@ artifact: snowflake
 treasure: central-grip
 vocab:
   graphemes: [e, u, r, h, b, f, l]
-  words: [run, bed, bug, sun, hat, cup, bat, jog, pet]
+  words: [run, bed, bug, sun, hat, cup, bat, pet]
 world:
   width_tiles: 50
   height_tiles: 50

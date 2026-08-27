@@ -99,5 +99,7 @@ struct WordCatalogTests {
                 && $0.sfx == "sfx_word_stop"
                 && $0.graphemes == ["st", "o", "p"]
         })
+        #expect(catalog.word(named: "yes")?.image == "yes")
+        #expect(catalog.word(named: "yes")?.graphemes == ["y", "e", "s"])
     }
 }

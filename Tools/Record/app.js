@@ -5,10 +5,12 @@ import { cleanup, encodeWav } from "./dsp.js";
 
 const AUTOSAVE_KEY = "padawan-record-autosave";
 const SORT_KEY = "padawan-record-sort";
+const COLS_KEY = "padawan-record-cols";
 const IDB_NAME = "padawan-record";
 const IDB_VERSION = 1;
 const IDB_STORE = "takes";
 const COLUMN_COUNT = 9;
+const COL_MIN_PX = 48;
 const SORT_KEYS = new Set([
   "text",
   "spoken",
@@ -61,6 +63,8 @@ let stopTimer = null;
 let previewAudio = null;
 
 const els = {
+  table: document.getElementById("table"),
+  colgroup: document.getElementById("colgroup"),
   tbody: document.getElementById("tbody"),
   autosave: document.getElementById("autosave"),
   filter: document.getElementById("filter"),
@@ -550,6 +554,135 @@ function persistSort() {
   localStorage.setItem(SORT_KEY, JSON.stringify(state.sort));
 }
 
+function colEls() {
+  return els.colgroup ? [...els.colgroup.querySelectorAll("col")] : [];
+}
+
+function headerEls() {
+  return els.table ? [...els.table.querySelectorAll("thead th")] : [];
+}
+
+function measureColWidths() {
+  return headerEls().map((th) => th.getBoundingClientRect().width);
+}
+
+function applyColWidths(widths) {
+  const cols = colEls();
+  if (cols.length !== widths.length) return;
+  const total = widths.reduce((sum, width) => sum + width, 0);
+  if (!(total > 0)) return;
+  cols.forEach((col, i) => {
+    col.style.width = `${(widths[i] / total) * 100}%`;
+  });
+}
+
+function persistColWidths(widths) {
+  if (widths.length !== COLUMN_COUNT) return;
+  const total = widths.reduce((sum, width) => sum + width, 0);
+  if (!(total > 0)) return;
+  localStorage.setItem(
+    COLS_KEY,
+    JSON.stringify(widths.map((width) => width / total))
+  );
+}
+
+function loadColWidths() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COLS_KEY));
+    if (!Array.isArray(parsed) || parsed.length !== COLUMN_COUNT) return;
+    if (!parsed.every((n) => typeof n === "number" && Number.isFinite(n) && n > 0)) {
+      return;
+    }
+    applyColWidths(parsed);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function resetColWidths() {
+  localStorage.removeItem(COLS_KEY);
+  colEls().forEach((col) => {
+    col.style.width = "";
+  });
+}
+
+let colResize = null;
+
+function startColResize(index, event) {
+  event.preventDefault();
+  event.stopPropagation();
+  colResize = {
+    index,
+    startX: event.clientX,
+    startWidths: measureColWidths(),
+  };
+  document.body.classList.add("col-resizing");
+}
+
+function moveColResize(event) {
+  if (!colResize) return;
+  const { index, startX, startWidths } = colResize;
+  const nextIndex = index + 1;
+  if (nextIndex >= startWidths.length) return;
+  const delta = event.clientX - startX;
+  let left = startWidths[index] + delta;
+  let right = startWidths[nextIndex] - delta;
+  if (left < COL_MIN_PX) {
+    right -= COL_MIN_PX - left;
+    left = COL_MIN_PX;
+  }
+  if (right < COL_MIN_PX) {
+    left -= COL_MIN_PX - right;
+    right = COL_MIN_PX;
+  }
+  if (left < COL_MIN_PX || right < COL_MIN_PX) return;
+  const widths = startWidths.slice();
+  widths[index] = left;
+  widths[nextIndex] = right;
+  applyColWidths(widths);
+}
+
+function endColResize() {
+  if (!colResize) return;
+  persistColWidths(measureColWidths());
+  colResize = null;
+  document.body.classList.remove("col-resizing");
+  document.querySelectorAll(".col-resize.active").forEach((el) => {
+    el.classList.remove("active");
+  });
+}
+
+function wireColumnResize() {
+  const ths = headerEls();
+  ths.forEach((th, i) => {
+    if (i >= ths.length - 1) return;
+    const handle = document.createElement("span");
+    handle.className = "col-resize";
+    handle.title = "Drag to resize · double-click to reset";
+    handle.addEventListener("pointerdown", (e) => {
+      if (e.button != null && e.button !== 0) return;
+      handle.classList.add("active");
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch (_) {
+        /* ignore */
+      }
+      startColResize(i, e);
+    });
+    handle.addEventListener("pointermove", moveColResize);
+    handle.addEventListener("pointerup", endColResize);
+    handle.addEventListener("pointercancel", endColResize);
+    handle.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resetColWidths();
+    });
+    th.appendChild(handle);
+  });
+  window.addEventListener("pointerup", endColResize);
+  loadColWidths();
+}
+
 function renderSortHeaders() {
   for (const th of document.querySelectorAll("thead th[aria-sort]")) {
     const key = th.querySelector(".sort")?.dataset.sort;
@@ -800,6 +933,7 @@ function wireEvents() {
   document.querySelectorAll("thead button.sort").forEach((btn) => {
     btn.addEventListener("click", () => cycleSort(btn.dataset.sort));
   });
+  wireColumnResize();
 
   window.addEventListener("pointerup", () => {
     const active = document.querySelector("button.record.active");

@@ -10,6 +10,14 @@ nonisolated enum ConfigError: Error, Equatable {
 
 /// Bundle lookup, `inherits:` / `defaults:` merging, and YAML decode for config resources.
 nonisolated enum ConfigStore {
+    /// YAML 1.1 treats `yes`/`no`/`on`/`off` as booleans. Those are also vocab ids
+    /// (`yes` on Kashyyyk). `Yams.dump` rewrites a boolean to `true`/`false`, so
+    /// the catalog lookup fails and every later planet is dropped from level select.
+    /// Keep JSON-style `true`/`false` as bools; leave the English aliases as strings.
+    private static let yamlResolver = Resolver.default.replacing(
+        try! Resolver.Rule(.bool, "^(?:true|True|TRUE|false|False|FALSE)$")
+    )
+
     /// Loads config, trapping in Debug on failure while still returning a safe fallback.
     static func loadOrFallback<T>(
         _ label: String,
@@ -160,7 +168,7 @@ nonisolated enum ConfigStore {
                 reason: "YAML is not valid UTF-8"
             )
         }
-        guard let loaded = try Yams.load(yaml: text),
+        guard let loaded = try Yams.load(yaml: text, yamlResolver),
               let dict = asStringKeyedDictionary(loaded) else {
             throw ConfigError.decodeFailed(
                 file: fileLabel,

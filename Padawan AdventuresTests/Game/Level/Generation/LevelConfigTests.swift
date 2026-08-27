@@ -490,6 +490,33 @@ struct LevelConfigTests {
         #expect(tythonSlash.graphemeCase == .lower)
     }
 
+    @Test func kashyyykVocabularyKeepsTheWordYes() throws {
+        let kashyyyk = try LevelConfig.loadFromBundle(
+            named: "4-kashyyyk",
+            subdirectory: LevelCatalog.subdirectory
+        )
+        #expect(kashyyyk.vocabulary.allWords.map(\.word).contains("yes"))
+        #expect(!kashyyyk.vocabulary.allWords.map(\.word).contains("true"))
+    }
+
+    @Test func yamlBooleanAliasesStayStringsThroughConfigMerge() throws {
+        let tree = try ConfigStore.rawTree(
+            from: Data("""
+            world_tutorial: true
+            disabled: false
+            vocab:
+              words: [yes, no, on, off]
+            """.utf8),
+            parentDataNamed: nil,
+            fileLabel: "test"
+        )
+        #expect(tree["world_tutorial"] as? Bool == true)
+        #expect(tree["disabled"] as? Bool == false)
+        let vocab = tree["vocab"] as? [String: Any]
+        let words = vocab?["words"] as? [String]
+        #expect(words == ["yes", "no", "on", "off"])
+    }
+
     @Test func decodesCombatDecoyCountAndCase() throws {
         let level = try LevelConfig.decode(
             from: """
