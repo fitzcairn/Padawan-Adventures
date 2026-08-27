@@ -102,6 +102,33 @@ struct PlayerGameStateStarsTests {
         #expect(state.itemSlots == PlayerGameState.emptyItemSlots)
     }
 
+    @Test func merchantSpendsRunCoinsThenBankedCampaignCoins() {
+        var state = PlayerGameState(health: 3, energy: 2, totalStars: 5)
+        state.addLevelStars("level_1", count: 2)
+        #expect(state.spendableCoins(for: "level_1") == 7)
+
+        let spent = state.spendMerchantCoins("level_1", count: 6)
+        #expect(spent)
+        #expect(state.levels["level_1"]?.starsCurrent == 0)
+        #expect(state.totalStars == 1)
+        #expect(state.spendableCoins(for: "level_1") == 1)
+
+        let tooMuch = state.spendMerchantCoins("level_1", count: 2)
+        #expect(tooMuch == false)
+        #expect(state.totalStars == 1)
+    }
+
+    @Test func purchaseMerchantWareCanSpendBankedCoinsAlone() {
+        var state = PlayerGameState(health: 3, energy: 2, totalStars: 4)
+        let bought = state.purchaseMerchantWare(
+            resourceName: "level_2", itemID: "square", slot: 0, price: 3, limit: 1
+        )
+        #expect(bought)
+        #expect(state.itemSlotID(at: 0) == "square")
+        #expect(state.levels["level_2"]?.starsCurrent == 0)
+        #expect(state.totalStars == 1)
+    }
+
     @Test func spendLevelStarsFailsWhenShortAndDoesNotClamp() {
         var state = PlayerGameState(health: 3, energy: 2)
         state.addLevelStars("level_1", count: 4)

@@ -320,47 +320,47 @@ strings:
     text: "Tap to continue"
     context: "Hint along the bottom of the world during Tython's first-visit tap-and-drag tutorial."
   merchant_item_bridge:
-    text: "this is a bridge, it looks great"
+    text: "Use the bridge to remove a pit!"
     sfx: sfx_ui_merchant_item_bridge
     context: "Description in the merchant inspect modal for the bridge ware. Spoken when that modal appears."
     spoken: "This is a bridge, it looks great"
   merchant_item_crystal_green:
-    text: "this is a green crystal, it looks great"
+    text: "A green kyber crystal!"
     sfx: sfx_ui_merchant_item_crystal_green
     context: "Description in the merchant inspect modal for the green crystal ware. Spoken when that modal appears."
     spoken: "This is a green crystal, it looks great"
   merchant_item_crystal_purple:
-    text: "this is a purple crystal, it looks great"
+    text: "A purple kyber crystal!"
     sfx: sfx_ui_merchant_item_crystal_purple
     context: "Description in the merchant inspect modal for the purple crystal ware. Spoken when that modal appears."
     spoken: "This is a purple crystal, it looks great"
   merchant_item_crystal_yellow:
-    text: "this is a yellow crystal, it looks great"
+    text: "A yellow kyber crystal!"
     sfx: sfx_ui_merchant_item_crystal_yellow
     context: "Description in the merchant inspect modal for the yellow crystal ware. Spoken when that modal appears."
     spoken: "This is a yellow crystal, it looks great"
   merchant_item_double_saber:
-    text: "this is a double saber, it looks great"
+    text: "A double lightsaber.  Careful!"
     sfx: sfx_ui_merchant_item_double_saber
     context: "Description in the merchant inspect modal for the double-saber ware. Spoken when that modal appears."
     spoken: "This is a double saber, it looks great"
   merchant_item_jetpack:
-    text: "this is a jetpack, it looks great"
+    text: "Use the jetback to jump over any gate!"
     sfx: sfx_ui_merchant_item_jetpack
     context: "Description in the merchant inspect modal for the jetpack ware. Spoken when that modal appears."
     spoken: "This is a jetpack, it looks great"
   merchant_item_satelite:
-    text: "this is a satelite, it looks great"
+    text: "Use the satelite to locate the lightsaber piece!"
     sfx: sfx_ui_merchant_item_satelite
     context: "Description in the merchant inspect modal for the satelite ware. Spoken when that modal appears."
     spoken: "This is a satelite, it looks great"
   merchant_item_scanner:
-    text: "this is a scanner, it looks great"
+    text: "Use the scanner to look around you!"
     sfx: sfx_ui_merchant_item_scanner
     context: "Description in the merchant inspect modal for the scanner ware. Spoken when that modal appears."
     spoken: "This is a scanner, it looks great"
   merchant_item_vector:
-    text: "this is a vector, it looks great"
+    text: "Call Yoda's Jedi Vector to blast through enemies!"
     sfx: sfx_ui_merchant_item_vector
     context: "Description in the merchant inspect modal for the vector ware. Spoken when that modal appears."
     spoken: "This is a vector, it looks great"

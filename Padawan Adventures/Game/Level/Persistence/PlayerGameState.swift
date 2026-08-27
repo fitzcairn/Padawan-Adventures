@@ -170,7 +170,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var energy: Int
     var inventory: PlayerInventory
     var stats: PlayerStats
-    /// Sum of banked per-level bests (`starsEarned`).
+    /// Banked campaign coins: sum of per-level bests (`starsEarned`), minus merchant spends.
     var totalStars: Int
     /// Settings screen values for this player.
     var settings: PlayerSettings
@@ -324,7 +324,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         guard MerchantItemDefinition.canHoldAnother(limit: limit, held: held) else {
             return false
         }
-        guard spendLevelStars(resourceName, count: price) else { return false }
+        guard spendMerchantCoins(resourceName, count: price) else { return false }
         setItemSlot(index: slot, itemID: itemID)
         return true
     }
@@ -348,6 +348,27 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         guard progress.starsCurrent >= count else { return false }
         progress.starsCurrent -= count
         levels[resourceName] = progress
+        return true
+    }
+
+    /// Coins the merchant can take: this run plus banked campaign coins.
+    func spendableCoins(for resourceName: String) -> Int {
+        (levels[resourceName]?.starsCurrent ?? 0) + max(totalStars, 0)
+    }
+
+    /// Spends this run first, then `totalStars`. Fails (no change) when the combined pool is short.
+    @discardableResult
+    mutating func spendMerchantCoins(_ resourceName: String, count: Int) -> Bool {
+        guard count > 0, spendableCoins(for: resourceName) >= count else { return false }
+        let local = levels[resourceName]?.starsCurrent ?? 0
+        let fromLocal = min(local, count)
+        let fromBank = count - fromLocal
+        if fromLocal > 0 {
+            _ = spendLevelStars(resourceName, count: fromLocal)
+        }
+        if fromBank > 0 {
+            totalStars -= fromBank
+        }
         return true
     }
 

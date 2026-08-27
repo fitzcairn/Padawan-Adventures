@@ -361,7 +361,7 @@ final class MerchantShopSession: ObservableObject {
             seed: tileSeed
         )
         self.slots = PlayerGameState.normalizedItemSlots(appSession.playerState?.itemSlots ?? [])
-        self.displayedCoins = appSession.playerState?.levels[resourceName]?.starsCurrent ?? 0
+        self.displayedCoins = appSession.playerState?.spendableCoins(for: resourceName) ?? 0
         self.backgroundLibrary = appSession.backgroundLibrary
         var sizes: [String: CGSize] = [:]
         for (id, item) in catalog {
@@ -443,7 +443,7 @@ final class MerchantShopSession: ObservableObject {
 
     private func resolveDrop(itemID: String) async {
         let price = catalog[itemID]?.displayedPrice(levelOrder: levelOrder) ?? 0
-        let coins = appSession.playerState?.levels[resourceName]?.starsCurrent ?? 0
+        let coins = appSession.playerState?.spendableCoins(for: resourceName) ?? 0
         let home = dragHome
         let offer = (home?.bounds ?? .null).offsetBy(
             dx: dragTranslation.width,
