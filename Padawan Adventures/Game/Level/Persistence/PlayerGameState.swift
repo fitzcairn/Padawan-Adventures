@@ -37,7 +37,7 @@ nonisolated struct LevelProgress: Codable, Equatable, Sendable {
     var completed: Bool
     /// Best completed star count for this level.
     var starsEarned: Int
-    /// In-progress run stars shown in the HUD.
+    /// Legacy per-run coin field. New play uses `PlayerGameState.totalStars` only.
     var starsCurrent: Int
     /// Ware id → purchases completed on this level run (cleared when the run resets).
     var merchantPurchases: [String: Int]
@@ -170,7 +170,7 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     var energy: Int
     var inventory: PlayerInventory
     var stats: PlayerStats
-    /// Banked campaign coins: sum of per-level bests (`starsEarned`), minus merchant spends.
+    /// Playthrough coin wallet: earned from minigames, spent at the merchant.
     var totalStars: Int
     /// Settings screen values for this player.
     var settings: PlayerSettings
@@ -271,6 +271,13 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
             try container.decodeIfPresent([String].self, forKey: .itemSlots) ?? []
         )
         combatSwingAnimation = try container.decodeIfPresent(String.self, forKey: .combatSwingAnimation)
+        let runCoins = levels.values.reduce(0) { $0 + max($1.starsCurrent, 0) }
+        totalStars = max(totalStars, runCoins)
+        if runCoins > 0 {
+            for key in levels.keys {
+                levels[key]?.starsCurrent = 0
+            }
+        }
     }
 
     mutating func markLevelStarted(_ resourceName: String) {
@@ -295,6 +302,11 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
         progress.starsCurrent = 0
         progress.merchantPurchases = [:]
         levels[resourceName] = progress
+    }
+
+    mutating func ensureMinimumCoins(_ minimum: Int) {
+        guard minimum > 0 else { return }
+        totalStars = max(totalStars, minimum)
     }
 
     func merchantPurchaseCount(_ resourceName: String, itemID: String) -> Int {
@@ -335,40 +347,27 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
 
     mutating func addLevelStars(_ resourceName: String, count: Int) {
         guard count > 0 else { return }
-        var progress = levels[resourceName] ?? LevelProgress()
-        progress.starsCurrent += count
-        levels[resourceName] = progress
+        if levels[resourceName] == nil {
+            levels[resourceName] = LevelProgress()
+        }
+        totalStars += count
     }
 
-    /// Spends `count` from `starsCurrent`. Fails (no change) when the run cannot cover it.
+    /// Spends `count` from the playthrough wallet. Fails (no change) when short.
     @discardableResult
     mutating func spendLevelStars(_ resourceName: String, count: Int) -> Bool {
-        guard count > 0 else { return false }
-        var progress = levels[resourceName] ?? LevelProgress()
-        guard progress.starsCurrent >= count else { return false }
-        progress.starsCurrent -= count
-        levels[resourceName] = progress
-        return true
+        spendMerchantCoins(resourceName, count: count)
     }
 
-    /// Coins the merchant can take: this run plus banked campaign coins.
-    func spendableCoins(for resourceName: String) -> Int {
-        (levels[resourceName]?.starsCurrent ?? 0) + max(totalStars, 0)
+    func spendableCoins(for _: String) -> Int {
+        max(totalStars, 0)
     }
 
-    /// Spends this run first, then `totalStars`. Fails (no change) when the combined pool is short.
+    /// Spends `count` from `totalStars`. Fails (no change) when the wallet is short.
     @discardableResult
-    mutating func spendMerchantCoins(_ resourceName: String, count: Int) -> Bool {
-        guard count > 0, spendableCoins(for: resourceName) >= count else { return false }
-        let local = levels[resourceName]?.starsCurrent ?? 0
-        let fromLocal = min(local, count)
-        let fromBank = count - fromLocal
-        if fromLocal > 0 {
-            _ = spendLevelStars(resourceName, count: fromLocal)
-        }
-        if fromBank > 0 {
-            totalStars -= fromBank
-        }
+    mutating func spendMerchantCoins(_ _: String, count: Int) -> Bool {
+        guard count > 0, totalStars >= count else { return false }
+        totalStars -= count
         return true
     }
 
@@ -389,10 +388,9 @@ nonisolated struct PlayerGameState: Codable, Equatable, Sendable {
     mutating func finalizeLevelStars(_ resourceName: String) -> LevelStarsFinalizeResult {
         var progress = levels[resourceName] ?? LevelProgress()
         let previousBest = progress.starsEarned
-        let newScore = progress.starsCurrent
+        let newScore = max(totalStars, 0)
         let didBeatPrevious = newScore > previousBest
         if didBeatPrevious {
-            totalStars += newScore - previousBest
             progress.starsEarned = newScore
             levels[resourceName] = progress
         }

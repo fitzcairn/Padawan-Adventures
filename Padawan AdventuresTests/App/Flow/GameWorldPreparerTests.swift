@@ -78,18 +78,18 @@ struct GameWorldPreparerTests {
         #expect(world.healthCount == 7)
     }
 
-    @Test func newGameResetsLevelStarsCurrent() async throws {
+    @Test func newGameKeepsPlaythroughCoins() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Cody")
         try session.selectLevel(resourceName: "1-tython")
         session.appConfig.demoMode = false
         await session.addLevelStar(resourceName: "1-tython")
         await session.addLevelStar(resourceName: "1-tython")
-        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 2)
+        #expect(session.playerState?.totalStars == 2)
 
         let world = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
         #expect(world != nil)
-        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 0)
+        #expect(session.playerState?.totalStars == 2)
         #expect(session.playerState?.levels["1-tython"]?.started == true)
     }
 
@@ -99,17 +99,17 @@ struct GameWorldPreparerTests {
         try session.selectLevel(resourceName: "1-tython")
         session.appConfig.demoMode = true
         _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
-        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 1000)
+        #expect(session.playerState?.totalStars == 1000)
     }
 
-    @Test func nonDemoNewGameLeavesCoinsAtZero() async throws {
+    @Test func nonDemoNewGameKeepsEarnedCoins() async throws {
         let session = try makeSession()
         try await session.createAndBindPlayer(name: "Cody")
         try session.selectLevel(resourceName: "1-tython")
         session.appConfig.demoMode = false
         await session.addLevelStars(resourceName: "1-tython", count: 2)
         _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .newGame)
-        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 0)
+        #expect(session.playerState?.totalStars == 2)
     }
 
     @Test func continueSaveDoesNotReseedDemoCoins() async throws {
@@ -125,7 +125,7 @@ struct GameWorldPreparerTests {
         )
         try await session.saveService.save(saved)
         _ = await GameWorldPreparer.prepareLaunch(session: session, mode: .continueSave)
-        #expect(session.playerState?.levels["1-tython"]?.starsCurrent == 5)
+        #expect(session.playerState?.totalStars == 5)
     }
 
     @Test func ensureEnemySpritesLoadedRejectsIncompleteSprites() async throws {

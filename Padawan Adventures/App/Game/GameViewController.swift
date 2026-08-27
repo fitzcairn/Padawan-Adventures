@@ -163,8 +163,7 @@ final class GameViewController: LandscapeHostingController {
     private func installHUD() {
         let hudConfig = cachedHudConfig
 
-        let levelResource = session.selectedLevelResourceName
-        let starsCount = levelResource.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
+        let starsCount = session.playerState?.totalStars ?? 0
         let hud = GameHUDView(
             config: hudConfig,
             healthCount: world.healthCount,
@@ -571,8 +570,7 @@ final class GameViewController: LandscapeHostingController {
     }
 
     private func refreshWorldHUDAfterMerchant() {
-        let resourceName = session.selectedLevelResourceName
-        let stars = resourceName.flatMap { session.playerState?.levels[$0]?.starsCurrent } ?? 0
+        let stars = session.playerState?.totalStars ?? 0
         hud?.setStars(stars)
         hud?.setInventorySlots(
             session.playerState?.itemSlots ?? PlayerGameState.emptyItemSlots,
@@ -892,9 +890,9 @@ final class GameViewController: LandscapeHostingController {
     @MainActor
     private func awardLevelStars(count: Int) async {
         guard count > 0, let resourceName = session.selectedLevelResourceName else { return }
-        let previous = session.playerState?.levels[resourceName]?.starsCurrent ?? 0
+        let previous = session.playerState?.totalStars ?? 0
         await session.addLevelStars(resourceName: resourceName, count: count)
-        let stars = session.playerState?.levels[resourceName]?.starsCurrent ?? previous
+        let stars = session.playerState?.totalStars ?? previous
         if let hud {
             await hud.animateStarAward(from: previous, to: stars)
         }

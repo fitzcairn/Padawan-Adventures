@@ -131,6 +131,12 @@ extension AppSession {
         await persistPlayerState()
     }
 
+    func ensureMinimumCoins(_ minimum: Int) async {
+        guard playerState != nil, minimum > 0 else { return }
+        playerState?.ensureMinimumCoins(minimum)
+        await persistPlayerState()
+    }
+
     func addLevelStar(resourceName: String) async {
         await addLevelStars(resourceName: resourceName, count: 1)
     }

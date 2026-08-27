@@ -35,7 +35,7 @@ enum GameWorldPreparer {
             if mode == .newGame {
                 await session.resetLevelStarsCurrent(resourceName: resourceName)
                 if session.appConfig.demoMode {
-                    await session.addLevelStars(resourceName: resourceName, count: 1000)
+                    await session.ensureMinimumCoins(1000)
                 }
             }
             await session.markLevelStarted(resourceName: resourceName)

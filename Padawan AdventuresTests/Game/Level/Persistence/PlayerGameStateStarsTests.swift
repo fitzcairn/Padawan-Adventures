@@ -3,27 +3,61 @@ import Testing
 @testable import Padawan_Adventures
 
 struct PlayerGameStateStarsTests {
-    @Test func resetLevelStarsCurrentZerosInProgressCount() {
+    @Test func resetLevelStarsCurrentKeepsPlaythroughCoins() {
         var state = PlayerGameState(health: 3, energy: 2)
         state.addLevelStar("level_1")
         state.addLevelStar("level_1")
-        #expect(state.levels["level_1"]?.starsCurrent == 2)
+        #expect(state.totalStars == 2)
 
         state.resetLevelStarsCurrent("level_1")
-        #expect(state.levels["level_1"]?.starsCurrent == 0)
+        #expect(state.totalStars == 2)
         #expect(state.levels["level_1"]?.starsEarned == 0)
+    }
+
+    @Test func decodeLiftsLegacyRunCoinsIntoTheWalletOnce() throws {
+        var state = PlayerGameState(health: 3, energy: 2, totalStars: 2)
+        state.levels["level_1"] = LevelProgress(starsCurrent: 4)
+        state.levels["level_2"] = LevelProgress(starsCurrent: 3)
+
+        let decoded = try PropertyListDecoder().decode(
+            PlayerGameState.self,
+            from: try PropertyListEncoder().encode(state)
+        )
+        #expect(decoded.totalStars == 7)
+        #expect(decoded.levels["level_1"]?.starsCurrent == 0)
+        #expect(decoded.levels["level_2"]?.starsCurrent == 0)
+
+        var spent = decoded
+        let emptied = spent.spendMerchantCoins("level_1", count: 7)
+        #expect(emptied)
+        let again = try PropertyListDecoder().decode(
+            PlayerGameState.self,
+            from: try PropertyListEncoder().encode(spent)
+        )
+        #expect(again.totalStars == 0)
+    }
+
+    @Test func ensureMinimumCoinsRaisesWalletWithoutStacking() {
+        var state = PlayerGameState(health: 3, energy: 2, totalStars: 40)
+        state.ensureMinimumCoins(1000)
+        #expect(state.totalStars == 1000)
+        state.ensureMinimumCoins(1000)
+        #expect(state.totalStars == 1000)
+        state.addLevelStars("level_1", count: 5)
+        state.ensureMinimumCoins(1000)
+        #expect(state.totalStars == 1005)
     }
 
     @Test func addLevelStarsAddsCountInOneStep() {
         var state = PlayerGameState(health: 3, energy: 2)
         state.addLevelStars("level_1", count: 10)
-        #expect(state.levels["level_1"]?.starsCurrent == 10)
+        #expect(state.totalStars == 10)
 
         state.addLevelStars("level_1", count: 0)
-        #expect(state.levels["level_1"]?.starsCurrent == 10)
+        #expect(state.totalStars == 10)
     }
 
-    @Test func finalizeLevelStarsBanksFirstScoreIntoTotal() {
+    @Test func finalizeLevelStarsBanksFirstScoreWithoutDoubleCounting() {
         var state = PlayerGameState(health: 3, energy: 2)
         state.addLevelStar("level_1")
         state.addLevelStar("level_1")
@@ -37,9 +71,9 @@ struct PlayerGameStateStarsTests {
         #expect(state.totalStars == 3)
     }
 
-    @Test func finalizeLevelStarsAddsOnlyImprovementDelta() {
-        var state = PlayerGameState(health: 3, energy: 2, totalStars: 5)
-        state.levels["level_1"] = LevelProgress(starsEarned: 5, starsCurrent: 8)
+    @Test func finalizeLevelStarsDoesNotAddWalletAgainWhenBeatingBest() {
+        var state = PlayerGameState(health: 3, energy: 2, totalStars: 8)
+        state.levels["level_1"] = LevelProgress(starsEarned: 5)
 
         let result = state.finalizeLevelStars("level_1")
         #expect(result.didBeatPrevious == true)
@@ -51,12 +85,12 @@ struct PlayerGameStateStarsTests {
 
     @Test func finalizeLevelStarsDoesNotChangeTotalWhenNotBeaten() {
         var state = PlayerGameState(health: 3, energy: 2, totalStars: 7)
-        state.levels["level_1"] = LevelProgress(starsEarned: 7, starsCurrent: 4)
+        state.levels["level_1"] = LevelProgress(starsEarned: 7)
 
         let result = state.finalizeLevelStars("level_1")
         #expect(result.didBeatPrevious == false)
         #expect(result.previousBest == 7)
-        #expect(result.newScore == 4)
+        #expect(result.newScore == 7)
         #expect(state.levels["level_1"]?.starsEarned == 7)
         #expect(state.totalStars == 7)
     }
@@ -102,30 +136,28 @@ struct PlayerGameStateStarsTests {
         #expect(state.itemSlots == PlayerGameState.emptyItemSlots)
     }
 
-    @Test func merchantSpendsRunCoinsThenBankedCampaignCoins() {
+    @Test func merchantSpendsFromThePlaythroughWallet() {
         var state = PlayerGameState(health: 3, energy: 2, totalStars: 5)
         state.addLevelStars("level_1", count: 2)
         #expect(state.spendableCoins(for: "level_1") == 7)
 
         let spent = state.spendMerchantCoins("level_1", count: 6)
         #expect(spent)
-        #expect(state.levels["level_1"]?.starsCurrent == 0)
         #expect(state.totalStars == 1)
-        #expect(state.spendableCoins(for: "level_1") == 1)
+        #expect(state.spendableCoins(for: "level_2") == 1)
 
         let tooMuch = state.spendMerchantCoins("level_1", count: 2)
         #expect(tooMuch == false)
         #expect(state.totalStars == 1)
     }
 
-    @Test func purchaseMerchantWareCanSpendBankedCoinsAlone() {
+    @Test func purchaseMerchantWareSpendsGlobalCoinsOnAnyLevel() {
         var state = PlayerGameState(health: 3, energy: 2, totalStars: 4)
         let bought = state.purchaseMerchantWare(
             resourceName: "level_2", itemID: "square", slot: 0, price: 3, limit: 1
         )
         #expect(bought)
         #expect(state.itemSlotID(at: 0) == "square")
-        #expect(state.levels["level_2"]?.starsCurrent == 0)
         #expect(state.totalStars == 1)
     }
 
@@ -134,12 +166,11 @@ struct PlayerGameStateStarsTests {
         state.addLevelStars("level_1", count: 4)
         let tooExpensive = state.spendLevelStars("level_1", count: 5)
         #expect(tooExpensive == false)
-        #expect(state.levels["level_1"]?.starsCurrent == 4)
+        #expect(state.totalStars == 4)
         let zeroSpend = state.spendLevelStars("level_1", count: 0)
         #expect(zeroSpend == false)
         let spent = state.spendLevelStars("level_1", count: 4)
         #expect(spent)
-        #expect(state.levels["level_1"]?.starsCurrent == 0)
         #expect(state.totalStars == 0)
     }
 
@@ -175,14 +206,14 @@ struct PlayerGameStateStarsTests {
         )
         #expect(first)
         #expect(state.itemSlotID(at: 0) == "square")
-        #expect(state.levels["level_1"]?.starsCurrent == 9)
+        #expect(state.totalStars == 9)
 
         let second = state.purchaseMerchantWare(
             resourceName: "level_1", itemID: "square", slot: 1, price: 1, limit: 1
         )
         #expect(second == false)
         #expect(state.itemSlotID(at: 1) == nil)
-        #expect(state.levels["level_1"]?.starsCurrent == 9)
+        #expect(state.totalStars == 9)
 
         let unlimited = state.purchaseMerchantWare(
             resourceName: "level_1", itemID: "circle", slot: 1, price: 2, limit: 0

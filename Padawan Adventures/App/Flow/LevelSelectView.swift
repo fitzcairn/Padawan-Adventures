@@ -168,7 +168,7 @@ struct LevelSelectView: View {
                         startLevel(selectedLevel, launchMode: detailMode.launchMode)
                     },
                     onStartOver: {
-                        let stars = session.playerState?.levels[selectedLevel.resourceName]?.starsEarned ?? 0
+                        let stars = session.playerState?.totalStars ?? 0
                         self.detailMode = .replay(highestStars: stars)
                     },
                     onDismiss: {

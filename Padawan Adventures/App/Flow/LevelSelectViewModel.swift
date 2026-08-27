@@ -38,12 +38,13 @@ struct LevelSelectViewModel {
         })
     }
 
-    /// Best coins for completed planets (`starsEarned`), including 0.
+    /// Playthrough wallet shown on every completed planet chip.
     var completedHighScores: [String: Int] {
+        let wallet = session.playerState?.totalStars ?? 0
         let progress = session.playerState?.levels ?? [:]
         var scores: [String: Int] = [:]
         for (name, level) in progress where level.completed {
-            scores[name] = level.starsEarned
+            scores[name] = wallet
         }
         return scores
     }
@@ -69,7 +70,7 @@ struct LevelSelectViewModel {
         return Self.detailMode(
             resourceName: resourceName,
             started: progress?.started == true,
-            starsEarned: progress?.starsEarned ?? 0,
+            starsEarned: session.playerState?.totalStars ?? 0,
             hasCompatibleSave: session.hasCompatibleSave,
             lastLevelStarted: session.playerState?.lastLevelStarted
         )
